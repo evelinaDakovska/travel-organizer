@@ -55,6 +55,22 @@ cafe / café / Coffee and cannot drive icons reliably. Defined in `src/domain/tr
 | `task` | check-in · booking · document · packing |
 | `other` | luggage · insurance · parking · shopping · viewpoint |
 
+### `details` is pinned to transport
+
+Only `transport` has a structured `details` shape — `from`, `to`, `carrier`, `number`, `seat` —
+because a journey has two endpoints and `location_name` holds one. Every other kind is served by
+title, location and notes, so their `details` stays permissive rather than guessing at fields.
+
+`detailsSchemaFor(kind)` drives validation; `transportDetails(item)` and `routeLabel` read it back
+as 'Sofia → Bergamo'. Unknown kinds stay permissive so a backup from a later version still parses.
+
+### Editing must not pin an inherited zone
+
+`TripItem` carries both the resolved `start`/`end` moments and the raw `startTzOverride` /
+`endTzOverride`. The resolved moment is for reading; the override is what an edit writes back.
+Feeding the resolved zone into the form would silently pin an item that was meant to follow the
+trip, so `tripItemFormValues` uses the override.
+
 **`subkind` is always nullable, and no list contains `'other'`** — "unspecified" is expressed by
 the absence of a subkind, never by a magic value. Adding a subkind is a code change, not a
 migration, since the column has no CHECK constraint.

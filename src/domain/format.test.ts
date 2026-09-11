@@ -1,10 +1,4 @@
-import {
-  formatDateRange,
-  formatDayHeading,
-  formatDuration,
-  formatMoney,
-  formatRelative,
-} from './format';
+import { formatDateRange, formatDayHeading, formatDuration, formatMoment, formatMoney, formatRelative } from './format';
 
 describe('formatDateRange', () => {
   it('collapses a same-month range', () => {
@@ -58,5 +52,19 @@ describe('formatMoney', () => {
     expect(formatMoney(4250, 'EUR')).toBe('EUR 42.50');
     expect(formatMoney(5, 'EUR')).toBe('EUR 0.05');
     expect(formatMoney(100000, 'BGN')).toBe('BGN 1000.00');
+  });
+});
+
+describe('formatMoment', () => {
+  it('shows the time when one was given', () => {
+    expect(formatMoment('2026-09-19T14:00', 'time')).toBe('Saturday, 19 September · 14:00');
+  });
+
+  it('shows only the day when the hour is unknown', () => {
+    expect(formatMoment('2026-09-19', 'date')).toBe('Saturday, 19 September');
+  });
+
+  it('keeps a real midnight visible rather than hiding it', () => {
+    expect(formatMoment('2026-09-19T00:00', 'time')).toBe('Saturday, 19 September · 00:00');
   });
 });

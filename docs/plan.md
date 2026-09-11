@@ -42,7 +42,7 @@ After C5, the core is complete and this machine's work is finished.
 
 | ID | Task | Milestone | Device? |
 |---|---|---|---|
-| **S1** | Item create/edit form and item detail screen | M3 | no |
+| **S1** | Item create/edit form and item detail screen | M3 | ✅ Done |
 | **S2** | Resource UI: pick PDF, pick image, add link, and the reusable `OpenResource` control | M3 | **yes** — verify a real PDF opens offline |
 | **S3** | Timeline screen and the Overview / Now card | M4 | no |
 | **S4** | Bookings, Places and Notes tabs, and search UI | M5 | no |
@@ -173,11 +173,10 @@ The largest milestone and the one carrying the most risk. Files are here, not la
 
 1. ✅ `src/domain/tripItem.ts` — `tripItemInputSchema`, `tripItemWriteValues`, `parseTripItemRow`
 2. ✅ `src/repositories/tripItems.ts` — CRUD, **`start_utc` derived on write, never by hand**
-3. Item create/edit form, fields varying by `kind`. **Pin down `details` here:** it is currently
-   a permissive `Record<string, unknown>`, because a per-kind discriminated union would be
-   guessing at fields before a form exists to reveal them. It is a JSON column, so tightening it
-   later is a code change, not a migration
-4. Item detail screen
+3. ✅ Item create/edit form, fields varying by `kind`. **`details` is pinned:** transport only —
+   `from`, `to`, `carrier`, `number`, `seat`. It is the one kind with a structural need a column
+   cannot meet, because a journey has two endpoints and `location_name` holds one
+4. ✅ Item detail screen
 5. ✅ `src/files/storage.ts` — import-and-copy, relative↔absolute paths, **GC sweep on app start**
 6. ✅ `src/repositories/resources.ts` and `src/domain/resource.ts`
 7. Add a resource: pick PDF · pick image/screenshot · paste link

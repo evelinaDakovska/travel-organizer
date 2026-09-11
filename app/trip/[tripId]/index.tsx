@@ -5,7 +5,10 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { formatDateRange, formatDuration } from '../../../src/domain/format';
 import { isTripActive, tripDurationDays } from '../../../src/domain/trip';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
+import { listTripItems, TRIP_ITEM_TABLES } from '../../../src/repositories/tripItems';
 import { getTrip, TRIP_TABLES } from '../../../src/repositories/trips';
+import { Button } from '../../../src/ui/components/Button';
+import { ItemRow } from '../../../src/ui/components/ItemRow';
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
 import { radius, spacing, type, useColors } from '../../../src/ui/tokens';
@@ -18,6 +21,12 @@ export default function TripOverview() {
   const { data: trip, loading } = useLiveQuery(
     useCallback((db) => getTrip(db, tripId), [tripId]),
     TRIP_TABLES,
+    [tripId],
+  );
+
+  const { data: items } = useLiveQuery(
+    useCallback((db) => listTripItems(db, tripId), [tripId]),
+    TRIP_ITEM_TABLES,
     [tripId],
   );
 
@@ -93,10 +102,42 @@ export default function TripOverview() {
           </View>
         ) : null}
 
+        <View style={styles.block}>
+          <Text style={[type.overline, { color: c.textFaint }]}>EVERYTHING IN THIS TRIP</Text>
+
+          {items && items.length > 0 ? (
+            <View style={styles.list}>
+              {items.map((item) => (
+                <ItemRow
+                  key={item.id}
+                  item={item}
+                  onPress={() => router.push(`/item/${item.id}`)}
+                />
+              ))}
+            </View>
+          ) : (
+            <View
+              style={[
+                styles.placeholder,
+                { backgroundColor: c.surfaceSunken, borderColor: c.border },
+              ]}>
+              <Text style={[type.body, { color: c.textMuted }]}>
+                Nothing here yet. Add a flight, a hotel, or somewhere you want to go.
+              </Text>
+            </View>
+          )}
+
+          <Button
+            label="Add something"
+            variant="secondary"
+            onPress={() => router.push(`/item/new?tripId=${trip.id}`)}
+          />
+        </View>
+
         <View
           style={[styles.placeholder, { backgroundColor: c.surfaceSunken, borderColor: c.border }]}>
           <Text style={[type.body, { color: c.textMuted }]}>
-            Bookings, timeline, places and documents arrive in the next milestones.
+            The timeline, tabs and documents arrive in the next milestones.
           </Text>
         </View>
       </ScrollView>
@@ -107,7 +148,8 @@ export default function TripOverview() {
 const styles = StyleSheet.create({
   content: { padding: spacing.xl, gap: spacing.xl },
   card: { borderWidth: 1, borderRadius: radius.lg, padding: spacing.xl, gap: spacing.xs },
-  block: { gap: spacing.sm },
+  block: { gap: spacing.md },
+  list: { gap: spacing.sm },
   notes: { lineHeight: 22 },
   placeholder: {
     borderWidth: StyleSheet.hairlineWidth,

@@ -3,10 +3,10 @@
 **The** status board. `CLAUDE.md` and `plan.md` link here rather than repeat it, so there is one
 place to update and nothing can drift.
 
-Verified against the repo on 2026-09-11: **236 tests passing, typecheck clean.** Core track reviewed and the findings fixed.
+Verified against the repo on 2026-09-11: **249 tests passing, typecheck clean.** Core track reviewed and the findings fixed.
 
-> **Core track complete.** Next work is **S1**, on the Windows machine — see
-> [`docs/windows-handoff.md`](windows-handoff.md).
+> **Next task: S2** — resource UI. Needs a device for the last step, so it may belong on
+> the Windows machine — see [`docs/windows-handoff.md`](windows-handoff.md).
 
 ---
 
@@ -59,7 +59,7 @@ Screens, forms, styling, and everything needing a real device. See `docs/windows
 
 | | Task | Milestone | Device | ✓ |
 |---|---|---|---|---|
-| **S1** | Item create / edit form and item detail screen | M3 | no | ⬜ |
+| **S1** | Item create / edit form and item detail screen | M3 | no | ✅ |
 | **S2** | Resource UI: pick PDF, pick image, add link, and the `OpenResource` control | M3 | **yes** | ⬜ |
 | **S3** | Timeline screen and the Overview / Now card | M4 | no | ⬜ |
 | **S4** | Bookings, Places and Notes tabs, and search UI | M5 | no | ⬜ |
@@ -87,7 +87,7 @@ compaction; this file does.
 | # | Question | Needed by |
 |---|---|---|
 | 1 | Multi-day stays render as derived check-in/check-out — confirm the visual treatment | S3 |
-| 2 | Per-item travellers (only 2 of 3 going to one thing) — needed, or notes? | S1 |
+| 2 | Per-item travellers (only 2 of 3 going to one thing) — needed, or notes? **Still open: S1 shipped without it.** Adding it is a new column, so a migration | later |
 | 3 | Trip-level resources: their own screen, or a section on Overview? | S2 |
 | 4 | Notification default lead time, and whether it is per-item configurable | S6 |
 | ~~5~~ | ~~Export format: one zip per trip, or one for everything?~~ **Resolved in C5: one archive for everything; `filterTablesForTrip` keeps a per-trip export available with no format change.** | — |

@@ -52,6 +52,19 @@ export function isValidSubkind(kind: TripItemKind, subkind: string | null): bool
   return (SUBKINDS[kind] as readonly string[]).includes(subkind);
 }
 
+const KIND_LABELS: Record<TripItemKind, string> = {
+  transport: 'Travel',
+  stay: 'Stay',
+  activity: 'Activity',
+  food: 'Food',
+  task: 'To do',
+  other: 'Other',
+};
+
+export function kindLabel(kind: TripItemKind): string {
+  return KIND_LABELS[kind];
+}
+
 /** 'check-in' -> 'Check-in'. */
 export function subkindLabel(subkind: string): string {
   return subkind.charAt(0).toUpperCase() + subkind.slice(1);
@@ -69,6 +82,9 @@ export type TripItem = {
   /** Zone already resolved against the trip default, so nothing downstream repeats that fallback. */
   start: LocalMoment | null;
   end: LocalMoment | null;
+  /** The zone the row states for itself, null when it follows the trip. Editing must preserve this. */
+  startTzOverride: string | null;
+  endTzOverride: string | null;
   /** Tasks only — for anything else "done" is derivable from the end instant. */
   completedAt: string | null;
   locationName: string | null;
@@ -118,6 +134,44 @@ export type TripItemRow = {
   updated_at: string;
 };
 
+/**
+ * Transport is the one kind with a structural need a column cannot meet: it has two
+ * endpoints, not one location. Everything else is served by title, location and notes.
+ */
+export const transportDetailsSchema = z.object({
+  from: z.string().trim().max(80).optional(),
+  to: z.string().trim().max(80).optional(),
+  carrier: z.string().trim().max(60).optional(),
+  number: z.string().trim().max(24).optional(),
+  seat: z.string().trim().max(24).optional(),
+});
+
+export type TransportDetails = z.infer<typeof transportDetailsSchema>;
+
+/** Unknown kinds stay permissive so a backup from a later version is not rejected on read. */
+export function detailsSchemaFor(kind: TripItemKind) {
+  return kind === 'transport' ? transportDetailsSchema : z.record(z.string(), z.unknown());
+}
+
+/** Typed details for a transport item, or null for anything else. */
+export function transportDetails(item: {
+  kind: TripItemKind;
+  details: Record<string, unknown> | null;
+}): TransportDetails | null {
+  if (item.kind !== 'transport' || item.details === null) return null;
+  const parsed = transportDetailsSchema.safeParse(item.details);
+  return parsed.success ? parsed.data : null;
+}
+
+/** 'Sofia → Bergamo', or just whichever end is known. Null when neither is. */
+export function routeLabel(details: TransportDetails | null): string | null {
+  if (!details) return null;
+  const { from, to } = details;
+  if (from && to) return `${from} → ${to}`;
+  if (to) return `→ ${to}`;
+  return from ?? null;
+}
+
 /** A moment as a form supplies it. `tz` absent means "whatever the trip's default is". */
 const momentInputSchema = z.object({
   local: z.string().refine((v) => localPrecision(v) !== null, 'Use YYYY-MM-DD or YYYY-MM-DDTHH:mm'),
@@ -155,6 +209,10 @@ export function tripItemInputSchema(defaultTz: string) {
       message: 'That is not a type of this kind',
       path: ['subkind'],
     })
+    .refine((v) => v.details === undefined || detailsSchemaFor(v.kind).safeParse(v.details).success, {
+      message: 'Those details do not belong to this kind',
+      path: ['details'],
+    })
     .refine((v) => v.start !== undefined || v.end === undefined, {
       message: 'Add a start before an end',
       path: ['start'],
@@ -169,7 +227,11 @@ export function tripItemInputSchema(defaultTz: string) {
     });
 }
 
-export type TripItemInput = z.infer<ReturnType<typeof tripItemInputSchema>>;
+/** After parsing: defaults applied, so `status` and `isPaid` are always present. */
+export type TripItemInput = z.output<ReturnType<typeof tripItemInputSchema>>;
+
+/** What a form holds before parsing — defaulted fields are still optional here. */
+export type TripItemFormValues = z.input<ReturnType<typeof tripItemInputSchema>>;
 
 function momentOf(input: MomentInput, defaultTz: string): LocalMoment {
   return {
@@ -237,6 +299,8 @@ export function parseTripItemRow(row: TripItemRow, defaultTz: string): TripItem 
     title: row.title,
     start: parseMoment(row.start_local, row.start_tz, row.start_precision, defaultTz),
     end: parseMoment(row.end_local, row.end_tz, row.end_precision, defaultTz),
+    startTzOverride: row.start_tz,
+    endTzOverride: row.end_tz,
     completedAt: row.completed_at,
     locationName: row.location_name,
     address: row.address,
@@ -293,5 +357,34 @@ export function tripItemBindings(input: TripItemInput, defaultTz: string) {
     $priceAmount: v.price_amount,
     $priceCurrency: v.price_currency,
     $isPaid: v.is_paid,
+  };
+}
+
+/**
+ * Turns a stored item back into what the form holds. Uses the zone OVERRIDE rather than the
+ * resolved one, or editing would pin an item that was meant to follow the trip.
+ */
+export function tripItemFormValues(item: TripItem): TripItemFormValues {
+  const moment = (at: LocalMoment | null, override: string | null) =>
+    at ? { local: at.local, ...(override ? { tz: override } : {}) } : undefined;
+
+  return {
+    kind: item.kind,
+    subkind: item.subkind,
+    status: item.status,
+    priority: item.priority,
+    title: item.title,
+    start: moment(item.start, item.startTzOverride),
+    end: moment(item.end, item.endTzOverride),
+    locationName: item.locationName ?? undefined,
+    address: item.address ?? undefined,
+    latitude: item.latitude ?? undefined,
+    longitude: item.longitude ?? undefined,
+    confirmationCode: item.confirmationCode ?? undefined,
+    notes: item.notes ?? undefined,
+    details: item.details ?? undefined,
+    priceAmount: item.priceAmount ?? undefined,
+    priceCurrency: item.priceCurrency ?? undefined,
+    isPaid: item.isPaid,
   };
 }

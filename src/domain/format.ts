@@ -66,3 +66,9 @@ export function formatMoney(minorUnits: number, currency: string): string {
   const abs = Math.abs(minorUnits);
   return `${sign}${currency} ${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`;
 }
+
+/** 'Saturday, 19 September · 14:00', or just the day when only the date is known. */
+export function formatMoment(local: string, precision: 'date' | 'time'): string {
+  const day = formatDayHeading(local.slice(0, 10));
+  return precision === 'time' ? `${day} · ${local.slice(11, 16)}` : day;
+}

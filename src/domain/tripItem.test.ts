@@ -1,6 +1,10 @@
 import {
   isValidSubkind,
+  kindLabel,
   parseTripItemRow,
+  routeLabel,
+  transportDetails,
+  tripItemFormValues,
   tripItemInputSchema,
   tripItemWriteValues,
   type TripItemInput,
@@ -213,38 +217,38 @@ describe('tripItemWriteValues', () => {
   });
 });
 
-describe('parseTripItemRow', () => {
-  const row: TripItemRow = {
-    id: 'i1',
-    trip_id: 't1',
-    kind: 'stay',
-    subkind: 'hotel',
-    status: 'confirmed',
-    priority: null,
-    title: 'Hotel Milano',
-    start_local: '2026-09-19T15:00',
-    start_tz: null,
-    start_precision: 'time',
-    start_utc: '2026-09-19T13:00:00.000Z',
-    end_local: '2026-09-22T11:00',
-    end_tz: null,
-    end_precision: 'time',
-    end_utc: '2026-09-22T09:00:00.000Z',
-    completed_at: null,
-    location_name: 'Via Roma 1',
-    address: null,
-    latitude: null,
-    longitude: null,
-    confirmation_code: 'ABC123',
-    notes: null,
-    details: '{"room":"402"}',
-    price_amount: 24000,
-    price_currency: 'EUR',
-    is_paid: 1,
-    created_at: '2026-09-11T00:00:00.000Z',
-    updated_at: '2026-09-11T00:00:00.000Z',
-  };
+const row: TripItemRow = {
+  id: 'i1',
+  trip_id: 't1',
+  kind: 'stay',
+  subkind: 'hotel',
+  status: 'confirmed',
+  priority: null,
+  title: 'Hotel Milano',
+  start_local: '2026-09-19T15:00',
+  start_tz: null,
+  start_precision: 'time',
+  start_utc: '2026-09-19T13:00:00.000Z',
+  end_local: '2026-09-22T11:00',
+  end_tz: null,
+  end_precision: 'time',
+  end_utc: '2026-09-22T09:00:00.000Z',
+  completed_at: null,
+  location_name: 'Via Roma 1',
+  address: null,
+  latitude: null,
+  longitude: null,
+  confirmation_code: 'ABC123',
+  notes: null,
+  details: '{"room":"402"}',
+  price_amount: 24000,
+  price_currency: 'EUR',
+  is_paid: 1,
+  created_at: '2026-09-11T00:00:00.000Z',
+  updated_at: '2026-09-11T00:00:00.000Z',
+};
 
+describe('parseTripItemRow', () => {
   it('fills an unqualified zone from the trip default', () => {
     const item = parseTripItemRow(row, ROME);
     expect(item.start).toEqual({ local: '2026-09-19T15:00', tz: ROME, precision: 'time' });
@@ -292,5 +296,95 @@ describe('parseTripItemRow', () => {
     expect(item.end?.local).toBe('2026-09-22T11:00');
     expect(item.priceAmount).toBe(24000);
     expect(item.isPaid).toBe(true);
+  });
+});
+
+describe('transport details', () => {
+  const flight = {
+    kind: 'transport' as const,
+    details: { from: 'Sofia', to: 'Bergamo', carrier: 'Wizz', number: 'W6 4315' },
+  };
+
+  it('reads the two endpoints a single location column cannot hold', () => {
+    expect(transportDetails(flight)?.from).toBe('Sofia');
+    expect(transportDetails(flight)?.to).toBe('Bergamo');
+  });
+
+  it('returns nothing for a kind that has no structured details', () => {
+    expect(transportDetails({ kind: 'food', details: { from: 'Sofia' } })).toBeNull();
+    expect(transportDetails({ kind: 'transport', details: null })).toBeNull();
+  });
+
+  it('renders the route the way the spec writes it', () => {
+    expect(routeLabel(transportDetails(flight))).toBe('Sofia → Bergamo');
+  });
+
+  it('renders whichever end is known rather than nothing', () => {
+    expect(routeLabel({ from: 'Sofia' })).toBe('Sofia');
+    expect(routeLabel({ to: 'Bergamo' })).toBe('→ Bergamo');
+    expect(routeLabel({})).toBeNull();
+    expect(routeLabel(null)).toBeNull();
+  });
+
+  it('accepts transport details on a transport item and refuses them elsewhere', () => {
+    const base = { title: 'Flight', start: { local: '2026-09-19T06:10' } };
+    expect(schema.safeParse({ ...base, kind: 'transport', details: { from: 'Sofia' } }).success)
+      .toBe(true);
+    expect(
+      errorPaths(
+        schema.safeParse({ ...base, kind: 'transport', details: { from: 12 } }),
+      ),
+    ).toEqual(['details']);
+  });
+});
+
+describe('tripItemFormValues', () => {
+  const stored = (overrides: Partial<TripItemRow> = {}) =>
+    parseTripItemRow({ ...row, ...overrides }, ROME);
+
+  it('round-trips an edit without changing what was stored', () => {
+    const values = tripItemFormValues(stored());
+    const written = tripItemWriteValues(schema.parse(values), ROME);
+
+    expect(written.start_local).toBe(row.start_local);
+    expect(written.start_utc).toBe(row.start_utc);
+    expect(written.subkind).toBe('hotel');
+    expect(written.price_amount).toBe(24000);
+  });
+
+  it('leaves an inherited zone inherited, so the item still follows the trip', () => {
+    const values = tripItemFormValues(stored({ start_tz: null }));
+
+    expect(values.start?.tz).toBeUndefined();
+    expect(tripItemWriteValues(schema.parse(values), ROME).start_tz).toBeNull();
+  });
+
+  it('keeps a zone the user chose, even when it matches the trip', () => {
+    const values = tripItemFormValues(stored({ start_tz: ROME }));
+
+    expect(values.start?.tz).toBe(ROME);
+    expect(tripItemWriteValues(schema.parse(values), ROME).start_tz).toBe(ROME);
+  });
+
+  it('re-resolves an inherited moment when the trip moves to another zone', () => {
+    const values = tripItemFormValues(stored({ start_tz: null }));
+    const written = tripItemWriteValues(schema.parse(values), 'Europe/Sofia');
+
+    // Same wall clock, one hour earlier in UTC.
+    expect(written.start_local).toBe('2026-09-19T15:00');
+    expect(written.start_utc).toBe('2026-09-19T12:00:00.000Z');
+  });
+});
+
+describe('kindLabel', () => {
+  it('gives every kind wording a person would use', () => {
+    expect(TRIP_ITEM_KINDS.map(kindLabel)).toEqual([
+      'Travel',
+      'Stay',
+      'Activity',
+      'Food',
+      'To do',
+      'Other',
+    ]);
   });
 });
