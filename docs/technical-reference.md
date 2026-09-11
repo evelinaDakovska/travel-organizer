@@ -369,10 +369,18 @@ input fails loudly. Keep it that way.
 
 ```ts
 const picked = new File(externalUri);              // content:// on Android
-const dest   = new File(Paths.document, `media/${randomUUID()}.pdf`);
-picked.copy(dest);
-// store 'media/<uuid>.pdf' in resources.stored_path
+const dest   = new File(Paths.document, `media/${id}.pdf`);
+await picked.copy(dest);                           // ASYNC — see below
+// store 'media/<id>.pdf' in resources.stored_path
 ```
+
+**`copy()` returns a promise in 57.0.6 and must be awaited.** Unawaited, the row can be written
+before the file lands, and a crash in between leaves a ticket that opens to nothing. There is a
+`copySync()` if a synchronous path is ever needed; `delete()` and `exists` are already synchronous.
+
+The stored name comes from the resource id, not the original filename, so two files both called
+`ticket.pdf` cannot collide. The extension is taken from the reported mime type first and the
+filename only as a fallback — Android frequently reports a PDF under a meaningless name.
 
 Reasons:
 - Android grants only **temporary** URI permission. Reading a stored `content://` URI a week later
@@ -392,7 +400,21 @@ every ticket silently fails after a reinstall.
 
 SQLite cascades rows, not files. **On app start**, list the media directory and delete any file
 not referenced by a `resources.stored_path`. Crash-safe, self-healing, and correct regardless of
-how an orphan arose.
+how an orphan arose. `useMediaSweep` runs it once per launch from inside the provider.
+
+**The sweep's one dangerous property:** an empty reference list means "delete everything", which
+is correct for a fresh install and catastrophic after a failed read. So the query result is never
+defaulted — if loading the paths throws, the sweep does not run at all. The decision itself
+(`orphanedStoredPaths`) is pure and unit tested; only the deletion touches the disk.
+
+`toStoredPath` returns null for anything outside the documents directory or outside `media/`, so
+a path that does not round-trip can never be handed to `delete()`.
+
+### Links are restricted to schemes we will open
+
+`http`, `https`, `geo`, `mailto`, `tel`. A `file:`, `content:`, `intent:` or `javascript:` URL is
+refused at the schema, since a link can arrive from the Android share sheet (M8) and be opened
+later with a tap.
 
 Before deleting a Trip or TripItem, show a confirmation **naming the blast radius**:
 *"Delete Milan? This removes 6 items and 11 saved files."* These may be the only copies.

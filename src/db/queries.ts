@@ -84,3 +84,41 @@ export const UPDATE_ITEM_INSTANTS = `
 UPDATE trip_items SET start_utc = $startUtc, end_utc = $endUtc, updated_at = $now
  WHERE id = $id
 `;
+
+/** Trip-level and item-level resources are the same table, distinguished by which id is set. */
+export const SELECT_RESOURCES_FOR_ITEM = `
+SELECT * FROM resources WHERE trip_item_id = $id ORDER BY sort_order, created_at
+`;
+
+export const SELECT_RESOURCES_FOR_TRIP = `
+SELECT * FROM resources WHERE trip_id = $id ORDER BY sort_order, created_at
+`;
+
+export const INSERT_RESOURCE = `
+INSERT INTO resources
+  (id, trip_id, trip_item_id, kind, subtype, label,
+   url, stored_path, file_name, mime_type, size_bytes, sort_order, created_at)
+VALUES
+  ($id, $tripId, $tripItemId, $kind, $subtype, $label,
+   $url, $storedPath, $fileName, $mimeType, $sizeBytes,
+   COALESCE((SELECT MAX(sort_order) + 1 FROM resources
+              WHERE trip_id IS $tripId AND trip_item_id IS $tripItemId), 0),
+   $now)
+`;
+
+export const UPDATE_RESOURCE_LABEL = `
+UPDATE resources SET label = $label, subtype = $subtype WHERE id = $id
+`;
+
+/** Every file the database still points at, across both owner kinds. The sweep keeps these. */
+export const SELECT_ALL_STORED_PATHS = `
+SELECT stored_path FROM resources WHERE kind = 'file' AND stored_path IS NOT NULL
+`;
+
+/** Files belonging to one trip, for the confirmation dialog and for export. */
+export const SELECT_TRIP_STORED_PATHS = `
+SELECT stored_path FROM resources
+ WHERE kind = 'file' AND stored_path IS NOT NULL
+   AND (trip_id = $tripId
+        OR trip_item_id IN (SELECT id FROM trip_items WHERE trip_id = $tripId))
+`;

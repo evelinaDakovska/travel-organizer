@@ -32,7 +32,7 @@ and building at once.
 |---|---|---|---|
 | **C1** | `domain/timeline.ts` — day grouping, derived check-in/check-out, next-item selection | M4 | ✅ Done |
 | **C2** | TripItem Zod schema, row parser, `repositories/tripItems.ts` | M3 | ✅ Done |
-| **C3** | `repositories/resources.ts` + `files/storage.ts` | M3 | Relative↔absolute path handling and the GC sweep are unit tested; the `contentUri` open path is written (device-verified later in S2) |
+| **C3** | `repositories/resources.ts` + `files/storage.ts` | M3 | ✅ Done — `contentUri` open path written, device-verified in S2 |
 | **C4** | Tab queries (Bookings / Places / Search) + `repositories/notes.ts` | M5 | Queries tested via `better-sqlite3`, including that Places is `status='idea'` and Bookings is `status='confirmed'` |
 | **C5** | Export/import format + serialiser | M6 | Round-trip test in node: all five tables plus a file manifest, nothing lost. **Resolves open question 5** |
 
@@ -178,8 +178,8 @@ The largest milestone and the one carrying the most risk. Files are here, not la
    guessing at fields before a form exists to reveal them. It is a JSON column, so tightening it
    later is a code change, not a migration
 4. Item detail screen
-5. `src/files/storage.ts` — import-and-copy, relative↔absolute paths, **GC sweep on app start**
-6. `src/repositories/resources.ts`
+5. ✅ `src/files/storage.ts` — import-and-copy, relative↔absolute paths, **GC sweep on app start**
+6. ✅ `src/repositories/resources.ts` and `src/domain/resource.ts`
 7. Add a resource: pick PDF · pick image/screenshot · paste link
 8. **`OpenResource` component** — one file opens directly; several open a bottom sheet.
    Reused on Overview, timeline rows and item detail. The most important control in the app
