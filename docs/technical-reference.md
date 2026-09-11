@@ -62,12 +62,17 @@ migration, since the column has no CHECK constraint.
 ### Tabs are queries, not entities
 
 ```sql
--- Places
+-- Places: unrated sits BELOW maybe, not among it
 WHERE trip_id = ? AND status = 'idea'
-ORDER BY CASE priority WHEN 'must' THEN 0 WHEN 'want' THEN 1 ELSE 2 END, title
+ORDER BY CASE priority
+           WHEN 'must' THEN 0 WHEN 'want' THEN 1 WHEN 'maybe' THEN 2 ELSE 3 END, title
 
--- Bookings
-WHERE trip_id = ? AND status = 'confirmed' AND kind = ?
+-- Bookings: grouped by kind in the UI, so ordering leads on time
+WHERE trip_id = ? AND status = 'confirmed'
+ORDER BY (start_utc IS NULL), start_utc, title
+
+-- Search: title, notes, location_name, address, confirmation_code
+WHERE trip_id = ? AND (title LIKE ? ESCAPE '\\' OR ...)
 
 -- Timeline and Next are NOT queries — see below
 WHERE trip_id = ? AND status != 'cancelled'
@@ -95,6 +100,19 @@ on your last morning, "Check out 11:00" is genuinely the next thing you have to 
 | Date-only sorts above a real `00:00` | `compareEntries` |
 | Cancelled excluded; completed tasks excluded from Now only | `timelineEntries` / `nextEntries` |
 | Not scoped to the trip's dates — a check-in the day before counts | `nextEntries` |
+
+### Search escapes the user's wildcards
+
+`%` and `_` are LIKE wildcards, so searching for `50%` would otherwise match the whole trip.
+`searchPattern` escapes them and every statement declares `ESCAPE '\\'`. A blank query returns
+null and the caller skips the query entirely, so an empty box shows nothing rather than everything.
+
+Search covers `trip_notes` too — a door code you typed into a note should be findable from the
+same box. **Cancelled items stay searchable on purpose:** finding the cancellation confirmation is
+the reason the row was kept.
+
+Known limit: SQLite's `LIKE` is case-insensitive for ASCII only, so `Café` will not match `cafe`.
+Acceptable for a personal trip; fixing it would mean a normalised search column.
 
 ### Status semantics
 

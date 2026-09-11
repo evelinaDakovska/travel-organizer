@@ -3,9 +3,9 @@
 **The** status board. `CLAUDE.md` and `plan.md` link here rather than repeat it, so there is one
 place to update and nothing can drift.
 
-Verified against the repo on 2026-09-11: **178 tests passing, typecheck clean.**
+Verified against the repo on 2026-09-11: **202 tests passing, typecheck clean.**
 
-> **Next task: C4** — tab queries and the notes repository
+> **Next task: C5** — export and import, the last core task
 
 ---
 
@@ -40,7 +40,7 @@ this runs under `npm test`. **Ordered by cost of being wrong, not by feature ord
 | **C1** | `domain/timeline.ts` — day grouping, derived check-in/check-out, next-item selection | M4 | ✅ |
 | **C2** | TripItem Zod schema, row parser, and the trip items repository | M3 | ✅ |
 | **C3** | Resources repository and `files/storage.ts` — import, paths, GC sweep | M3 | ✅ |
-| **C4** | Tab queries for Bookings, Places and Search, plus the notes repository | M5 | ⬜ |
+| **C4** | Tab queries for Bookings, Places and Search, plus the notes repository | M5 | ✅ |
 | **C5** | Export / import format and serialiser | M6 | ⬜ |
 
 Done-when criteria for each are in `docs/plan.md` → *Execution tracks*.

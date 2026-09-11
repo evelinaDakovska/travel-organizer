@@ -3,14 +3,21 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import {
   INSERT_TRIP_ITEM,
+  SCHEDULE_TRIP_ITEM,
+  SEARCH_TRIP_ITEMS,
+  SEARCH_TRIP_NOTES,
+  SELECT_BOOKINGS,
   SELECT_ITEMS_WITH_DEFAULT_TZ,
+  SELECT_PLACES,
   SELECT_TRIP_ITEM,
   SELECT_TRIP_ITEMS,
   SET_TASK_COMPLETED,
   UPDATE_ITEM_INSTANTS,
   UPDATE_TRIP_ITEM,
 } from '../db/queries';
-import { toInstant, type TimePrecision } from '../domain/time';
+import { parseNoteRow, type Note, type NoteRow } from '../domain/note';
+import { searchPattern } from '../domain/search';
+import { localPrecision, toInstant, type LocalMoment, type TimePrecision } from '../domain/time';
 import {
   parseTripItemRow,
   tripItemBindings,
@@ -25,6 +32,18 @@ type JoinedRow = TripItemRow & { trip_default_tz: string };
 
 export async function listTripItems(db: SQLiteDatabase, tripId: string): Promise<TripItem[]> {
   const rows = await db.getAllAsync<JoinedRow>(SELECT_TRIP_ITEMS, { $tripId: tripId });
+  return rows.map((row) => parseTripItemRow(row, row.trip_default_tz));
+}
+
+/** Bookings tab: what is settled. */
+export async function listBookings(db: SQLiteDatabase, tripId: string): Promise<TripItem[]> {
+  const rows = await db.getAllAsync<JoinedRow>(SELECT_BOOKINGS, { $tripId: tripId });
+  return rows.map((row) => parseTripItemRow(row, row.trip_default_tz));
+}
+
+/** Places tab: what is still only an idea, most wanted first. */
+export async function listPlaces(db: SQLiteDatabase, tripId: string): Promise<TripItem[]> {
+  const rows = await db.getAllAsync<JoinedRow>(SELECT_PLACES, { $tripId: tripId });
   return rows.map((row) => parseTripItemRow(row, row.trip_default_tz));
 }
 
@@ -133,4 +152,55 @@ async function itemDefaultTz(db: SQLiteDatabase, itemId: string): Promise<string
   );
   if (!row) throw new Error(`No trip item ${itemId}`);
   return row.default_tz;
+}
+
+/**
+ * Promotes a saved place to something on the timeline. One UPDATE: the row keeps its
+ * identity, its resources and its notes, so nothing has to be copied anywhere.
+ */
+export async function scheduleTripItem(
+  db: SQLiteDatabase,
+  id: string,
+  moment: { local: string; tz?: string | null } | null,
+  status: 'idea' | 'confirmed' = 'confirmed',
+): Promise<void> {
+  const defaultTz = await itemDefaultTz(db, id);
+  const precision = moment ? localPrecision(moment.local) : null;
+  if (moment && precision === null) throw new Error(`Invalid date: ${moment.local}`);
+
+  const resolved: LocalMoment | null =
+    moment && precision ? { local: moment.local, tz: moment.tz ?? defaultTz, precision } : null;
+
+  await db.runAsync(SCHEDULE_TRIP_ITEM, {
+    $id: id,
+    $startLocal: moment?.local ?? null,
+    $startTz: moment?.tz ?? null,
+    $startPrecision: precision,
+    $startUtc: resolved ? toInstant(resolved) : null,
+    $status: status,
+    $now: new Date().toISOString(),
+  });
+}
+
+export type TripSearchResults = { items: TripItem[]; notes: Note[] };
+
+/** Blank query returns nothing rather than the whole trip. */
+export async function searchTrip(
+  db: SQLiteDatabase,
+  tripId: string,
+  query: string,
+): Promise<TripSearchResults> {
+  const pattern = searchPattern(query);
+  if (pattern === null) return { items: [], notes: [] };
+
+  const params = { $tripId: tripId, $q: pattern };
+  const [items, notes] = await Promise.all([
+    db.getAllAsync<JoinedRow>(SEARCH_TRIP_ITEMS, params),
+    db.getAllAsync<NoteRow>(SEARCH_TRIP_NOTES, params),
+  ]);
+
+  return {
+    items: items.map((row) => parseTripItemRow(row, row.trip_default_tz)),
+    notes: notes.map(parseNoteRow),
+  };
 }

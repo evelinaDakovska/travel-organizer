@@ -122,3 +122,70 @@ SELECT stored_path FROM resources
    AND (trip_id = $tripId
         OR trip_item_id IN (SELECT id FROM trip_items WHERE trip_id = $tripId))
 `;
+
+/** Bookings: what is settled. Grouped by kind in the UI, so kind leads the ordering. */
+export const SELECT_BOOKINGS = `
+SELECT i.*, t.default_tz AS trip_default_tz
+  FROM trip_items i JOIN trips t ON t.id = i.trip_id
+ WHERE i.trip_id = $tripId AND i.status = 'confirmed'
+ ORDER BY (i.start_utc IS NULL), i.start_utc, i.title
+`;
+
+/** Places: what is only an idea. Unrated sits below maybe rather than among it. */
+export const SELECT_PLACES = `
+SELECT i.*, t.default_tz AS trip_default_tz
+  FROM trip_items i JOIN trips t ON t.id = i.trip_id
+ WHERE i.trip_id = $tripId AND i.status = 'idea'
+ ORDER BY CASE i.priority
+            WHEN 'must' THEN 0 WHEN 'want' THEN 1 WHEN 'maybe' THEN 2 ELSE 3 END,
+          i.title
+`;
+
+/** Promoting a place to a plan is one UPDATE — the row never moves table or identity. */
+export const SCHEDULE_TRIP_ITEM = `
+UPDATE trip_items SET
+  start_local = $startLocal, start_tz = $startTz,
+  start_precision = $startPrecision, start_utc = $startUtc,
+  status = $status, updated_at = $now
+WHERE id = $id
+`;
+
+/** Cancelled rows stay searchable: finding the cancellation document is the point of keeping them. */
+export const SEARCH_TRIP_ITEMS = `
+SELECT i.*, t.default_tz AS trip_default_tz
+  FROM trip_items i JOIN trips t ON t.id = i.trip_id
+ WHERE i.trip_id = $tripId
+   AND (i.title             LIKE $q ESCAPE '\\'
+     OR i.notes             LIKE $q ESCAPE '\\'
+     OR i.location_name     LIKE $q ESCAPE '\\'
+     OR i.address           LIKE $q ESCAPE '\\'
+     OR i.confirmation_code LIKE $q ESCAPE '\\')
+ ORDER BY (i.start_utc IS NULL), i.start_utc, i.title
+`;
+
+export const SEARCH_TRIP_NOTES = `
+SELECT * FROM trip_notes
+ WHERE trip_id = $tripId
+   AND (title LIKE $q ESCAPE '\\' OR body LIKE $q ESCAPE '\\')
+ ORDER BY pinned DESC, sort_order, title
+`;
+
+export const SELECT_NOTES = `
+SELECT * FROM trip_notes WHERE trip_id = $tripId ORDER BY pinned DESC, sort_order, created_at
+`;
+
+export const INSERT_NOTE = `
+INSERT INTO trip_notes (id, trip_id, title, body, pinned, sort_order, created_at, updated_at)
+VALUES ($id, $tripId, $title, $body, $pinned,
+        COALESCE((SELECT MAX(sort_order) + 1 FROM trip_notes WHERE trip_id = $tripId), 0),
+        $now, $now)
+`;
+
+export const UPDATE_NOTE = `
+UPDATE trip_notes SET title = $title, body = $body, pinned = $pinned, updated_at = $now
+ WHERE id = $id
+`;
+
+export const SET_NOTE_PINNED = `
+UPDATE trip_notes SET pinned = $pinned, updated_at = $now WHERE id = $id
+`;

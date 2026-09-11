@@ -33,7 +33,7 @@ and building at once.
 | **C1** | `domain/timeline.ts` — day grouping, derived check-in/check-out, next-item selection | M4 | ✅ Done |
 | **C2** | TripItem Zod schema, row parser, `repositories/tripItems.ts` | M3 | ✅ Done |
 | **C3** | `repositories/resources.ts` + `files/storage.ts` | M3 | ✅ Done — `contentUri` open path written, device-verified in S2 |
-| **C4** | Tab queries (Bookings / Places / Search) + `repositories/notes.ts` | M5 | Queries tested via `better-sqlite3`, including that Places is `status='idea'` and Bookings is `status='confirmed'` |
+| **C4** | Tab queries (Bookings / Places / Search) + `repositories/notes.ts` | M5 | ✅ Done |
 | **C5** | Export/import format + serialiser | M6 | Round-trip test in node: all five tables plus a file manifest, nothing lost. **Resolves open question 5** |
 
 After C5, the core is complete and this machine's work is finished.
@@ -218,11 +218,11 @@ reality with the device timezone changed.
 
 Three tabs that are three queries over one table — the payoff of the domain model.
 
-1. Bookings tab — `status='confirmed'`, grouped by `kind`
-2. Places tab — `status='idea'`, ordered by priority then title
-3. Promote a place to a dated plan — a single `UPDATE`
-4. `trip_notes` CRUD + Notes tab, pinning
-5. Search — `LIKE '%q%'` across title, notes, location, `confirmation_code`
+1. ✅ Bookings query — `status='confirmed'`; grouped by `kind` in the UI
+2. ✅ Places query — `status='idea'`, priority then title, unrated last
+3. ✅ Promote a place to a dated plan — `scheduleTripItem`, a single `UPDATE`
+4. ✅ `trip_notes` CRUD and pinning — Notes tab itself is S4
+5. ✅ Search across title, notes, location, address, `confirmation_code` **and trip notes**
 6. Cost fields (amount, currency, paid/unpaid) in the item form
 
 **Done when:** the app is genuinely usable for a real trip. **Do not travel with it until M6.**
