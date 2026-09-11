@@ -97,8 +97,9 @@ export async function setTaskCompleted(
 }
 
 /**
- * Changing a trip's default zone changes what every unqualified moment means, so the
- * cached instants derived from it have to be rebuilt. Call it after that edit lands.
+ * Changing a trip's default zone changes what every unqualified moment means, so the cached
+ * instants derived from it must be rebuilt. **The caller owns the transaction** — SQLite does
+ * not nest them, and this has to commit together with the zone change that caused it.
  */
 export async function recomputeTripInstants(db: SQLiteDatabase, tripId: string): Promise<number> {
   const defaultTz = await tripDefaultTz(db, tripId);
@@ -113,16 +114,14 @@ export async function recomputeTripInstants(db: SQLiteDatabase, tripId: string):
   }>(SELECT_ITEMS_WITH_DEFAULT_TZ, { $tripId: tripId });
 
   const now = new Date().toISOString();
-  await db.withTransactionAsync(async () => {
-    for (const row of rows) {
-      await db.runAsync(UPDATE_ITEM_INSTANTS, {
-        $id: row.id,
-        $startUtc: instant(row.start_local, row.start_precision, row.start_tz, defaultTz),
-        $endUtc: instant(row.end_local, row.end_precision, row.end_tz, defaultTz),
-        $now: now,
-      });
-    }
-  });
+  for (const row of rows) {
+    await db.runAsync(UPDATE_ITEM_INSTANTS, {
+      $id: row.id,
+      $startUtc: instant(row.start_local, row.start_precision, row.start_tz, defaultTz),
+      $endUtc: instant(row.end_local, row.end_precision, row.end_tz, defaultTz),
+      $now: now,
+    });
+  }
   return rows.length;
 }
 

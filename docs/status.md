@@ -3,7 +3,7 @@
 **The** status board. `CLAUDE.md` and `plan.md` link here rather than repeat it, so there is one
 place to update and nothing can drift.
 
-Verified against the repo on 2026-09-11: **229 tests passing, typecheck clean.**
+Verified against the repo on 2026-09-11: **236 tests passing, typecheck clean.** Core track reviewed and the findings fixed.
 
 > **Core track complete.** Next work is **S1**, on the Windows machine — see
 > [`docs/windows-handoff.md`](windows-handoff.md).

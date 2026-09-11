@@ -715,10 +715,14 @@ same document with fewer rows. A test asserts the scoped document still parses.
 
 ### Importing
 
-| Mode | Behaviour |
-|---|---|
-| `merge` | A trip already present is left alone, and its children are dropped from the write so nothing orphans. Importing the same backup twice is a no-op |
-| `replace` | The trip is deleted first and the cascade clears its children, then the backup is written. What restoring after a reinstall means |
+| Mode | Trips | Settings |
+|---|---|---|
+| `merge` | A trip already present is left alone, and its children are dropped from the write so nothing orphans. Importing the same backup twice is a no-op | `ON CONFLICT DO NOTHING` — a key already on this device keeps its value; a key it has never had is brought across |
+| `replace` | The trip is deleted first and the cascade clears its children, then the backup is written | `ON CONFLICT DO UPDATE` — the backup wins |
+
+**Settings follow the same rule as trips, decided by the SQL rather than by the plan.** They were
+originally always overwritten, which made `merge` silently replace the "usually travel with"
+default — the one place merge did not mean merge. `MERGE_SETTING` / `REPLACE_SETTING`.
 
 **`replace` deletes before inserting rather than using `INSERT OR REPLACE`.** `REPLACE` deletes
 the conflicting row to make room, and with `ON DELETE CASCADE` that would take the children out
@@ -731,6 +735,15 @@ media directory, so a tampered archive cannot write outside it.
 
 `planImport` reports `missingFiles` — rows whose file is not in the archive — so the UI can say
 what will not open rather than restoring a dead reference silently.
+
+### Two things S1 and S5 should know
+
+`tripItemInputSchema(defaultTz)` returns a **new schema object on every call**, so a form must
+`useMemo` it or react-hook-form rebuilds its resolver on every render.
+
+A `trip_items` id colliding across two trips aborts an entire import rather than skipping the row.
+With UUIDs this cannot realistically happen, but the failure is all-or-nothing by design — a
+half-restored database is worse than a refused one.
 
 ### Still to build (S5)
 

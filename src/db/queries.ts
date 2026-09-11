@@ -3,6 +3,8 @@
  * against better-sqlite3. See docs/technical-reference.md §10.
  */
 
+import { LIKE_ESCAPE_CLAUSE } from '../domain/search';
+
 /** Counts what deleting a trip would destroy, for the confirmation dialog. */
 export const COUNT_TRIP_CONTENTS = `
 SELECT
@@ -155,18 +157,18 @@ export const SEARCH_TRIP_ITEMS = `
 SELECT i.*, t.default_tz AS trip_default_tz
   FROM trip_items i JOIN trips t ON t.id = i.trip_id
  WHERE i.trip_id = $tripId
-   AND (i.title             LIKE $q ESCAPE '\\'
-     OR i.notes             LIKE $q ESCAPE '\\'
-     OR i.location_name     LIKE $q ESCAPE '\\'
-     OR i.address           LIKE $q ESCAPE '\\'
-     OR i.confirmation_code LIKE $q ESCAPE '\\')
+   AND (i.title             LIKE $q ${LIKE_ESCAPE_CLAUSE}
+     OR i.notes             LIKE $q ${LIKE_ESCAPE_CLAUSE}
+     OR i.location_name     LIKE $q ${LIKE_ESCAPE_CLAUSE}
+     OR i.address           LIKE $q ${LIKE_ESCAPE_CLAUSE}
+     OR i.confirmation_code LIKE $q ${LIKE_ESCAPE_CLAUSE})
  ORDER BY (i.start_utc IS NULL), i.start_utc, i.title
 `;
 
 export const SEARCH_TRIP_NOTES = `
 SELECT * FROM trip_notes
  WHERE trip_id = $tripId
-   AND (title LIKE $q ESCAPE '\\' OR body LIKE $q ESCAPE '\\')
+   AND (title LIKE $q ${LIKE_ESCAPE_CLAUSE} OR body LIKE $q ${LIKE_ESCAPE_CLAUSE})
  ORDER BY pinned DESC, sort_order, title
 `;
 
@@ -220,8 +222,15 @@ export const insertRow = (table: ExportTableName) => {
     .join(', ')})`;
 };
 
-/** Settings are global rather than owned by a trip, so a restore overwrites them in place. */
-export const upsertSetting = `
+/**
+ * Settings are global rather than owned by a trip, so the import mode decides their fate:
+ * merge leaves what is already here, replace overwrites it — same rule as trips.
+ */
+export const MERGE_SETTING = `
+INSERT INTO settings (key, value) VALUES ($key, $value) ON CONFLICT(key) DO NOTHING
+`;
+
+export const REPLACE_SETTING = `
 INSERT INTO settings (key, value) VALUES ($key, $value)
   ON CONFLICT(key) DO UPDATE SET value = excluded.value
 `;

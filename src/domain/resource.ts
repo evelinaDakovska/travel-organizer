@@ -48,7 +48,7 @@ export const MEDIA_DIR = 'media';
 const STORED_PATH = new RegExp(`^${MEDIA_DIR}/[A-Za-z0-9][A-Za-z0-9._-]*$`);
 
 export function isStoredPath(value: string): boolean {
-  return STORED_PATH.test(value) && !value.includes('..');
+  return STORED_PATH.test(value);
 }
 
 const EXTENSION_BY_MIME: Record<string, string> = {
@@ -70,12 +70,17 @@ export function extensionFor(fileName: string | null, mimeType: string | null): 
   return match ? match[1].toLowerCase() : 'bin';
 }
 
-/** Named by id, not by the original filename, so two tickets called ticket.pdf cannot collide. */
+/**
+ * Named by id, not by the original filename, so two tickets called ticket.pdf cannot collide.
+ * Throws on an id that would escape the media directory — this runs before any file is written.
+ */
 export function storedPathFor(
   id: string,
   source: { fileName?: string | null; mimeType?: string | null } = {},
 ): string {
-  return `${MEDIA_DIR}/${id}.${extensionFor(source.fileName ?? null, source.mimeType ?? null)}`;
+  const path = `${MEDIA_DIR}/${id}.${extensionFor(source.fileName ?? null, source.mimeType ?? null)}`;
+  if (!isStoredPath(path)) throw new Error(`Unsafe resource id: ${JSON.stringify(id)}`);
+  return path;
 }
 
 const trimSlash = (uri: string) => uri.replace(/\/+$/, '');
@@ -105,9 +110,10 @@ export function orphanedStoredPaths(
   return onDisk.filter((path) => !kept.has(path));
 }
 
-export function missingFiles(onDisk: readonly string[], referenced: Iterable<string>): string[] {
+/** The opposite of an orphan: referenced but not present. Sorted, so callers can compare. */
+export function missingFiles(onDisk: Iterable<string>, referenced: Iterable<string>): string[] {
   const present = new Set(onDisk);
-  return [...new Set(referenced)].filter((path) => !present.has(path));
+  return [...new Set(referenced)].filter((path) => !present.has(path)).sort();
 }
 
 /** Schemes we will hand to Android. Anything else — file:, javascript:, intent: — is refused. */

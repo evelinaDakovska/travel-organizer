@@ -5,8 +5,9 @@ import {
   DELETE_TRIP_FOR_REPLACE,
   EXPORT_COLUMNS,
   insertRow,
+  MERGE_SETTING,
+  REPLACE_SETTING,
   selectAll,
-  upsertSetting,
 } from './queries';
 import {
   buildExportDocument,
@@ -41,7 +42,8 @@ function applyImport(db: Database.Database, plan: ImportPlan) {
     for (const item of plan.write.tripItems) run(insertRow('trip_items'), item);
     for (const note of plan.write.tripNotes) run(insertRow('trip_notes'), note);
     for (const resource of plan.write.resources) run(insertRow('resources'), resource);
-    for (const setting of plan.write.settings) run(upsertSetting, setting);
+    const settingSql = plan.mode === 'replace' ? REPLACE_SETTING : MERGE_SETTING;
+    for (const setting of plan.write.settings) run(settingSql, setting);
   })();
 }
 
@@ -250,5 +252,48 @@ describe('the backup round trip', () => {
 
     expect(() => applyImport(target, plan)).toThrow(/CHECK constraint failed/);
     expect(readAll(target).trips).toEqual([]);
+  });
+});
+
+describe('settings follow the import mode', () => {
+  const withSetting = (value: string) => {
+    const db = fresh();
+    db.prepare(`INSERT INTO settings (key, value) VALUES ('defaultTravellers', ?)`).run(value);
+    return db;
+  };
+
+  const valueIn = (db: Database.Database) =>
+    (db.prepare(`SELECT value FROM settings WHERE key = 'defaultTravellers'`).get() as {
+      value: string;
+    }).value;
+
+  it('merge keeps the value already on this device', () => {
+    const source = fresh();
+    seed(source);
+    const target = withSetting('["LOCAL"]');
+
+    restoreInto(target, source, 'merge');
+
+    expect(valueIn(target)).toBe('["LOCAL"]');
+  });
+
+  it('replace takes the value from the backup, which is what restoring means', () => {
+    const source = fresh();
+    seed(source);
+    const target = withSetting('["LOCAL"]');
+
+    restoreInto(target, source, 'replace');
+
+    expect(valueIn(target)).toBe('["Evelina"]');
+  });
+
+  it('merge still brings across a setting this device has never had', () => {
+    const source = fresh();
+    seed(source);
+    const target = fresh();
+
+    restoreInto(target, source, 'merge');
+
+    expect(valueIn(target)).toBe('["Evelina"]');
   });
 });

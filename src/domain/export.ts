@@ -5,7 +5,7 @@
 
 import { z } from 'zod';
 
-import { isStoredPath } from './resource';
+import { isStoredPath, missingFiles } from './resource';
 
 export const EXPORT_FORMAT_VERSION = 1;
 export const EXPORT_APP = 'travel-organizer';
@@ -255,10 +255,8 @@ export function planImport(
       (resource.trip_item_id !== null && keptItemIds.has(resource.trip_item_id)),
   );
 
-  const needed = new Set(
-    resources
-      .filter((resource) => resource.kind === 'file' && resource.stored_path)
-      .map((resource) => resource.stored_path as string),
+  const needed = resources.flatMap((resource) =>
+    resource.kind === 'file' && resource.stored_path !== null ? [resource.stored_path] : [],
   );
 
   return {
@@ -271,7 +269,7 @@ export function planImport(
       settings: document.tables.settings,
     },
     skippedTripIds,
-    missingFiles: [...needed].filter((path) => !present.has(path)).sort(),
+    missingFiles: missingFiles(present, needed),
   };
 }
 

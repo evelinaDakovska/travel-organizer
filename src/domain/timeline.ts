@@ -89,7 +89,9 @@ export function buildTimeline<T extends TimelineItem>(items: readonly T[]): Time
     else byDay.set(day, [entry]);
   }
 
-  return [...byDay.keys()].sort().map((day) => ({ day, entries: byDay.get(day)! }));
+  return [...byDay.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([day, entries]) => ({ day, entries }));
 }
 
 /**

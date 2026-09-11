@@ -24,6 +24,17 @@ describe('stored paths', () => {
     expect(isStoredPath('media/')).toBe(false);
   });
 
+  it('accepts a dot inside a filename, which is not traversal', () => {
+    expect(isStoredPath('media/a..b.pdf')).toBe(true);
+    expect(isStoredPath('media/a.b.pdf')).toBe(true);
+  });
+
+  it('refuses to build a path from an id that would escape the directory', () => {
+    // importFile writes before any schema sees the path, so this has to throw here.
+    expect(() => storedPathFor('../../databases/travel-organizer')).toThrow(/Unsafe resource id/);
+    expect(() => storedPathFor('')).toThrow(/Unsafe resource id/);
+  });
+
   it('names a file by id so two tickets called the same thing cannot collide', () => {
     expect(storedPathFor('abc', { fileName: 'ticket.pdf' })).toBe('media/abc.pdf');
     expect(storedPathFor('def', { fileName: 'ticket.pdf' })).toBe('media/def.pdf');
@@ -96,6 +107,14 @@ describe('the sweep decision', () => {
   it('reports a missing file once even when several rows point at it', () => {
     expect(missingFiles(['media/a.pdf'], ['media/a.pdf', 'media/gone.pdf', 'media/gone.pdf']))
       .toEqual(['media/gone.pdf']);
+  });
+
+  it('sorts what is missing, so two runs report it the same way', () => {
+    expect(missingFiles([], ['media/c.pdf', 'media/a.pdf', 'media/b.pdf'])).toEqual([
+      'media/a.pdf',
+      'media/b.pdf',
+      'media/c.pdf',
+    ]);
   });
 });
 

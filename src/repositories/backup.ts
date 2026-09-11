@@ -1,6 +1,12 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { DELETE_TRIP_FOR_REPLACE, insertRow, selectAll, upsertSetting } from '../db/queries';
+import {
+  DELETE_TRIP_FOR_REPLACE,
+  insertRow,
+  MERGE_SETTING,
+  REPLACE_SETTING,
+  selectAll,
+} from '../db/queries';
 import type {
   ExportTables,
   ImportPlan,
@@ -53,6 +59,7 @@ export async function applyImport(db: SQLiteDatabase, plan: ImportPlan): Promise
     for (const resource of write.resources) {
       await tx.runAsync(insertRow('resources'), bindRow(resource));
     }
-    for (const setting of write.settings) await tx.runAsync(upsertSetting, bindRow(setting));
+    const settingSql = plan.mode === 'replace' ? REPLACE_SETTING : MERGE_SETTING;
+    for (const setting of write.settings) await tx.runAsync(settingSql, bindRow(setting));
   });
 }

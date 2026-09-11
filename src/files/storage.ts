@@ -22,10 +22,9 @@ export type ImportedFile = {
   sizeBytes: number | null;
 };
 
-function mediaDirectory(): Directory {
+function ensureMediaDirectory(): void {
   const directory = new Directory(Paths.document, MEDIA_DIR);
   if (!directory.exists) directory.create({ intermediates: true });
-  return directory;
 }
 
 export function absoluteUriFor(storedPath: string): string {
@@ -45,7 +44,7 @@ export async function importFile(
   sourceUri: string,
   source: { fileName?: string | null; mimeType?: string | null } = {},
 ): Promise<ImportedFile> {
-  mediaDirectory();
+  ensureMediaDirectory();
 
   const picked = new File(sourceUri);
   const fileName = source.fileName ?? picked.name ?? null;
@@ -55,7 +54,8 @@ export async function importFile(
   const destination = new File(absoluteUriFor(storedPath));
   await picked.copy(destination);
 
-  return { storedPath, fileName, mimeType, sizeBytes: destination.size || null };
+  const size = destination.size;
+  return { storedPath, fileName, mimeType, sizeBytes: destination.exists ? size : null };
 }
 
 /**

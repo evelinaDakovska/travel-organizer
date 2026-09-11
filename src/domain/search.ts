@@ -4,9 +4,13 @@
  */
 
 const LIKE_ESCAPE = '\\';
+const LIKE_WILDCARDS = new RegExp(`[${LIKE_ESCAPE}${LIKE_ESCAPE}%_]`, 'g');
+
+/** Every statement using `LIKE` must append this, or escapeLike's backslashes mean nothing. */
+export const LIKE_ESCAPE_CLAUSE = `ESCAPE '${LIKE_ESCAPE}'`;
 
 export function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, (character) => `${LIKE_ESCAPE}${character}`);
+  return value.replace(LIKE_WILDCARDS, (character) => `${LIKE_ESCAPE}${character}`);
 }
 
 /** Null for a blank query, so an empty box shows nothing rather than the whole trip. */

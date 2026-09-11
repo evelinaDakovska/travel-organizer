@@ -51,27 +51,30 @@ export async function updateTrip(
     `SELECT default_tz FROM trips WHERE id = ?`,
     id,
   );
-  await db.runAsync(
-    `UPDATE trips SET
-       name = ?, destination = ?, start_date = ?, end_date = ?, default_tz = ?,
-       notes = ?, traveller_count = ?, travellers = ?, updated_at = ?
-     WHERE id = ?`,
-    input.name,
-    input.destination ?? null,
-    input.startDate,
-    input.endDate,
-    input.defaultTz,
-    input.notes ?? null,
-    input.travellerCount ?? null,
-    serialiseTravellers(input.travellers),
-    new Date().toISOString(),
-    id,
-  );
+  const zoneChanged = previous !== null && previous.default_tz !== input.defaultTz;
 
-  // Items that never named a zone were resolved against the old default.
-  if (previous && previous.default_tz !== input.defaultTz) {
-    await recomputeTripInstants(db, id);
-  }
+  // One transaction: items whose instants were derived from the old zone must not survive
+  // a crash between the two writes, because nothing would recompute them later.
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      `UPDATE trips SET
+         name = ?, destination = ?, start_date = ?, end_date = ?, default_tz = ?,
+         notes = ?, traveller_count = ?, travellers = ?, updated_at = ?
+       WHERE id = ?`,
+      input.name,
+      input.destination ?? null,
+      input.startDate,
+      input.endDate,
+      input.defaultTz,
+      input.notes ?? null,
+      input.travellerCount ?? null,
+      serialiseTravellers(input.travellers),
+      new Date().toISOString(),
+      id,
+    );
+
+    if (zoneChanged) await recomputeTripInstants(db, id);
+  });
 }
 
 /** Rows cascade. Files on disk are reclaimed by the GC sweep, not here. */

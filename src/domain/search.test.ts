@@ -1,4 +1,4 @@
-import { escapeLike, searchPattern } from './search';
+import { escapeLike, LIKE_ESCAPE_CLAUSE, searchPattern } from './search';
 
 describe('searchPattern', () => {
   it('wraps the query so it matches anywhere in a field', () => {
@@ -21,5 +21,15 @@ describe('searchPattern', () => {
 
   it('escapes the escape character itself', () => {
     expect(escapeLike('a\\b')).toBe('a\\\\b');
+  });
+});
+
+describe('LIKE_ESCAPE_CLAUSE', () => {
+  it('declares the same character escapeLike inserts, so the two cannot drift', () => {
+    const escaped = escapeLike('%');
+    const declared = /ESCAPE '(.+)'/.exec(LIKE_ESCAPE_CLAUSE)?.[1];
+
+    expect(declared).toBe('\\');
+    expect(escaped.startsWith(declared!)).toBe(true);
   });
 });
