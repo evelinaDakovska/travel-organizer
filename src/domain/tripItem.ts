@@ -3,7 +3,10 @@
  * these are the enums and the shape the whole model turns on.
  */
 
-import type { LocalMoment } from './time';
+import { z } from 'zod';
+
+import { localPrecision, toInstant, type LocalMoment, type TimePrecision } from './time';
+import { isResolvableTimezone } from './timezones';
 
 /** What sort of thing it is. Drives behaviour and which form fields appear. */
 export const TRIP_ITEM_KINDS = [
@@ -82,3 +85,213 @@ export type TripItem = {
   createdAt: string;
   updatedAt: string;
 };
+
+/** The flat shape of a trip_items row. `*_utc` are derived caches — never read them as truth. */
+export type TripItemRow = {
+  id: string;
+  trip_id: string;
+  kind: string;
+  subkind: string | null;
+  status: string;
+  priority: string | null;
+  title: string;
+  start_local: string | null;
+  start_tz: string | null;
+  start_precision: string | null;
+  start_utc: string | null;
+  end_local: string | null;
+  end_tz: string | null;
+  end_precision: string | null;
+  end_utc: string | null;
+  completed_at: string | null;
+  location_name: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  confirmation_code: string | null;
+  notes: string | null;
+  details: string | null;
+  price_amount: number | null;
+  price_currency: string | null;
+  is_paid: number;
+  created_at: string;
+  updated_at: string;
+};
+
+/** A moment as a form supplies it. `tz` absent means "whatever the trip's default is". */
+const momentInputSchema = z.object({
+  local: z.string().refine((v) => localPrecision(v) !== null, 'Use YYYY-MM-DD or YYYY-MM-DDTHH:mm'),
+  tz: z.string().refine(isResolvableTimezone, 'Not a valid timezone').optional(),
+});
+
+export type MomentInput = z.infer<typeof momentInputSchema>;
+
+/**
+ * Built per trip because validating that an end follows its start needs the zone an
+ * unqualified moment falls back to.
+ */
+export function tripItemInputSchema(defaultTz: string) {
+  return z
+    .object({
+      kind: z.enum(TRIP_ITEM_KINDS),
+      subkind: z.string().nullish(),
+      status: z.enum(TRIP_ITEM_STATUSES).default('idea'),
+      priority: z.enum(PRIORITIES).nullish(),
+      title: z.string().trim().min(1, 'Give it a title').max(120),
+      start: momentInputSchema.optional(),
+      end: momentInputSchema.optional(),
+      locationName: z.string().trim().max(120).optional(),
+      address: z.string().trim().max(240).optional(),
+      latitude: z.number().min(-90).max(90).optional(),
+      longitude: z.number().min(-180).max(180).optional(),
+      confirmationCode: z.string().trim().max(60).optional(),
+      notes: z.string().trim().optional(),
+      details: z.record(z.string(), z.unknown()).optional(),
+      priceAmount: z.number().int().optional(),
+      priceCurrency: z.string().trim().length(3).optional(),
+      isPaid: z.boolean().default(false),
+    })
+    .refine((v) => isValidSubkind(v.kind, v.subkind ?? null), {
+      message: 'That is not a type of this kind',
+      path: ['subkind'],
+    })
+    .refine((v) => v.start !== undefined || v.end === undefined, {
+      message: 'Add a start before an end',
+      path: ['start'],
+    })
+    .refine((v) => !(v.start && v.end) || instantOf(v.end, defaultTz) >= instantOf(v.start, defaultTz), {
+      message: 'It cannot end before it starts',
+      path: ['end'],
+    })
+    .refine((v) => v.priceAmount === undefined || v.priceCurrency !== undefined, {
+      message: 'Pick a currency',
+      path: ['priceCurrency'],
+    });
+}
+
+export type TripItemInput = z.infer<ReturnType<typeof tripItemInputSchema>>;
+
+function momentOf(input: MomentInput, defaultTz: string): LocalMoment {
+  return {
+    local: input.local,
+    tz: input.tz ?? defaultTz,
+    precision: localPrecision(input.local)!,
+  };
+}
+
+function instantOf(input: MomentInput, defaultTz: string): string {
+  return toInstant(momentOf(input, defaultTz));
+}
+
+/**
+ * The flat column values for a write. The only place `*_utc` is produced, so it can never
+ * drift from the wall-clock text it is derived from.
+ */
+export function tripItemWriteValues(input: TripItemInput, defaultTz: string) {
+  return {
+    kind: input.kind,
+    subkind: input.subkind ?? null,
+    status: input.status,
+    priority: input.priority ?? null,
+    title: input.title,
+    start_local: input.start?.local ?? null,
+    start_tz: input.start?.tz ?? null,
+    start_precision: input.start ? localPrecision(input.start.local) : null,
+    start_utc: input.start ? instantOf(input.start, defaultTz) : null,
+    end_local: input.end?.local ?? null,
+    end_tz: input.end?.tz ?? null,
+    end_precision: input.end ? localPrecision(input.end.local) : null,
+    end_utc: input.end ? instantOf(input.end, defaultTz) : null,
+    location_name: input.locationName ?? null,
+    address: input.address ?? null,
+    latitude: input.latitude ?? null,
+    longitude: input.longitude ?? null,
+    confirmation_code: input.confirmationCode ?? null,
+    notes: input.notes ?? null,
+    details: input.details ? JSON.stringify(input.details) : null,
+    price_amount: input.priceAmount ?? null,
+    price_currency: input.priceCurrency ?? null,
+    is_paid: input.isPaid ? 1 : 0,
+  };
+}
+
+function parseMoment(
+  local: string | null,
+  tz: string | null,
+  precision: string | null,
+  defaultTz: string,
+): LocalMoment | null {
+  if (local === null || precision === null) return null;
+  return { local, tz: tz ?? defaultTz, precision: precision as TimePrecision };
+}
+
+/** `defaultTz` is the trip's, used wherever the row left a zone unqualified. */
+export function parseTripItemRow(row: TripItemRow, defaultTz: string): TripItem {
+  return {
+    id: row.id,
+    tripId: row.trip_id,
+    kind: row.kind as TripItemKind,
+    subkind: row.subkind,
+    status: row.status as TripItemStatus,
+    priority: row.priority as Priority | null,
+    title: row.title,
+    start: parseMoment(row.start_local, row.start_tz, row.start_precision, defaultTz),
+    end: parseMoment(row.end_local, row.end_tz, row.end_precision, defaultTz),
+    completedAt: row.completed_at,
+    locationName: row.location_name,
+    address: row.address,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    confirmationCode: row.confirmation_code,
+    notes: row.notes,
+    details: parseDetails(row.details),
+    priceAmount: row.price_amount,
+    priceCurrency: row.price_currency,
+    isPaid: row.is_paid === 1,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/** Tolerates malformed JSON rather than breaking the whole item list. */
+function parseDetails(value: string | null): Record<string, unknown> | null {
+  if (!value) return null;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Column values as the `$camelCase` parameters the insert and update statements bind. */
+export function tripItemBindings(input: TripItemInput, defaultTz: string) {
+  const v = tripItemWriteValues(input, defaultTz);
+  return {
+    $kind: v.kind,
+    $subkind: v.subkind,
+    $status: v.status,
+    $priority: v.priority,
+    $title: v.title,
+    $startLocal: v.start_local,
+    $startTz: v.start_tz,
+    $startPrecision: v.start_precision,
+    $startUtc: v.start_utc,
+    $endLocal: v.end_local,
+    $endTz: v.end_tz,
+    $endPrecision: v.end_precision,
+    $endUtc: v.end_utc,
+    $locationName: v.location_name,
+    $address: v.address,
+    $latitude: v.latitude,
+    $longitude: v.longitude,
+    $confirmationCode: v.confirmation_code,
+    $notes: v.notes,
+    $details: v.details,
+    $priceAmount: v.price_amount,
+    $priceCurrency: v.price_currency,
+    $isPaid: v.is_paid,
+  };
+}

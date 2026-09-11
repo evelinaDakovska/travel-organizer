@@ -29,6 +29,13 @@ export function isValidLocal(local: string, precision: TimePrecision): boolean {
   return true;
 }
 
+/** Which precision a string is, or null if it is neither. The shape decides — never the caller. */
+export function localPrecision(local: string): TimePrecision | null {
+  if (isValidLocal(local, 'date')) return 'date';
+  if (isValidLocal(local, 'time')) return 'time';
+  return null;
+}
+
 /**
  * Resolve a wall-clock moment to a UTC instant, used only as a sort key.
  * A date-only moment resolves to local midnight so it sorts to the top of its day.

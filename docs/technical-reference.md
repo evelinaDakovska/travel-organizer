@@ -306,11 +306,28 @@ never does.
 "Trip is past" uses the **device-local** date deliberately: while travelling the device zone *is*
 the trip zone, and a 01:00 landing back home correctly flips the trip to past.
 
+### Precision is read off the text, never passed in
+
+`tripItemInputSchema` takes a moment as `{ local, tz? }` and derives `precision` from the shape of
+`local` via `localPrecision`. A caller cannot submit `'2026-09-19'` labelled `time`, because the
+inconsistent pair has nowhere to live. `'2026-09-19T00:00'` is still `time` — a real midnight.
+
+### A NULL zone follows the trip, and instants are rebuilt when it moves
+
+`start_tz`/`end_tz` are stored NULL when the user did not override the trip's zone, so the item
+keeps meaning "whatever this trip is in". That matters because the zone is autofilled from the
+device and is easy to get wrong at creation: fixing it on the trip fixes every item at once,
+rather than leaving twenty items in the zone you happened to be standing in.
+
+The cost is that the cached instants derived from the old default go stale, so `updateTrip` calls
+`recomputeTripInstants` whenever `default_tz` actually changes. It rewrites `*_utc` only for rows
+with a NULL `*_tz`; a row stating its own zone is untouched. The wall-clock text never changes.
+
 ### Known limitation
 
-If the IANA database changes an offset (a country abolishing DST), cached `start_utc` values go
-stale. Negligible for trips booked months ahead. Mitigation if ever needed: a "recompute instants"
-maintenance function that rewrites `*_utc` from `*_local` + `*_tz`.
+If the IANA database changes an offset (a country abolishing DST), cached `*_utc` values go stale.
+Negligible for trips booked months ahead. `recomputeTripInstants` already does the rewrite; it
+would just need calling on a different trigger.
 
 ### Library — RESOLVED (M1 spike, on device)
 

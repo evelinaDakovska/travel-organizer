@@ -1,5 +1,10 @@
 import {
   isValidSubkind,
+  parseTripItemRow,
+  tripItemInputSchema,
+  tripItemWriteValues,
+  type TripItemInput,
+  type TripItemRow,
   PRIORITIES,
   SUBKINDS,
   subkindLabel,
@@ -77,5 +82,215 @@ describe('subkinds', () => {
 
   it('exposes SUBKINDS keyed by kind', () => {
     expect(Object.keys(SUBKINDS).sort()).toEqual([...TRIP_ITEM_KINDS].sort());
+  });
+});
+
+const ROME = 'Europe/Rome';
+const schema = tripItemInputSchema(ROME);
+
+const parse = (input: unknown) => schema.safeParse(input);
+const errorPaths = (result: ReturnType<typeof parse>) =>
+  result.success ? [] : result.error.issues.map((i) => i.path.join('.'));
+
+const valid = {
+  kind: 'activity',
+  title: 'Duomo Fast Track',
+  start: { local: '2026-09-19T14:00' },
+} as const;
+
+describe('tripItemInputSchema', () => {
+  it('accepts the minimum a real item needs', () => {
+    const result = parse(valid);
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.status).toBe('idea');
+    expect(result.success && result.data.isPaid).toBe(false);
+  });
+
+  it('requires a title that is not just whitespace', () => {
+    expect(errorPaths(parse({ ...valid, title: '   ' }))).toEqual(['title']);
+  });
+
+  it('rejects a subkind that belongs to a different kind', () => {
+    expect(errorPaths(parse({ ...valid, subkind: 'flight' }))).toEqual(['subkind']);
+    expect(parse({ ...valid, subkind: 'museum' }).success).toBe(true);
+  });
+
+  it('allows no subkind, since "other" is absence rather than a value', () => {
+    expect(parse({ ...valid, subkind: null }).success).toBe(true);
+  });
+
+  it('rejects an end with no start, which would vanish from the timeline', () => {
+    const orphan = { kind: 'stay', title: 'Hotel', end: { local: '2026-09-22T11:00' } };
+    expect(errorPaths(parse(orphan))).toEqual(['start']);
+  });
+
+  it('rejects an end before its start', () => {
+    const backwards = { ...valid, end: { local: '2026-09-19T13:00' } };
+    expect(errorPaths(parse(backwards))).toEqual(['end']);
+  });
+
+  it('compares across zones rather than comparing the text', () => {
+    // 09:00 in Tokyo is already over by 09:00 in Rome, despite reading as the same clock.
+    const backwards = {
+      ...valid,
+      start: { local: '2026-09-19T09:00', tz: 'Europe/Rome' },
+      end: { local: '2026-09-19T09:00', tz: 'Asia/Tokyo' },
+    };
+    expect(errorPaths(parse(backwards))).toEqual(['end']);
+  });
+
+  it('resolves an unqualified moment against the trip default when comparing', () => {
+    // The end has no zone, so it means Rome — which is after the Tokyo start.
+    const forwards = {
+      ...valid,
+      start: { local: '2026-09-19T09:00', tz: 'Asia/Tokyo' },
+      end: { local: '2026-09-19T09:00' },
+    };
+    expect(parse(forwards).success).toBe(true);
+  });
+
+  it('rejects a malformed moment and an unresolvable zone', () => {
+    expect(errorPaths(parse({ ...valid, start: { local: '19/09/2026' } }))).toEqual(['start.local']);
+    expect(errorPaths(parse({ ...valid, start: { local: '2026-09-19', tz: 'Europe/Atlantis' } })))
+      .toEqual(['start.tz']);
+  });
+
+  it('rejects a date that does not exist', () => {
+    expect(errorPaths(parse({ ...valid, start: { local: '2026-02-30' } }))).toEqual(['start.local']);
+  });
+
+  it('requires a currency alongside a price', () => {
+    expect(errorPaths(parse({ ...valid, priceAmount: 2500 }))).toEqual(['priceCurrency']);
+    expect(parse({ ...valid, priceAmount: 2500, priceCurrency: 'EUR' }).success).toBe(true);
+  });
+
+  it('rejects a fractional price, because money is stored in minor units', () => {
+    expect(errorPaths(parse({ ...valid, priceAmount: 25.5, priceCurrency: 'EUR' })))
+      .toEqual(['priceAmount']);
+  });
+
+  it('rejects coordinates outside the world', () => {
+    expect(errorPaths(parse({ ...valid, latitude: 91 }))).toEqual(['latitude']);
+    expect(errorPaths(parse({ ...valid, longitude: -181 }))).toEqual(['longitude']);
+  });
+});
+
+describe('tripItemWriteValues', () => {
+  const values = (input: unknown) => tripItemWriteValues(schema.parse(input), ROME);
+
+  it('derives the instant from the wall clock and the resolved zone', () => {
+    expect(values(valid).start_utc).toBe('2026-09-19T12:00:00.000Z');
+  });
+
+  it('derives it from the item own zone when it overrides the trip default', () => {
+    const sofia = { ...valid, start: { local: '2026-09-19T14:00', tz: 'Europe/Sofia' } };
+    expect(values(sofia).start_utc).toBe('2026-09-19T11:00:00.000Z');
+  });
+
+  it('stores no zone when none was given, so the trip default stays authoritative', () => {
+    expect(values(valid).start_tz).toBeNull();
+  });
+
+  it('reads precision off the shape of the text rather than trusting a caller', () => {
+    expect(values(valid).start_precision).toBe('time');
+    expect(values({ ...valid, start: { local: '2026-09-19' } }).start_precision).toBe('date');
+  });
+
+  it('resolves a date-only moment to local midnight so it sorts to the top of its day', () => {
+    expect(values({ ...valid, start: { local: '2026-09-19' } }).start_utc)
+      .toBe('2026-09-18T22:00:00.000Z');
+  });
+
+  it('leaves both instants null when the item has no dates', () => {
+    const undated = values({ kind: 'food', title: 'That bakery' });
+    expect([undated.start_utc, undated.end_utc, undated.start_local]).toEqual([null, null, null]);
+  });
+
+  it('serialises details and flattens isPaid to an integer', () => {
+    const row = values({ ...valid, details: { seat: '12A' }, isPaid: true });
+    expect(row.details).toBe('{"seat":"12A"}');
+    expect(row.is_paid).toBe(1);
+  });
+});
+
+describe('parseTripItemRow', () => {
+  const row: TripItemRow = {
+    id: 'i1',
+    trip_id: 't1',
+    kind: 'stay',
+    subkind: 'hotel',
+    status: 'confirmed',
+    priority: null,
+    title: 'Hotel Milano',
+    start_local: '2026-09-19T15:00',
+    start_tz: null,
+    start_precision: 'time',
+    start_utc: '2026-09-19T13:00:00.000Z',
+    end_local: '2026-09-22T11:00',
+    end_tz: null,
+    end_precision: 'time',
+    end_utc: '2026-09-22T09:00:00.000Z',
+    completed_at: null,
+    location_name: 'Via Roma 1',
+    address: null,
+    latitude: null,
+    longitude: null,
+    confirmation_code: 'ABC123',
+    notes: null,
+    details: '{"room":"402"}',
+    price_amount: 24000,
+    price_currency: 'EUR',
+    is_paid: 1,
+    created_at: '2026-09-11T00:00:00.000Z',
+    updated_at: '2026-09-11T00:00:00.000Z',
+  };
+
+  it('fills an unqualified zone from the trip default', () => {
+    const item = parseTripItemRow(row, ROME);
+    expect(item.start).toEqual({ local: '2026-09-19T15:00', tz: ROME, precision: 'time' });
+    expect(item.end?.tz).toBe(ROME);
+  });
+
+  it('keeps a zone the row states for itself', () => {
+    const item = parseTripItemRow({ ...row, start_tz: 'Europe/Sofia' }, ROME);
+    expect(item.start?.tz).toBe('Europe/Sofia');
+  });
+
+  it('leaves a moment null when the row has no date', () => {
+    const item = parseTripItemRow({ ...row, end_local: null, end_precision: null }, ROME);
+    expect(item.end).toBeNull();
+  });
+
+  it('turns the integer flag back into a boolean', () => {
+    expect(parseTripItemRow(row, ROME).isPaid).toBe(true);
+    expect(parseTripItemRow({ ...row, is_paid: 0 }, ROME).isPaid).toBe(false);
+  });
+
+  it('tolerates malformed details rather than breaking the item list', () => {
+    expect(parseTripItemRow({ ...row, details: 'not json' }, ROME).details).toBeNull();
+    expect(parseTripItemRow({ ...row, details: '[1,2]' }, ROME).details).toBeNull();
+    expect(parseTripItemRow(row, ROME).details).toEqual({ room: '402' });
+  });
+
+  it('round-trips through write values without losing anything', () => {
+    const input: TripItemInput = schema.parse({
+      kind: 'stay',
+      subkind: 'hotel',
+      status: 'confirmed',
+      title: 'Hotel Milano',
+      start: { local: '2026-09-19T15:00' },
+      end: { local: '2026-09-22T11:00' },
+      priceAmount: 24000,
+      priceCurrency: 'EUR',
+      isPaid: true,
+    });
+    const written = tripItemWriteValues(input, ROME);
+    const item = parseTripItemRow({ ...row, ...written }, ROME);
+
+    expect(item.title).toBe('Hotel Milano');
+    expect(item.start?.local).toBe('2026-09-19T15:00');
+    expect(item.end?.local).toBe('2026-09-22T11:00');
+    expect(item.priceAmount).toBe(24000);
+    expect(item.isPaid).toBe(true);
   });
 });

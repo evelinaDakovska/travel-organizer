@@ -3,6 +3,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { COUNT_TRIP_CONTENTS } from '../db/queries';
 import { parseTripRow, type Trip, type TripInput, type TripRow } from '../domain/trip';
+import { recomputeTripInstants } from './tripItems';
 
 export const TRIP_TABLES = ['trips'] as const;
 
@@ -46,6 +47,10 @@ export async function updateTrip(
   id: string,
   input: TripInput,
 ): Promise<void> {
+  const previous = await db.getFirstAsync<{ default_tz: string }>(
+    `SELECT default_tz FROM trips WHERE id = ?`,
+    id,
+  );
   await db.runAsync(
     `UPDATE trips SET
        name = ?, destination = ?, start_date = ?, end_date = ?, default_tz = ?,
@@ -62,6 +67,11 @@ export async function updateTrip(
     new Date().toISOString(),
     id,
   );
+
+  // Items that never named a zone were resolved against the old default.
+  if (previous && previous.default_tz !== input.defaultTz) {
+    await recomputeTripInstants(db, id);
+  }
 }
 
 /** Rows cascade. Files on disk are reclaimed by the GC sweep, not here. */

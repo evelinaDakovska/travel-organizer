@@ -30,8 +30,8 @@ and building at once.
 
 | ID | Task | Milestone | Done when |
 |---|---|---|---|
-| **C1** | `domain/timeline.ts` — day grouping, derived check-in/check-out, next-item selection | M4 | Tests cover: 23:30 keeps its local day · date-only sorts to top of day · multi-day derives two entries · next excludes cancelled and completed tasks · includes items dated **before** the trip · nothing upcoming → no Now |
-| **C2** | TripItem Zod schema, row parser, `repositories/tripItems.ts` | M3 | `start_utc` derived on write and never by hand; schema rejects an end with no start (C1 drops such a row from the timeline); schema + SQL tests green |
+| **C1** | `domain/timeline.ts` — day grouping, derived check-in/check-out, next-item selection | M4 | ✅ Done |
+| **C2** | TripItem Zod schema, row parser, `repositories/tripItems.ts` | M3 | ✅ Done |
 | **C3** | `repositories/resources.ts` + `files/storage.ts` | M3 | Relative↔absolute path handling and the GC sweep are unit tested; the `contentUri` open path is written (device-verified later in S2) |
 | **C4** | Tab queries (Bookings / Places / Search) + `repositories/notes.ts` | M5 | Queries tested via `better-sqlite3`, including that Places is `status='idea'` and Bookings is `status='confirmed'` |
 | **C5** | Export/import format + serialiser | M6 | Round-trip test in node: all five tables plus a file manifest, nothing lost. **Resolves open question 5** |
@@ -171,14 +171,12 @@ on items *and* on the trip, ignores links, and does not leak across trips.
 
 The largest milestone and the one carrying the most risk. Files are here, not later, deliberately.
 
-**Already in place:** `src/domain/tripItem.ts` holds the enums — `TRIP_ITEM_KINDS`,
-`TRIP_ITEM_STATUSES`, `PRIORITIES`, and the per-kind `SUBKINDS` taxonomy — with 11 tests.
-Start from the Zod schema and repository.
-
-1. `src/domain/tripItem.ts` — add `tripItemInputSchema`, the row parser, and the Zod
-   discriminated union for the `details` JSON column
-2. `src/repositories/tripItems.ts` — CRUD, **`start_utc` derived on write, never by hand**
-3. Item create/edit form, fields varying by `kind`
+1. ✅ `src/domain/tripItem.ts` — `tripItemInputSchema`, `tripItemWriteValues`, `parseTripItemRow`
+2. ✅ `src/repositories/tripItems.ts` — CRUD, **`start_utc` derived on write, never by hand**
+3. Item create/edit form, fields varying by `kind`. **Pin down `details` here:** it is currently
+   a permissive `Record<string, unknown>`, because a per-kind discriminated union would be
+   guessing at fields before a form exists to reveal them. It is a JSON column, so tightening it
+   later is a code change, not a migration
 4. Item detail screen
 5. `src/files/storage.ts` — import-and-copy, relative↔absolute paths, **GC sweep on app start**
 6. `src/repositories/resources.ts`
