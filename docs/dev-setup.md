@@ -3,6 +3,11 @@
 Machine-level facts that are not visible from the code. Recorded so a session with no
 conversation history can pick the project up without re-deriving them.
 
+> ⚠️ **This file describes the macOS work machine.** Paths, `~/.zshrc.local`, Jamf and the
+> `ggshield` hook are all specific to it. The project is intended to move to a personal
+> **Windows** machine — when it does, add a Windows section rather than translating these paths.
+> Nothing in `src/`, `app/` or the schema is platform-specific; only this file is.
+
 ---
 
 ## 1. Where things are
