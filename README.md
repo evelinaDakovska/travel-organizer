@@ -7,7 +7,7 @@ and **where the relevant ticket is** — quickly, while travelling, possibly off
 
 ## Status
 
-**Milestone 0 complete — architecture agreed. M1 next.** Nothing is scaffolded yet.
+**M0–M2 complete.** Next task: **C1**. See [`docs/status.md`](docs/status.md).
 
 ## Docs
 
@@ -15,7 +15,8 @@ Start with [`CLAUDE.md`](CLAUDE.md).
 
 | File | Role |
 |---|---|
-| [`CLAUDE.md`](CLAUDE.md) | Project context: decisions, terminology, conventions, open questions |
+| [`docs/status.md`](docs/status.md) | **Status board** — what is done, what is next |
+| [`CLAUDE.md`](CLAUDE.md) | Project context: decisions, terminology, conventions |
 | [`docs/technical-reference.md`](docs/technical-reference.md) | **Single source of truth** — schema, time model, file storage, queries |
 | [`docs/plan.md`](docs/plan.md) | Step-by-step implementation plan and current position |
 | [`docs/decision-log.md`](docs/decision-log.md) | *Why* each decision was made, and what was rejected |

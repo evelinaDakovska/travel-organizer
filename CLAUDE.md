@@ -5,7 +5,8 @@ what is still open, and the conventions to follow.
 
 | Doc | Role |
 |---|---|
-| **`CLAUDE.md`** (this file) | Authoritative summary. Decisions, terminology, conventions, open questions |
+| **`CLAUDE.md`** (this file) | Authoritative summary. Decisions, terminology, conventions |
+| `docs/status.md` | **Status board** — milestones, C and S tasks, open questions. The one place status lives |
 | `docs/technical-reference.md` | **Single source of truth** for schema, time model, file storage, queries |
 | `docs/plan.md` | Step-by-step implementation plan and current position |
 | `docs/decision-log.md` | *Why* things were decided. Rationale only — no authoritative detail |
@@ -51,30 +52,27 @@ never exist. No enterprise patterns; this is a personal app that should still be
 
 ## 3. Current phase
 
-**Next task: C1** — `domain/timeline.ts`.
+**Status board: [`docs/status.md`](docs/status.md) — the single source of truth for what is done.**
+Do not duplicate status anywhere else; update that one file.
 
-```
-Core    (no device needed)    C1 ⬜   C2 ⬜   C3 ⬜   C4 ⬜   C5 ⬜
-Surface (personal Windows)    S1 ⬜   S2 ⬜   S3 ⬜   S4 ⬜   S5 ⬜   S6 ⬜   S7 ⬜   S8 ⬜
-```
-
-Milestones M0–M2 are complete and verified on a device. Work is now tracked by **task ID**, not
-milestone — see `docs/plan.md` → *Execution tracks* for what each ID means and its done-when.
+Work is tracked by **task ID**, not milestone: **C1–C5** (core — domain, schema, repositories,
+files, export; no device needed) and **S1–S8** (surface — screens and anything needing a device,
+done on a personal Windows machine, see `docs/windows-handoff.md`).
 
 **How to be asked to work:**
 
 | The user says | Do this |
 |---|---|
-| *"do the next C task"* / *"do the priority work"* | Take the first unticked **C**, finish it, commit, tick it here and in `plan.md`. Stop after **C5** |
-| *"continue with the plan"* | Take the first unticked task overall — on Windows that will be an **S** |
+| *"do the next C task"* / *"do the priority work"* | First unticked **C** in `docs/status.md` → finish → commit → tick it there. **Stop after C5** |
+| *"continue with the plan"* | First unticked task overall — on Windows that will be an **S** |
 
 **C before S on purpose.** Core mistakes ripple through every screen and migrations are painful;
-surface mistakes are visible immediately and cheap. `src/domain/` imports nothing native, so all
-C work runs under `npm test` with no emulator. Doing C first means S is wiring known-good, tested
-functions to screens rather than designing and building at once.
+surface mistakes are visible immediately and cheap to fix. `src/domain/` imports nothing native,
+so all C work runs under `npm test` with no emulator. Doing C first means S is wiring known-good,
+tested functions to screens rather than designing and building at once.
 
-**Tick the boxes as you go** — above and in `docs/plan.md`. A task is not done until it is
-committed and the boxes are ticked, because that is what survives a compacted context.
+A task is not done until it is **committed and ticked in `docs/status.md`** — that is what
+survives a compacted context.
 
 ### Findings already paid for — do not rediscover
 
@@ -259,15 +257,7 @@ Two operational consequences that do still apply:
 
 ## 10. Open questions
 
-Not blocking M1–M3. Resolve before the milestone that needs them.
-
-| # | Question | Needed by |
-|---|---|---|
-| 1 | Multi-day stays render as derived check-in/check-out entries — confirm the exact visual treatment | M4 |
-| 2 | Per-item travellers (only 2 of 3 going to one thing) — needed, or notes? | M5 |
-| 3 | Do trip-level resources need their own "Other resources" screen, or a section on Overview? | M5 |
-| 4 | Notification default lead time, and whether it is per-item configurable | M7 |
-| 5 | Export format: one zip per trip, or one for everything? | M6 |
+Tracked in [`docs/status.md`](docs/status.md), each tagged with the task that needs it answered.
 
 ## 11. How to work on this
 

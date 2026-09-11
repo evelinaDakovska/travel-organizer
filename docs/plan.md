@@ -3,7 +3,8 @@
 Ten milestones. **Each leaves the repo in a working state.** Risk is deliberately front-loaded:
 the two things most likely to force a redesign are checked in M1, not discovered at M4.
 
-Current position: **M0–M2 complete. Core of M3 next.**
+Current position and tick boxes: **[`docs/status.md`](status.md)**. This file holds the
+detail and done-when criteria; that one holds the state.
 
 ---
 
