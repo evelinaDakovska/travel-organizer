@@ -9,7 +9,8 @@ what is still open, and the conventions to follow.
 | `docs/technical-reference.md` | **Single source of truth** for schema, time model, file storage, queries |
 | `docs/plan.md` | Step-by-step implementation plan and current position |
 | `docs/decision-log.md` | *Why* things were decided. Rationale only — no authoritative detail |
-| `docs/dev-setup.md` | Machine setup: git identity, SSH, hooks, toolchain, how to run |
+| `docs/windows-handoff.md` | **Continuing on Windows** — read this instead of `dev-setup.md` there |
+| `docs/dev-setup.md` | Machine setup for the macOS machine it was started on |
 | `docs/original-spec.md` | The original brief. Historical; superseded where this file disagrees |
 | `docs/ideas.md` | Someday/maybe. Deliberately out of scope |
 
@@ -50,7 +51,12 @@ never exist. No enterprise patterns; this is a personal app that should still be
 
 ## 3. Current phase
 
-**M2 complete. M3 next — TripItems + Resources + files.** See `docs/plan.md`.
+**M2 complete. The core of M3 next.** See `docs/plan.md`.
+
+Work is deliberately split: **core** (domain logic, schema, repositories, file handling, export)
+is finished first because mistakes there ripple and migrations are painful; **surface** (screens,
+forms, styling) is deferred to a personal machine because it is cheap to iterate on and needs a
+device. `src/domain/` imports nothing native, so all core work runs under `npm test`.
 
 Both M1 spikes are resolved and their answers are load-bearing:
 

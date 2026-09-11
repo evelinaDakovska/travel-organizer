@@ -3,7 +3,47 @@
 Ten milestones. **Each leaves the repo in a working state.** Risk is deliberately front-loaded:
 the two things most likely to force a redesign are checked in M1, not discovered at M4.
 
-Current position: **M0 complete. M1 next.**
+Current position: **M0–M2 complete. Core of M3 next.**
+
+---
+
+## Work split — two machines
+
+The project started on a company-managed Mac and moves to a personal Windows machine
+(`docs/windows-handoff.md`). The split is not arbitrary — it follows what is **expensive to get
+wrong** versus what is **cheap to iterate on**.
+
+| | **Core** (do first, anywhere) | **Surface** (personal machine) |
+|---|---|---|
+| What | Domain logic, schema, repositories, file handling, export format | Screens, forms, styling, polish |
+| Needs a device? | No — pure TS + `better-sqlite3` | Yes |
+| Cost of a mistake | High: ripples through every screen, and migrations are painful | Low: you see it immediately and fix it |
+| Verified by | Unit tests | Looking at it |
+
+**Core work is being finished first**, so the surface is built against a settled, tested
+foundation rather than co-evolving with it. That also means the remaining work on the personal
+machine is well-specified and low-risk: wire known-good functions to screens.
+
+`src/domain/` imports nothing native, so all of it runs under `npm test` with no emulator.
+
+### Core — the priority order
+
+1. **`domain/timeline.ts`** — day grouping, derived check-in/check-out, next-item selection.
+   The most intricate logic in the app and the one most expensive to get wrong
+2. **`domain/tripItem.ts` schema + `repositories/tripItems.ts`** — unblocks everything else
+3. **`repositories/resources.ts` + `files/storage.ts`** — offline document access, the feature
+   the app exists for
+4. **Export/import format + serialiser** — the only protection against total data loss
+5. **Decisions on paper** — notification scheduling model, share-intent configuration
+
+### Surface — deliberately deferred
+
+Item forms, item detail, resource pickers, Timeline and Overview screens, Bookings/Places/Notes
+tabs, search UI, settings, and the visual pass. Each depends only on core functions that are
+already tested.
+
+**Device-only work** cannot happen before the move regardless: the real Android share sheet,
+notification delivery, opening real PDFs from real apps, and the offline pass.
 
 ---
 
@@ -117,6 +157,8 @@ on items *and* on the trip, ignores links, and does not leak across trips.
 
 ## M3 — TripItems + Resources + files
 
+> **Core:** schema, repositories, `files/storage.ts`. **Surface:** item forms, detail screen, resource pickers.
+
 The largest milestone and the one carrying the most risk. Files are here, not later, deliberately.
 
 **Already in place:** `src/domain/tripItem.ts` holds the enums — `TRIP_ITEM_KINDS`,
@@ -144,6 +186,8 @@ removes the file on the next GC sweep.
 
 ## M4 — Timeline + Overview / Now
 
+> **Core:** `domain/timeline.ts` and its tests. **Surface:** Timeline and Overview screens.
+
 1. `src/domain/timeline.ts` — group by `substr(start_local,1,10)`, order by `start_utc`
 2. Multi-day items derive **check-in / check-out** entries
 3. Date-only items sort to the top of their day
@@ -162,6 +206,8 @@ reality with the device timezone changed.
 
 ## M5 — Bookings, Places, Notes, Search
 
+> **Core:** the queries and notes repository. **Surface:** the three tabs and search UI.
+
 Three tabs that are three queries over one table — the payoff of the domain model.
 
 1. Bookings tab — `status='confirmed'`, grouped by `kind`
@@ -176,6 +222,8 @@ Three tabs that are three queries over one table — the payoff of the domain mo
 ---
 
 ## M6 — Export / import
+
+> **Core:** format design and the serialiser. **Surface:** the export/import screen.
 
 Deliberately before notifications and share-to-app: the app becomes trip-ready at M5, so backup
 must exist before the first real trip depends on it.
@@ -192,6 +240,8 @@ must exist before the first real trip depends on it.
 
 ## M7 — Local notifications
 
+> **Core:** scheduling model decision. **Surface + device:** everything else.
+
 1. `POST_NOTIFICATIONS` runtime permission request at a sensible moment
 2. Schedule on item create/update, cancel on delete or date change
 3. Default lead time in `settings`
@@ -203,6 +253,8 @@ must exist before the first real trip depends on it.
 ---
 
 ## M8 — Share-to-App
+
+> **Device only.** Cannot be verified before the move.
 
 1. `expo-share-intent` v8+, `androidIntentFilters: ["text/*","application/pdf","image/*"]`
 2. `expo prebuild` + rebuild the dev client
@@ -218,6 +270,8 @@ closed.
 ---
 
 ## M9 — Polish, offline, edge cases
+
+> **Device only.**
 
 1. Full offline pass: airplane mode, open every PDF, force-kill, change timezone
 2. Edge cases from the brief: invalid URL · file missing · item cancelled · date changed ·
