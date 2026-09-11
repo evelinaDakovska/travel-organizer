@@ -186,6 +186,13 @@ but it costs nothing.
 
 ## 9. Where the project stands
 
+**Say *"continue with the plan"*.** Work is tracked by task ID in `docs/plan.md` →
+*Execution tracks*, and `CLAUDE.md` §3 carries the tick boxes. The **C** tasks (core domain,
+schema, repositories, files, export) were finished on the Mac because they need no device; start
+at the first unticked **S** task.
+
+`S2` and `S6`–`S8` need a real device. `S1`, `S3`, `S4` and `S5` do not.
+
 See `docs/plan.md` for the authoritative status. At handoff:
 
 - **M0–M2 complete**, verified on a device: trips can be created, edited, deleted, and Home

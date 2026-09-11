@@ -7,43 +7,52 @@ Current position: **M0–M2 complete. Core of M3 next.**
 
 ---
 
-## Work split — two machines
+## Execution tracks
 
-The project started on a company-managed Mac and moves to a personal Windows machine
-(`docs/windows-handoff.md`). The split is not arbitrary — it follows what is **expensive to get
-wrong** versus what is **cheap to iterate on**.
+Work has explicit IDs so it can be picked up without interpretation.
 
-| | **Core** (do first, anywhere) | **Surface** (personal machine) |
-|---|---|---|
-| What | Domain logic, schema, repositories, file handling, export format | Screens, forms, styling, polish |
-| Needs a device? | No — pure TS + `better-sqlite3` | Yes |
-| Cost of a mistake | High: ripples through every screen, and migrations are painful | Low: you see it immediately and fix it |
-| Verified by | Unit tests | Looking at it |
+- **C1–C5 — Core.** Domain logic, schema, repositories, files, export. **No device needed** —
+  `src/domain/` imports nothing native, so it all runs under `npm test`. Being done on the
+  company-managed Mac.
+- **S1–S8 — Surface.** Screens, forms, styling, and everything needing a real device. Being done
+  on the personal Windows machine (`docs/windows-handoff.md`).
 
-**Core work is being finished first**, so the surface is built against a settled, tested
-foundation rather than co-evolving with it. That also means the remaining work on the personal
-machine is well-specified and low-risk: wire known-good functions to screens.
+The split follows **cost of being wrong**, not size. Core mistakes ripple through every screen and
+migrations are painful; surface mistakes are visible immediately and cheap to fix. Doing core
+first means the surface is wiring known-good, tested functions to screens rather than designing
+and building at once.
 
-`src/domain/` imports nothing native, so all of it runs under `npm test` with no emulator.
+**To continue here:** *"do the next C task"* — work C1→C5 in order, commit each, stop after C5.
+**To continue on Windows:** *"continue with the plan"* — all C will be done; start at S1.
 
-### Core — the priority order
+### Core — do these here, in order
 
-1. **`domain/timeline.ts`** — day grouping, derived check-in/check-out, next-item selection.
-   The most intricate logic in the app and the one most expensive to get wrong
-2. **`domain/tripItem.ts` schema + `repositories/tripItems.ts`** — unblocks everything else
-3. **`repositories/resources.ts` + `files/storage.ts`** — offline document access, the feature
-   the app exists for
-4. **Export/import format + serialiser** — the only protection against total data loss
-5. **Decisions on paper** — notification scheduling model, share-intent configuration
+| ID | Task | Milestone | Done when |
+|---|---|---|---|
+| **C1** | `domain/timeline.ts` — day grouping, derived check-in/check-out, next-item selection | M4 | Tests cover: 23:30 keeps its local day · date-only sorts to top of day · multi-day derives two entries · next excludes cancelled and completed tasks · includes items dated **before** the trip · nothing upcoming → no Now |
+| **C2** | TripItem Zod schema, row parser, `repositories/tripItems.ts` | M3 | `start_utc` derived on write and never by hand; schema + SQL tests green |
+| **C3** | `repositories/resources.ts` + `files/storage.ts` | M3 | Relative↔absolute path handling and the GC sweep are unit tested; the `contentUri` open path is written (device-verified later in S2) |
+| **C4** | Tab queries (Bookings / Places / Search) + `repositories/notes.ts` | M5 | Queries tested via `better-sqlite3`, including that Places is `status='idea'` and Bookings is `status='confirmed'` |
+| **C5** | Export/import format + serialiser | M6 | Round-trip test in node: all five tables plus a file manifest, nothing lost. **Resolves open question 5** |
 
-### Surface — deliberately deferred
+After C5, the core is complete and this machine's work is finished.
 
-Item forms, item detail, resource pickers, Timeline and Overview screens, Bookings/Places/Notes
-tabs, search UI, settings, and the visual pass. Each depends only on core functions that are
-already tested.
+### Surface — do these on Windows, in order
 
-**Device-only work** cannot happen before the move regardless: the real Android share sheet,
-notification delivery, opening real PDFs from real apps, and the offline pass.
+| ID | Task | Milestone | Device? |
+|---|---|---|---|
+| **S1** | Item create/edit form and item detail screen | M3 | no |
+| **S2** | Resource UI: pick PDF, pick image, add link, and the reusable `OpenResource` control | M3 | **yes** — verify a real PDF opens offline |
+| **S3** | Timeline screen and the Overview / Now card | M4 | no |
+| **S4** | Bookings, Places and Notes tabs, and search UI | M5 | no |
+| **S5** | Export / import screen | M6 | no |
+| **S6** | Local notifications | M7 | **yes** |
+| **S7** | Share-to-App | M8 | **yes** |
+| **S8** | Visual pass, offline pass, edge cases, release build | M9 | **yes** |
+
+`OpenResource` (S2) is the most important control in the app: one file opens directly, several
+open a sheet. It belongs on the Overview card, timeline rows and item detail alike — build it
+once.
 
 ---
 
@@ -157,7 +166,7 @@ on items *and* on the trip, ignores links, and does not leak across trips.
 
 ## M3 — TripItems + Resources + files
 
-> **Core:** schema, repositories, `files/storage.ts`. **Surface:** item forms, detail screen, resource pickers.
+> **Core: C2, C3.** **Surface: S1, S2.**
 
 The largest milestone and the one carrying the most risk. Files are here, not later, deliberately.
 
@@ -186,7 +195,7 @@ removes the file on the next GC sweep.
 
 ## M4 — Timeline + Overview / Now
 
-> **Core:** `domain/timeline.ts` and its tests. **Surface:** Timeline and Overview screens.
+> **Core: C1.** **Surface: S3.**
 
 1. `src/domain/timeline.ts` — group by `substr(start_local,1,10)`, order by `start_utc`
 2. Multi-day items derive **check-in / check-out** entries
@@ -206,7 +215,7 @@ reality with the device timezone changed.
 
 ## M5 — Bookings, Places, Notes, Search
 
-> **Core:** the queries and notes repository. **Surface:** the three tabs and search UI.
+> **Core: C4.** **Surface: S4.**
 
 Three tabs that are three queries over one table — the payoff of the domain model.
 
@@ -223,7 +232,7 @@ Three tabs that are three queries over one table — the payoff of the domain mo
 
 ## M6 — Export / import
 
-> **Core:** format design and the serialiser. **Surface:** the export/import screen.
+> **Core: C5.** **Surface: S5.**
 
 Deliberately before notifications and share-to-app: the app becomes trip-ready at M5, so backup
 must exist before the first real trip depends on it.
@@ -240,7 +249,7 @@ must exist before the first real trip depends on it.
 
 ## M7 — Local notifications
 
-> **Core:** scheduling model decision. **Surface + device:** everything else.
+> **Surface: S6** (device).
 
 1. `POST_NOTIFICATIONS` runtime permission request at a sensible moment
 2. Schedule on item create/update, cancel on delete or date change
@@ -254,7 +263,7 @@ must exist before the first real trip depends on it.
 
 ## M8 — Share-to-App
 
-> **Device only.** Cannot be verified before the move.
+> **Surface: S7** (device only).
 
 1. `expo-share-intent` v8+, `androidIntentFilters: ["text/*","application/pdf","image/*"]`
 2. `expo prebuild` + rebuild the dev client
@@ -271,7 +280,7 @@ closed.
 
 ## M9 — Polish, offline, edge cases
 
-> **Device only.**
+> **Surface: S8** (device only).
 
 1. Full offline pass: airplane mode, open every PDF, force-kill, change timezone
 2. Edge cases from the brief: invalid URL · file missing · item cancelled · date changed ·

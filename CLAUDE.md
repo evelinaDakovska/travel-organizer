@@ -51,21 +51,38 @@ never exist. No enterprise patterns; this is a personal app that should still be
 
 ## 3. Current phase
 
-**M2 complete. The core of M3 next.** See `docs/plan.md`.
+**Next task: C1** — `domain/timeline.ts`.
 
-Work is deliberately split: **core** (domain logic, schema, repositories, file handling, export)
-is finished first because mistakes there ripple and migrations are painful; **surface** (screens,
-forms, styling) is deferred to a personal machine because it is cheap to iterate on and needs a
-device. `src/domain/` imports nothing native, so all core work runs under `npm test`.
+```
+Core    (no device needed)    C1 ⬜   C2 ⬜   C3 ⬜   C4 ⬜   C5 ⬜
+Surface (personal Windows)    S1 ⬜   S2 ⬜   S3 ⬜   S4 ⬜   S5 ⬜   S6 ⬜   S7 ⬜   S8 ⬜
+```
 
-Both M1 spikes are resolved and their answers are load-bearing:
+Milestones M0–M2 are complete and verified on a device. Work is now tracked by **task ID**, not
+milestone — see `docs/plan.md` → *Execution tracks* for what each ID means and its done-when.
 
-1. **`getContentUriAsync` does not exist on the modern `expo-file-system` API — use
-   `file.contentUri`.** The package root still exports the old name as a **throwing** deprecation
-   shim, so importing it typechecks and fails at runtime. Never import it.
-2. **`@date-fns/tz` works on Hermes with no polyfills.** But
-   `Intl.supportedValuesOf('timeZone')` is **absent**, so the timezone picker uses the curated
-   list in `src/domain/timezones.ts`.
+**How to be asked to work:**
+
+| The user says | Do this |
+|---|---|
+| *"do the next C task"* / *"do the priority work"* | Take the first unticked **C**, finish it, commit, tick it here and in `plan.md`. Stop after **C5** |
+| *"continue with the plan"* | Take the first unticked task overall — on Windows that will be an **S** |
+
+**C before S on purpose.** Core mistakes ripple through every screen and migrations are painful;
+surface mistakes are visible immediately and cheap. `src/domain/` imports nothing native, so all
+C work runs under `npm test` with no emulator. Doing C first means S is wiring known-good, tested
+functions to screens rather than designing and building at once.
+
+**Tick the boxes as you go** — above and in `docs/plan.md`. A task is not done until it is
+committed and the boxes are ticked, because that is what survives a compacted context.
+
+### Findings already paid for — do not rediscover
+
+1. `getContentUriAsync` **typechecks but throws at runtime**. Use `new File(path).contentUri`.
+2. `SQLiteProvider` needs `options={{ enableChangeListener: true }}` — it defaults to `false`, and
+   without it every live query silently shows stale data, with no error.
+3. `Intl.supportedValuesOf('timeZone')` does **not** exist on Hermes, hence the curated list in
+   `src/domain/timezones.ts`.
 
 ## 4. Domain terminology
 
