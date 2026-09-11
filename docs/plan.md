@@ -34,7 +34,7 @@ and building at once.
 | **C2** | TripItem Zod schema, row parser, `repositories/tripItems.ts` | M3 | ✅ Done |
 | **C3** | `repositories/resources.ts` + `files/storage.ts` | M3 | ✅ Done — `contentUri` open path written, device-verified in S2 |
 | **C4** | Tab queries (Bookings / Places / Search) + `repositories/notes.ts` | M5 | ✅ Done |
-| **C5** | Export/import format + serialiser | M6 | Round-trip test in node: all five tables plus a file manifest, nothing lost. **Resolves open question 5** |
+| **C5** | Export/import format + serialiser | M6 | ✅ Done — open question 5 resolved: one archive for everything |
 
 After C5, the core is complete and this machine's work is finished.
 
@@ -236,11 +236,13 @@ Three tabs that are three queries over one table — the payoff of the domain mo
 Deliberately before notifications and share-to-app: the app becomes trip-ready at M5, so backup
 must exist before the first real trip depends on it.
 
-1. Export: all five tables → JSON + document files → `.zip`
-2. Hand to the Android share sheet (→ Drive)
-3. Import: read a `.zip`, restore rows and files, handle id collisions
+1. ✅ Format and serialiser — all five tables plus a file manifest, id collisions handled by
+   `merge` / `replace`. **Add a pure-JS zip dependency first: there is none yet**
+2. Export: write `backup.json` + `media/` into a `.zip`, hand to the Android share sheet (→ Drive)
+3. Import: read a `.zip`, then `parseExportDocument` → `planImport` → `applyImport`
 4. Enable Android Auto Backup in `app.json` (backstop only)
-5. Round-trip test: export → wipe app data → import → verify every PDF opens
+5. Round-trip test **on a device**: export → wipe app data → import → verify every PDF opens.
+   The row round-trip is already covered in node; what is unverified is the zip and the files
 
 **Done when:** a full export/import round-trip loses nothing.
 

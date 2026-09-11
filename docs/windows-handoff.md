@@ -216,3 +216,15 @@ See `docs/plan.md` for the authoritative status. At handoff:
 Claude Code requires a paid Claude plan or Anthropic API credits. Without one, the repo is still
 fully self-documenting — `CLAUDE.md` plus these docs are written so the work can continue by hand
 or with any assistant.
+
+---
+
+## Note for S5 (export/import)
+
+The format and serialiser are done and tested in node — `src/domain/export.ts` and
+`src/repositories/backup.ts`. What is missing is the zip itself.
+
+**There is no zip dependency in `package.json` yet.** A pure-JS one is enough: `File.write()`
+accepts a `Uint8Array` and `File.bytes()` returns one, so no native module and no rebuild are
+needed. Add it, then wire `readAllTables` → `buildExportDocument` → zip, and
+unzip → `parseExportDocument` → `planImport` → `applyImport` on the way back.

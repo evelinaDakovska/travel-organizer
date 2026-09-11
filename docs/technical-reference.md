@@ -685,3 +685,55 @@ This catches the class of bug that kills this app, and no unit test will.
 ### Not doing
 
 UI snapshot tests. Maintenance cost with no protection for anything that matters.
+
+---
+
+## 12. Export and import
+
+The only guard against data loss, so the format is deliberately dull: raw rows, not domain
+objects. A restore reproduces the database exactly and is unaffected by any later refactor of the
+domain layer.
+
+```
+travel-organizer-backup-2026-09-11.zip
+  backup.json          formatVersion, app, exportedAt, tables{...}, files[]
+  media/<id>.<ext>     every file any resource points at
+```
+
+`backup.json` carries all five tables verbatim plus a **file manifest** — one entry per distinct
+file listing every resource that references it, since two resources can share one file.
+
+### Open question 5, resolved: one archive for everything
+
+The purpose is protection against data loss, and a per-trip archive makes that a chore you have to
+remember for each trip — a forgotten trip is lost data, which defeats the point. So the backup is
+**one archive containing everything**.
+
+It does not foreclose the other option. `filterTablesForTrip` produces the same structure for a
+single trip, so exporting one trip later needs no format change and no second importer — it is the
+same document with fewer rows. A test asserts the scoped document still parses.
+
+### Importing
+
+| Mode | Behaviour |
+|---|---|
+| `merge` | A trip already present is left alone, and its children are dropped from the write so nothing orphans. Importing the same backup twice is a no-op |
+| `replace` | The trip is deleted first and the cascade clears its children, then the backup is written. What restoring after a reinstall means |
+
+**`replace` deletes before inserting rather than using `INSERT OR REPLACE`.** `REPLACE` deletes
+the conflicting row to make room, and with `ON DELETE CASCADE` that would take the children out
+*after* they had been written. Deleting the trip first makes the order explicit.
+
+The whole import runs in one transaction, so a bad row aborts everything rather than leaving a
+half-restored database. A backup from a **newer** `formatVersion` is refused outright instead of
+being partly read, and manifest paths are validated with the same `isStoredPath` guard as the
+media directory, so a tampered archive cannot write outside it.
+
+`planImport` reports `missingFiles` — rows whose file is not in the archive — so the UI can say
+what will not open rather than restoring a dead reference silently.
+
+### Still to build (S5)
+
+The zip itself. Verified available: `File.write()` accepts a `Uint8Array` and `bytes()` returns
+one, so a **pure-JS zip library is enough and no native module is needed** — but there is no zip
+dependency in `package.json` yet, so S5 starts by adding one.

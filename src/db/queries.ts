@@ -189,3 +189,45 @@ UPDATE trip_notes SET title = $title, body = $body, pinned = $pinned, updated_at
 export const SET_NOTE_PINNED = `
 UPDATE trip_notes SET pinned = $pinned, updated_at = $now WHERE id = $id
 `;
+
+/** Column order for the backup. Append only — a restore binds by name, but order documents it. */
+export const EXPORT_COLUMNS = {
+  trips: ['id', 'name', 'destination', 'start_date', 'end_date', 'default_tz', 'cover_path',
+          'notes', 'traveller_count', 'travellers', 'created_at', 'updated_at'],
+  trip_items: ['id', 'trip_id', 'kind', 'subkind', 'status', 'priority', 'title',
+               'start_local', 'start_tz', 'start_precision', 'start_utc',
+               'end_local', 'end_tz', 'end_precision', 'end_utc', 'completed_at',
+               'location_name', 'address', 'latitude', 'longitude', 'confirmation_code',
+               'notes', 'details', 'price_amount', 'price_currency', 'is_paid',
+               'created_at', 'updated_at'],
+  trip_notes: ['id', 'trip_id', 'title', 'body', 'pinned', 'sort_order',
+               'created_at', 'updated_at'],
+  resources: ['id', 'trip_id', 'trip_item_id', 'kind', 'subtype', 'label', 'url',
+              'stored_path', 'file_name', 'mime_type', 'size_bytes', 'sort_order', 'created_at'],
+  settings: ['key', 'value'],
+} as const satisfies Record<string, readonly string[]>;
+
+export type ExportTableName = keyof typeof EXPORT_COLUMNS;
+
+export const selectAll = (table: ExportTableName) =>
+  `SELECT ${EXPORT_COLUMNS[table].join(', ')} FROM ${table}`;
+
+/** Parameters are named after the columns, so a raw row binds without being reshaped. */
+export const insertRow = (table: ExportTableName) => {
+  const columns = EXPORT_COLUMNS[table];
+  return `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${columns
+    .map((column) => `$${column}`)
+    .join(', ')})`;
+};
+
+/** Settings are global rather than owned by a trip, so a restore overwrites them in place. */
+export const upsertSetting = `
+INSERT INTO settings (key, value) VALUES ($key, $value)
+  ON CONFLICT(key) DO UPDATE SET value = excluded.value
+`;
+
+/**
+ * Replace mode deletes the trip first and lets the cascade clear its children. Using
+ * INSERT OR REPLACE instead would cascade the children away *after* they were written.
+ */
+export const DELETE_TRIP_FOR_REPLACE = `DELETE FROM trips WHERE id = $id`;

@@ -3,9 +3,10 @@
 **The** status board. `CLAUDE.md` and `plan.md` link here rather than repeat it, so there is one
 place to update and nothing can drift.
 
-Verified against the repo on 2026-09-11: **202 tests passing, typecheck clean.**
+Verified against the repo on 2026-09-11: **229 tests passing, typecheck clean.**
 
-> **Next task: C5** — export and import, the last core task
+> **Core track complete.** Next work is **S1**, on the Windows machine — see
+> [`docs/windows-handoff.md`](windows-handoff.md).
 
 ---
 
@@ -41,7 +42,7 @@ this runs under `npm test`. **Ordered by cost of being wrong, not by feature ord
 | **C2** | TripItem Zod schema, row parser, and the trip items repository | M3 | ✅ |
 | **C3** | Resources repository and `files/storage.ts` — import, paths, GC sweep | M3 | ✅ |
 | **C4** | Tab queries for Bookings, Places and Search, plus the notes repository | M5 | ✅ |
-| **C5** | Export / import format and serialiser | M6 | ⬜ |
+| **C5** | Export / import format and serialiser | M6 | ✅ |
 
 Done-when criteria for each are in `docs/plan.md` → *Execution tracks*.
 
@@ -89,4 +90,4 @@ compaction; this file does.
 | 2 | Per-item travellers (only 2 of 3 going to one thing) — needed, or notes? | S1 |
 | 3 | Trip-level resources: their own screen, or a section on Overview? | S2 |
 | 4 | Notification default lead time, and whether it is per-item configurable | S6 |
-| 5 | Export format: one zip per trip, or one for everything? | C5 |
+| ~~5~~ | ~~Export format: one zip per trip, or one for everything?~~ **Resolved in C5: one archive for everything; `filterTablesForTrip` keeps a per-trip export available with no format change.** | — |
