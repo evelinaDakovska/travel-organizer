@@ -50,7 +50,7 @@ never exist. No enterprise patterns; this is a personal app that should still be
 
 ## 3. Current phase
 
-**M1 complete. M2 next — Trips CRUD + Home.** See `docs/plan.md`.
+**M2 complete. M3 next — TripItems + Resources + files.** See `docs/plan.md`.
 
 Both M1 spikes are resolved and their answers are load-bearing:
 
@@ -140,8 +140,13 @@ driven by items rather than trip dates.
 ### 5.8 SQLite is the source of truth — no global store
 
 No Redux, no Zustand, no TanStack Query. The real need is "re-render when the DB changes", met by
-a small `useLiveQuery(sql, params)` hook over `expo-sqlite`'s `addDatabaseChangeListener`.
+a small `useLiveQuery` hook over `expo-sqlite`'s `addDatabaseChangeListener`.
 Never copy DB rows into a global store.
+
+⚠️ **`SQLiteProvider` must be opened with `options={{ enableChangeListener: true }}`.** It
+defaults to `false`, and without it `addDatabaseChangeListener` never fires — `useLiveQuery`
+silently never refreshes and every screen shows stale data. There is no error and no warning.
+This cost a real bug in M2: a created trip did not appear on Home.
 
 ## 6. Stack
 

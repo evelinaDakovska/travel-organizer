@@ -1,3 +1,5 @@
+import { TZDate } from '@date-fns/tz';
+
 /**
  * Hermes has no `Intl.supportedValuesOf('timeZone')` (verified on device, M1 spike),
  * so the picker needs its own list. Weighted towards Europe; extend as needed.
@@ -27,8 +29,18 @@ export const TIMEZONES = [
 
 export type Timezone = (typeof TIMEZONES)[number];
 
+/** In the curated picker list. */
 export function isKnownTimezone(tz: string): boolean {
   return (TIMEZONES as readonly string[]).includes(tz);
+}
+
+/**
+ * Accepted for storage. Broader than the picker list on purpose: the device may report a
+ * valid IANA zone we never curated, and rejecting it would be wrong.
+ */
+export function isResolvableTimezone(tz: string): boolean {
+  if (!tz) return false;
+  return !Number.isNaN(new TZDate(2026, 6, 1, 12, 0, tz).getTime());
 }
 
 /** 'Europe/Sofia' -> 'Sofia'; 'America/Argentina/Buenos_Aires' -> 'Buenos Aires'. */

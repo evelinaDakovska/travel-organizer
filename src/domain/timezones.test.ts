@@ -1,6 +1,12 @@
 import { TZDate } from '@date-fns/tz';
 
-import { isKnownTimezone, searchTimezones, TIMEZONES, timezoneLabel } from './timezones';
+import {
+  isKnownTimezone,
+  isResolvableTimezone,
+  searchTimezones,
+  TIMEZONES,
+  timezoneLabel,
+} from './timezones';
 
 describe('timezones', () => {
   it('has no duplicates', () => {
@@ -30,5 +36,17 @@ describe('timezones', () => {
     expect(searchTimezones('sofia')).toEqual(['Europe/Sofia']);
     expect(searchTimezones('buenos aires')).toContain('America/Argentina/Buenos_Aires');
     expect(searchTimezones('')).toBe(TIMEZONES);
+  });
+});
+
+describe('isResolvableTimezone', () => {
+  it('accepts a valid zone that is not in the curated picker list', () => {
+    expect(isKnownTimezone('Europe/Andorra')).toBe(false);
+    expect(isResolvableTimezone('Europe/Andorra')).toBe(true);
+  });
+
+  it('rejects nonsense and empty input', () => {
+    expect(isResolvableTimezone('Mars/Olympus')).toBe(false);
+    expect(isResolvableTimezone('')).toBe(false);
   });
 });

@@ -79,17 +79,39 @@ first run (`Europe/Reykjavik`, `Asia/Doha`) that would have produced `NaN` insta
 
 ## M2 — Trips CRUD + Home
 
-1. `src/domain/trip.ts` + Zod schema
-2. `src/repositories/trips.ts` — create, update, delete, list, get
-3. `src/ui/tokens.ts` — colour, spacing, type scale
-4. Home (`app/index.tsx`) — Upcoming and Past sections, trip cards
-5. Create/edit trip form (React Hook Form + Zod): name, destination, **mandatory** dates,
-   `default_tz` (default from `expo-localization`), travellers
-6. Delete with confirmation
-7. Past-trip bucketing: `end_date < today's device-local date`
-8. Empty state: no trips yet
+**✅ COMPLETE.**
 
-**Done when:** trips can be created, edited, deleted, and bucket correctly into Upcoming/Past.
+- [x] `src/domain/trip.ts` — `Trip`, `tripInputSchema`, row parser, `groupTrips`, `isTripActive`,
+      `tripDurationDays`
+- [x] `src/domain/format.ts` — date ranges, day headings, relative time, money
+- [x] `src/repositories/trips.ts` — list, get, create, update, delete, `countTripContents`
+- [x] `src/repositories/settings.ts` — key/value, `default_travellers` ("usually travel with")
+- [x] `src/hooks/useLiveQuery.ts` — re-runs a query when a watched table changes
+- [x] `src/ui/tokens.ts` — light/dark palette, spacing, radius, type scale
+- [x] Components: `Screen`, `ScreenHeader`, `Button`, `Field`/`Input`, `DateField`,
+      `TimezoneField`, `TripCard`
+- [x] Home — Upcoming / Past sections, "happening now" badge, empty state
+- [x] Create, edit and delete trip; delete names the blast radius
+- [x] Verified on the emulator end to end: create → save → overview → Home
+
+### Decisions taken during M2
+
+**Two levels of timezone validity.** `isKnownTimezone` is the curated picker list;
+`isResolvableTimezone` is what storage accepts. Validating against the picker list alone would
+reject a perfectly valid zone the device reports but we never curated.
+
+**`@react-native-community/datetimepicker` added** — dates are central to this app and a text
+field would be poor. `DateField` emits a bare `YYYY-MM-DD` read from **device-local** components,
+never a `Date` or an instant, so the chosen day cannot shift.
+
+**`enableChangeListener` must be set on `SQLiteProvider`.** It defaults to `false`, so
+`addDatabaseChangeListener` never fired and `useLiveQuery` silently never refreshed. Found only by
+running the app: the created trip did not appear on Home. No error, no warning. Recorded in
+`CLAUDE.md` §5.8 and `technical-reference.md` §3.
+
+**Notable SQL lives in `src/db/queries.ts`**, free of native imports, so it can be tested in node
+against better-sqlite3. `COUNT_TRIP_CONTENTS` is tested for the cases that matter: it counts files
+on items *and* on the trip, ignores links, and does not leak across trips.
 
 ---
 

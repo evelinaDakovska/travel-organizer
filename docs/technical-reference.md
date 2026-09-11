@@ -212,6 +212,19 @@ CREATE TABLE settings (
 - **Booleans** are INTEGER 0/1.
 - **No `sort_order` on `trip_items`** — ordering is temporal, or priority+title for undated items.
 
+### Change notifications
+
+`SQLiteProvider` **must** be opened with `options={{ enableChangeListener: true }}`:
+
+```tsx
+<SQLiteProvider databaseName={DATABASE_NAME} onInit={migrate}
+                options={{ enableChangeListener: true }} useSuspense>
+```
+
+It defaults to `false`. Without it `addDatabaseChangeListener` never fires, so `useLiveQuery`
+never refreshes and screens show stale data — with **no error and no warning**. Verified on device
+in M2, where a newly created trip did not appear on Home.
+
 ### Migrations
 
 Hand-written, append-only, numbered: `src/db/migrations/001-initial.ts`, `002-….ts`.
@@ -481,7 +494,7 @@ unlike the gate.
 
 | Not using | Because |
 |---|---|
-| Redux / Zustand | SQLite is the source of truth. `useLiveQuery` covers re-render-on-change |
+| Redux / Zustand | SQLite is the source of truth. `useLiveQuery` covers re-render-on-change — but see the `enableChangeListener` warning in §3 |
 | TanStack Query | No backend, no cache invalidation problem |
 | Drizzle / any ORM | Explicit hand-written migrations were a requirement. Raw SQL + Zod row parsers |
 | `react-native-pdf` | Hand off to Android's viewer — less code, and print/share/zoom come free |

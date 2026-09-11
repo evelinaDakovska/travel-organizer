@@ -14,7 +14,13 @@ export default function RootLayout() {
           <ActivityIndicator />
         </View>
       }>
-      <SQLiteProvider databaseName={DATABASE_NAME} onInit={migrate} useSuspense>
+      <SQLiteProvider
+        databaseName={DATABASE_NAME}
+        onInit={migrate}
+        // Defaults to false; without it addDatabaseChangeListener never fires and
+        // useLiveQuery silently never refreshes.
+        options={{ enableChangeListener: true }}
+        useSuspense>
         <StatusBar style="auto" />
         <Stack screenOptions={{ headerShown: false }} />
       </SQLiteProvider>
