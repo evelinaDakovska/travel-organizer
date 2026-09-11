@@ -9,6 +9,7 @@ what is still open, and the conventions to follow.
 | `docs/technical-reference.md` | **Single source of truth** for schema, time model, file storage, queries |
 | `docs/plan.md` | Step-by-step implementation plan and current position |
 | `docs/decision-log.md` | *Why* things were decided. Rationale only — no authoritative detail |
+| `docs/dev-setup.md` | Machine setup: git identity, SSH, hooks, toolchain, how to run |
 | `docs/original-spec.md` | The original brief. Historical; superseded where this file disagrees |
 | `docs/ideas.md` | Someday/maybe. Deliberately out of scope |
 

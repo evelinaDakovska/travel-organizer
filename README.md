@@ -19,6 +19,7 @@ Start with [`CLAUDE.md`](CLAUDE.md).
 | [`docs/technical-reference.md`](docs/technical-reference.md) | **Single source of truth** — schema, time model, file storage, queries |
 | [`docs/plan.md`](docs/plan.md) | Step-by-step implementation plan and current position |
 | [`docs/decision-log.md`](docs/decision-log.md) | *Why* each decision was made, and what was rejected |
+| [`docs/dev-setup.md`](docs/dev-setup.md) | Machine setup: git identity, SSH, hooks, toolchain, how to run |
 | [`docs/original-spec.md`](docs/original-spec.md) | The original brief. Historical |
 | [`docs/ideas.md`](docs/ideas.md) | Someday/maybe, deliberately out of scope |
 
