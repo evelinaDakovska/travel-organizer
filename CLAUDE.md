@@ -50,11 +50,16 @@ never exist. No enterprise patterns; this is a personal app that should still be
 
 ## 3. Current phase
 
-**Milestone 0 complete — architecture agreed. M1 next.** See `docs/plan.md`.
+**M1 complete. M2 next — Trips CRUD + Home.** See `docs/plan.md`.
 
-Nothing is scaffolded yet. Two spikes must run before code is built on top of them:
-1. Does `getContentUriAsync` exist in the new class-based `expo-file-system`? (gates opening PDFs)
-2. Does `date-fns/tz` work on Hermes without heavy formatjs polyfills? (gates the whole time model)
+Both M1 spikes are resolved and their answers are load-bearing:
+
+1. **`getContentUriAsync` does not exist on the modern `expo-file-system` API — use
+   `file.contentUri`.** The package root still exports the old name as a **throwing** deprecation
+   shim, so importing it typechecks and fails at runtime. Never import it.
+2. **`@date-fns/tz` works on Hermes with no polyfills.** But
+   `Intl.supportedValuesOf('timeZone')` is **absent**, so the timezone picker uses the curated
+   list in `src/domain/timezones.ts`.
 
 ## 4. Domain terminology
 

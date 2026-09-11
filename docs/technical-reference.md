@@ -268,15 +268,33 @@ If the IANA database changes an offset (a country abolishing DST), cached `start
 stale. Negligible for trips booked months ahead. Mitigation if ever needed: a "recompute instants"
 maintenance function that rewrites `*_utc` from `*_local` + `*_tz`.
 
-### Library
+### Library — RESOLVED (M1 spike, on device)
 
-`date-fns` v4 + `@date-fns/tz`. **Verify on a real device before relying on it** — Hermes has had
-native `Intl.DateTimeFormat` with `timeZone` on Android since RN 0.66, but `@date-fns/tz`
-documents formatjs polyfills as required for Hermes correctness, and those plus tz data are
-hundreds of KB. Confirm native Intl suffices on RN 0.86.
+**`date-fns` v4 + `@date-fns/tz` works on Hermes with no polyfills.** Verified on Android 16 /
+RN 0.86 / Hermes, not just in Node. Do **not** add `@formatjs/*` — it is hundreds of KB and is
+not needed.
 
-Also unverified: whether `Intl.supportedValuesOf('timeZone')` exists in Hermes. The timezone
-picker wants it; fallback is a curated list of ~50 zones.
+Confirmed on device:
+
+| Check | Result |
+|---|---|
+| Sofia 06:10 → UTC (+3) | `2026-09-19T03:10:00.000Z` ✅ |
+| Rome 14:00 → UTC (+2) | `2026-09-19T12:00:00.000Z` ✅ |
+| London spring-forward boundary | `2026-03-29T02:30:00.000Z` ✅ |
+| date-only → local midnight | `2026-09-18T22:00:00.000Z` ✅ |
+| 23:30 event keeps its local day | `2026-09-19` ✅ |
+| countdown | `92` minutes ✅ |
+
+Also verified in Node across device zones from UTC+14 to UTC−10 — identical results, which is the
+whole point of the design.
+
+**`Intl.supportedValuesOf('timeZone')` is ABSENT on Hermes.** The timezone picker therefore uses a
+curated list in `src/domain/timezones.ts`. A test asserts every id in it actually resolves — it
+caught two invalid ids on first run (`Europe/Reykjavik` → `Atlantic/Reykjavik`, `Asia/Doha` →
+`Asia/Qatar`), which would otherwise have produced `NaN` instants silently.
+
+An invalid IANA id makes `TZDate` return `NaN` rather than falling back to a default zone, so bad
+input fails loudly. Keep it that way.
 
 `Temporal` is Stage 4 but not in Hermes. The polyfill is 20KB+. Not for MVP.
 
@@ -318,15 +336,49 @@ how an orphan arose.
 Before deleting a Trip or TripItem, show a confirmation **naming the blast radius**:
 *"Delete Milan? This removes 6 items and 11 saved files."* These may be the only copies.
 
-### Opening a stored file
+### Opening a stored file — RESOLVED (M1 spike, expo-file-system 57.0.6)
 
-`FileSystem.getContentUriAsync()` → `IntentLauncher.startActivityAsync('android.intent.action.VIEW',
-{ data: uri, flags: 1, type: mimeType })`. Expo configures the `FileProvider`.
+**Use `file.contentUri`. Do not import `getContentUriAsync`.**
 
-⚠️ **Unverified:** expo-file-system has moved to a class-based `File`/`Directory`/`Paths` API, with
-the functional API relegated to `expo-file-system/legacy`. `getContentUriAsync` is a legacy
-function; its equivalent on the new API is unconfirmed. **Spike this in M1** — it gates the single
-most important action in the app.
+```ts
+import { File } from 'expo-file-system';
+import * as IntentLauncher from 'expo-intent-launcher';
+
+const file = new File(Paths.document, storedPath);
+await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+  data: file.contentUri,   // synchronous property, Android-only
+  flags: 1,                // FLAG_GRANT_READ_URI_PERMISSION
+  type: file.type,         // mime type, also a property
+});
+```
+
+What the spike established by reading the installed package's declarations:
+
+1. `getContentUriAsync` is **not** part of the modern `File`/`Directory`/`Paths` API.
+2. It *is* re-exported from the package root — but as a **throwing** deprecation shim
+   (`build/legacyWarnings.d.ts`, which calls `errorOnLegacyMethodUse` and throws). So
+   `import { getContentUriAsync } from 'expo-file-system'` **compiles fine and fails at runtime.**
+   This is a trap: TypeScript will not catch it.
+3. The real implementation still exists at `expo-file-system/legacy`, but is unnecessary.
+4. `contentUri` is a **direct property on the `File` class** (`NativeFileSystemFile`), documented
+   as "A content URI to the file that can be shared to external applications. @platform android".
+
+So the modern API covers the whole file layer with no legacy import anywhere:
+
+| Need | Modern API |
+|---|---|
+| path | `file.uri` |
+| existence | `file.exists` |
+| size | `file.size` |
+| mime type | `file.type` |
+| copy in | `await sourceFile.copy(destFile)` (or `copySync`) |
+| delete | `file.delete()` |
+| create dir | `new Directory(Paths.document, 'media').create({ intermediates: true })` |
+| list (for GC) | `directory.list()` |
+| share to other apps | `file.contentUri` |
+
+**Also found:** `File.pickFileAsync()` is a static on the modern API, so `expo-document-picker`
+may be redundant. Not switched in M1 — revisit in M3 when the real import flow is built.
 
 ### Missing-file handling
 

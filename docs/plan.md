@@ -19,60 +19,61 @@ Current position: **M0 complete. M1 next.**
 
 ## M1 — Foundation, spikes, database
 
-**The two spikes come first.** If either fails, the design changes now — cheaply.
+**✅ COMPLETE.** Both spikes ran first, before anything was built on top of them — and both
+changed what we would otherwise have written.
 
-### 1.1 Scaffold
-1. `npx create-expo-app@latest . --template blank-typescript` (into the existing repo)
-2. Pin `expo@>=57.0.17`
-3. Add `expo-router`, `expo-dev-client`; configure entry point and `app.json`
-4. Set Android package id, `minSdk`, app name
-5. `npx expo prebuild --clean`
-6. `npx expo run:android` → boots on AVD `Medium_Phone_API_36.1`
+### 1.1 Scaffold ✅
+- [x] Expo SDK 57.0.21, RN 0.86.3, React 19.2.3, TypeScript 6.0.3
+- [x] expo-router, expo-dev-client, `scheme: travelorganizer`, package `com.evelinadakovska.travelorganizer`
+- [x] `platforms: ["android"]` — iOS and web dropped, this is an Android-only app
+- [x] `npx expo prebuild --platform android`
+- [x] `expo-doctor` 21/21 checks passing
 
-**Done when:** the dev client launches on the emulator and hot-reload works.
+Two dependency conflicts resolved rather than force-installed:
+- `expo-router@57.0.20` pulls `react-dom@19.3.0`, which needs React ≥19.3 while Expo pins 19.2.3.
+  Fixed with `npx expo install react-dom` → 19.2.3.
+- `babel-preset-expo` is nested under `expo/` and not hoisted, so jest could not resolve it.
+  Installed at top level, pinned to the same 57.0.11.
+- jest pinned to `~29.7.0` to match what SDK 57 expects (30.x was flagged by expo-doctor).
 
-### 1.2 Spike A — opening a stored PDF ⚠️
-Gates the single most important action in the app.
+### 1.2 Spike A — opening a stored PDF ✅ RESOLVED
+**`getContentUriAsync` does not exist on the modern API — and is not needed.**
+`new File(path).contentUri` is a direct property. See `technical-reference.md` §5.
 
-1. Add `expo-file-system`, `expo-document-picker`, `expo-intent-launcher`
-2. Throwaway screen: pick a PDF → copy into `Paths.document/media/` → open via intent
-3. **Establish whether `getContentUriAsync` exists on the new class-based API** or whether
-   `expo-file-system/legacy` is required
-4. Confirm the copied file opens after the original is deleted
+The trap found: the package root still exports `getContentUriAsync`, but as a **throwing**
+deprecation shim. It typechecks and fails at runtime. Never import it.
 
-**Done when:** a PDF opens in Android's viewer from an app-owned copy. **Record the answer in
-`technical-reference.md` §5.**
+### 1.3 Spike B — Hermes timezones ✅ RESOLVED
+**`@date-fns/tz` works on Hermes with no polyfills.** Verified on device (Android 16 / RN 0.86),
+all six conversions correct. Do not add `@formatjs/*`.
 
-*If it fails:* fall back to `expo-sharing`, or an in-app viewer. Decide before M3.
+**`Intl.supportedValuesOf('timeZone')` is absent on Hermes** — so `src/domain/timezones.ts` holds a
+curated list, with a test asserting every id resolves. That test caught two invalid ids on its
+first run (`Europe/Reykjavik`, `Asia/Doha`) that would have produced `NaN` instants silently.
 
-### 1.3 Spike B — Hermes timezones ⚠️
-The entire time model rests on this.
+### 1.4 Database ✅
+- [x] `src/db/client.ts` — WAL once, `foreign_keys = ON` every connection, `PRAGMA user_version`
+- [x] `src/db/migrations/001-initial.ts` — full schema, append-only
+- [x] `SQLiteProvider` with `onInit={migrate}` and suspense
 
-1. Add `date-fns` + `@date-fns/tz`
-2. On-device: convert `2026-09-19T06:10` + `Europe/Sofia` → UTC and back
-3. Test across a DST boundary
-4. Check whether `Intl.supportedValuesOf('timeZone')` exists in Hermes
-5. Determine whether formatjs polyfills are actually needed
+### 1.5 Domain: time ✅
+- [x] `src/domain/time.ts` — `toInstant`, `dayKey`, `timeOfDay`, `minutesUntil`, `isPastDate`
+- [x] 15 tests: DST both directions, date-only stability, `T00:00` vs date-only, late-evening
+      day grouping, countdown
 
-**Done when:** conversions are correct on-device without polyfills — or the polyfill cost is
-measured and accepted. **Record in `technical-reference.md` §4.**
+### 1.6 Test infrastructure ✅
+- [x] jest + babel-preset-expo, `testEnvironment: node`, `roots: src/`
+- [x] 14 schema tests through `better-sqlite3` using the same migration SQL: applies from 0,
+      cascades, and every CHECK constraint — including that `kind='place'` is rejected and that
+      an item dated before the trip start is allowed
 
-### 1.4 Database
-1. `src/db/client.ts` — open, `journal_mode=WAL` once, `foreign_keys=ON` every connection
-2. `src/db/migrations/001-initial.ts` — the full schema from `technical-reference.md` §3
-3. Migration runner using `PRAGMA user_version`, wired to `SQLiteProvider` `onInit`
-4. `src/hooks/useLiveQuery.ts` over `addDatabaseChangeListener`
+### 1.7 Environment (not in the original plan)
+- [x] `ANDROID_HOME` set in `~/.zshrc.local` (git-ignored); terminal Gradle builds now work
+- [x] Android `cmdline-tools` 23.0 installed — the SDK had no `avdmanager`
+- [x] Dedicated AVD `travel_organizer_api36` (16G). The existing emulator is a **work** emulator
+      with IG apps on it and was left untouched
 
-### 1.5 Domain: time
-1. `src/domain/time.ts` — the `LocalDateTime` type, wall-clock ↔ instant, precision, formatting
-2. Tests: DST boundary, date-only stability under device-zone change, `T00:00` vs date-only
-
-### 1.6 Test infrastructure
-1. Jest + `better-sqlite3`
-2. Migration test: applies cleanly from 0; cascades work; CHECK constraints reject bad rows
-
-**Milestone done when:** app boots on the emulator, DB migrates on first launch, `time.ts` tests
-pass, both spikes answered and recorded.
+**34 tests passing. Typecheck clean. App runs on the emulator, DB migrates to `user_version=1`.**
 
 ---
 

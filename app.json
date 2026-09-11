@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Travel Organizer",
+    "slug": "travel-organizer",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "travelorganizer",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "platforms": [
+      "android"
+    ],
+    "android": {
+      "package": "com.evelinadakovska.travelorganizer",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-localization"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

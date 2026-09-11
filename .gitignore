@@ -32,3 +32,8 @@ yarn-error.*
 !.vscode/extensions.json
 
 coverage/
+
+# Metro / native build artefacts
+.kotlin/
+.metro-health-check*
+*.tsbuildinfo
