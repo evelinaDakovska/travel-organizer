@@ -119,8 +119,12 @@ on items *and* on the trip, ignores links, and does not leak across trips.
 
 The largest milestone and the one carrying the most risk. Files are here, not later, deliberately.
 
-1. `src/domain/tripItem.ts` — `kind`, `subkind`, `status`, `priority`, Zod discriminated union
-   for `details`
+**Already in place:** `src/domain/tripItem.ts` holds the enums — `TRIP_ITEM_KINDS`,
+`TRIP_ITEM_STATUSES`, `PRIORITIES`, and the per-kind `SUBKINDS` taxonomy — with 11 tests.
+Start from the Zod schema and repository.
+
+1. `src/domain/tripItem.ts` — add `tripItemInputSchema`, the row parser, and the Zod
+   discriminated union for the `details` JSON column
 2. `src/repositories/tripItems.ts` — CRUD, **`start_utc` derived on write, never by hand**
 3. Item create/edit form, fields varying by `kind`
 4. Item detail screen

@@ -40,9 +40,24 @@ Five tables: `trips`, `trip_items`, `trip_notes`, `resources`, `settings`.
 | `kind` | `transport` `stay` `activity` `food` `task` `other` | **Structural.** Drives behaviour and which form fields appear |
 | `status` | `idea` `confirmed` `cancelled` | **Commitment.** Drives which tab it appears in |
 
-`subkind` is a third, **non-structural** field for icons, labels and filtering
-(`flight`, `train`, `ferry`, `car`, `cafe`, `restaurant`, `museum`, `tour`, `hotel`…). It
-replaces the transport-mode concept entirely — there is no separate `TransportMode`.
+`subkind` is a third, **non-structural** field for icons, labels and filtering. It replaces the
+transport-mode concept entirely — there is no separate `TransportMode`.
+
+**It is a fixed enum per kind, not free text** (decided M2): free text fragments into
+cafe / café / Coffee and cannot drive icons reliably. Defined in `src/domain/tripItem.ts`:
+
+| kind | subkinds |
+|---|---|
+| `transport` | flight · train · bus · ferry · car · taxi · transfer · walk |
+| `stay` | hotel · apartment · hostel · guesthouse · camping |
+| `activity` | museum · gallery · tour · attraction · event · theatre · outdoor · spa |
+| `food` | restaurant · cafe · bar · bakery · market |
+| `task` | check-in · booking · document · packing |
+| `other` | luggage · insurance · parking · shopping · viewpoint |
+
+**`subkind` is always nullable, and no list contains `'other'`** — "unspecified" is expressed by
+the absence of a subkind, never by a magic value. Adding a subkind is a code change, not a
+migration, since the column has no CHECK constraint.
 
 ### Tabs are queries, not entities
 

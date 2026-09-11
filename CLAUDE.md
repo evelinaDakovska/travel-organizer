@@ -70,7 +70,7 @@ Use these words precisely, in code and in conversation.
 | **Trip** | A dated journey. Start and end dates are **mandatory**. Has one `default_tz`. |
 | **TripItem** | Anything meaningful attached to a trip. The one polymorphic-ish entity. |
 | **`kind`** | *What sort of thing:* `transport` `stay` `activity` `food` `task` `other`. 6 structural values that drive behaviour. |
-| **`subkind`** | *Cosmetic/filtering:* `flight` `train` `cafe` `museum`… Drives icons and labels. **Also replaces the transport-mode concept entirely.** |
+| **`subkind`** | *Cosmetic/filtering:* `flight` `train` `cafe` `museum`… Drives icons and labels. **A fixed enum per kind** (`src/domain/tripItem.ts`), always nullable, never contains `'other'`. **Replaces the transport-mode concept entirely.** |
 | **`status`** | *How committed:* `idea` `confirmed` `cancelled`. |
 | **Place** | **Not a type.** A Place is a TripItem with `status = 'idea'`. The Places tab is a query. |
 | **Booking** | A TripItem with `status = 'confirmed'`. The Bookings tab is a query. |
@@ -244,8 +244,7 @@ Not blocking M1–M3. Resolve before the milestone that needs them.
 | 2 | Per-item travellers (only 2 of 3 going to one thing) — needed, or notes? | M5 |
 | 3 | Do trip-level resources need their own "Other resources" screen, or a section on Overview? | M5 |
 | 4 | Notification default lead time, and whether it is per-item configurable | M7 |
-| 5 | Should `subkind` be a fixed enum per `kind`, or free text with suggestions? | M3 |
-| 6 | Export format: one zip per trip, or one for everything? | M6 |
+| 5 | Export format: one zip per trip, or one for everything? | M6 |
 
 ## 11. How to work on this
 
