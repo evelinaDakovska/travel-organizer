@@ -7,7 +7,7 @@ and **where the relevant ticket is** — quickly, while travelling, possibly off
 
 ## Status
 
-**M0–M2 complete.** Next task: **C1**. See [`docs/status.md`](docs/status.md).
+Current position and what is next: **[`docs/status.md`](docs/status.md)** — the only place status lives.
 
 ## Docs
 

@@ -10,10 +10,12 @@ file's paths here.** This one replaces it.
 
 ## 1. Read first
 
-1. `CLAUDE.md` — product, decisions, terminology, conventions, current phase
-2. `docs/technical-reference.md` — schema, time model, file storage. **Single source of truth**
-3. `docs/plan.md` — milestones and what is done
-4. `docs/decision-log.md` — why each decision was made, and what was rejected
+1. **`docs/status.md` — what is done and what is next. The only place status lives.**
+2. `CLAUDE.md` — product, decisions, terminology, conventions
+3. `docs/technical-reference.md` — schema, time model, file storage, export. **Single source of
+   truth for how things work**
+4. `docs/plan.md` — the done-when criteria for each task
+5. `docs/decision-log.md` — why each decision was made, and what was rejected
 
 Nothing in `src/`, `app/`, or the schema is platform-specific. Only the setup is.
 
@@ -113,7 +115,7 @@ Verify the toolchain any time with:
 
 ```powershell
 npx expo-doctor      # should report all checks passing
-npm test             # 75 tests
+npm test             # 249 tests
 npx tsc --noEmit     # must be clean
 ```
 
@@ -186,19 +188,32 @@ but it costs nothing.
 
 ## 9. Where the project stands
 
-**Say *"continue with the plan"*.** Work is tracked by task ID in `docs/plan.md` →
-*Execution tracks*, and `CLAUDE.md` §3 carries the tick boxes. The **C** tasks (core domain,
-schema, repositories, files, export) were finished on the Mac because they need no device; start
-at the first unticked **S** task.
+**Say *"continue with the plan"*.** Tick boxes live in **`docs/status.md`** and nowhere else —
+finish the first unticked task, commit, then tick it there.
 
-`S2` and `S6`–`S8` need a real device. `S1`, `S3`, `S4` and `S5` do not.
+`docs/status.md` is authoritative. At the time this was written the first unticked task was
+**S2** — resource UI: pick a PDF, pick an image, add a link, and the reusable `OpenResource`
+control. The item detail screen already has the placeholder where it lands.
 
-See `docs/plan.md` for the authoritative status. At handoff:
+Remaining: `S2` and `S6`–`S8` need a real device. `S3`, `S4` and `S5` do not.
 
-- **M0–M2 complete**, verified on a device: trips can be created, edited, deleted, and Home
-  buckets them into upcoming and past
-- **75 tests passing**, typecheck clean
+At handoff:
+
+- **M0–M2 complete**, verified on a device: trips created, edited, deleted; Home buckets them
+  into upcoming and past
+- **C1–C5 complete** — timeline derivation, trip items, resources and file storage, the tab
+  queries, and the backup format. All pure or SQL, all covered by tests
+- **S1 complete** — item create/edit form and item detail screen, not yet seen on a device
+- **249 tests passing**, typecheck clean
 - Database migrates to `user_version = 1` on first launch
+
+**The core is done, so S work is wiring known-good tested functions to screens.** Read the
+function's tests before designing a screen around it — they state the intended behaviour more
+precisely than the docs do.
+
+**Nothing from S1 has run on a device yet.** The form, the date/time/zone pickers and the item
+detail screen typecheck and the domain beneath them is tested, but no screen has been rendered
+since M2. Expect to fix layout and picker behaviour on first run.
 
 **Three findings already paid for — do not rediscover them:**
 
@@ -208,6 +223,10 @@ See `docs/plan.md` for the authoritative status. At handoff:
    without it every live query silently shows stale data — no error, no warning
 3. `Intl.supportedValuesOf('timeZone')` does **not exist** on Hermes, hence the curated list in
    `src/domain/timezones.ts`
+4. `File.copy()` **returns a promise** in expo-file-system 57.0.6 and must be awaited, or a
+   resource row can be written before its file lands
+5. A form bound to a Zod schema with `.default()` must hold `z.input`, not `z.output` — see
+   `ItemForm`. `tripItemInputSchema(tz)` also returns a **new object per call**, so memoize it
 
 ---
 
