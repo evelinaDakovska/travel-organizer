@@ -69,16 +69,32 @@ ORDER BY CASE priority WHEN 'must' THEN 0 WHEN 'want' THEN 1 ELSE 2 END, title
 -- Bookings
 WHERE trip_id = ? AND status = 'confirmed' AND kind = ?
 
--- Timeline
-WHERE trip_id = ? AND start_utc IS NOT NULL AND status != 'cancelled'
-ORDER BY start_utc
-
--- Next (drives the Now card; note: NOT scoped to the trip's date range)
+-- Timeline and Next are NOT queries — see below
 WHERE trip_id = ? AND status != 'cancelled'
-  AND start_utc >= ?                      -- now
-  AND (kind != 'task' OR completed_at IS NULL)
-ORDER BY start_utc LIMIT 2
+ORDER BY start_utc
 ```
+
+### Timeline and Now are derived in TypeScript
+
+Timeline and the Now card are the exception to "tabs are queries". `src/domain/timeline.ts` takes
+a trip's items and derives both. SQL only loads and orders the rows.
+
+A multi-day item produces **two** timeline entries — start and end — so a hotel check-out or an
+overnight train's arrival lands on the day it actually happens. A single row becoming two ordered
+entries is not something the query should try to express, and a trip holds tens of items, not
+thousands, so deriving in memory costs nothing.
+
+One consequence: **the Now card considers check-out entries too**, not just `start_utc`. At 08:00
+on your last morning, "Check out 11:00" is genuinely the next thing you have to do, and the
+`start_utc >= now` query alone would never surface it.
+
+| Rule | Where |
+|---|---|
+| Group by local day, order by instant | `buildTimeline` |
+| Multi-day splits into two entries | `timelineEntries` |
+| Date-only sorts above a real `00:00` | `compareEntries` |
+| Cancelled excluded; completed tasks excluded from Now only | `timelineEntries` / `nextEntries` |
+| Not scoped to the trip's dates — a check-in the day before counts | `nextEntries` |
 
 ### Status semantics
 

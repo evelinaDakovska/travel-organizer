@@ -3,9 +3,9 @@
 **The** status board. `CLAUDE.md` and `plan.md` link here rather than repeat it, so there is one
 place to update and nothing can drift.
 
-Verified against the repo on 2026-09-11: **75 tests passing, typecheck clean.**
+Verified against the repo on 2026-09-11: **101 tests passing, typecheck clean.**
 
-> **Next task: C1** — `domain/timeline.ts`
+> **Next task: C2** — TripItem schema, row parser and repository
 
 ---
 
@@ -37,7 +37,7 @@ this runs under `npm test`. **Ordered by cost of being wrong, not by feature ord
 
 | | Task | Milestone | ✓ |
 |---|---|---|---|
-| **C1** | `domain/timeline.ts` — day grouping, derived check-in/check-out, next-item selection | M4 | ⬜ |
+| **C1** | `domain/timeline.ts` — day grouping, derived check-in/check-out, next-item selection | M4 | ✅ |
 | **C2** | TripItem Zod schema, row parser, and the trip items repository | M3 | ⬜ |
 | **C3** | Resources repository and `files/storage.ts` — import, paths, GC sweep | M3 | ⬜ |
 | **C4** | Tab queries for Bookings, Places and Search, plus the notes repository | M5 | ⬜ |
@@ -46,8 +46,8 @@ this runs under `npm test`. **Ordered by cost of being wrong, not by feature ord
 Done-when criteria for each are in `docs/plan.md` → *Execution tracks*.
 
 **Already landed ahead of C2:** `src/domain/tripItem.ts` holds the structural enums — kinds,
-statuses, priorities and the per-kind `SUBKINDS` taxonomy — with 11 tests. C2 adds the schema,
-row parser and repository on top.
+statuses, priorities, the per-kind `SUBKINDS` taxonomy — and the `TripItem` type, which C1 needed
+to derive against. C2 adds the Zod schema, row parser and repository on top.
 
 ---
 

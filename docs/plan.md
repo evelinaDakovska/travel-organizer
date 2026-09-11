@@ -31,7 +31,7 @@ and building at once.
 | ID | Task | Milestone | Done when |
 |---|---|---|---|
 | **C1** | `domain/timeline.ts` — day grouping, derived check-in/check-out, next-item selection | M4 | Tests cover: 23:30 keeps its local day · date-only sorts to top of day · multi-day derives two entries · next excludes cancelled and completed tasks · includes items dated **before** the trip · nothing upcoming → no Now |
-| **C2** | TripItem Zod schema, row parser, `repositories/tripItems.ts` | M3 | `start_utc` derived on write and never by hand; schema + SQL tests green |
+| **C2** | TripItem Zod schema, row parser, `repositories/tripItems.ts` | M3 | `start_utc` derived on write and never by hand; schema rejects an end with no start (C1 drops such a row from the timeline); schema + SQL tests green |
 | **C3** | `repositories/resources.ts` + `files/storage.ts` | M3 | Relative↔absolute path handling and the GC sweep are unit tested; the `contentUri` open path is written (device-verified later in S2) |
 | **C4** | Tab queries (Bookings / Places / Search) + `repositories/notes.ts` | M5 | Queries tested via `better-sqlite3`, including that Places is `status='idea'` and Bookings is `status='confirmed'` |
 | **C5** | Export/import format + serialiser | M6 | Round-trip test in node: all five tables plus a file manifest, nothing lost. **Resolves open question 5** |
@@ -198,12 +198,12 @@ removes the file on the next GC sweep.
 
 > **Core: C1.** **Surface: S3.**
 
-1. `src/domain/timeline.ts` — group by `substr(start_local,1,10)`, order by `start_utc`
-2. Multi-day items derive **check-in / check-out** entries
-3. Date-only items sort to the top of their day
+1. ✅ `src/domain/timeline.ts` — group by local day, order by instant
+2. ✅ Multi-day items derive **check-in / check-out** entries
+3. ✅ Date-only items sort to the top of their day
 4. Timeline screen with day headers
-5. Next-item derivation — excludes `cancelled` and completed tasks; **includes items dated before
-   the trip starts**
+5. ✅ Next-item derivation — excludes `cancelled` and completed tasks; **includes items dated
+   before the trip starts**, and surfaces a check-out
 6. Overview screen: TODAY · NEXT (with countdown) · AFTER THAT · `[Open tickets]`
 7. Empty states: nothing scheduled today; nothing upcoming at all → **no Now card**
 8. Cold-start straight into the active trip when exactly one is in progress

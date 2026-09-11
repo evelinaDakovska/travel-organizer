@@ -1,7 +1,9 @@
 /**
- * Structural types for TripItems. The schema, parsing and repository land in M3;
- * these are the enums the whole model turns on.
+ * Structural types for TripItems. The Zod schema, row parser and repository land in C2;
+ * these are the enums and the shape the whole model turns on.
  */
+
+import type { LocalMoment } from './time';
 
 /** What sort of thing it is. Drives behaviour and which form fields appear. */
 export const TRIP_ITEM_KINDS = [
@@ -51,3 +53,32 @@ export function isValidSubkind(kind: TripItemKind, subkind: string | null): bool
 export function subkindLabel(subkind: string): string {
   return subkind.charAt(0).toUpperCase() + subkind.slice(1);
 }
+
+/** The domain shape of a trip_items row. Flat `*_local` / `*_tz` columns become moments on parse. */
+export type TripItem = {
+  id: string;
+  tripId: string;
+  kind: TripItemKind;
+  subkind: string | null;
+  status: TripItemStatus;
+  priority: Priority | null;
+  title: string;
+  /** Zone already resolved against the trip default, so nothing downstream repeats that fallback. */
+  start: LocalMoment | null;
+  end: LocalMoment | null;
+  /** Tasks only — for anything else "done" is derivable from the end instant. */
+  completedAt: string | null;
+  locationName: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  confirmationCode: string | null;
+  notes: string | null;
+  details: Record<string, unknown> | null;
+  /** Minor units, never a float. */
+  priceAmount: number | null;
+  priceCurrency: string | null;
+  isPaid: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
