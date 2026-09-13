@@ -152,6 +152,18 @@ New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
   -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
 ```
 
+**Neither of those is enough — keep the repo at a short path, e.g. `C:\dev\travel-organizer`.**
+Found on the first Windows build: from `C:\Users\<you>\Desktop\repos\travel-organizer` the build
+failed in `buildCMakeDebug` with `ninja: error: Stat(...RNGestureHandlerDetectorShadowNode.cpp.o):
+Filename longer than 260 characters`. CMake mirrors the **absolute** source path inside
+`android/app/.cxx/...`, so the repo path is counted twice, and the NDK's ninja enforces 260
+characters regardless of `LongPathsEnabled`. Moving the repo to `C:\dev` fixed it with no other
+change.
+
+**npm 11 blocks install scripts by default.** `better-sqlite3` needs its install script for the
+node SQL tests; `package.json` carries an `allowScripts` entry for it, so a fresh `npm install`
+just works. If it is ever bumped, re-run `npm install-scripts approve better-sqlite3`.
+
 **Gradle memory.** If the build dies with an OOM, raise the heap in `android/gradle.properties`:
 
 ```properties
