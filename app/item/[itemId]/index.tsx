@@ -12,7 +12,10 @@ import {
   transportDetails,
   type TripItem,
 } from '../../../src/domain/tripItem';
+import { OpenResource } from '../../../src/features/resources/OpenResource';
+import { ResourceList } from '../../../src/features/resources/ResourceList';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
+import { listResources, RESOURCE_TABLES } from '../../../src/repositories/resources';
 import {
   getTripItem,
   setTaskCompleted,
@@ -32,6 +35,12 @@ export default function ItemDetail() {
   const { data: item, loading } = useLiveQuery(
     useCallback((database) => getTripItem(database, itemId), [itemId]),
     TRIP_ITEM_TABLES,
+    [itemId],
+  );
+
+  const { data: resources } = useLiveQuery(
+    useCallback((database) => listResources(database, { scope: 'item', id: itemId }), [itemId]),
+    RESOURCE_TABLES,
     [itemId],
   );
 
@@ -79,6 +88,8 @@ export default function ItemDetail() {
         </View>
 
         {route ? <Text style={[type.title, { color: c.text }]}>{route}</Text> : null}
+
+        <OpenResource resources={resources ?? []} />
 
         {item.start ? (
           <Block label="WHEN">
@@ -145,12 +156,12 @@ export default function ItemDetail() {
           />
         ) : null}
 
-        <View
-          style={[styles.placeholder, { backgroundColor: c.surfaceSunken, borderColor: c.border }]}>
-          <Text style={[type.body, { color: c.textMuted }]}>
-            Tickets, confirmations and links attach here next.
-          </Text>
-        </View>
+        <ResourceList
+          owner={{ scope: 'item', id: item.id }}
+          resources={resources ?? []}
+          title="TICKETS & LINKS"
+          emptyText="Attach the boarding pass, the booking confirmation, or a link to manage it."
+        />
       </ScrollView>
     </Screen>
   );
@@ -201,7 +212,7 @@ function Detail({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.xl, gap: spacing.xl },
+  content: { padding: spacing.xl, gap: spacing.xl, paddingBottom: spacing.xxxl },
   badges: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
   badge: {
     borderWidth: 1,
@@ -212,10 +223,5 @@ const styles = StyleSheet.create({
   block: { gap: spacing.xs },
   detail: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.lg },
   notes: { lineHeight: 22 },
-  placeholder: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-  },
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

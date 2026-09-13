@@ -43,7 +43,7 @@ After C5, the core is complete and this machine's work is finished.
 | ID | Task | Milestone | Device? |
 |---|---|---|---|
 | **S1** | Item create/edit form and item detail screen | M3 | ✅ Done |
-| **S2** | Resource UI: pick PDF, pick image, add link, and the reusable `OpenResource` control | M3 | **yes** — verify a real PDF opens offline |
+| **S2** | Resource UI: pick PDF, pick image, add link, and the reusable `OpenResource` control | M3 | ✅ Done — PDF opened offline on the emulator |
 | **S3** | Timeline screen and the Overview / Now card | M4 | no |
 | **S4** | Bookings, Places and Notes tabs, and search UI | M5 | no |
 | **S5** | Export / import screen | M6 | no |
@@ -179,15 +179,18 @@ The largest milestone and the one carrying the most risk. Files are here, not la
 4. ✅ Item detail screen
 5. ✅ `src/files/storage.ts` — import-and-copy, relative↔absolute paths, **GC sweep on app start**
 6. ✅ `src/repositories/resources.ts` and `src/domain/resource.ts`
-7. Add a resource: pick PDF · pick image/screenshot · paste link
-8. **`OpenResource` component** — one file opens directly; several open a bottom sheet.
-   Reused on Overview, timeline rows and item detail. The most important control in the app
-9. Missing-file handling: render unavailable, never crash
-10. Delete confirmation naming the blast radius ("removes 6 items and 11 saved files")
-11. Trip-level resources (`resources.trip_id`)
+7. ✅ Add a resource: pick a file (`expo-document-picker`) · pick a photo (`expo-image-picker`,
+   the Android photo picker) · paste a link, normalised to `https://` and refused unless it is a
+   scheme we open
+8. ✅ **`OpenResource` component** — one attachment opens directly; several open a bottom sheet.
+   On item detail now; the Now card and timeline rows pick it up in S3
+9. ✅ Missing-file handling: the row says *File missing from this phone*, and tapping it explains
+   instead of crashing
+10. ✅ Delete confirmation naming the blast radius — for an item, the number of saved files
+11. ✅ Trip-level resources: a *Trip documents* section on the Overview (open question 3)
 
 **Done when:** an item with a PDF can be created, the PDF opens offline, and deleting the item
-removes the file on the next GC sweep.
+removes the file on the next GC sweep. **✅ Verified on the emulator 2026-09-13.**
 
 ---
 

@@ -5,6 +5,8 @@
 
 import { z } from 'zod';
 
+import { formatFileSize } from './format';
+
 export const RESOURCE_KINDS = ['file', 'link'] as const;
 export type ResourceKind = (typeof RESOURCE_KINDS)[number];
 
@@ -188,4 +190,149 @@ function ownerOf(row: ResourceRow): ResourceOwner {
   return row.trip_item_id !== null
     ? { scope: 'item', id: row.trip_item_id }
     : { scope: 'trip', id: row.trip_id ?? '' };
+}
+
+/** Route params arrive as strings from anywhere, so the owner is rebuilt, never trusted. */
+export function parseOwnerParams(scope: unknown, id: unknown): ResourceOwner | null {
+  if (scope !== 'trip' && scope !== 'item') return null;
+  if (typeof id !== 'string' || id.trim() === '') return null;
+  return { scope, id };
+}
+
+/** What a picked file is called until someone renames it. */
+export function defaultFileLabel(fileName: string | null | undefined, fallback: string): string {
+  const base = (fileName ?? '')
+    .replace(/\.[A-Za-z0-9]{1,8}$/, '')
+    .replace(/_+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  // The photo picker reports media-store ids ('37.png'), which mean nothing to a person.
+  return (/^\d*$/.test(base) ? fallback : base).slice(0, 120);
+}
+
+const HAS_SCHEME = /^[a-z][a-z0-9+.-]*:/i;
+
+/** People paste 'booking.com/abc'; Android needs a scheme before it will open anything. */
+export function normaliseUrl(value: string): string {
+  const trimmed = value.trim();
+  if (HAS_SCHEME.test(trimmed) || /\s/.test(trimmed)) return trimmed;
+  return /^[^/.]+(\.[^/.]+)+/.test(trimmed) ? `https://${trimmed}` : trimmed;
+}
+
+/** 'booking.com' for 'https://www.booking.com/x'; null for anything that is not http(s). */
+export function linkHost(url: string): string | null {
+  const match = /^https?:\/\/(?:[^@/?#]*@)?([^/:?#]+)/i.exec(url.trim());
+  return match ? match[1].toLowerCase().replace(/^www\./, '') : null;
+}
+
+export function defaultLinkLabel(url: string): string {
+  const normalised = normaliseUrl(url);
+  const scheme = normalised.slice(0, normalised.indexOf(':') + 1).toLowerCase();
+
+  if (scheme === 'geo:') return 'Location';
+  if (scheme === 'mailto:') return normalised.slice(7).split('?')[0].slice(0, 120) || 'Email';
+  if (scheme === 'tel:') return normalised.slice(4) || 'Phone';
+  return linkHost(normalised) ?? 'Link';
+}
+
+/** Maps and Wallet links get their own badge; everything else is a website. */
+export function guessLinkSubtype(url: string): ResourceSubtype {
+  const normalised = normaliseUrl(url);
+  if (/^geo:/i.test(normalised)) return 'maps';
+
+  const host = linkHost(normalised);
+  if (host === null) return 'website';
+  if (host === 'pay.google.com' || host === 'wallet.google.com') return 'wallet';
+  if (host === 'maps.app.goo.gl' || host.startsWith('maps.google.')) return 'maps';
+  if (/^google\.[a-z.]+$/.test(host) && /^https?:\/\/[^/]+\/maps([/?#]|$)/i.test(normalised)) {
+    return 'maps';
+  }
+  return 'website';
+}
+
+export const linkFormSchema = z.object({
+  url: z
+    .string()
+    .trim()
+    .min(1, 'Paste a link')
+    .transform(normaliseUrl)
+    .refine(isSafeExternalUrl, 'That is not a link we can open'),
+  label: z.string().trim().max(120).optional(),
+});
+
+export type LinkFormInput = z.input<typeof linkFormSchema>;
+export type LinkFormOutput = z.output<typeof linkFormSchema>;
+
+export function linkResourceInput(values: LinkFormOutput): ResourceInput {
+  return {
+    kind: 'link',
+    url: values.url,
+    label: values.label || defaultLinkLabel(values.url),
+    subtype: guessLinkSubtype(values.url),
+  };
+}
+
+export const resourceEditSchema = z.object({ label, subtype: z.enum(RESOURCE_SUBTYPES) });
+export type ResourceEdit = z.infer<typeof resourceEditSchema>;
+
+const SUBTYPE_LABELS: Record<ResourceSubtype, string> = {
+  generic: 'Document',
+  ticket: 'Ticket',
+  confirmation: 'Confirmation',
+  wallet: 'Wallet pass',
+  maps: 'Map',
+  website: 'Website',
+};
+
+export function subtypeLabel(subtype: ResourceSubtype): string {
+  return SUBTYPE_LABELS[subtype] ?? 'Document';
+}
+
+/** A file is never a map or a website, so the edit screen does not offer it. */
+export function subtypesFor(kind: ResourceKind): readonly ResourceSubtype[] {
+  return kind === 'file'
+    ? ['generic', 'ticket', 'confirmation']
+    : ['website', 'maps', 'wallet', 'ticket', 'confirmation'];
+}
+
+export type ResourceBadge = 'PDF' | 'IMG' | 'FILE' | 'LINK' | 'MAP' | 'PASS';
+
+export function resourceBadge(resource: Resource): ResourceBadge {
+  if (resource.kind === 'link') {
+    if (resource.subtype === 'maps') return 'MAP';
+    if (resource.subtype === 'wallet') return 'PASS';
+    return 'LINK';
+  }
+
+  const mime = (resource.mimeType ?? '').toLowerCase();
+  if (mime === 'application/pdf' || resource.storedPath.endsWith('.pdf')) return 'PDF';
+  if (mime.startsWith('image/') || /\.(jpe?g|png|webp|heic)$/.test(resource.storedPath)) return 'IMG';
+  return 'FILE';
+}
+
+const FILE_NOUNS: Partial<Record<ResourceBadge, string>> = { PDF: 'PDF', IMG: 'Image', FILE: 'File' };
+
+/** 'PDF · 664 B' · 'Ticket · 2.4 MB' · 'Website · booking.com' */
+export function resourceMeta(resource: Resource): string {
+  if (resource.kind === 'link') {
+    return [subtypeLabel(resource.subtype), linkHost(resource.url)].filter(Boolean).join(' · ');
+  }
+
+  const noun =
+    resource.subtype === 'generic'
+      ? (FILE_NOUNS[resourceBadge(resource)] ?? 'File')
+      : subtypeLabel(resource.subtype);
+  return resource.sizeBytes === null ? noun : `${noun} · ${formatFileSize(resource.sizeBytes)}`;
+}
+
+const OPEN_LABEL_MAX = 28;
+
+/** 'Open Boarding pass' for one attachment, 'Open attachments (3)' for several. */
+export function openLabel(resources: readonly Resource[]): string {
+  if (resources.length !== 1) return `Open attachments (${resources.length})`;
+
+  const { label: name } = resources[0];
+  return name.length > OPEN_LABEL_MAX
+    ? `Open ${name.slice(0, OPEN_LABEL_MAX - 1).trimEnd()}…`
+    : `Open ${name}`;
 }

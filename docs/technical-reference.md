@@ -494,8 +494,15 @@ So the modern API covers the whole file layer with no legacy import anywhere:
 | list (for GC) | `directory.list()` |
 | share to other apps | `file.contentUri` |
 
-**Also found:** `File.pickFileAsync()` is a static on the modern API, so `expo-document-picker`
-may be redundant. Not switched in M1 — revisit in M3 when the real import flow is built.
+**`File.pickFileAsync()` is not a replacement for `expo-document-picker` — verified on device in
+S2.** It picks and copies fine, but on Android its `name` is the SAF document id (`document:35`),
+so every attachment was labelled with it. `DocumentPicker.getDocumentAsync` returns the real
+display name. It is called with `copyToCacheDirectory: false`: copying straight from the
+`content://` URI into `media/` works, and skips a second copy through the reclaimable cache.
+
+Opening via `file.contentUri` was verified on the emulator (Android 17) with **airplane mode on**:
+the Drive PDF viewer renders the stored copy. Its title bar shows the stored name
+(`<uuid>.pdf`), a cosmetic cost of naming files by id.
 
 ### Missing-file handling
 

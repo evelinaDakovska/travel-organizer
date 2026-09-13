@@ -72,3 +72,11 @@ export function formatMoment(local: string, precision: 'date' | 'time'): string 
   const day = formatDayHeading(local.slice(0, 10));
   return precision === 'time' ? `${day} · ${local.slice(11, 16)}` : day;
 }
+
+/** '664 B' · '240 KB' · '2.4 MB' · '18 MB' */
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  const megabytes = bytes / (1024 * 1024);
+  return `${megabytes < 10 ? megabytes.toFixed(1) : Math.round(megabytes)} MB`;
+}

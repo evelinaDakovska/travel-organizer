@@ -96,6 +96,10 @@ export const SELECT_RESOURCES_FOR_TRIP = `
 SELECT * FROM resources WHERE trip_id = $id ORDER BY sort_order, created_at
 `;
 
+export const SELECT_RESOURCE = `
+SELECT * FROM resources WHERE id = $id
+`;
+
 export const INSERT_RESOURCE = `
 INSERT INTO resources
   (id, trip_id, trip_item_id, kind, subtype, label,

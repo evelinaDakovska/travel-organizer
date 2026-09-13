@@ -4,7 +4,9 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import { formatDateRange, formatDuration } from '../../../src/domain/format';
 import { isTripActive, tripDurationDays } from '../../../src/domain/trip';
+import { ResourceList } from '../../../src/features/resources/ResourceList';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
+import { listResources, RESOURCE_TABLES } from '../../../src/repositories/resources';
 import { listTripItems, TRIP_ITEM_TABLES } from '../../../src/repositories/tripItems';
 import { getTrip, TRIP_TABLES } from '../../../src/repositories/trips';
 import { Button } from '../../../src/ui/components/Button';
@@ -27,6 +29,12 @@ export default function TripOverview() {
   const { data: items } = useLiveQuery(
     useCallback((db) => listTripItems(db, tripId), [tripId]),
     TRIP_ITEM_TABLES,
+    [tripId],
+  );
+
+  const { data: documents } = useLiveQuery(
+    useCallback((db) => listResources(db, { scope: 'trip', id: tripId }), [tripId]),
+    RESOURCE_TABLES,
     [tripId],
   );
 
@@ -134,10 +142,17 @@ export default function TripOverview() {
           />
         </View>
 
+        <ResourceList
+          owner={{ scope: 'trip', id: trip.id }}
+          resources={documents ?? []}
+          title="TRIP DOCUMENTS"
+          emptyText="Insurance, passport scans, visas — anything that belongs to the whole trip."
+        />
+
         <View
           style={[styles.placeholder, { backgroundColor: c.surfaceSunken, borderColor: c.border }]}>
           <Text style={[type.body, { color: c.textMuted }]}>
-            The timeline, tabs and documents arrive in the next milestones.
+            The timeline and tabs arrive in the next milestones.
           </Text>
         </View>
       </ScrollView>

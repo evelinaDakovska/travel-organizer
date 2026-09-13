@@ -3,10 +3,10 @@
 **The** status board. `CLAUDE.md` and `plan.md` link here rather than repeat it, so there is one
 place to update and nothing can drift.
 
-Verified against the repo on 2026-09-11: **249 tests passing, typecheck clean.** Core track reviewed and the findings fixed.
+Verified against the repo on 2026-09-13, on Windows: **268 tests passing, typecheck clean.** S2 verified on the Android 17 emulator.
 
-> **Next task: S2** — resource UI. Needs a device for the last step, so it may belong on
-> the Windows machine — see [`docs/windows-handoff.md`](windows-handoff.md).
+> **Next task: S3** — timeline screen and the Overview / Now card. No device needed, but open
+> question 1 (how a multi-day stay looks) should be answered first.
 
 ---
 
@@ -19,7 +19,7 @@ Feature map. `docs/plan.md` holds the detail for each.
 | **M0** | Architecture decided, private repo, docs | ✅ |
 | **M1** | Expo app, dev build, database + migrations, time model, both spikes resolved | ✅ |
 | **M2** | Create, edit and delete trips; Home with upcoming and past | ✅ |
-| **M3** | TripItems, resources, and local file import with offline access | ⬜ |
+| **M3** | TripItems, resources, and local file import with offline access | ✅ |
 | **M4** | Timeline grouped by day, and the Overview / Now card | ⬜ |
 | **M5** | Bookings, Places and Notes tabs, and search within a trip | ⬜ |
 | **M6** | Export and import everything as a zip — the only guard against data loss | ⬜ |
@@ -27,7 +27,8 @@ Feature map. `docs/plan.md` holds the detail for each.
 | **M8** | Receive PDFs, images and links from the Android share sheet | ⬜ |
 | **M9** | Visual pass, offline pass, edge cases, release build | ⬜ |
 
-M0–M2 were verified on a device, not just by tests.
+M0–M3 were verified on a device, not just by tests. M3 on the emulator: a PDF attached, opened
+with airplane mode on, and its file was swept after the item was deleted.
 
 ---
 
@@ -60,13 +61,17 @@ Screens, forms, styling, and everything needing a real device. See `docs/windows
 | | Task | Milestone | Device | ✓ |
 |---|---|---|---|---|
 | **S1** | Item create / edit form and item detail screen | M3 | no | ✅ |
-| **S2** | Resource UI: pick PDF, pick image, add link, and the `OpenResource` control | M3 | **yes** | ⬜ |
+| **S2** | Resource UI: pick PDF, pick image, add link, and the `OpenResource` control | M3 | **yes** | ✅ |
 | **S3** | Timeline screen and the Overview / Now card | M4 | no | ⬜ |
 | **S4** | Bookings, Places and Notes tabs, and search UI | M5 | no | ⬜ |
 | **S5** | Export / import screen | M6 | no | ⬜ |
 | **S6** | Local notifications | M7 | **yes** | ⬜ |
 | **S7** | Share-to-App via the Android share sheet | M8 | **yes** | ⬜ |
 | **S8** | Visual pass, offline pass, edge cases, release build | M9 | **yes** | ⬜ |
+
+**Noted during S2, for S8:** the PDF viewer's title bar shows the stored name (`<uuid>.pdf`), a
+cosmetic cost of naming files by id. And Android 17's photo picker needs a tap on *Done* even for
+a single photo — the system's behaviour, not ours.
 
 ---
 
@@ -88,6 +93,6 @@ compaction; this file does.
 |---|---|---|
 | 1 | Multi-day stays render as derived check-in/check-out — confirm the visual treatment | S3 |
 | 2 | Per-item travellers (only 2 of 3 going to one thing) — needed, or notes? **Still open: S1 shipped without it.** Adding it is a new column, so a migration | later |
-| 3 | Trip-level resources: their own screen, or a section on Overview? | S2 |
+| ~~3~~ | ~~Trip-level resources: their own screen, or a section on Overview?~~ **Resolved in S2: a "Trip documents" section on the Overview, built from the same `ResourceList` as item detail. Can move to its own screen later with no schema change.** | — |
 | 4 | Notification default lead time, and whether it is per-item configurable | S6 |
 | ~~5~~ | ~~Export format: one zip per trip, or one for everything?~~ **Resolved in C5: one archive for everything; `filterTablesForTrip` keeps a per-trip export available with no format change.** | — |

@@ -1,4 +1,12 @@
-import { formatDateRange, formatDayHeading, formatDuration, formatMoment, formatMoney, formatRelative } from './format';
+import {
+  formatDateRange,
+  formatDayHeading,
+  formatDuration,
+  formatFileSize,
+  formatMoment,
+  formatMoney,
+  formatRelative,
+} from './format';
 
 describe('formatDateRange', () => {
   it('collapses a same-month range', () => {
@@ -66,5 +74,14 @@ describe('formatMoment', () => {
 
   it('keeps a real midnight visible rather than hiding it', () => {
     expect(formatMoment('2026-09-19T00:00', 'time')).toBe('Saturday, 19 September · 00:00');
+  });
+});
+
+describe('formatFileSize', () => {
+  it('uses the smallest unit that reads naturally', () => {
+    expect(formatFileSize(664)).toBe('664 B');
+    expect(formatFileSize(240_000)).toBe('234 KB');
+    expect(formatFileSize(2_500_000)).toBe('2.4 MB');
+    expect(formatFileSize(18_000_000)).toBe('17 MB');
   });
 });

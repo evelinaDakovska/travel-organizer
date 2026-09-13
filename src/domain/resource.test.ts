@@ -1,18 +1,58 @@
 import {
+  defaultFileLabel,
+  defaultLinkLabel,
   extensionFor,
+  guessLinkSubtype,
   isSafeExternalUrl,
   isStoredPath,
+  linkFormSchema,
+  linkResourceInput,
   missingFiles,
+  normaliseUrl,
+  openLabel,
   orphanedStoredPaths,
+  parseOwnerParams,
   parseResourceRow,
+  resourceBadge,
   resourceInputSchema,
+  resourceMeta,
   storedPathFor,
+  subtypesFor,
   toAbsoluteUri,
   toStoredPath,
+  type FileResource,
+  type LinkResource,
   type ResourceRow,
 } from './resource';
 
 const DOCUMENTS = 'file:///data/user/0/com.evelinadakovska.travelorganizer/files';
+
+const file = (over: Partial<FileResource> = {}): FileResource => ({
+  id: 'r1',
+  owner: { scope: 'item', id: 'i1' },
+  subtype: 'generic',
+  label: 'Boarding pass',
+  sortOrder: 0,
+  createdAt: '2026-09-13T00:00:00.000Z',
+  kind: 'file',
+  storedPath: 'media/r1.pdf',
+  fileName: 'boarding.pdf',
+  mimeType: 'application/pdf',
+  sizeBytes: 664,
+  ...over,
+});
+
+const link = (url: string, over: Partial<LinkResource> = {}): LinkResource => ({
+  id: 'r2',
+  owner: { scope: 'trip', id: 't1' },
+  subtype: 'website',
+  label: 'Booking',
+  sortOrder: 1,
+  createdAt: '2026-09-13T00:00:00.000Z',
+  kind: 'link',
+  url,
+  ...over,
+});
 
 describe('stored paths', () => {
   it('accepts a media path and rejects anything that escapes it', () => {
@@ -203,12 +243,140 @@ describe('parseResourceRow', () => {
   });
 
   it('narrows a link row to its url', () => {
-    const link = parseResourceRow({
+    const parsed = parseResourceRow({
       ...row,
       kind: 'link',
       stored_path: null,
       url: 'https://example.com',
     });
-    expect(link.kind === 'link' && link.url).toBe('https://example.com');
+    expect(parsed.kind === 'link' && parsed.url).toBe('https://example.com');
+  });
+});
+
+describe('owner route params', () => {
+  it('rebuilds an owner from params it can trust', () => {
+    expect(parseOwnerParams('item', 'i1')).toEqual({ scope: 'item', id: 'i1' });
+    expect(parseOwnerParams('trip', 't1')).toEqual({ scope: 'trip', id: 't1' });
+  });
+
+  it('refuses anything else, since a route param can come from any link', () => {
+    expect(parseOwnerParams('place', 'x')).toBeNull();
+    expect(parseOwnerParams('item', '')).toBeNull();
+    expect(parseOwnerParams(undefined, 'i1')).toBeNull();
+    expect(parseOwnerParams('item', ['a', 'b'])).toBeNull();
+  });
+});
+
+describe('labels for a new attachment', () => {
+  it('names a picked file after itself, without the extension', () => {
+    expect(defaultFileLabel('boarding-pass-SOF-BGY.pdf', 'Document')).toBe('boarding-pass-SOF-BGY');
+    expect(defaultFileLabel('Screenshot_20260913_boarding.png', 'Photo')).toBe(
+      'Screenshot 20260913 boarding',
+    );
+  });
+
+  it('falls back when Android reports no useful name', () => {
+    expect(defaultFileLabel(null, 'Photo')).toBe('Photo');
+    expect(defaultFileLabel('  .pdf', 'Document')).toBe('Document');
+    expect(defaultFileLabel('37.png', 'Photo')).toBe('Photo');
+  });
+
+  it('stays within what the schema accepts', () => {
+    expect(defaultFileLabel(`${'a'.repeat(200)}.pdf`, 'Document')).toHaveLength(120);
+  });
+});
+
+describe('pasted links', () => {
+  it('adds https to a bare address, which is how people paste them', () => {
+    expect(normaliseUrl('booking.com/mybooking?id=1')).toBe('https://booking.com/mybooking?id=1');
+    expect(normaliseUrl('  www.hotelbrera.it ')).toBe('https://www.hotelbrera.it');
+  });
+
+  it('leaves anything with a scheme for the safety check to judge', () => {
+    expect(normaliseUrl('https://example.com')).toBe('https://example.com');
+    expect(normaliseUrl('geo:45.46,9.19')).toBe('geo:45.46,9.19');
+    expect(normaliseUrl('javascript:alert(1)')).toBe('javascript:alert(1)');
+  });
+
+  it('does not turn a sentence into a link', () => {
+    expect(normaliseUrl('not a url')).toBe('not a url');
+    expect(normaliseUrl('e.g. the hotel')).toBe('e.g. the hotel');
+  });
+
+  it('normalises in the form schema, then refuses what still cannot be opened', () => {
+    const ok = linkFormSchema.safeParse({ url: 'booking.com/x', label: '' });
+    expect(ok.success && ok.data.url).toBe('https://booking.com/x');
+
+    expect(linkFormSchema.safeParse({ url: 'javascript:alert(1)' }).success).toBe(false);
+    expect(linkFormSchema.safeParse({ url: 'not a url' }).success).toBe(false);
+    expect(linkFormSchema.safeParse({ url: '   ' }).success).toBe(false);
+  });
+
+  it('names a link after its site unless told otherwise', () => {
+    expect(defaultLinkLabel('https://www.booking.com/manage')).toBe('booking.com');
+    expect(defaultLinkLabel('geo:45.46,9.19')).toBe('Location');
+    expect(defaultLinkLabel('mailto:reception@hotelbrera.it')).toBe('reception@hotelbrera.it');
+
+    expect(linkResourceInput({ url: 'https://ryanair.com/x', label: '' }).label).toBe('ryanair.com');
+    expect(linkResourceInput({ url: 'https://ryanair.com/x', label: 'Manage booking' }).label).toBe(
+      'Manage booking',
+    );
+  });
+
+  it('recognises Maps and Wallet links so they get the right badge', () => {
+    expect(guessLinkSubtype('https://maps.app.goo.gl/abc')).toBe('maps');
+    expect(guessLinkSubtype('https://www.google.com/maps/place/Duomo')).toBe('maps');
+    expect(guessLinkSubtype('https://maps.google.it/?q=Brera')).toBe('maps');
+    expect(guessLinkSubtype('geo:45.46,9.19')).toBe('maps');
+    expect(guessLinkSubtype('https://pay.google.com/gp/v/save/abc')).toBe('wallet');
+    expect(guessLinkSubtype('https://www.google.com/search?q=maps')).toBe('website');
+    expect(guessLinkSubtype('https://booking.com')).toBe('website');
+  });
+
+  it('builds an input the resource schema accepts', () => {
+    const input = linkResourceInput({ url: 'https://maps.app.goo.gl/abc', label: undefined });
+    expect(resourceInputSchema.safeParse(input).success).toBe(true);
+    expect(input.subtype).toBe('maps');
+  });
+});
+
+describe('showing an attachment', () => {
+  it('badges a file by what it is, not by the name it came with', () => {
+    expect(resourceBadge(file())).toBe('PDF');
+    expect(resourceBadge(file({ mimeType: 'image/png', storedPath: 'media/r1.png' }))).toBe('IMG');
+    expect(resourceBadge(file({ mimeType: null, storedPath: 'media/r1.jpg' }))).toBe('IMG');
+    expect(
+      resourceBadge(file({ mimeType: 'application/vnd.apple.pkpass', storedPath: 'media/r1.pkpass' })),
+    ).toBe('FILE');
+  });
+
+  it('badges a link by its subtype', () => {
+    expect(resourceBadge(link('https://booking.com'))).toBe('LINK');
+    expect(resourceBadge(link('geo:1,2', { subtype: 'maps' }))).toBe('MAP');
+    expect(resourceBadge(link('https://pay.google.com/x', { subtype: 'wallet' }))).toBe('PASS');
+  });
+
+  it('describes a file by kind and size, and a link by where it goes', () => {
+    expect(resourceMeta(file())).toBe('PDF · 664 B');
+    expect(resourceMeta(file({ subtype: 'ticket', sizeBytes: 2_500_000 }))).toBe('Ticket · 2.4 MB');
+    expect(
+      resourceMeta(file({ mimeType: 'image/png', storedPath: 'media/r1.png', sizeBytes: null })),
+    ).toBe('Image');
+    expect(resourceMeta(link('https://www.booking.com/x'))).toBe('Website · booking.com');
+    expect(resourceMeta(link('geo:1,2', { subtype: 'maps' }))).toBe('Map');
+  });
+
+  it('labels the open button for one attachment or several', () => {
+    expect(openLabel([file()])).toBe('Open Boarding pass');
+    expect(
+      openLabel([file({ label: 'Confirmation for the Hotel Brera, Milan, three nights' })]),
+    ).toBe('Open Confirmation for the Hotel…');
+    expect(openLabel([file(), link('https://booking.com')])).toBe('Open attachments (2)');
+  });
+
+  it('offers only subtypes that make sense for the kind', () => {
+    expect(subtypesFor('file')).not.toContain('maps');
+    expect(subtypesFor('file')).not.toContain('website');
+    expect(subtypesFor('link')).toContain('wallet');
   });
 });

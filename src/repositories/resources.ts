@@ -4,6 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import {
   INSERT_RESOURCE,
   SELECT_ALL_STORED_PATHS,
+  SELECT_RESOURCE,
   SELECT_RESOURCES_FOR_ITEM,
   SELECT_RESOURCES_FOR_TRIP,
   SELECT_TRIP_STORED_PATHS,
@@ -26,6 +27,11 @@ export async function listResources(
   const sql = owner.scope === 'item' ? SELECT_RESOURCES_FOR_ITEM : SELECT_RESOURCES_FOR_TRIP;
   const rows = await db.getAllAsync<ResourceRow>(sql, { $id: owner.id });
   return rows.map(parseResourceRow);
+}
+
+export async function getResource(db: SQLiteDatabase, id: string): Promise<Resource | null> {
+  const row = await db.getFirstAsync<ResourceRow>(SELECT_RESOURCE, { $id: id });
+  return row ? parseResourceRow(row) : null;
 }
 
 export async function createResource(

@@ -4,6 +4,7 @@ import { MIGRATIONS } from './migrations';
 import {
   INSERT_RESOURCE,
   SELECT_ALL_STORED_PATHS,
+  SELECT_RESOURCE,
   SELECT_RESOURCES_FOR_ITEM,
   SELECT_RESOURCES_FOR_TRIP,
   SELECT_TRIP_STORED_PATHS,
@@ -152,6 +153,19 @@ describe('UPDATE_RESOURCE_LABEL', () => {
 
     const [row] = forItem('i1');
     expect([row.label, row.stored_path]).toEqual(['Return leg', 'media/r1.pdf']);
+  });
+});
+
+describe('SELECT_RESOURCE', () => {
+  it('finds one attachment by id, and nothing once it is gone', () => {
+    const { db, add } = setup();
+    add({ id: 'r1', tripItemId: 'i1' });
+
+    const row = db.prepare(SELECT_RESOURCE).get({ id: 'r1' }) as ResourceRow;
+    expect(parseResourceRow(row)).toMatchObject({ id: 'r1', storedPath: 'media/r1.pdf' });
+
+    db.prepare(`DELETE FROM resources WHERE id = 'r1'`).run();
+    expect(db.prepare(SELECT_RESOURCE).get({ id: 'r1' })).toBeUndefined();
   });
 });
 

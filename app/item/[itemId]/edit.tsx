@@ -6,6 +6,7 @@ import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { tripItemFormValues } from '../../../src/domain/tripItem';
 import { ItemForm } from '../../../src/features/items/ItemForm';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
+import { listResources } from '../../../src/repositories/resources';
 import {
   deleteTripItem,
   getTripItem,
@@ -37,10 +38,16 @@ export default function EditItem() {
     [tripId],
   );
 
-  const confirmDelete = useCallback(() => {
+  /** Names the blast radius — these files may be the only copies. */
+  const confirmDelete = useCallback(async () => {
+    const resources = await listResources(db, { scope: 'item', id: itemId });
+    const files = resources.filter((resource) => resource.kind === 'file').length;
+
     Alert.alert(
       `Delete ${item?.title ?? 'this item'}?`,
-      'Anything attached to it goes too. This cannot be undone.',
+      files > 0
+        ? `This also removes ${files} saved file${files === 1 ? '' : 's'}. It cannot be undone.`
+        : 'This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {

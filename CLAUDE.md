@@ -81,6 +81,10 @@ survives a compacted context.
    without it every live query silently shows stale data, with no error.
 3. `Intl.supportedValuesOf('timeZone')` does **not** exist on Hermes, hence the curated list in
    `src/domain/timezones.ts`.
+4. `File.pickFileAsync()` reports the SAF document id (`document:35`) as `name` on Android. Pick
+   documents with `expo-document-picker`, which reads the real display name.
+5. On Windows the NDK's ninja fails on paths over 260 characters **regardless of
+   `LongPathsEnabled`**. Keep the repo at a short path such as `C:\dev\travel-organizer`.
 
 ## 4. Domain terminology
 
