@@ -3,12 +3,11 @@
 **The** status board. `CLAUDE.md` and `plan.md` link here rather than repeat it, so there is one
 place to update and nothing can drift.
 
-Verified against the repo on 2026-09-15, on Windows: **283 tests passing, typecheck clean.** S2 verified on the Android 17 emulator.
+Verified against the repo on 2026-09-15, on Windows: **283 tests passing, typecheck clean.** S2 and V1 verified on the Android 17 emulator.
 
-> **Next task: finish V1** — the visual foundation is built and committed, but not yet looked at
-> on the emulator (it needs the dev client rebuilt for `react-native-svg`). Check Home, trip
-> overview, item detail, the item form and the attachment sheet in light and dark mode, fix what
-> looks wrong, then tick V1 and start **S3**.
+> **Next task: S3** — trip tabs at the bottom (Now · Timeline · Places · Notes) with the add
+> button, and the Now and Timeline screens, built from `docs/design/`. Open question 1 (how a
+> multi-day stay looks) should be answered along the way.
 
 ---
 
@@ -66,7 +65,7 @@ it disagrees with the model, `docs/decision-log.md` D22 says which wins.
 |---|---|---|---|---|
 | **S1** | Item create / edit form and item detail screen | M3 | no | ✅ |
 | **S2** | Resource UI: pick PDF, pick image, add link, and the `OpenResource` control | M3 | **yes** | ✅ |
-| **V1** | Visual foundation: colour roles over palette ramps, fonts, icons, shared components, restyle of existing screens | M4 | no | built — emulator check pending |
+| **V1** | Visual foundation: colour roles over palette ramps, fonts, icons, shared components, restyle of existing screens | M4 | no | ✅ |
 | **S3** | Trip tabs (Now · Timeline · Places · Notes) with the add button; the Now and Timeline screens | M4 | no | ⬜ |
 | **S4** | Places and Notes tabs, search, and item status actions (move to timeline, cancel, restore, delete) | M5 | no | ⬜ |
 | **S5** | Export / import screen | M6 | no | ⬜ |
@@ -74,7 +73,7 @@ it disagrees with the model, `docs/decision-log.md` D22 says which wins.
 | **S7** | Share-to-App via the Android share sheet | M8 | **yes** | ⬜ |
 | **S8** | Visual pass, offline pass, edge cases, release build | M9 | **yes** | ⬜ |
 
-**V1, what is built:** colour lives in `src/ui/theme/palette.ts` (ramps, the only hex values) and
+**V1, what was built:** colour lives in `src/ui/theme/palette.ts` (ramps, the only hex values) and
 `roles.ts` (semantic roles for light and a derived dark scheme), read through `useColors()`.
 `roles.test.ts` fails if a palette change makes any text role unreadable. Caprasimo and Figtree
 load at start-up; icons are Lucide behind a name map in `Icon.tsx`. New shared components: `Card`,
@@ -82,8 +81,10 @@ load at start-up; icons are Lucide behind a name map in `Icon.tsx`. New shared c
 header, Home, trip cards, trip overview, item cards and detail, the item form, and the attachment
 list, row, sheet and edit form. Decisions in `docs/decision-log.md` D19–D22.
 
-**V1, not yet done:** nothing has been rendered. Expect to adjust spacing, font line heights and the
-dark scheme on first sight.
+**V1, how it was verified:** on the emulator in light and dark mode — Home, the trip overview with
+an item and a trip document, the whole add-item form, and item detail. Nothing needed fixing.
+The first launch after the rebuild shows a blank cream screen for a while: that is Metro bundling
+~3,600 modules and the fonts arriving over the dev server, not a hang.
 
 **Noted during S2, for S8:** the PDF viewer's title bar shows the stored name (`<uuid>.pdf`), a
 cosmetic cost of naming files by id. And Android 17's photo picker needs a tap on *Done* even for
@@ -99,7 +100,7 @@ plus Trip documents move to the bottom of Now.
 | The user says | Do this |
 |---|---|
 | *"do the next C task"* / *"do the priority work"* | First unticked **C** → finish → commit → tick here. **Stop after C5** |
-| *"continue with the plan"* | First unticked task overall — on Windows that is an **S** or **V** |
+| *"continue with the plan"* | First unticked task overall — on Windows that is an **S** |
 
 A task is not done until it is **committed and ticked here**. The conversation does not survive
 compaction; this file does.

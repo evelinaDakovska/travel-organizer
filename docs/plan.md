@@ -44,7 +44,7 @@ After C5, the core is complete and this machine's work is finished.
 |---|---|---|---|
 | **S1** | Item create/edit form and item detail screen | M3 | ✅ Done |
 | **S2** | Resource UI: pick PDF, pick image, add link, and the reusable `OpenResource` control | M3 | ✅ Done — PDF opened offline on the emulator |
-| **V1** | Visual foundation from `docs/design/`: colour roles over palette ramps, fonts, icons, shared components, restyle of existing screens | M4 | no — built, emulator check pending |
+| **V1** | Visual foundation from `docs/design/`: colour roles over palette ramps, fonts, icons, shared components, restyle of existing screens | M4 | ✅ Done — checked on the emulator in light and dark mode |
 | **S3** | Trip tabs (Now · Timeline · Places · Notes) with the add button; the Now and Timeline screens | M4 | no |
 | **S4** | Places and Notes tabs, search, and item status actions | M5 | no |
 | **S5** | Export / import screen | M6 | no |

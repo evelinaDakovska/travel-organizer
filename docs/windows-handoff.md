@@ -223,6 +223,14 @@ it printed nothing and never started Gradle — most likely waiting on a prompt 
 Don't use `CI=1` to get past that: in CI mode it ignored the running emulator, tried to launch one
 with an empty name, and quit before building.
 
+What worked on 2026-09-15, with Metro already running in another terminal: name the device, skip
+the dependency check, and leave the bundler to that Metro.
+
+```bash
+EXPO_NO_DEPENDENCY_VALIDATION=1 npx expo run:android --device Pixel_10_Pro --no-bundler
+EXPO_NO_DEPENDENCY_VALIDATION=1 npx expo start --dev-client   # the Metro, in its own terminal
+```
+
 **The core is done, so S work is wiring known-good tested functions to screens.** Read the
 function's tests before designing a screen around it — they state the intended behaviour more
 precisely than the docs do.
