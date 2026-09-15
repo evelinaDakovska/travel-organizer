@@ -593,6 +593,8 @@ unlike the gate.
 | `expo-image-picker` | Screenshots — a large share of real travel documents |
 | `react-native-svg` + `lucide-react-native` | Icons, behind the name map in `src/ui/components/Icon.tsx`. Native — adding it needed a dev-client rebuild |
 | `@expo-google-fonts/caprasimo` + `@expo-google-fonts/figtree` | The design's typefaces, bundled so they load offline (decision log D19) |
+| `fflate` | Builds and reads the backup zip in memory. Pure JS, so `domain/archive.ts` is tested in node exactly as it runs on the phone |
+| `expo-sharing` | Hands the backup zip to the Android share sheet (→ Drive). Native — adding it needed a prebuild and a dev-client rebuild |
 | `expo-intent-launcher` | Open a stored PDF in Android's viewer |
 | `expo-linking` | URLs, Maps, Wallet |
 | `expo-notifications` | Local reminders |
@@ -622,8 +624,8 @@ unlike the gate.
 ```
 app/                       expo-router routes ONLY — thin, no logic
   _layout.tsx              SQLiteProvider, theme, notification handler
-  index.tsx                Trips home — Upcoming + Past
-  settings.tsx
+  index.tsx                Trips home — Upcoming + Past, a Backup button, launch into an active trip
+  backup.tsx               export everything as one zip, and import one back
   trip/new.tsx
   trip/[tripId]/
     _layout.tsx            bottom tabs: Now · Timeline · Places · Notes (decision log D20)
@@ -761,7 +763,9 @@ the conflicting row to make room, and with `ON DELETE CASCADE` that would take t
 *after* they had been written. Deleting the trip first makes the order explicit.
 
 The whole import runs in one transaction, so a bad row aborts everything rather than leaving a
-half-restored database. A backup from a **newer** `formatVersion` is refused outright instead of
+half-restored database. It is `withTransactionAsync` on the main connection, **not**
+`withExclusiveTransactionAsync`: the exclusive form opens a second connection whose writes the
+change listener never reports, so every open screen would keep showing the pre-import data. A backup from a **newer** `formatVersion` is refused outright instead of
 being partly read, and manifest paths are validated with the same `isStoredPath` guard as the
 media directory, so a tampered archive cannot write outside it.
 
@@ -777,8 +781,21 @@ A `trip_items` id colliding across two trips aborts an entire import rather than
 With UUIDs this cannot realistically happen, but the failure is all-or-nothing by design — a
 half-restored database is worse than a refused one.
 
-### Still to build (S5)
+### The archive (built in S5)
 
-The zip itself. Verified available: `File.write()` accepts a `Uint8Array` and `bytes()` returns
-one, so a **pure-JS zip library is enough and no native module is needed** — but there is no zip
-dependency in `package.json` yet, so S5 starts by adding one.
+`src/domain/archive.ts` builds and reads the zip in memory with `fflate`, so it is tested in node:
+
+- `packBackup` writes `backup.json` (deflated) and every stored file under `media/` (stored as is —
+  PDFs and photos are already compressed). It refuses to pack a path outside `media/`.
+- `unpackBackup` returns a reason instead of throwing when the file is not a zip, has no
+  `backup.json`, holds damaged JSON, or comes from a newer format. **Only `media/<file>` entries
+  are kept**, so a crafted archive cannot write anywhere else.
+
+`src/files/backupFiles.ts` moves the bytes. Export reads every table and stored file, writes the
+zip to `Paths.cache` and hands it to the share sheet with `expo-sharing`. Import picks any file
+(providers label zips inconsistently, and unpacking explains a wrong one), shows the plan's summary
+for confirmation, then **writes files before rows**: if the rows fail, the new files are orphans the
+start-up sweep collects, never rows pointing at nothing. A stored file already on the phone is kept,
+since stored names are unique ids.
+
+`File.bytes()` is asynchronous (`bytesSync()` exists); `File.write()` takes a `Uint8Array`.

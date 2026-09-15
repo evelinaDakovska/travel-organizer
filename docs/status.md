@@ -3,12 +3,10 @@
 **The** status board. `CLAUDE.md` and `plan.md` link here rather than repeat it, so there is one
 place to update and nothing can drift.
 
-Verified against the repo on 2026-09-15, on Windows: **303 tests passing, typecheck clean.** S2, V1, S3 and S4 verified on the Android 17 emulator.
+Verified against the repo on 2026-09-15, on Windows: **317 tests passing, typecheck clean.** S2, V1, S3, S4 and S5 verified on the Android 17 emulator.
 
-> **Next task: S5** — the export / import screen. There is no zip dependency yet, so it starts by
-> adding a pure-JS one; then `readAllTables` → `buildExportDocument` → zip with `media/`, handed to
-> the share sheet, and a zip read back through `parseExportDocument` → `planImport` → `applyImport`.
-> Done when a full round-trip loses nothing.
+> **Next task: S6** — local notifications. Needs open question 4 answered (default lead time, and
+> whether it is per item) and a device to see a reminder fire.
 
 ---
 
@@ -24,13 +22,13 @@ Feature map. `docs/plan.md` holds the detail for each.
 | **M3** | TripItems, resources, and local file import with offline access | ✅ |
 | **M4** | Trip tabs, the Now screen and the Timeline | ✅ |
 | **M5** | Places and Notes tabs, search within a trip, and item status actions | ✅ |
-| **M6** | Export and import everything as a zip — the only guard against data loss | ⬜ |
+| **M6** | Export and import everything as a zip — the only guard against data loss | ✅ |
 | **M7** | Local reminders for dated items | ⬜ |
 | **M8** | Receive PDFs, images and links from the Android share sheet | ⬜ |
 | **M9** | Visual pass, offline pass, edge cases, release build | ⬜ |
 
-M0–M5 were verified on a device, not just by tests. **Do not travel with the app until M6** — without
-export there is no copy of anything outside the phone.
+M0–M6 were verified on a device, not just by tests. M6 is in, so a copy can now live off the phone —
+**export before every trip**, and travel with a release build (S8), never the dev build.
 
 ---
 
@@ -69,10 +67,25 @@ it disagrees with the model, `docs/decision-log.md` D22 says which wins.
 | **V1** | Visual foundation: colour roles over palette ramps, fonts, icons, shared components, restyle of existing screens | M4 | no | ✅ |
 | **S3** | Trip tabs (Now · Timeline · Places · Notes) with the add button; the Now and Timeline screens | M4 | no | ✅ |
 | **S4** | Places and Notes actions, search, and item status actions (move to timeline, cancel, restore, delete) | M5 | no | ✅ |
-| **S5** | Export / import screen | M6 | no | ⬜ |
+| **S5** | Export / import screen | M6 | no | ✅ |
 | **S6** | Local notifications | M7 | **yes** | ⬜ |
 | **S7** | Share-to-App via the Android share sheet | M8 | **yes** | ⬜ |
 | **S8** | Visual pass, offline pass, edge cases, release build | M9 | **yes** | ⬜ |
+
+**S5, what was built:** `app/backup.tsx`, reached from the backup icon on Home and from *Restore from
+a backup* on the empty Home. *Export everything* zips `backup.json` and `media/` with `fflate`
+(`src/domain/archive.ts`) and hands it to the share sheet (`expo-sharing`). *Import a backup* picks a
+zip, says what it will add, and on confirmation writes files first and rows second
+(`src/files/backupFiles.ts`). *Keep mine* / *Use the backup's* choose `merge` or `replace`. Android
+Auto Backup was already on (`allowBackup="true"` is Expo's default) and stays a backstop only.
+
+**S5, how it was verified:** on the emulator — export opened the share sheet and the zip held
+`backup.json` plus the PDF; the zip was copied to Downloads, the app's data wiped, and the zip
+restored from the empty Home; both trips came back and the restored trip document opened in the PDF
+viewer. **Found and fixed on the way:** the import used `withExclusiveTransactionAsync`, which writes
+through a second connection the change listener never hears — Home still said *No trips yet* until a
+relaunch. It now uses `withTransactionAsync`. And the shared `Button` kept a stale *busy*
+accessibility description after its spinner, so it now sets `accessibilityLabel` explicitly.
 
 **S4, what was built:**
 - **Item status actions** on item detail, from `statusActions` in `src/domain/status.ts`: *Move to

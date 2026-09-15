@@ -42,24 +42,27 @@ const bindRow = (row: ExportRow): Record<string, string | number | null> =>
 /**
  * Writes a planned import in one transaction: either the whole backup lands or none of it.
  * Parents go in before children so the foreign keys hold at every step.
+ *
+ * Not `withExclusiveTransactionAsync`: that opens a second connection, whose writes the change
+ * listener never hears, so every open screen kept showing the phone as it was before the import.
  */
 export async function applyImport(db: SQLiteDatabase, plan: ImportPlan): Promise<void> {
   const { write } = plan;
 
-  await db.withExclusiveTransactionAsync(async (tx) => {
+  await db.withTransactionAsync(async () => {
     if (plan.mode === 'replace') {
       for (const trip of write.trips) {
-        await tx.runAsync(DELETE_TRIP_FOR_REPLACE, { $id: trip.id });
+        await db.runAsync(DELETE_TRIP_FOR_REPLACE, { $id: trip.id });
       }
     }
 
-    for (const trip of write.trips) await tx.runAsync(insertRow('trips'), bindRow(trip));
-    for (const item of write.tripItems) await tx.runAsync(insertRow('trip_items'), bindRow(item));
-    for (const note of write.tripNotes) await tx.runAsync(insertRow('trip_notes'), bindRow(note));
+    for (const trip of write.trips) await db.runAsync(insertRow('trips'), bindRow(trip));
+    for (const item of write.tripItems) await db.runAsync(insertRow('trip_items'), bindRow(item));
+    for (const note of write.tripNotes) await db.runAsync(insertRow('trip_notes'), bindRow(note));
     for (const resource of write.resources) {
-      await tx.runAsync(insertRow('resources'), bindRow(resource));
+      await db.runAsync(insertRow('resources'), bindRow(resource));
     }
     const settingSql = plan.mode === 'replace' ? REPLACE_SETTING : MERGE_SETTING;
-    for (const setting of write.settings) await tx.runAsync(settingSql, bindRow(setting));
+    for (const setting of write.settings) await db.runAsync(settingSql, bindRow(setting));
   });
 }

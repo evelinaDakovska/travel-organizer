@@ -2,6 +2,7 @@ import {
   CalendarDays,
   Check,
   ChevronLeft,
+  DatabaseBackup,
   Ellipsis,
   FileText,
   Image,
@@ -10,6 +11,7 @@ import {
   NotebookText,
   Plus,
   Search,
+  Share2,
   Sun,
   Ticket,
   Wallet,
@@ -39,6 +41,8 @@ const ICONS = {
   link: Link,
   ticket: Ticket,
   wallet: Wallet,
+  backup: DatabaseBackup,
+  share: Share2,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

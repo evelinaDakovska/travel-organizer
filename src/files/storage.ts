@@ -7,6 +7,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import * as IntentLauncher from 'expo-intent-launcher';
 
 import {
+  isStoredPath,
   MEDIA_DIR,
   orphanedStoredPaths,
   storedPathFor,
@@ -33,6 +34,27 @@ export function absoluteUriFor(storedPath: string): string {
 
 export function storedFileExists(storedPath: string): boolean {
   return new File(absoluteUriFor(storedPath)).exists;
+}
+
+export function storedFileSize(storedPath: string): number | null {
+  const file = new File(absoluteUriFor(storedPath));
+  return file.exists ? file.size : null;
+}
+
+/** A stored file's bytes, for a backup. Null when the file has gone missing. */
+export async function readStoredFile(storedPath: string): Promise<Uint8Array | null> {
+  const file = new File(absoluteUriFor(storedPath));
+  return file.exists ? file.bytes() : null;
+}
+
+/** Writes a restored file into the media directory, and nowhere else. */
+export function writeStoredFile(storedPath: string, bytes: Uint8Array): void {
+  if (!isStoredPath(storedPath)) throw new Error(`Refusing to write ${storedPath}`);
+  ensureMediaDirectory();
+
+  const file = new File(absoluteUriFor(storedPath));
+  if (!file.exists) file.create();
+  file.write(bytes);
 }
 
 /**

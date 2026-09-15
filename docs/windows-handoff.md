@@ -247,6 +247,10 @@ precisely than the docs do.
    resource row can be written before its file lands
 5. A form bound to a Zod schema with `.default()` must hold `z.input`, not `z.output` — see
    `ItemForm`. `tripItemInputSchema(tz)` also returns a **new object per call**, so memoize it
+6. **Never write through `withExclusiveTransactionAsync`** in app code that screens read live. It
+   opens a second connection, the change listener never hears its writes, and every `useLiveQuery`
+   stays stale until a relaunch. Use `withTransactionAsync`. (Found in S5: Home showed *No trips yet*
+   after a successful import.)
 
 ---
 
@@ -260,10 +264,7 @@ or with any assistant.
 
 ## Note for S5 (export/import)
 
-The format and serialiser are done and tested in node — `src/domain/export.ts` and
-`src/repositories/backup.ts`. What is missing is the zip itself.
-
-**There is no zip dependency in `package.json` yet.** A pure-JS one is enough: `File.write()`
-accepts a `Uint8Array` and `File.bytes()` returns one, so no native module and no rebuild are
-needed. Add it, then wire `readAllTables` → `buildExportDocument` → zip, and
-unzip → `parseExportDocument` → `planImport` → `applyImport` on the way back.
+Built in S5 — see `docs/technical-reference.md` §12 *The archive*. The zip is `fflate` (pure JS, no
+rebuild), but the share sheet is `expo-sharing`, which is native: after installing it the app needed
+`npx expo prebuild --platform android` and a dev-client rebuild. With uncommitted changes, set
+`EXPO_NO_GIT_STATUS=1` so prebuild does not stop at its "continue?" prompt.

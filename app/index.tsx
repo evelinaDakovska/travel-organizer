@@ -40,18 +40,31 @@ export default function Home() {
         <Text style={[type.display, { color: c.text }]} accessibilityRole="header">
           Trips
         </Text>
-        <Pressable
-          onPress={() => router.push('/trip/new')}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="New trip"
-          style={({ pressed }) => [
-            styles.add,
-            elevation.md,
-            { backgroundColor: pressed ? c.accentPressed : c.accent, shadowColor: c.shadow },
-          ]}>
-          <Icon name="add" size={26} color={c.onAccent} strokeWidth={2.75} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            onPress={() => router.push('/backup')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Backup"
+            style={({ pressed }) => [
+              styles.iconButton,
+              { borderColor: c.border, backgroundColor: pressed ? c.surfaceSunken : 'transparent' },
+            ]}>
+            <Icon name="backup" color={c.text} />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/trip/new')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="New trip"
+            style={({ pressed }) => [
+              styles.add,
+              elevation.md,
+              { backgroundColor: pressed ? c.accentPressed : c.accent, shadowColor: c.shadow },
+            ]}>
+            <Icon name="add" size={26} color={c.onAccent} strokeWidth={2.75} />
+          </Pressable>
+        </View>
       </View>
 
       {loading ? (
@@ -72,6 +85,7 @@ export default function Home() {
           <View style={styles.emptyAction}>
             <Button label="Add your first trip" onPress={() => router.push('/trip/new')} />
           </View>
+          <Button label="Restore from a backup" variant="ghost" onPress={() => router.push('/backup')} />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
@@ -111,6 +125,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.lg,
     paddingBottom: spacing.md,
+  },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  iconButton: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   add: {
     width: 56,

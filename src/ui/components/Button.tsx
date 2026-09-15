@@ -43,6 +43,9 @@ export function Button({
       onPress={onPress}
       disabled={disabled || busy}
       accessibilityRole="button"
+      // Without an explicit label Android derives one from the children, and it keeps "busy" from
+      // the spinner after the label text comes back.
+      accessibilityLabel={label}
       accessibilityState={{ disabled: disabled || busy, busy }}
       style={({ pressed }) => [
         styles.button,

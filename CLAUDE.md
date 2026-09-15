@@ -85,6 +85,8 @@ survives a compacted context.
    documents with `expo-document-picker`, which reads the real display name.
 5. On Windows the NDK's ninja fails on paths over 260 characters **regardless of
    `LongPathsEnabled`**. Keep the repo at a short path such as `C:\dev\travel-organizer`.
+6. `withExclusiveTransactionAsync` writes through a **second connection** the change listener
+   never hears, so every live query stays stale until a relaunch. Use `withTransactionAsync`.
 
 ## 4. Domain terminology
 
