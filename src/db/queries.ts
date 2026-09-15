@@ -100,6 +100,14 @@ export const SELECT_RESOURCE = `
 SELECT * FROM resources WHERE id = $id
 `;
 
+/** Every item attachment in a trip, for the Now and Timeline cards. Trip documents are not included. */
+export const SELECT_ITEM_RESOURCES_FOR_TRIP = `
+SELECT r.* FROM resources r
+  JOIN trip_items i ON i.id = r.trip_item_id
+ WHERE i.trip_id = $tripId
+ ORDER BY r.sort_order, r.created_at
+`;
+
 export const INSERT_RESOURCE = `
 INSERT INTO resources
   (id, trip_id, trip_item_id, kind, subtype, label,

@@ -45,7 +45,7 @@ After C5, the core is complete and this machine's work is finished.
 | **S1** | Item create/edit form and item detail screen | M3 | ✅ Done |
 | **S2** | Resource UI: pick PDF, pick image, add link, and the reusable `OpenResource` control | M3 | ✅ Done — PDF opened offline on the emulator |
 | **V1** | Visual foundation from `docs/design/`: colour roles over palette ramps, fonts, icons, shared components, restyle of existing screens | M4 | ✅ Done — checked on the emulator in light and dark mode |
-| **S3** | Trip tabs (Now · Timeline · Places · Notes) with the add button; the Now and Timeline screens | M4 | no |
+| **S3** | Trip tabs (Now · Timeline · Places · Notes) with the add button; the Now and Timeline screens | M4 | ✅ Done — verified on the emulator |
 | **S4** | Places and Notes tabs, search, and item status actions | M5 | no |
 | **S5** | Export / import screen | M6 | no |
 | **S6** | Local notifications | M7 | **yes** |
@@ -202,21 +202,25 @@ removes the file on the next GC sweep. **✅ Verified on the emulator 2026-09-13
 1. ✅ `src/domain/timeline.ts` — group by local day, order by instant
 2. ✅ Multi-day items derive **check-in / check-out** entries
 3. ✅ Date-only items sort to the top of their day
-4. **V1** — colour roles over palette ramps, Caprasimo and Figtree, Lucide icons, shared Card,
+4. ✅ **V1** — colour roles over palette ramps, Caprasimo and Figtree, Lucide icons, shared Card,
    Tag, SectionLabel and pill controls, and the existing screens restyled
 5. ✅ Next-item derivation — excludes `cancelled` and completed tasks; **includes items dated
    before the trip starts**, and surfaces a check-out
-6. Trip tabs at the bottom — **Now · Timeline · Places · Notes** — with a floating add button and
-   search in the header (D20)
-7. Now screen: *Up next* cards with the Open-ticket control, *Open tasks* with a tick, then trip
-   info and Trip documents
-8. Timeline screen: day labels over item cards; dated ideas tagged Idea; cancelled items left off
-9. Empty states: nothing upcoming → no *Up next*; no open tasks → *Nothing left to do*
-10. Cold-start straight into the active trip when exactly one is in progress
-11. Tests for all of the above
+6. ✅ Trip tabs at the bottom — **Now · Timeline · Places · Notes** — with a floating add button
+   (D20). Search in the header arrives with S4
+7. ✅ Now screen: *Up next* cards with the Open-ticket control, *Open tasks* with a tick, then trip
+   facts and Trip documents
+8. ✅ Timeline screen: day labels over item cards; a stay reads *Check in* / *Check out* on its two
+   days; dated ideas tagged Idea; cancelled items left off; undated confirmed items under *No date yet*
+9. ✅ Empty states: nothing upcoming → no *Up next*; no open tasks → *Nothing left to do*
+10. ✅ Cold-start straight into the active trip when exactly one is in progress
+11. ✅ Tests for all of the above — `src/domain/itinerary.test.ts`, and the attachment query in
+    `src/db/resources.queries.test.ts`
 
 **Done when:** the Milan and Lapland sample trips render correctly, and the Now screen matches
-reality with the device timezone changed.
+reality with the device timezone changed. **Partly verified 2026-09-15:** tabs, a two-day stay and
+cold start checked on the emulator. The full sample trips and the timezone change are not yet done;
+they belong to the S8 offline and timezone pass.
 
 ---
 

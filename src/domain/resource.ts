@@ -336,3 +336,15 @@ export function openLabel(resources: readonly Resource[]): string {
     ? `Open ${name.slice(0, OPEN_LABEL_MAX - 1).trimEnd()}…`
     : `Open ${name}`;
 }
+
+/** Item attachments keyed by the item they hang off. Trip documents are left out. */
+export function groupResourcesByItem(resources: readonly Resource[]): Map<string, Resource[]> {
+  const byItem = new Map<string, Resource[]>();
+  for (const resource of resources) {
+    if (resource.owner.scope !== 'item') continue;
+    const list = byItem.get(resource.owner.id);
+    if (list) list.push(resource);
+    else byItem.set(resource.owner.id, [resource]);
+  }
+  return byItem;
+}

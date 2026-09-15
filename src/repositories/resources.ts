@@ -4,6 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import {
   INSERT_RESOURCE,
   SELECT_ALL_STORED_PATHS,
+  SELECT_ITEM_RESOURCES_FOR_TRIP,
   SELECT_RESOURCE,
   SELECT_RESOURCES_FOR_ITEM,
   SELECT_RESOURCES_FOR_TRIP,
@@ -20,6 +21,9 @@ import {
 
 export const RESOURCE_TABLES = ['resources'] as const;
 
+/** The trip-wide attachment query joins items, so it must refresh when either table changes. */
+export const ITEM_RESOURCE_TABLES = ['resources', 'trip_items'] as const;
+
 export async function listResources(
   db: SQLiteDatabase,
   owner: ResourceOwner,
@@ -32,6 +36,17 @@ export async function listResources(
 export async function getResource(db: SQLiteDatabase, id: string): Promise<Resource | null> {
   const row = await db.getFirstAsync<ResourceRow>(SELECT_RESOURCE, { $id: id });
   return row ? parseResourceRow(row) : null;
+}
+
+/** One query for every card on a tab, rather than one per card. */
+export async function listItemResourcesForTrip(
+  db: SQLiteDatabase,
+  tripId: string,
+): Promise<Resource[]> {
+  const rows = await db.getAllAsync<ResourceRow>(SELECT_ITEM_RESOURCES_FOR_TRIP, {
+    $tripId: tripId,
+  });
+  return rows.map(parseResourceRow);
 }
 
 export async function createResource(

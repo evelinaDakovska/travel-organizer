@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { singleActiveTrip } from '../src/domain/itinerary';
 import { groupTrips } from '../src/domain/trip';
 import { useLiveQuery } from '../src/hooks/useLiveQuery';
 import { listTrips, TRIP_TABLES } from '../src/repositories/trips';
@@ -12,6 +13,12 @@ import { SectionLabel } from '../src/ui/components/SectionLabel';
 import { TripCard } from '../src/ui/components/TripCard';
 import { elevation, radius, spacing, type, useColors } from '../src/ui/tokens';
 
+/**
+ * Module scope, not state: jump into the active trip once per launch, not every time Home is
+ * shown again — coming back to Home must not bounce you straight back out.
+ */
+let openedActiveTrip = false;
+
 export default function Home() {
   const c = useColors();
   const router = useRouter();
@@ -19,6 +26,13 @@ export default function Home() {
 
   const grouped = useMemo(() => groupTrips(trips ?? []), [trips]);
   const isEmpty = !loading && (trips?.length ?? 0) === 0;
+
+  useEffect(() => {
+    if (openedActiveTrip || !trips) return;
+    openedActiveTrip = true;
+    const active = singleActiveTrip(trips);
+    if (active) router.push(`/trip/${active.id}`);
+  }, [trips, router]);
 
   return (
     <Screen>

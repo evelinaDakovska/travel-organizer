@@ -9,7 +9,14 @@ import { openResource } from './open';
 import { ResourceRow } from './ResourceRow';
 
 /** The fastest path to a ticket: one attachment opens directly, several open a sheet. */
-export function OpenResource({ resources }: { resources: readonly Resource[] }) {
+export function OpenResource({
+  resources,
+  compact = false,
+}: {
+  resources: readonly Resource[];
+  /** A shorter button, for use inside a card. */
+  compact?: boolean;
+}) {
   const c = useColors();
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -21,6 +28,7 @@ export function OpenResource({ resources }: { resources: readonly Resource[] }) 
     <>
       <Button
         label={openLabel(resources)}
+        compact={compact}
         onPress={() =>
           resources.length === 1 ? void openResource(resources[0]) : setSheetOpen(true)
         }

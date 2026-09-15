@@ -4,13 +4,19 @@ import { MIGRATIONS } from './migrations';
 import {
   INSERT_RESOURCE,
   SELECT_ALL_STORED_PATHS,
+  SELECT_ITEM_RESOURCES_FOR_TRIP,
   SELECT_RESOURCE,
   SELECT_RESOURCES_FOR_ITEM,
   SELECT_RESOURCES_FOR_TRIP,
   SELECT_TRIP_STORED_PATHS,
   UPDATE_RESOURCE_LABEL,
 } from './queries';
-import { orphanedStoredPaths, parseResourceRow, type ResourceRow } from '../domain/resource';
+import {
+  groupResourcesByItem,
+  orphanedStoredPaths,
+  parseResourceRow,
+  type ResourceRow,
+} from '../domain/resource';
 
 const now = '2026-09-11T00:00:00.000Z';
 
@@ -166,6 +172,27 @@ describe('SELECT_RESOURCE', () => {
 
     db.prepare(`DELETE FROM resources WHERE id = 'r1'`).run();
     expect(db.prepare(SELECT_RESOURCE).get({ id: 'r1' })).toBeUndefined();
+  });
+});
+
+describe('SELECT_ITEM_RESOURCES_FOR_TRIP', () => {
+  it("returns every item attachment in the trip, grouped by item, and no trip documents", () => {
+    const { db, trip, item, add } = setup();
+    item('i2', 't1');
+    trip('t2');
+    item('other', 't2');
+    add({ id: 'a', tripItemId: 'i1' });
+    add({ id: 'b', tripItemId: 'i1' });
+    add({ id: 'c', tripItemId: 'i2' });
+    add({ id: 'doc', tripId: 't1' });
+    add({ id: 'elsewhere', tripItemId: 'other' });
+
+    const rows = db.prepare(SELECT_ITEM_RESOURCES_FOR_TRIP).all({ tripId: 't1' }) as ResourceRow[];
+    const grouped = groupResourcesByItem(rows.map(parseResourceRow));
+
+    expect([...grouped.keys()].sort()).toEqual(['i1', 'i2']);
+    expect(grouped.get('i1')?.map((r) => r.id)).toEqual(['a', 'b']);
+    expect(grouped.get('i2')?.map((r) => r.id)).toEqual(['c']);
   });
 });
 
