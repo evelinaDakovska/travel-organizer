@@ -2,12 +2,15 @@ import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { useLiveQuery } from '../src/hooks/useLiveQuery';
 import { groupTrips } from '../src/domain/trip';
+import { useLiveQuery } from '../src/hooks/useLiveQuery';
 import { listTrips, TRIP_TABLES } from '../src/repositories/trips';
+import { Button } from '../src/ui/components/Button';
+import { Icon } from '../src/ui/components/Icon';
 import { Screen } from '../src/ui/components/Screen';
+import { SectionLabel } from '../src/ui/components/SectionLabel';
 import { TripCard } from '../src/ui/components/TripCard';
-import { radius, spacing, type, useColors } from '../src/ui/tokens';
+import { elevation, radius, spacing, type, useColors } from '../src/ui/tokens';
 
 export default function Home() {
   const c = useColors();
@@ -20,15 +23,20 @@ export default function Home() {
   return (
     <Screen>
       <View style={styles.header}>
-        <Text style={[type.display, { color: c.text }]}>Trips</Text>
+        <Text style={[type.display, { color: c.text }]} accessibilityRole="header">
+          Trips
+        </Text>
         <Pressable
           onPress={() => router.push('/trip/new')}
-          hitSlop={12}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="New trip"
           style={({ pressed }) => [
             styles.add,
-            { backgroundColor: c.accent, opacity: pressed ? 0.75 : 1 },
+            elevation.md,
+            { backgroundColor: pressed ? c.accentPressed : c.accent, shadowColor: c.shadow },
           ]}>
-          <Text style={[styles.addGlyph, { color: c.onAccent }]}>+</Text>
+          <Icon name="add" size={26} color={c.onAccent} strokeWidth={2.75} />
         </Pressable>
       </View>
 
@@ -38,44 +46,33 @@ export default function Home() {
         </View>
       ) : error ? (
         <View style={styles.centre}>
-          <Text style={[type.body, { color: c.danger }]}>Could not load trips</Text>
-          <Text style={[type.caption, styles.errorDetail, { color: c.textMuted }]}>
-            {error.message}
-          </Text>
+          <Text style={[type.bodyStrong, { color: c.danger }]}>Could not load trips</Text>
+          <Text style={[type.caption, styles.centred, { color: c.textMuted }]}>{error.message}</Text>
         </View>
       ) : isEmpty ? (
         <View style={styles.centre}>
-          <Text style={[type.title, styles.emptyTitle, { color: c.text }]}>No trips yet</Text>
-          <Text style={[type.body, styles.emptyBody, { color: c.textMuted }]}>
+          <Text style={[type.title, styles.centred, { color: c.text }]}>No trips yet</Text>
+          <Text style={[type.body, styles.centred, styles.emptyBody, { color: c.textMuted }]}>
             Add a trip and everything for it — tickets, bookings, places — lives in one place.
           </Text>
-          <Pressable
-            onPress={() => router.push('/trip/new')}
-            style={({ pressed }) => [
-              styles.emptyAction,
-              { backgroundColor: c.accentSoft, opacity: pressed ? 0.7 : 1 },
-            ]}>
-            <Text style={[type.heading, { color: c.accent }]}>Add your first trip</Text>
-          </Pressable>
+          <View style={styles.emptyAction}>
+            <Button label="Add your first trip" onPress={() => router.push('/trip/new')} />
+          </View>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           {grouped.upcoming.length > 0 && (
             <View style={styles.section}>
-              <Text style={[type.overline, { color: c.textFaint }]}>UPCOMING</Text>
+              <SectionLabel>Upcoming</SectionLabel>
               {grouped.upcoming.map((trip) => (
-                <TripCard
-                  key={trip.id}
-                  trip={trip}
-                  onPress={() => router.push(`/trip/${trip.id}`)}
-                />
+                <TripCard key={trip.id} trip={trip} onPress={() => router.push(`/trip/${trip.id}`)} />
               ))}
             </View>
           )}
 
           {grouped.past.length > 0 && (
             <View style={styles.section}>
-              <Text style={[type.overline, { color: c.textFaint }]}>PAST</Text>
+              <SectionLabel>Past</SectionLabel>
               {grouped.past.map((trip) => (
                 <TripCard
                   key={trip.id}
@@ -101,18 +98,17 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     paddingBottom: spacing.md,
   },
-  add: { width: 44, height: 44, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
-  addGlyph: { fontSize: 28, lineHeight: 32, fontWeight: '400' },
-  content: { padding: spacing.xl, paddingTop: spacing.sm, gap: spacing.xxl },
+  add: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  content: { padding: spacing.xl, paddingTop: spacing.sm, gap: spacing.xxl, paddingBottom: spacing.xxxl },
   section: { gap: spacing.md },
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxl, gap: spacing.md },
-  emptyTitle: { textAlign: 'center' },
-  emptyBody: { textAlign: 'center', maxWidth: 300, lineHeight: 22 },
-  emptyAction: {
-    marginTop: spacing.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: radius.md,
-  },
-  errorDetail: { textAlign: 'center' },
+  centred: { textAlign: 'center' },
+  emptyBody: { maxWidth: 300 },
+  emptyAction: { marginTop: spacing.lg },
 });

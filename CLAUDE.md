@@ -234,6 +234,16 @@ wrong.
   (untrusted input from other apps).
 - No premature abstraction. Two call sites is not a pattern.
 
+### UI
+- The design source is `docs/design/` (Claude Design handoff). Where it contradicts the model,
+  `docs/decision-log.md` D22 says which wins.
+- **No hex values in components.** Colours are semantic roles read through `useColors()`
+  (`src/ui/tokens.ts`); the only hex values live in `src/ui/theme/palette.ts`. To re-theme, change
+  the palette and run `roles.test.ts`, which fails if any text role drops below its contrast bar.
+- Text styles come from `type.*` (Caprasimo headings, Figtree body). Android picks a face by font
+  family, so never set `fontWeight` on these.
+- Icons by meaning — `<Icon name="back" />` — so the icon set can be swapped in `Icon.tsx` alone.
+
 ### Testing
 Three tiers, detailed in `docs/technical-reference.md` §10:
 1. **Pure domain unit tests** — where all the value is. Time conversion, timeline grouping,

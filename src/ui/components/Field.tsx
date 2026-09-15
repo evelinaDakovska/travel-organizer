@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
-import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { StyleSheet, Text, TextInput, View, type TextInputProps, type TextStyle } from 'react-native';
 
-import { radius, spacing, type, useColors } from '../tokens';
+import { radius, spacing, type, useColors, type Colors } from '../tokens';
 
 type FieldProps = { label: string; error?: string; hint?: string; children: ReactNode };
 
@@ -14,41 +14,75 @@ export function Field({ label, error, hint, children }: FieldProps) {
       {error ? (
         <Text style={[type.caption, { color: c.danger }]}>{error}</Text>
       ) : hint ? (
-        <Text style={[type.caption, { color: c.textFaint }]}>{hint}</Text>
+        <Text style={[type.caption, { color: c.textMuted }]}>{hint}</Text>
       ) : null}
     </View>
   );
 }
 
+/**
+ * The box every input and picker sits in, so a text field and a date button look like one
+ * family. Single-line controls are pills; a multi-line box is rounded instead.
+ */
+export function inputFrame(
+  c: Colors,
+  invalid = false,
+  multiline = false,
+): Pick<
+  TextStyle,
+  | 'minHeight'
+  | 'borderWidth'
+  | 'borderRadius'
+  | 'paddingHorizontal'
+  | 'paddingVertical'
+  | 'justifyContent'
+  | 'backgroundColor'
+  | 'borderColor'
+> {
+  return {
+    minHeight: 50,
+    borderWidth: 1,
+    borderRadius: multiline ? radius.lg : radius.pill,
+    paddingHorizontal: spacing.lg + 2,
+    paddingVertical: spacing.md,
+    justifyContent: 'center',
+    backgroundColor: c.surface,
+    borderColor: invalid ? c.danger : c.border,
+  };
+}
+
 type InputProps = TextInputProps & { invalid?: boolean };
 
-export function Input({ invalid = false, style, ...props }: InputProps) {
+export function Input({ invalid = false, multiline, style, onFocus, onBlur, ...props }: InputProps) {
   const c = useColors();
+  const [focused, setFocused] = useState(false);
+
   return (
     <TextInput
       placeholderTextColor={c.textFaint}
+      cursorColor={c.accent}
+      selectionColor={c.accent}
+      multiline={multiline}
+      {...props}
+      onFocus={(event) => {
+        setFocused(true);
+        onFocus?.(event);
+      }}
+      onBlur={(event) => {
+        setFocused(false);
+        onBlur?.(event);
+      }}
       style={[
-        styles.input,
+        inputFrame(c, invalid, multiline),
         type.body,
-        {
-          backgroundColor: c.surface,
-          borderColor: invalid ? c.danger : c.border,
-          color: c.text,
-        },
+        { color: c.text },
+        focused && !invalid && { borderColor: c.accent },
         style,
       ]}
-      {...props}
     />
   );
 }
 
 const styles = StyleSheet.create({
   field: { gap: spacing.sm },
-  input: {
-    minHeight: 50,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
 });

@@ -1,28 +1,17 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
 
-import { radius, spacing, type, useColors } from '../tokens';
+import { PickerButton } from './PickerButton';
 
 type Props = { value: string | null; onChange: (time: string) => void; placeholder?: string };
 
 /** Emits a bare 'HH:mm' as written on the ticket — never a Date, never an instant. */
 export function TimeField({ value, onChange, placeholder = 'All day' }: Props) {
-  const c = useColors();
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <Pressable
-        onPress={() => setOpen(true)}
-        style={({ pressed }) => [
-          styles.button,
-          { backgroundColor: c.surface, borderColor: c.border, opacity: pressed ? 0.7 : 1 },
-        ]}>
-        <Text style={[type.body, { color: value ? c.text : c.textFaint }]}>
-          {value ?? placeholder}
-        </Text>
-      </Pressable>
+      <PickerButton value={value} placeholder={placeholder} onPress={() => setOpen(true)} />
 
       {open && (
         <DateTimePicker
@@ -50,13 +39,3 @@ function toDate(time: string | null): Date {
 function toHoursMinutes(date: Date): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
-
-const styles = StyleSheet.create({
-  button: {
-    minHeight: 50,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.lg,
-    justifyContent: 'center',
-  },
-});

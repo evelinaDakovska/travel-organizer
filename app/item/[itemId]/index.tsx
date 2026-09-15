@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, type ReactNode } from 'react';
+import { useCallback } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { formatMoment, formatMoney } from '../../../src/domain/format';
@@ -10,7 +10,6 @@ import {
   routeLabel,
   subkindLabel,
   transportDetails,
-  type TripItem,
 } from '../../../src/domain/tripItem';
 import { OpenResource } from '../../../src/features/resources/OpenResource';
 import { ResourceList } from '../../../src/features/resources/ResourceList';
@@ -24,7 +23,9 @@ import {
 import { Button } from '../../../src/ui/components/Button';
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
-import { radius, spacing, type, useColors } from '../../../src/ui/tokens';
+import { StatusTag } from '../../../src/ui/components/StatusTag';
+import { Tag } from '../../../src/ui/components/Tag';
+import { spacing, type, useColors } from '../../../src/ui/tokens';
 
 export default function ItemDetail() {
   const c = useColors();
@@ -47,7 +48,7 @@ export default function ItemDetail() {
   if (loading) {
     return (
       <Screen>
-        <ScreenHeader title="" />
+        <ScreenHeader title="Details" />
         <View style={styles.centre}>
           <ActivityIndicator color={c.accent} />
         </View>
@@ -58,7 +59,7 @@ export default function ItemDetail() {
   if (!item) {
     return (
       <Screen>
-        <ScreenHeader title="Item" />
+        <ScreenHeader title="Details" />
         <View style={styles.centre}>
           <Text style={[type.body, { color: c.textMuted }]}>This item no longer exists.</Text>
         </View>
@@ -68,85 +69,71 @@ export default function ItemDetail() {
 
   const details = transportDetails(item);
   const route = routeLabel(details);
+  const kind = item.subkind ? subkindLabel(item.subkind) : kindLabel(item.kind);
+
+  const whenDetail = [
+    item.end ? `until ${formatMoment(item.end.local, item.end.precision)}` : null,
+    item.startTzOverride ? timezoneLabel(item.startTzOverride) : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   return (
     <Screen>
       <ScreenHeader
-        title={item.title}
+        title="Details"
         action={
-          <Pressable onPress={() => router.push(`/item/${item.id}/edit`)} hitSlop={12}>
-            <Text style={[type.body, { color: c.accent }]}>Edit</Text>
+          <Pressable
+            onPress={() => router.push(`/item/${item.id}/edit`)}
+            hitSlop={12}
+            accessibilityRole="button">
+            <Text style={[type.bodyStrong, { color: c.accentText }]}>Edit</Text>
           </Pressable>
         }
       />
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.badges}>
-          <Badge label={item.subkind ? subkindLabel(item.subkind) : kindLabel(item.kind)} />
-          <Badge label={statusLabel(item)} tone={item.status === 'cancelled' ? 'muted' : 'accent'} />
-          {item.status === 'idea' && item.priority ? <Badge label={item.priority} /> : null}
+        <View style={styles.heading}>
+          <View style={styles.tags}>
+            <StatusTag status={item.status} />
+            {item.status === 'idea' && item.priority ? (
+              <Tag label={capitalise(item.priority)} tone="neutral" />
+            ) : null}
+          </View>
+          <Text style={[type.display, { color: c.text }]}>{item.title}</Text>
+          <Text style={[type.body, { color: c.textMuted }]}>{route ? `${kind} · ${route}` : kind}</Text>
         </View>
-
-        {route ? <Text style={[type.title, { color: c.text }]}>{route}</Text> : null}
 
         <OpenResource resources={resources ?? []} />
 
-        {item.start ? (
-          <Block label="WHEN">
-            <Text style={[type.body, { color: c.text }]}>
-              {formatMoment(item.start.local, item.start.precision)}
-            </Text>
-            {item.end ? (
-              <Text style={[type.body, { color: c.textMuted }]}>
-                until {formatMoment(item.end.local, item.end.precision)}
-              </Text>
-            ) : null}
-            {item.startTzOverride ? (
-              <Text style={[type.caption, { color: c.textFaint }]}>
-                {timezoneLabel(item.startTzOverride)}
-              </Text>
-            ) : null}
-          </Block>
-        ) : (
-          <Block label="WHEN">
-            <Text style={[type.body, { color: c.textMuted }]}>No date yet</Text>
-          </Block>
-        )}
-
-        {item.locationName || item.address ? (
-          <Block label="WHERE">
-            {item.locationName ? (
-              <Text style={[type.body, { color: c.text }]}>{item.locationName}</Text>
-            ) : null}
-            {item.address ? (
-              <Text style={[type.body, { color: c.textMuted }]}>{item.address}</Text>
-            ) : null}
-          </Block>
-        ) : null}
-
-        {item.confirmationCode || item.priceAmount !== null || details?.number || details?.seat ? (
-          <Block label="BOOKING">
-            {item.confirmationCode ? (
-              <Detail label="Reference" value={item.confirmationCode} />
-            ) : null}
-            {details?.number ? <Detail label="Number" value={details.number} /> : null}
-            {details?.seat ? <Detail label="Seat" value={details.seat} /> : null}
-            {item.priceAmount !== null && item.priceCurrency ? (
-              <Detail
-                label="Price"
-                value={`${formatMoney(item.priceAmount, item.priceCurrency)}${
-                  item.isPaid ? ' · paid' : ' · not paid yet'
-                }`}
-              />
-            ) : null}
-          </Block>
-        ) : null}
-
-        {item.notes ? (
-          <Block label="NOTES">
-            <Text style={[type.body, styles.notes, { color: c.text }]}>{item.notes}</Text>
-          </Block>
-        ) : null}
+        <View style={styles.facts}>
+          <Fact
+            label="When"
+            value={item.start ? formatMoment(item.start.local, item.start.precision) : 'No date yet'}
+            detail={whenDetail || null}
+            muted={!item.start}
+          />
+          {item.locationName || item.address ? (
+            <Fact
+              label="Where"
+              value={item.locationName ?? item.address ?? ''}
+              detail={item.locationName ? item.address : null}
+            />
+          ) : null}
+          {item.confirmationCode ? (
+            <Fact label="Confirmation" value={item.confirmationCode} selectable />
+          ) : null}
+          {details?.number ? <Fact label="Number" value={details.number} selectable /> : null}
+          {details?.seat ? <Fact label="Seat" value={details.seat} /> : null}
+          {item.priceAmount !== null && item.priceCurrency ? (
+            <Fact
+              label="Price"
+              value={formatMoney(item.priceAmount, item.priceCurrency)}
+              detail={item.isPaid ? 'Paid' : 'Not paid yet'}
+            />
+          ) : null}
+          {item.notes ? <Fact label="Notes" value={item.notes} /> : null}
+        </View>
 
         {item.kind === 'task' ? (
           <Button
@@ -159,7 +146,7 @@ export default function ItemDetail() {
         <ResourceList
           owner={{ scope: 'item', id: item.id }}
           resources={resources ?? []}
-          title="TICKETS & LINKS"
+          title="Tickets & links"
           emptyText="Attach the boarding pass, the booking confirmation, or a link to manage it."
         />
       </ScrollView>
@@ -167,61 +154,39 @@ export default function ItemDetail() {
   );
 }
 
-function statusLabel(item: TripItem): string {
-  if (item.status === 'confirmed') return 'Booked';
-  if (item.status === 'cancelled') return 'Cancelled';
-  return 'Idea';
-}
+const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
-function Badge({ label, tone = 'muted' }: { label: string; tone?: 'muted' | 'accent' }) {
+type FactProps = {
+  label: string;
+  value: string;
+  detail?: string | null;
+  muted?: boolean;
+  /** Long-press to copy — a reference is read out at a desk or pasted into a form. */
+  selectable?: boolean;
+};
+
+function Fact({ label, value, detail, muted = false, selectable = false }: FactProps) {
   const c = useColors();
   return (
-    <View
-      style={[
-        styles.badge,
-        {
-          backgroundColor: tone === 'accent' ? c.accentSoft : c.surfaceSunken,
-          borderColor: tone === 'accent' ? c.accent : c.border,
-        },
-      ]}>
-      <Text style={[type.caption, { color: tone === 'accent' ? c.accent : c.textMuted }]}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-function Block({ label, children }: { label: string; children: ReactNode }) {
-  const c = useColors();
-  return (
-    <View style={styles.block}>
-      <Text style={[type.overline, { color: c.textFaint }]}>{label}</Text>
-      {children}
-    </View>
-  );
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  const c = useColors();
-  return (
-    <View style={styles.detail}>
-      <Text style={[type.body, { color: c.textMuted }]}>{label}</Text>
-      <Text style={[type.body, { color: c.text }]}>{value}</Text>
+    <View style={styles.fact}>
+      <Text style={[type.bodyStrong, styles.factLabel, { color: c.text }]}>{label}</Text>
+      <View style={styles.factValue}>
+        <Text style={[type.body, { color: muted ? c.textMuted : c.text }]} selectable={selectable}>
+          {value}
+        </Text>
+        {detail ? <Text style={[type.caption, { color: c.textMuted }]}>{detail}</Text> : null}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.xl, gap: spacing.xl, paddingBottom: spacing.xxxl },
-  badges: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
-  badge: {
-    borderWidth: 1,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  block: { gap: spacing.xs },
-  detail: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.lg },
-  notes: { lineHeight: 22 },
+  content: { padding: spacing.xl, paddingTop: spacing.sm, gap: spacing.xl, paddingBottom: spacing.xxxl },
+  heading: { gap: spacing.sm },
+  tags: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
+  facts: { gap: spacing.md },
+  fact: { flexDirection: 'row', gap: spacing.lg },
+  factLabel: { width: 108 },
+  factValue: { flex: 1, gap: 2 },
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

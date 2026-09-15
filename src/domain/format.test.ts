@@ -6,6 +6,8 @@ import {
   formatMoment,
   formatMoney,
   formatRelative,
+  formatShortDate,
+  formatShortMoment,
 } from './format';
 
 describe('formatDateRange', () => {
@@ -30,6 +32,24 @@ describe('formatDayHeading', () => {
   it('names the correct weekday', () => {
     expect(formatDayHeading('2026-09-19')).toBe('Saturday, 19 September');
     expect(formatDayHeading('2026-11-20')).toBe('Friday, 20 November');
+  });
+});
+
+describe('formatShortDate', () => {
+  it('abbreviates the weekday and month for cards', () => {
+    expect(formatShortDate('2026-09-19')).toBe('Sat 19 Sep');
+    expect(formatShortDate('2026-11-24')).toBe('Tue 24 Nov');
+  });
+});
+
+describe('formatShortMoment', () => {
+  it('adds the time as written, when there is one', () => {
+    expect(formatShortMoment('2026-09-19T06:10', 'time')).toBe('Sat 19 Sep · 06:10');
+    expect(formatShortMoment('2026-09-19T00:00', 'time')).toBe('Sat 19 Sep · 00:00');
+  });
+
+  it('shows only the day for a date-only moment', () => {
+    expect(formatShortMoment('2026-09-19', 'date')).toBe('Sat 19 Sep');
   });
 });
 

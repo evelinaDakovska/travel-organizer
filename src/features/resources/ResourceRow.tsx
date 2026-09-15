@@ -2,7 +2,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { resourceBadge, resourceMeta, type Resource } from '../../domain/resource';
 import { storedFileExists } from '../../files/storage';
-import { radius, spacing, type, useColors } from '../../ui/tokens';
+import { Icon } from '../../ui/components/Icon';
+import { opacity, radius, spacing, type, useColors } from '../../ui/tokens';
 
 type Props = { resource: Resource; onPress: () => void; onEdit?: () => void };
 
@@ -16,16 +17,16 @@ export function ResourceRow({ resource, onPress, onEdit }: Props) {
       accessibilityRole="button"
       style={({ pressed }) => [
         styles.row,
-        { backgroundColor: c.surface, borderColor: c.border, opacity: pressed ? 0.7 : 1 },
+        { backgroundColor: c.surface, opacity: pressed ? opacity.pressed : 1 },
       ]}>
-      <View style={[styles.badge, { backgroundColor: missing ? c.surfaceSunken : c.accentSoft }]}>
-        <Text style={[type.overline, { color: missing ? c.danger : c.accent }]}>
+      <View style={[styles.badge, { backgroundColor: missing ? c.dangerSoft : c.accent2Soft }]}>
+        <Text style={[type.overline, { color: missing ? c.danger : c.accent2Text }]}>
           {resourceBadge(resource)}
         </Text>
       </View>
 
       <View style={styles.body}>
-        <Text style={[type.heading, { color: missing ? c.textMuted : c.text }]} numberOfLines={1}>
+        <Text style={[type.bodyStrong, { color: c.text }]} numberOfLines={1}>
           {resource.label}
         </Text>
         <Text style={[type.caption, { color: missing ? c.danger : c.textMuted }]} numberOfLines={1}>
@@ -40,7 +41,7 @@ export function ResourceRow({ resource, onPress, onEdit }: Props) {
           style={styles.edit}
           accessibilityRole="button"
           accessibilityLabel={`Edit ${resource.label}`}>
-          <Text style={[type.title, { color: c.textMuted }]}>⋯</Text>
+          <Icon name="more" color={c.textMuted} />
         </Pressable>
       ) : null}
     </Pressable>
@@ -52,17 +53,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    padding: spacing.md,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
   badge: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.sm,
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
   body: { flex: 1, gap: 2 },
-  edit: { paddingHorizontal: spacing.sm },
+  edit: { paddingHorizontal: spacing.xs },
 });

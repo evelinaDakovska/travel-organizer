@@ -1,37 +1,17 @@
 import { useColorScheme } from 'react-native';
 
-const palette = {
-  light: {
-    background: '#FBFAF8',
-    surface: '#FFFFFF',
-    surfaceSunken: '#F2F0EC',
-    border: '#E5E1DA',
-    text: '#1A1917',
-    textMuted: '#6B6862',
-    textFaint: '#9C9890',
-    accent: '#1F6F5C',
-    accentSoft: '#E4F0EC',
-    danger: '#B3261E',
-    warning: '#8A5A00',
-    onAccent: '#FFFFFF',
-  },
-  dark: {
-    background: '#141413',
-    surface: '#1E1D1B',
-    surfaceSunken: '#272623',
-    border: '#343330',
-    text: '#F5F3EF',
-    textMuted: '#A8A49C',
-    textFaint: '#7A766E',
-    accent: '#6FC0A8',
-    accentSoft: '#1C2E29',
-    danger: '#F2B8B5',
-    warning: '#E8B45F',
-    onAccent: '#0E1A17',
-  },
-} as const;
+import { colorRoles, type ColorRoles } from './theme/roles';
 
-export type Colors = Record<keyof (typeof palette)['light'], string>;
+/**
+ * Design tokens. Colours come from `theme/roles.ts` (semantic roles) over `theme/palette.ts`
+ * (raw ramps); components read roles through `useColors()` and never a hex value.
+ */
+
+export type Colors = ColorRoles;
+
+export function useColors(): Colors {
+  return colorRoles[useColorScheme() === 'dark' ? 'dark' : 'light'];
+}
 
 export const spacing = {
   xs: 4,
@@ -43,18 +23,43 @@ export const spacing = {
   xxxl: 48,
 } as const;
 
-export const radius = { sm: 8, md: 12, lg: 16, xl: 22, pill: 999 } as const;
+/** Organic over-rounds: cards near 32, every control a pill. */
+export const radius = { sm: 8, md: 16, lg: 28, xl: 32, pill: 999 } as const;
 
-export const type = {
-  display: { fontSize: 32, fontWeight: '700', letterSpacing: -0.5 },
-  title: { fontSize: 22, fontWeight: '600', letterSpacing: -0.2 },
-  heading: { fontSize: 17, fontWeight: '600' },
-  body: { fontSize: 15, fontWeight: '400' },
-  label: { fontSize: 13, fontWeight: '500' },
-  caption: { fontSize: 12, fontWeight: '400' },
-  overline: { fontSize: 11, fontWeight: '600', letterSpacing: 1.1 },
+/**
+ * Family names as registered in `app/_layout.tsx`. Android chooses a face by family, not by
+ * `fontWeight`, so each weight is its own family and no style below sets a weight.
+ */
+export const fonts = {
+  heading: 'Caprasimo_400Regular',
+  body: 'Figtree_400Regular',
+  bodyMedium: 'Figtree_500Medium',
+  bodySemiBold: 'Figtree_600SemiBold',
+  bodyBold: 'Figtree_700Bold',
 } as const;
 
-export function useColors(): Colors {
-  return palette[useColorScheme() === 'dark' ? 'dark' : 'light'];
-}
+export const type = {
+  display: { fontFamily: fonts.heading, fontSize: 32, lineHeight: 38, letterSpacing: -0.3 },
+  title: { fontFamily: fonts.heading, fontSize: 23, lineHeight: 28, letterSpacing: -0.2 },
+  heading: { fontFamily: fonts.heading, fontSize: 17, lineHeight: 22 },
+  body: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22 },
+  bodyStrong: { fontFamily: fonts.bodySemiBold, fontSize: 15, lineHeight: 22 },
+  label: { fontFamily: fonts.bodySemiBold, fontSize: 13, lineHeight: 18 },
+  caption: { fontFamily: fonts.body, fontSize: 12, lineHeight: 16 },
+  tag: { fontFamily: fonts.bodySemiBold, fontSize: 12, lineHeight: 16, letterSpacing: 0.2 },
+  overline: { fontFamily: fonts.bodySemiBold, fontSize: 11, lineHeight: 14, letterSpacing: 0.9 },
+} as const;
+
+/** Android draws shadows from `elevation`; pair with `shadowColor: c.shadow` to tint them. */
+export const elevation = {
+  sm: { elevation: 2, shadowOpacity: 0.14, shadowRadius: 2, shadowOffset: { width: 0, height: 1 } },
+  md: { elevation: 6, shadowOpacity: 0.16, shadowRadius: 10, shadowOffset: { width: 0, height: 3 } },
+} as const;
+
+export const opacity = {
+  pressed: 0.8,
+  disabled: 0.45,
+  /** A cancelled item in a list. */
+  dimmed: 0.55,
+  scrim: 0.45,
+} as const;

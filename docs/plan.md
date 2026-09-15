@@ -44,8 +44,9 @@ After C5, the core is complete and this machine's work is finished.
 |---|---|---|---|
 | **S1** | Item create/edit form and item detail screen | M3 | ✅ Done |
 | **S2** | Resource UI: pick PDF, pick image, add link, and the reusable `OpenResource` control | M3 | ✅ Done — PDF opened offline on the emulator |
-| **S3** | Timeline screen and the Overview / Now card | M4 | no |
-| **S4** | Bookings, Places and Notes tabs, and search UI | M5 | no |
+| **V1** | Visual foundation from `docs/design/`: colour roles over palette ramps, fonts, icons, shared components, restyle of existing screens | M4 | no — built, emulator check pending |
+| **S3** | Trip tabs (Now · Timeline · Places · Notes) with the add button; the Now and Timeline screens | M4 | no |
+| **S4** | Places and Notes tabs, search, and item status actions | M5 | no |
 | **S5** | Export / import screen | M6 | no |
 | **S6** | Local notifications | M7 | **yes** |
 | **S7** | Share-to-App | M8 | **yes** |
@@ -194,33 +195,38 @@ removes the file on the next GC sweep. **✅ Verified on the emulator 2026-09-13
 
 ---
 
-## M4 — Timeline + Overview / Now
+## M4 — Trip tabs, Now and Timeline
 
-> **Core: C1.** **Surface: S3.**
+> **Core: C1.** **Surface: V1, S3.** Design in `docs/design/`; decision log D19–D22.
 
 1. ✅ `src/domain/timeline.ts` — group by local day, order by instant
 2. ✅ Multi-day items derive **check-in / check-out** entries
 3. ✅ Date-only items sort to the top of their day
-4. Timeline screen with day headers
+4. **V1** — colour roles over palette ramps, Caprasimo and Figtree, Lucide icons, shared Card,
+   Tag, SectionLabel and pill controls, and the existing screens restyled
 5. ✅ Next-item derivation — excludes `cancelled` and completed tasks; **includes items dated
    before the trip starts**, and surfaces a check-out
-6. Overview screen: TODAY · NEXT (with countdown) · AFTER THAT · `[Open tickets]`
-7. Empty states: nothing scheduled today; nothing upcoming at all → **no Now card**
-8. Cold-start straight into the active trip when exactly one is in progress
-9. Tests for all of the above
+6. Trip tabs at the bottom — **Now · Timeline · Places · Notes** — with a floating add button and
+   search in the header (D20)
+7. Now screen: *Up next* cards with the Open-ticket control, *Open tasks* with a tick, then trip
+   info and Trip documents
+8. Timeline screen: day labels over item cards; dated ideas tagged Idea; cancelled items left off
+9. Empty states: nothing upcoming → no *Up next*; no open tasks → *Nothing left to do*
+10. Cold-start straight into the active trip when exactly one is in progress
+11. Tests for all of the above
 
-**Done when:** the Milan and Lapland sample trips render correctly, and the Now card matches
+**Done when:** the Milan and Lapland sample trips render correctly, and the Now screen matches
 reality with the device timezone changed.
 
 ---
 
-## M5 — Bookings, Places, Notes, Search
+## M5 — Places, Notes, Search, status actions
 
 > **Core: C4.** **Surface: S4.**
 
-Three tabs that are three queries over one table — the payoff of the domain model.
+Tabs that are queries over one table — the payoff of the domain model.
 
-1. ✅ Bookings query — `status='confirmed'`; grouped by `kind` in the UI
+1. ✅ Bookings query — `status='confirmed'`. **No tab uses it any more** (D20); kept and tested
 2. ✅ Places query — `status='idea'`, priority then title, unrated last
 3. ✅ Promote a place to a dated plan — `scheduleTripItem`, a single `UPDATE`
 4. ✅ `trip_notes` CRUD and pinning — Notes tab itself is S4

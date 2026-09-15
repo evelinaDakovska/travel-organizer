@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/organic-6d704665-2957-41d0-afd9-2b01d8d182b3/styles.css">
+  <script src="_ds/organic-6d704665-2957-41d0-afd9-2b01d8d182b3/_ds_bundle.js"></script>
+  <style>
+    /* Milan trip palette: dusty canal-teal accent, warm stone-gold second accent — same ramp structure as Organic, shifted hue to fit a travel app over the default terracotta/sage. */
+    :root {
+      --color-accent: oklch(58% 0.09 210);
+      --color-accent-100: oklch(97% 0.015 210);
+      --color-accent-200: oklch(93% 0.03 210);
+      --color-accent-300: oklch(86% 0.05 210);
+      --color-accent-400: oklch(76% 0.07 210);
+      --color-accent-500: oklch(64% 0.09 210);
+      --color-accent-600: oklch(54% 0.09 210);
+      --color-accent-700: oklch(44% 0.08 210);
+      --color-accent-800: oklch(34% 0.06 210);
+      --color-accent-900: oklch(24% 0.045 210);
+
+      --color-accent-2: oklch(62% 0.09 75);
+      --color-accent-2-100: oklch(97% 0.02 75);
+      --color-accent-2-200: oklch(93% 0.04 75);
+      --color-accent-2-300: oklch(86% 0.06 75);
+      --color-accent-2-400: oklch(76% 0.08 75);
+      --color-accent-2-500: oklch(64% 0.1 75);
+      --color-accent-2-600: oklch(54% 0.1 75);
+      --color-accent-2-700: oklch(44% 0.09 75);
+      --color-accent-2-800: oklch(34% 0.07 75);
+      --color-accent-2-900: oklch(24% 0.05 75);
+    }
+  </style>
+</helmet>
+
+<div style="display:flex;justify-content:center;padding:40px 20px;background:var(--color-neutral-200);min-height:100vh;font-family:var(--font-body);">
+<x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+<div style="position:relative;height:100%;display:flex;flex-direction:column;background:var(--color-bg);overflow:hidden;">
+
+  <div style="padding:18px 20px 12px;flex:none;">
+    <div style="font-family:var(--font-heading);font-size:23px;">{{ headerTitle }}</div>
+    <div class="text-muted" style="font-size:12px;margin-top:2px;">{{ headerSubtitle }}</div>
+  </div>
+
+  <div style="flex:1;overflow:auto;padding:0 16px 100px;">
+
+    <sc-if value="{{ isNow }}" hint-placeholder-val="{{ true }}">
+      <div data-screen-label="Now" style="display:flex;flex-direction:column;gap:18px;">
+        <div>
+          <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:8px;">Up next</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ upNext }}" as="it" hint-placeholder-count="3">
+              <div class="card elev-sm" onClick="{{ it.open }}" style="cursor:pointer;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;">
+                  <span class="tag {{ it.tagCls }}">{{ it.tagLabel }}</span>
+                  <span class="text-muted" style="font-size:11px;">{{ it.dateLabel }} · {{ it.time }}</span>
+                </div>
+                <div class="card-title">{{ it.title }}</div>
+                <div class="card-body">{{ it.location }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:8px;">Open tasks</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <sc-for list="{{ openTasks }}" as="t" hint-placeholder-count="2">
+              <div class="card elev-sm" style="flex-direction:row;align-items:center;gap:12px;">
+                <div onClick="{{ t.toggle }}" style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--color-accent);flex:none;cursor:pointer;"></div>
+                <div style="flex:1;">
+                  <div class="card-title" style="font-size:15px;">{{ t.title }}</div>
+                  <div class="text-muted" style="font-size:12px;">{{ t.dateLabel }} · {{ t.time }}</div>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noOpenTasks }}">
+              <div class="text-muted" style="font-size:13px;padding:6px 2px;">Nothing left to do.</div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isTimeline }}">
+      <div data-screen-label="Timeline" style="display:flex;flex-direction:column;gap:20px;">
+        <sc-for list="{{ days }}" as="d" hint-placeholder-count="4">
+          <div>
+            <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:8px;">{{ d.label }}</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <sc-for list="{{ d.items }}" as="it" hint-placeholder-count="2">
+                <div class="card elev-sm" onClick="{{ it.open }}" style="cursor:pointer; opacity:{{ it.opacity }};">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;">
+                    <span class="tag {{ it.tagCls }}">{{ it.tagLabel }}</span>
+                    <span class="text-muted" style="font-size:11px;">{{ it.time }}</span>
+                  </div>
+                  <div class="card-title">{{ it.title }}</div>
+                  <div class="card-body">{{ it.location }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isPlaces }}">
+      <div data-screen-label="Places" style="display:flex;flex-direction:column;gap:10px;">
+        <sc-for list="{{ places }}" as="p" hint-placeholder-count="4">
+          <div class="card elev-sm" onClick="{{ p.open }}" style="cursor:pointer;">
+            <span class="tag tag-outline" style="align-self:flex-start;">{{ p.kindLabel }}</span>
+            <div class="card-title">{{ p.title }}</div>
+            <div class="card-body">{{ p.location }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isNotes }}">
+      <div data-screen-label="Notes" style="display:flex;flex-direction:column;gap:10px;">
+        <sc-for list="{{ notesList }}" as="n" hint-placeholder-count="3">
+          <div class="card elev-sm">
+            <div class="card-title">{{ n.title }}</div>
+            <div class="card-body" style="white-space:pre-line;">{{ n.body }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+  </div>
+
+  <button onClick="{{ openAdd }}" style="position:absolute;right:16px;bottom:86px;width:56px;height:56px;border-radius:999px;background:var(--color-accent);border:none;box-shadow:var(--shadow-md);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5;">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-bg)" stroke-width="2.75" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+  </button>
+
+  <div style="position:absolute;left:0;right:0;bottom:0;display:flex;background:var(--color-surface);border-top:1px solid var(--color-divider);padding:8px 6px 10px;">
+    <button onClick="{{ goNow }}" style="flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 0;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ nowColor }}" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="5"></line><line x1="12" y1="19" x2="12" y2="22"></line><line x1="4.2" y1="4.2" x2="6.3" y2="6.3"></line><line x1="17.7" y1="17.7" x2="19.8" y2="19.8"></line><line x1="2" y1="12" x2="5" y2="12"></line><line x1="19" y1="12" x2="22" y2="12"></line><line x1="4.2" y1="19.8" x2="6.3" y2="17.7"></line><line x1="17.7" y1="6.3" x2="19.8" y2="4.2"></line></svg>
+      <span style="font-size:11px;color:{{ nowColor }};">Now</span>
+    </button>
+    <button onClick="{{ goTimeline }}" style="flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 0;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ timelineColor }}" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="17" rx="3"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="16" y1="2" x2="16" y2="6"></line></svg>
+      <span style="font-size:11px;color:{{ timelineColor }};">Timeline</span>
+    </button>
+    <button onClick="{{ goPlaces }}" style="flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 0;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ placesColor }}" stroke-width="2.2" stroke-linecap="round"><path d="M12 21s7-6.5 7-12a7 7 0 10-14 0c0 5.5 7 12 7 12z"></path><circle cx="12" cy="9" r="2.5"></circle></svg>
+      <span style="font-size:11px;color:{{ placesColor }};">Places</span>
+    </button>
+    <button onClick="{{ goNotes }}" style="flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 0;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ notesColor }}" stroke-width="2.2" stroke-linecap="round"><path d="M7 3h7l4 4v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z"></path><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="13" y2="17"></line></svg>
+      <span style="font-size:11px;color:{{ notesColor }};">Notes</span>
+    </button>
+  </div>
+
+  <sc-if value="{{ hasSelected }}">
+    <div data-screen-label="Item detail" style="position:absolute;inset:0;background:var(--color-bg);z-index:10;display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 8px;flex:none;">
+        <button onClick="{{ closeDetail }}" style="background:none;border:none;padding:4px;cursor:pointer;display:flex;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-text)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+        </button>
+        <div style="font-family:var(--font-heading);font-size:18px;">Details</div>
+      </div>
+      <div style="flex:1;overflow:auto;padding:8px 20px 24px;">
+        <span class="tag {{ selected.tagCls }}">{{ selected.tagLabel }}</span>
+        <h2 style="margin-top:10px;">{{ selected.title }}</h2>
+        <div class="text-muted" style="font-size:13px;margin-bottom:16px;">{{ selected.kindLabel }}</div>
+
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+          <sc-if value="{{ selected.hasWhen }}">
+            <div style="font-size:14px;"><strong>When</strong> — {{ selected.dateLabel }} · {{ selected.time }}</div>
+          </sc-if>
+          <sc-if value="{{ selected.hasLocation }}">
+            <div style="font-size:14px;"><strong>Where</strong> — {{ selected.location }}</div>
+          </sc-if>
+          <sc-if value="{{ selected.hasCode }}">
+            <div style="font-size:14px;"><strong>Confirmation</strong> — {{ selected.confirmationCode }}</div>
+          </sc-if>
+          <sc-if value="{{ selected.hasNotes }}">
+            <div style="font-size:14px;"><strong>Notes</strong> — {{ selected.notes }}</div>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ selected.hasResources }}">
+          <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:8px;">Resources</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
+            <sc-for list="{{ selected.resources }}" as="r" hint-placeholder-count="2">
+              <div style="display:flex;align-items:center;justify-content:space-between;background:var(--color-surface);border-radius:var(--radius-md);padding:10px 14px;">
+                <span style="font-size:14px;">{{ r.label }}</span>
+                <span class="tag tag-neutral">{{ r.kindLabel }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <div style="display:flex;gap:8px;padding:12px 20px 20px;flex:none;flex-wrap:wrap;">
+        <sc-if value="{{ selected.canPromote }}">
+          <button class="btn btn-primary" onClick="{{ promoteSelected }}">Move to Timeline</button>
+        </sc-if>
+        <sc-if value="{{ selected.canCancel }}">
+          <button class="btn btn-secondary" onClick="{{ cancelSelected }}">Cancel</button>
+        </sc-if>
+        <sc-if value="{{ selected.canRestore }}">
+          <button class="btn btn-secondary" onClick="{{ restoreSelected }}">Restore</button>
+        </sc-if>
+        <sc-if value="{{ selected.canDelete }}">
+          <button class="btn btn-ghost" onClick="{{ deleteSelected }}">Delete</button>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showAdd }}">
+    <div data-screen-label="Add item" style="position:absolute;inset:0;background:var(--color-bg);z-index:20;display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 8px;flex:none;">
+        <button onClick="{{ closeAdd }}" style="background:none;border:none;padding:4px;cursor:pointer;display:flex;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-text)" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
+        </button>
+        <div style="font-family:var(--font-heading);font-size:18px;">New item</div>
+      </div>
+      <div style="flex:1;overflow:auto;padding:8px 20px 24px;display:flex;flex-direction:column;gap:14px;">
+        <div class="field"><label>Title</label><input class="input" value="{{ addForm.title }}" onChange="{{ onTitleChange }}"></input></div>
+        <div class="field"><label>Kind</label>
+          <select class="input" value="{{ addForm.kind }}" onChange="{{ onKindChange }}">
+            <option value="activity">Activity</option>
+            <option value="food">Food</option>
+            <option value="stay">Stay</option>
+            <option value="transport">Transport</option>
+            <option value="task">Task</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="field"><label>Status</label>
+          <select class="input" value="{{ addForm.status }}" onChange="{{ onStatusChange }}">
+            <option value="idea">Idea (Places)</option>
+            <option value="confirmed">Confirmed (Timeline)</option>
+          </select>
+        </div>
+        <sc-if value="{{ addForm.isConfirmed }}">
+          <div class="field"><label>Day</label>
+            <select class="input" value="{{ addForm.day }}" onChange="{{ onDayChange }}">
+              <option value="1">Sat 19 Sep</option>
+              <option value="2">Sun 20 Sep</option>
+              <option value="3">Mon 21 Sep</option>
+              <option value="4">Tue 22 Sep</option>
+            </select>
+          </div>
+          <div class="field"><label>Time</label><input class="input" placeholder="e.g. 14:30" value="{{ addForm.time }}" onChange="{{ onTimeChange }}"></input></div>
+        </sc-if>
+        <div class="field"><label>Location</label><input class="input" value="{{ addForm.location }}" onChange="{{ onLocationChange }}"></input></div>
+        <div class="field"><label>Notes</label><textarea class="input" value="{{ addForm.notes }}" onChange="{{ onNotesChange }}"></textarea></div>
+      </div>
+      <div style="padding:12px 20px 20px;flex:none;">
+        <button class="btn btn-primary btn-block" onClick="{{ submitAdd }}">Add item</button>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-import>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const DAY_LABELS = { 1: 'Sat 19 Sep', 2: 'Sun 20 Sep', 3: 'Mon 21 Sep', 4: 'Tue 22 Sep' };
+const KIND_LABELS = { transport: 'Transport', stay: 'Stay', activity: 'Activity', food: 'Food', task: 'Task', other: 'Other' };
+const STATUS_TAG = {
+  idea: { label: 'Idea', cls: 'tag-outline' },
+  confirmed: { label: 'Confirmed', cls: 'tag-accent-2' },
+  cancelled: { label: 'Cancelled', cls: 'tag-neutral' },
+};
+
+const INITIAL_ITEMS = [
+  { id: 1, kind: 'transport', status: 'confirmed', title: 'Flight to Bergamo', location: 'Sofia \u2192 Milan Bergamo (BGY)', day: 1, time: '06:10\u201307:25', confirmationCode: 'FR1234 \u00b7 ABC123', notes: 'Ryanair, 3 passengers', resources: [{ label: 'Boarding passes', kind: 'file' }, { label: 'Booking confirmation', kind: 'file' }, { label: 'Airline booking page', kind: 'link' }] },
+  { id: 2, kind: 'task', status: 'confirmed', title: 'Print boarding passes', day: 1, time: 'before 05:00', completedAt: null },
+  { id: 3, kind: 'stay', status: 'confirmed', title: 'Check in \u2014 Hotel Brera', location: 'Via Fiori Chiari 5, Milan', day: 1, time: '15:00', confirmationCode: 'BK-88213', resources: [{ label: 'Reservation', kind: 'file' }, { label: 'Hotel website', kind: 'link' }] },
+  { id: 4, kind: 'activity', status: 'confirmed', title: 'Duomo Fast Track', location: 'Piazza del Duomo', day: 2, time: '10:00', confirmationCode: 'DFT-5521', resources: [{ label: 'E-ticket', kind: 'file' }, { label: 'Google Maps', kind: 'link' }] },
+  { id: 5, kind: 'food', status: 'idea', title: 'Trattoria da Pino', location: 'Navigli', notes: 'Recommended by Elena \u2014 book ahead for dinner', resources: [{ label: 'Website', kind: 'link' }] },
+  { id: 6, kind: 'activity', status: 'idea', title: 'Navigli canal walk', location: 'Navigli district', notes: 'Best at golden hour' },
+  { id: 7, kind: 'activity', status: 'confirmed', title: 'Leonardo da Vinci Museum', location: 'Via San Vittore 21', day: 3, time: '11:00', confirmationCode: 'LDV-0099', resources: [{ label: 'E-ticket', kind: 'file' }] },
+  { id: 8, kind: 'other', status: 'idea', title: 'Mercatino vintage shop', location: 'Via Tortona', notes: 'Saw it on Instagram, worth a browse' },
+  { id: 9, kind: 'food', status: 'confirmed', title: 'Dinner \u2014 Ratan\u00e0', location: 'Via Gaetano de Castillia 28', day: 3, time: '20:00', confirmationCode: 'RT-4471', resources: [{ label: 'Reservation email', kind: 'file' }] },
+  { id: 10, kind: 'task', status: 'confirmed', title: 'Check out of hotel', day: 4, time: 'by 11:00', completedAt: null },
+  { id: 11, kind: 'transport', status: 'confirmed', title: 'Flight to Sofia', location: 'Milan Bergamo (BGY) \u2192 Sofia', day: 4, time: '14:40\u201317:55', confirmationCode: 'FR5678 \u00b7 XYZ456', resources: [{ label: 'Boarding passes', kind: 'file' }, { label: 'Booking confirmation', kind: 'file' }] },
+  { id: 12, kind: 'food', status: 'idea', title: 'Bar Basso (aperitivo)', location: 'Via Plinio 39', notes: 'Classic Milan cocktail bar, no reservation needed' },
+];
+
+const INITIAL_NOTES = [
+  { id: 1, title: 'Packing list', body: 'Passports, EU adapter, rain jacket, kid\u2019s tablet + charger, spare pacifier, umbrella.' },
+  { id: 2, title: 'Gift ideas', body: 'Panettone for grandparents, leather notebook, football scarf for the kid.' },
+  { id: 3, title: 'Emergency contacts', body: 'Hotel front desk: +39 02 000 0000\nTravel insurance: +359 2 000 0000\nEmbassy: +39 06 000 0000' },
+];
+
+class Component extends DCLogic {
+  state = {
+    activeTab: 'now',
+    items: INITIAL_ITEMS,
+    notes: INITIAL_NOTES,
+    selectedId: null,
+    showAdd: false,
+    addForm: { title: '', kind: 'activity', status: 'confirmed', day: '2', time: '', location: '', notes: '' },
+    nextId: 100,
+  };
+
+  selectTab(tab) { this.setState({ activeTab: tab, selectedId: null }); }
+  openDetail(id) { this.setState({ selectedId: id }); }
+  closeDetail() { this.setState({ selectedId: null }); }
+  toggleTask(id) {
+    this.setState(s => ({ items: s.items.map(i => i.id === id ? { ...i, completedAt: i.completedAt ? null : 'now' } : i) }));
+  }
+  setStatus(id, status) {
+    this.setState(s => ({
+      items: s.items.map(i => i.id === id ? { ...i, status, day: i.day || 2, time: i.time || 'TBD' } : i),
+      selectedId: null,
+    }));
+  }
+  deleteSelected() {
+    const id = this.state.selectedId;
+    this.setState(s => ({ items: s.items.filter(i => i.id !== id), selectedId: null }));
+  }
+  openAdd() { this.setState({ showAdd: true }); }
+  closeAdd() { this.setState({ showAdd: false }); }
+  setAddField(field, value) { this.setState(s => ({ addForm: { ...s.addForm, [field]: value } })); }
+  submitAdd() {
+    const f = this.state.addForm;
+    if (!f.title.trim()) { this.setState({ showAdd: false }); return; }
+    const item = {
+      id: this.state.nextId, kind: f.kind, status: f.status,
+      title: f.title, location: f.location, notes: f.notes,
+      day: f.status === 'confirmed' ? Number(f.day) : undefined,
+      time: f.status === 'confirmed' ? (f.time || 'TBD') : undefined,
+    };
+    this.setState(s => ({
+      items: [...s.items, item], nextId: s.nextId + 1, showAdd: false,
+      addForm: { title: '', kind: 'activity', status: 'confirmed', day: '2', time: '', location: '', notes: '' },
+      activeTab: f.status === 'confirmed' ? 'timeline' : 'places',
+    }));
+  }
+
+  itemView(it) {
+    const tag = STATUS_TAG[it.status];
+    return {
+      id: it.id, title: it.title, location: it.location || '', time: it.time || '',
+      dateLabel: it.day ? DAY_LABELS[it.day] : '', tagLabel: tag.label, tagCls: tag.cls,
+      opacity: it.status === 'cancelled' ? 0.55 : 1,
+      open: () => this.openDetail(it.id),
+    };
+  }
+
+  renderVals() {
+    const { activeTab, items, notes, selectedId, showAdd, addForm } = this.state;
+    const isNow = activeTab === 'now', isTimeline = activeTab === 'timeline', isPlaces = activeTab === 'places', isNotes = activeTab === 'notes';
+    const titles = { now: ['Now', 'What\u2019s next on the trip'], timeline: ['Timeline', 'Milan \u00b7 19\u201322 Sep 2026'], places: ['Places', 'Ideas, not yet booked'], notes: ['Notes', 'Milan trip'] };
+    const [headerTitle, headerSubtitle] = titles[activeTab];
+
+    const confirmedDated = items.filter(i => i.status !== 'idea' && i.day);
+    const daysMap = {};
+    confirmedDated.forEach(i => { (daysMap[i.day] = daysMap[i.day] || []).push(i); });
+    const days = Object.keys(daysMap).map(Number).sort((a, b) => a - b).map(day => ({
+      day, label: DAY_LABELS[day], items: daysMap[day].map(i => this.itemView(i)),
+    }));
+
+    const upNext = confirmedDated.filter(i => i.day >= 2 && i.kind !== 'task').sort((a, b) => a.day - b.day).slice(0, 3).map(i => this.itemView(i));
+    const openTasksRaw = items.filter(i => i.kind === 'task' && !i.completedAt);
+    const openTasks = openTasksRaw.map(t => ({ id: t.id, title: t.title, dateLabel: DAY_LABELS[t.day] || '', time: t.time || '', toggle: () => this.toggleTask(t.id) }));
+
+    const places = items.filter(i => i.status === 'idea').map(p => ({
+      id: p.id, title: p.title, location: p.location || '', kindLabel: KIND_LABELS[p.kind], open: () => this.openDetail(p.id),
+    }));
+
+    const notesList = notes.map(n => ({ title: n.title, body: n.body }));
+
+    const selectedItem = items.find(i => i.id === selectedId);
+    let selected = null;
+    if (selectedItem) {
+      const tag = STATUS_TAG[selectedItem.status];
+      selected = {
+        title: selectedItem.title, kindLabel: KIND_LABELS[selectedItem.kind],
+        tagLabel: tag.label, tagCls: tag.cls,
+        hasWhen: !!selectedItem.day, dateLabel: DAY_LABELS[selectedItem.day] || '', time: selectedItem.time || '',
+        hasLocation: !!selectedItem.location, location: selectedItem.location || '',
+        hasCode: !!selectedItem.confirmationCode, confirmationCode: selectedItem.confirmationCode || '',
+        hasNotes: !!selectedItem.notes, notes: selectedItem.notes || '',
+        hasResources: !!(selectedItem.resources && selectedItem.resources.length),
+        resources: (selectedItem.resources || []).map(r => ({ label: r.label, kindLabel: r.kind === 'file' ? 'File' : 'Link' })),
+        canPromote: selectedItem.status === 'idea', canCancel: selectedItem.status === 'confirmed',
+        canRestore: selectedItem.status === 'cancelled', canDelete: selectedItem.status !== 'confirmed',
+      };
+    }
+
+    return {
+      isNow, isTimeline, isPlaces, isNotes, headerTitle, headerSubtitle,
+      days, upNext, openTasks, noOpenTasks: openTasks.length === 0, places, notesList,
+      hasSelected: !!selected, selected,
+      showAdd, addForm: { ...addForm, isConfirmed: addForm.status === 'confirmed' },
+      goNow: () => this.selectTab('now'), goTimeline: () => this.selectTab('timeline'),
+      goPlaces: () => this.selectTab('places'), goNotes: () => this.selectTab('notes'),
+      nowColor: isNow ? 'var(--color-accent-700)' : 'var(--color-neutral-600)',
+      timelineColor: isTimeline ? 'var(--color-accent-700)' : 'var(--color-neutral-600)',
+      placesColor: isPlaces ? 'var(--color-accent-700)' : 'var(--color-neutral-600)',
+      notesColor: isNotes ? 'var(--color-accent-700)' : 'var(--color-neutral-600)',
+      openAdd: () => this.openAdd(), closeAdd: () => this.closeAdd(),
+      closeDetail: () => this.closeDetail(),
+      promoteSelected: () => this.setStatus(selectedId, 'confirmed'),
+      cancelSelected: () => this.setStatus(selectedId, 'cancelled'),
+      restoreSelected: () => this.setStatus(selectedId, 'confirmed'),
+      deleteSelected: () => this.deleteSelected(),
+      onTitleChange: e => this.setAddField('title', e.target.value),
+      onKindChange: e => this.setAddField('kind', e.target.value),
+      onStatusChange: e => this.setAddField('status', e.target.value),
+      onDayChange: e => this.setAddField('day', e.target.value),
+      onTimeChange: e => this.setAddField('time', e.target.value),
+      onLocationChange: e => this.setAddField('location', e.target.value),
+      onNotesChange: e => this.setAddField('notes', e.target.value),
+      submitAdd: () => this.submitAdd(),
+    };
+  }
+}
+</script>
+</body>
+</html>

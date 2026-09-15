@@ -83,7 +83,7 @@ WHERE trip_id = ? AND status = 'idea'
 ORDER BY CASE priority
            WHEN 'must' THEN 0 WHEN 'want' THEN 1 WHEN 'maybe' THEN 2 ELSE 3 END, title
 
--- Bookings: grouped by kind in the UI, so ordering leads on time
+-- Bookings: no tab uses this since the design handoff (decision log D20); kept and tested
 WHERE trip_id = ? AND status = 'confirmed'
 ORDER BY (start_utc IS NULL), start_utc, title
 
@@ -591,6 +591,8 @@ unlike the gate.
 | `expo-file-system` | Copy/delete/stat imported files |
 | `expo-document-picker` | Pick PDFs |
 | `expo-image-picker` | Screenshots — a large share of real travel documents |
+| `react-native-svg` + `lucide-react-native` | Icons, behind the name map in `src/ui/components/Icon.tsx`. Native — adding it needed a dev-client rebuild |
+| `@expo-google-fonts/caprasimo` + `@expo-google-fonts/figtree` | The design's typefaces, bundled so they load offline (decision log D19) |
 | `expo-intent-launcher` | Open a stored PDF in Android's viewer |
 | `expo-linking` | URLs, Maps, Wallet |
 | `expo-notifications` | Local reminders |
@@ -624,16 +626,17 @@ app/                       expo-router routes ONLY — thin, no logic
   settings.tsx
   trip/new.tsx
   trip/[tripId]/
-    _layout.tsx            top tabs
-    index.tsx              Overview (default) — Now/Next + trip info
+    _layout.tsx            bottom tabs: Now · Timeline · Places · Notes (decision log D20)
+    index.tsx              Now (default) — up next, open tasks, trip info, trip documents
     timeline.tsx
-    bookings.tsx
     places.tsx
     notes.tsx
-    search.tsx
-  item/new.tsx             modal: ?tripId=&kind=
+    search.tsx             reached from the header, not a tab
+  item/new.tsx             ?tripId=&kind=
   item/[itemId]/index.tsx
   item/[itemId]/edit.tsx
+  resource/[resourceId].tsx   rename, retype, remove an attachment
+  resource/new-link.tsx
   share.tsx                share-intent landing (modal)
 
 src/
@@ -651,9 +654,12 @@ src/
   hooks/
     useLiveQuery.ts
   ui/
-    tokens.ts  components/
+    theme/palette.ts       raw colour ramps — the only hex values in the app
+    theme/roles.ts         semantic colour roles per scheme, contrast-tested
+    tokens.ts              useColors(), fonts, type scale, spacing, radius, elevation
+    components/            Card, Tag, StatusTag, SectionLabel, Button, Field, Icon, …
   features/
-    trips/  timeline/  bookings/  places/  notes/  share/
+    items/  resources/  trips/  timeline/  places/  notes/  share/
 ```
 
 **`src/domain/` imports nothing native.** If a domain module needs an Expo import, the design is

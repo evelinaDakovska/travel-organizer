@@ -203,29 +203,29 @@ but it costs nothing.
 **Say *"continue with the plan"*.** Tick boxes live in **`docs/status.md`** and nowhere else —
 finish the first unticked task, commit, then tick it there.
 
-`docs/status.md` is authoritative. At the time this was written the first unticked task was
-**S2** — resource UI: pick a PDF, pick an image, add a link, and the reusable `OpenResource`
-control. The item detail screen already has the placeholder where it lands.
+`docs/status.md` is authoritative. As of 2026-09-15:
 
-Remaining: `S2` and `S6`–`S8` need a real device. `S3`, `S4` and `S5` do not.
-
-At handoff:
-
-- **M0–M2 complete**, verified on a device: trips created, edited, deleted; Home buckets them
-  into upcoming and past
+- **M0–M3 complete.** S1 and S2 verified on the Android 17 emulator: items created and edited,
+  a PDF attached and opened with airplane mode on, its file swept after the item was deleted
 - **C1–C5 complete** — timeline derivation, trip items, resources and file storage, the tab
   queries, and the backup format. All pure or SQL, all covered by tests
-- **S1 complete** — item create/edit form and item detail screen, not yet seen on a device
-- **249 tests passing**, typecheck clean
-- Database migrates to `user_version = 1` on first launch
+- **V1 built, not yet seen on a device** — the Claude Design handoff (`docs/design/`) as colour
+  roles, fonts, icons and a restyle of the existing screens. Needs the dev client rebuilt for
+  `react-native-svg`, then a look in light and dark mode
+- **283 tests passing**, typecheck clean
+- Next: finish V1, then **S3** — trip tabs, the Now screen and the Timeline
+
+Remaining device work: `S6`–`S8`. `S3`, `S4` and `S5` need only the emulator.
+
+**Running the app on this machine.** The repo lives at `C:\dev\travel-organizer` (see §7).
+Run `npx expo run:android` in a terminal you can see. Once, with its output redirected to a file,
+it printed nothing and never started Gradle — most likely waiting on a prompt nobody could see.
+Don't use `CI=1` to get past that: in CI mode it ignored the running emulator, tried to launch one
+with an empty name, and quit before building.
 
 **The core is done, so S work is wiring known-good tested functions to screens.** Read the
 function's tests before designing a screen around it — they state the intended behaviour more
 precisely than the docs do.
-
-**Nothing from S1 has run on a device yet.** The form, the date/time/zone pickers and the item
-detail screen typecheck and the domain beneath them is tested, but no screen has been rendered
-since M2. Expect to fix layout and picker behaviour on first run.
 
 **Three findings already paid for — do not rediscover them:**
 

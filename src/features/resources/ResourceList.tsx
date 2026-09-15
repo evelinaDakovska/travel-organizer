@@ -5,6 +5,7 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import type { Resource, ResourceOwner } from '../../domain/resource';
 import { Button } from '../../ui/components/Button';
+import { SectionLabel } from '../../ui/components/SectionLabel';
 import { radius, spacing, type, useColors } from '../../ui/tokens';
 import { attachDocument, attachPhoto } from './attach';
 import { openResource } from './open';
@@ -39,7 +40,7 @@ export function ResourceList({ owner, resources, title, emptyText }: Props) {
 
   return (
     <View style={styles.block}>
-      <Text style={[type.overline, { color: c.textFaint }]}>{title}</Text>
+      <SectionLabel>{title}</SectionLabel>
 
       {resources.length > 0 ? (
         <View style={styles.list}>
@@ -58,7 +59,7 @@ export function ResourceList({ owner, resources, title, emptyText }: Props) {
           ))}
         </View>
       ) : (
-        <View style={[styles.empty, { backgroundColor: c.surfaceSunken, borderColor: c.border }]}>
+        <View style={[styles.empty, { backgroundColor: c.surfaceSunken }]}>
           <Text style={[type.body, { color: c.textMuted }]}>{emptyText}</Text>
         </View>
       )}
@@ -68,6 +69,7 @@ export function ResourceList({ owner, resources, title, emptyText }: Props) {
           <Button
             label="+ File"
             variant="secondary"
+            compact
             busy={busy === 'file'}
             disabled={busy !== null}
             onPress={() => void attach('file', attachDocument)}
@@ -77,6 +79,7 @@ export function ResourceList({ owner, resources, title, emptyText }: Props) {
           <Button
             label="+ Photo"
             variant="secondary"
+            compact
             busy={busy === 'photo'}
             disabled={busy !== null}
             onPress={() => void attach('photo', attachPhoto)}
@@ -86,6 +89,7 @@ export function ResourceList({ owner, resources, title, emptyText }: Props) {
           <Button
             label="+ Link"
             variant="secondary"
+            compact
             disabled={busy !== null}
             onPress={() =>
               router.push({
@@ -103,11 +107,7 @@ export function ResourceList({ owner, resources, title, emptyText }: Props) {
 const styles = StyleSheet.create({
   block: { gap: spacing.md },
   list: { gap: spacing.sm },
-  empty: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-  },
+  empty: { borderRadius: radius.lg, padding: spacing.lg },
   actions: { flexDirection: 'row', gap: spacing.sm },
   action: { flex: 1 },
 });

@@ -286,3 +286,61 @@ project. The personal machine is Windows with no subscription.
 - **Real travel use runs a release build.** A debuggable build lets an authorised computer read the
   app's private sandbox — the database and every imported PDF — via `adb shell run-as`. A release
   build does not. This is the single most effective mitigation.
+
+---
+
+## D19 — The Organic design, with colour behind semantic roles
+
+**Decision:** adopt the Claude Design handoff in `docs/design/` — the Organic system with a canal-teal
+and stone-gold accent, Caprasimo headings over Figtree, pill controls and ~32px cards. Colour lives
+in three layers: `src/ui/theme/palette.ts` (raw ramps, the only hex values), `roles.ts` (semantic
+roles per scheme) and `useColors()`. Components ask for a role, never a hex or a ramp step.
+
+**Why:** the owner asked that changing the palette be easy. With a role layer a re-theme edits one
+file, and `roles.test.ts` checks every role's contrast, so a new palette that makes text unreadable
+fails a test instead of shipping.
+
+**Where the implementation departs from the handoff, deliberately:**
+- A **dark scheme** is derived from the same ramps; the design is light only and the app follows
+  the system setting.
+- **Muted text** uses neutral-700, not the design's text-at-55%: that measures 3.6:1 on cream, below
+  the 4.5:1 body text needs, and muted text carries dates and places.
+- **Icons** are Lucide through `react-native-svg`, behind a map of semantic names in `Icon.tsx`, so
+  changing the icon set is one file.
+- **Fonts** load at start-up from `@expo-google-fonts`, bundled with the app, so they need no network.
+
+---
+
+## D20 — Four trip tabs; no Bookings tab
+
+**Decision:** a trip is **Now · Timeline · Places · Notes** as bottom tabs with a floating add button.
+Search is a header action. Trip info and Trip documents sit at the bottom of Now.
+
+**Rejected:** the planned Bookings tab.
+
+**Why:** the Timeline already shows every confirmed, dated item; Bookings repeated it grouped by kind.
+Four tabs reach comfortably one-handed on a tall phone. `SELECT_BOOKINGS` stays, tested, with no
+screen using it yet.
+
+---
+
+## D21 — A confirmed item is cancelled before it can be deleted
+
+**Decision:** Delete is offered for ideas and cancelled items. A confirmed item offers Cancel instead.
+
+**Why:** a booked item holds the tickets, and those files may be the only copies. One mis-tap should
+not destroy them. Cancelling first keeps the documents (D3) and makes a deletion deliberate. The
+cost is two steps to remove a confirmed item entered by mistake.
+
+---
+
+## D22 — Where the handoff disagreed with the model, the model won
+
+**Decision:** the handoff is followed for look and structure, not where it contradicts earlier
+decisions. The owner confirmed each of these:
+- **Cancelled items stay off the Timeline and Now** (D3). The prototype showed them dimmed in place.
+- **A dated idea stays on its day**, tagged Idea. The prototype left all ideas off the Timeline.
+- **The item form keeps `MomentField`.** The prototype's trip-day select and free-text time cannot
+  express a time zone, a date-only moment or a day outside the trip (D4, D8).
+- **Up-next cards keep the Open-ticket control.** The prototype omitted it, and finding the ticket in
+  seconds is the scenario the app exists for.

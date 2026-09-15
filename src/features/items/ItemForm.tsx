@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMemo } from 'react';
 import { Controller, useForm, type Control } from 'react-hook-form';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import {
   kindLabel,
@@ -18,7 +18,8 @@ import { Button } from '../../ui/components/Button';
 import { ChoiceField } from '../../ui/components/ChoiceField';
 import { Field, Input } from '../../ui/components/Field';
 import { MomentField } from '../../ui/components/MomentField';
-import { spacing, type, useColors } from '../../ui/tokens';
+import { SectionLabel } from '../../ui/components/SectionLabel';
+import { spacing } from '../../ui/tokens';
 
 type Props = {
   defaultValues: TripItemFormValues;
@@ -29,8 +30,13 @@ type Props = {
 
 const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
+const STATUS_HINTS = {
+  idea: 'Saved to Places until you book it',
+  confirmed: 'Booked — it shows on the Timeline',
+  cancelled: 'Kept for its documents, hidden from the Timeline',
+} as const;
+
 export function ItemForm({ defaultValues, defaultTz, submitLabel, onSubmit }: Props) {
-  const c = useColors();
   // The schema closes over the trip's zone, so it must not be rebuilt on every render.
   const schema = useMemo(() => tripItemInputSchema(defaultTz), [defaultTz]);
 
@@ -115,17 +121,11 @@ export function ItemForm({ defaultValues, defaultTz, submitLabel, onSubmit }: Pr
           control={control}
           name="status"
           render={({ field }) => (
-            <Field
-              label="Status"
-              hint={
-                status === 'idea'
-                  ? 'Saved to Places until you book it'
-                  : 'Booked things appear in Bookings and on the timeline'
-              }>
+            <Field label="Status" hint={STATUS_HINTS[status ?? 'idea']}>
               <ChoiceField
                 value={field.value ?? 'idea'}
                 options={TRIP_ITEM_STATUSES}
-                labelFor={(s) => (s === 'idea' ? 'Idea' : capitalise(s))}
+                labelFor={capitalise}
                 onChange={(next) => next && field.onChange(next)}
               />
             </Field>
@@ -150,7 +150,7 @@ export function ItemForm({ defaultValues, defaultTz, submitLabel, onSubmit }: Pr
           />
         )}
 
-        <Text style={[type.overline, { color: c.textFaint }]}>WHEN</Text>
+        <SectionLabel>When</SectionLabel>
 
         <Controller
           control={control}
@@ -187,7 +187,7 @@ export function ItemForm({ defaultValues, defaultTz, submitLabel, onSubmit }: Pr
 
         {kind === 'transport' && <TransportFields control={control} />}
 
-        <Text style={[type.overline, { color: c.textFaint }]}>WHERE</Text>
+        <SectionLabel>Where</SectionLabel>
 
         <Controller
           control={control}
@@ -219,13 +219,13 @@ export function ItemForm({ defaultValues, defaultTz, submitLabel, onSubmit }: Pr
           )}
         />
 
-        <Text style={[type.overline, { color: c.textFaint }]}>BOOKING</Text>
+        <SectionLabel>Booking</SectionLabel>
 
         <Controller
           control={control}
           name="confirmationCode"
           render={({ field }) => (
-            <Field label="Reference" error={errors.confirmationCode?.message} hint="Optional">
+            <Field label="Confirmation" error={errors.confirmationCode?.message} hint="Optional">
               <Input
                 value={field.value ?? ''}
                 onChangeText={field.onChange}
@@ -389,6 +389,6 @@ const styles = StyleSheet.create({
   content: { padding: spacing.xl, gap: spacing.xl, paddingBottom: spacing.xxxl },
   row: { flexDirection: 'row', gap: spacing.lg },
   currency: { width: 110 },
-  multiline: { minHeight: 100, textAlignVertical: 'top' },
+  multiline: { minHeight: 110, textAlignVertical: 'top' },
   actions: { marginTop: spacing.sm },
 });

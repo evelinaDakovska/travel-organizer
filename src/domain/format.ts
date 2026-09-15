@@ -73,6 +73,21 @@ export function formatMoment(local: string, precision: 'date' | 'time'): string 
   return precision === 'time' ? `${day} · ${local.slice(11, 16)}` : day;
 }
 
+const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+
+/** 'Sat 19 Sep' — for cards, where the full day heading is too long. */
+export function formatShortDate(date: string): string {
+  const { year, month, day } = parts(date);
+  const weekday = WEEKDAYS_SHORT[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
+  return `${weekday} ${day} ${MONTHS[month - 1]}`;
+}
+
+/** 'Sat 19 Sep · 06:10', or just the day when only the date is known. */
+export function formatShortMoment(local: string, precision: 'date' | 'time'): string {
+  const day = formatShortDate(local.slice(0, 10));
+  return precision === 'time' ? `${day} · ${local.slice(11, 16)}` : day;
+}
+
 /** '664 B' · '240 KB' · '2.4 MB' · '18 MB' */
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

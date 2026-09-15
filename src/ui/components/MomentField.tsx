@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { timezoneLabel } from '../../domain/timezones';
-import { radius, spacing, type, useColors } from '../tokens';
+import { opacity, radius, spacing, type, useColors } from '../tokens';
 import { DateField } from './DateField';
 import { TimeField } from './TimeField';
 import { TimezoneField } from './TimezoneField';
@@ -39,11 +39,12 @@ export function MomentField({ value, onChange, defaultTz, addLabel = 'Add a date
     return (
       <Pressable
         onPress={() => onChange({ local: today() })}
+        accessibilityRole="button"
         style={({ pressed }) => [
           styles.add,
-          { borderColor: c.border, opacity: pressed ? 0.7 : 1 },
+          { borderColor: c.border, opacity: pressed ? opacity.pressed : 1 },
         ]}>
-        <Text style={[type.body, { color: c.accent }]}>{addLabel}</Text>
+        <Text style={[type.bodyStrong, { color: c.accentText }]}>{addLabel}</Text>
       </Pressable>
     );
   }
@@ -108,9 +109,9 @@ const styles = StyleSheet.create({
   grow: { flex: 1 },
   add: {
     minHeight: 50,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },

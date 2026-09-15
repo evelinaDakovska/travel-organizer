@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { openLabel, type Resource } from '../../domain/resource';
 import { Button } from '../../ui/components/Button';
-import { radius, spacing, type, useColors } from '../../ui/tokens';
+import { SectionLabel } from '../../ui/components/SectionLabel';
+import { opacity, radius, spacing, useColors } from '../../ui/tokens';
 import { openResource } from './open';
 import { ResourceRow } from './ResourceRow';
 
@@ -31,9 +32,11 @@ export function OpenResource({ resources }: { resources: readonly Resource[] }) 
         animationType="fade"
         statusBarTranslucent
         onRequestClose={close}>
-        <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Close" />
-        <View style={[styles.sheet, { backgroundColor: c.background, borderColor: c.border }]}>
-          <Text style={[type.overline, { color: c.textFaint }]}>OPEN</Text>
+        <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Close">
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim, opacity: opacity.scrim }]} />
+        </Pressable>
+        <View style={[styles.sheet, { backgroundColor: c.background }]}>
+          <SectionLabel>Open</SectionLabel>
           <ScrollView style={styles.scroll} contentContainerStyle={styles.list}>
             {resources.map((resource) => (
               <ResourceRow
@@ -54,11 +57,10 @@ export function OpenResource({ resources }: { resources: readonly Resource[] }) 
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.4)' },
+  backdrop: { flex: 1 },
   sheet: {
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
-    borderWidth: StyleSheet.hairlineWidth,
     padding: spacing.xl,
     paddingBottom: spacing.xxxl,
     gap: spacing.md,

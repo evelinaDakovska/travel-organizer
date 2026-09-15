@@ -10,9 +10,12 @@ import { listResources, RESOURCE_TABLES } from '../../../src/repositories/resour
 import { listTripItems, TRIP_ITEM_TABLES } from '../../../src/repositories/tripItems';
 import { getTrip, TRIP_TABLES } from '../../../src/repositories/trips';
 import { Button } from '../../../src/ui/components/Button';
+import { Card } from '../../../src/ui/components/Card';
 import { ItemRow } from '../../../src/ui/components/ItemRow';
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
+import { SectionLabel } from '../../../src/ui/components/SectionLabel';
+import { Tag } from '../../../src/ui/components/Tag';
 import { radius, spacing, type, useColors } from '../../../src/ui/tokens';
 
 export default function TripOverview() {
@@ -65,33 +68,33 @@ export default function TripOverview() {
       <ScreenHeader
         title={trip.name}
         action={
-          <Pressable onPress={() => router.push(`/trip/${trip.id}/edit`)} hitSlop={12}>
-            <Text style={[type.body, { color: c.accent }]}>Edit</Text>
+          <Pressable
+            onPress={() => router.push(`/trip/${trip.id}/edit`)}
+            hitSlop={12}
+            accessibilityRole="button">
+            <Text style={[type.bodyStrong, { color: c.accentText }]}>Edit</Text>
           </Pressable>
         }
       />
 
       <ScrollView contentContainerStyle={styles.content}>
-        {isTripActive(trip) && (
-          <Text style={[type.overline, { color: c.accent }]}>HAPPENING NOW</Text>
-        )}
-
-        <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
-          <Text style={[type.heading, { color: c.text }]}>
+        <Card style={styles.summary}>
+          {isTripActive(trip) ? <Tag label="Happening now" tone="accent" /> : null}
+          <Text style={[type.title, { color: c.text }]}>
             {formatDateRange(trip.startDate, trip.endDate)}
           </Text>
           <Text style={[type.body, { color: c.textMuted }]}>
             {formatDuration(tripDurationDays(trip))}
             {trip.destination ? ` · ${trip.destination}` : ''}
           </Text>
-          <Text style={[type.caption, { color: c.textFaint }]}>
+          <Text style={[type.caption, { color: c.textMuted }]}>
             Times shown in {trip.defaultTz} unless an item says otherwise
           </Text>
-        </View>
+        </Card>
 
         {(trip.travellers.length > 0 || trip.travellerCount) && (
           <View style={styles.block}>
-            <Text style={[type.overline, { color: c.textFaint }]}>TRAVELLING</Text>
+            <SectionLabel>Travelling</SectionLabel>
             <Text style={[type.body, { color: c.text }]}>
               {trip.travellers.length > 0
                 ? trip.travellers.join(', ')
@@ -105,30 +108,22 @@ export default function TripOverview() {
 
         {trip.notes ? (
           <View style={styles.block}>
-            <Text style={[type.overline, { color: c.textFaint }]}>NOTES</Text>
-            <Text style={[type.body, styles.notes, { color: c.text }]}>{trip.notes}</Text>
+            <SectionLabel>Notes</SectionLabel>
+            <Text style={[type.body, { color: c.text }]}>{trip.notes}</Text>
           </View>
         ) : null}
 
         <View style={styles.block}>
-          <Text style={[type.overline, { color: c.textFaint }]}>EVERYTHING IN THIS TRIP</Text>
+          <SectionLabel>Everything in this trip</SectionLabel>
 
           {items && items.length > 0 ? (
             <View style={styles.list}>
               {items.map((item) => (
-                <ItemRow
-                  key={item.id}
-                  item={item}
-                  onPress={() => router.push(`/item/${item.id}`)}
-                />
+                <ItemRow key={item.id} item={item} onPress={() => router.push(`/item/${item.id}`)} />
               ))}
             </View>
           ) : (
-            <View
-              style={[
-                styles.placeholder,
-                { backgroundColor: c.surfaceSunken, borderColor: c.border },
-              ]}>
+            <View style={[styles.well, { backgroundColor: c.surfaceSunken }]}>
               <Text style={[type.body, { color: c.textMuted }]}>
                 Nothing here yet. Add a flight, a hotel, or somewhere you want to go.
               </Text>
@@ -145,31 +140,19 @@ export default function TripOverview() {
         <ResourceList
           owner={{ scope: 'trip', id: trip.id }}
           resources={documents ?? []}
-          title="TRIP DOCUMENTS"
+          title="Trip documents"
           emptyText="Insurance, passport scans, visas — anything that belongs to the whole trip."
         />
-
-        <View
-          style={[styles.placeholder, { backgroundColor: c.surfaceSunken, borderColor: c.border }]}>
-          <Text style={[type.body, { color: c.textMuted }]}>
-            The timeline and tabs arrive in the next milestones.
-          </Text>
-        </View>
       </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.xl, gap: spacing.xl },
-  card: { borderWidth: 1, borderRadius: radius.lg, padding: spacing.xl, gap: spacing.xs },
+  content: { padding: spacing.xl, paddingTop: spacing.sm, gap: spacing.xl, paddingBottom: spacing.xxxl },
+  summary: { padding: spacing.xl, gap: spacing.xs },
   block: { gap: spacing.md },
-  list: { gap: spacing.sm },
-  notes: { lineHeight: 22 },
-  placeholder: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-  },
+  list: { gap: spacing.md },
+  well: { borderRadius: radius.lg, padding: spacing.lg },
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

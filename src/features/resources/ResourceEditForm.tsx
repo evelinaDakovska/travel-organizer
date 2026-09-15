@@ -13,6 +13,7 @@ import {
 import { Button } from '../../ui/components/Button';
 import { ChoiceField } from '../../ui/components/ChoiceField';
 import { Field, Input } from '../../ui/components/Field';
+import { SectionLabel } from '../../ui/components/SectionLabel';
 import { radius, spacing, type, useColors } from '../../ui/tokens';
 
 type Props = {
@@ -38,10 +39,8 @@ export function ResourceEditForm({ resource, onSave, onDelete }: Props) {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={[styles.source, { backgroundColor: c.surfaceSunken, borderColor: c.border }]}>
-          <Text style={[type.overline, { color: c.textFaint }]}>
-            {resource.kind === 'file' ? 'SAVED FILE' : 'LINK'}
-          </Text>
+        <View style={[styles.source, { backgroundColor: c.surfaceSunken }]}>
+          <SectionLabel>{resource.kind === 'file' ? 'Saved file' : 'Link'}</SectionLabel>
           <Text style={[type.body, { color: c.text }]} selectable numberOfLines={3}>
             {resource.kind === 'file' ? (resource.fileName ?? resource.storedPath) : resource.url}
           </Text>
@@ -94,10 +93,5 @@ export function ResourceEditForm({ resource, onSave, onDelete }: Props) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { padding: spacing.xl, gap: spacing.xl, paddingBottom: spacing.xxxl },
-  source: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-    gap: spacing.xs,
-  },
+  source: { borderRadius: radius.lg, padding: spacing.lg, gap: spacing.xs },
 });
