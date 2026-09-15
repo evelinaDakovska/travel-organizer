@@ -7,6 +7,7 @@ import { openTasks, upNext } from '../../../../src/domain/itinerary';
 import { groupResourcesByItem } from '../../../../src/domain/resource';
 import { ResourceList } from '../../../../src/features/resources/ResourceList';
 import { EntryCard } from '../../../../src/features/timeline/EntryCard';
+import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { TaskRow } from '../../../../src/features/trips/TaskRow';
 import { useTripId } from '../../../../src/features/trips/TripContext';
 import { TripSummary } from '../../../../src/features/trips/TripSummary';
@@ -89,12 +90,15 @@ export default function NowScreen() {
         title="Now"
         subtitle={trip.name}
         action={
-          <Pressable
-            onPress={() => router.push(`/trip/${trip.id}/edit`)}
-            hitSlop={12}
-            accessibilityRole="button">
-            <Text style={[type.bodyStrong, { color: c.accentText }]}>Edit</Text>
-          </Pressable>
+          <View style={styles.headerActions}>
+            <SearchButton tripId={trip.id} />
+            <Pressable
+              onPress={() => router.push(`/trip/${trip.id}/edit`)}
+              hitSlop={12}
+              accessibilityRole="button">
+              <Text style={[type.bodyStrong, { color: c.accentText }]}>Edit</Text>
+            </Pressable>
+          </View>
         }
       />
 
@@ -147,6 +151,7 @@ export default function NowScreen() {
 }
 
 const styles = StyleSheet.create({
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   // Room at the bottom for the floating add button.
   content: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.xl, paddingBottom: 120 },
   section: { gap: spacing.md },

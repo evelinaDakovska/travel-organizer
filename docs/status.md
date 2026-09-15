@@ -3,11 +3,12 @@
 **The** status board. `CLAUDE.md` and `plan.md` link here rather than repeat it, so there is one
 place to update and nothing can drift.
 
-Verified against the repo on 2026-09-15, on Windows: **296 tests passing, typecheck clean.** S2, V1 and S3 verified on the Android 17 emulator.
+Verified against the repo on 2026-09-15, on Windows: **303 tests passing, typecheck clean.** S2, V1, S3 and S4 verified on the Android 17 emulator.
 
-> **Next task: S4** — give Places and Notes their actions: write, edit and pin notes; move an idea
-> onto the timeline; cancel, restore and delete by the decision log D21 rule; and search from the
-> header. Until search exists, a cancelled item cannot be reached from any tab.
+> **Next task: S5** — the export / import screen. There is no zip dependency yet, so it starts by
+> adding a pure-JS one; then `readAllTables` → `buildExportDocument` → zip with `media/`, handed to
+> the share sheet, and a zip read back through `parseExportDocument` → `planImport` → `applyImport`.
+> Done when a full round-trip loses nothing.
 
 ---
 
@@ -22,14 +23,14 @@ Feature map. `docs/plan.md` holds the detail for each.
 | **M2** | Create, edit and delete trips; Home with upcoming and past | ✅ |
 | **M3** | TripItems, resources, and local file import with offline access | ✅ |
 | **M4** | Trip tabs, the Now screen and the Timeline | ✅ |
-| **M5** | Places and Notes tabs, search within a trip, and item status actions | ⬜ |
+| **M5** | Places and Notes tabs, search within a trip, and item status actions | ✅ |
 | **M6** | Export and import everything as a zip — the only guard against data loss | ⬜ |
 | **M7** | Local reminders for dated items | ⬜ |
 | **M8** | Receive PDFs, images and links from the Android share sheet | ⬜ |
 | **M9** | Visual pass, offline pass, edge cases, release build | ⬜ |
 
-M0–M4 were verified on a device, not just by tests. M3 on the emulator: a PDF attached, opened
-with airplane mode on, and its file was swept after the item was deleted.
+M0–M5 were verified on a device, not just by tests. **Do not travel with the app until M6** — without
+export there is no copy of anything outside the phone.
 
 ---
 
@@ -67,30 +68,36 @@ it disagrees with the model, `docs/decision-log.md` D22 says which wins.
 | **S2** | Resource UI: pick PDF, pick image, add link, and the `OpenResource` control | M3 | **yes** | ✅ |
 | **V1** | Visual foundation: colour roles over palette ramps, fonts, icons, shared components, restyle of existing screens | M4 | no | ✅ |
 | **S3** | Trip tabs (Now · Timeline · Places · Notes) with the add button; the Now and Timeline screens | M4 | no | ✅ |
-| **S4** | Places and Notes actions, search, and item status actions (move to timeline, cancel, restore, delete) | M5 | no | ⬜ |
+| **S4** | Places and Notes actions, search, and item status actions (move to timeline, cancel, restore, delete) | M5 | no | ✅ |
 | **S5** | Export / import screen | M6 | no | ⬜ |
 | **S6** | Local notifications | M7 | **yes** | ⬜ |
 | **S7** | Share-to-App via the Android share sheet | M8 | **yes** | ⬜ |
 | **S8** | Visual pass, offline pass, edge cases, release build | M9 | **yes** | ⬜ |
 
-**S3, what was built:** a trip is now `app/trip/[tripId]/(tabs)/` — Now, Timeline, Places and Notes
-behind a custom bottom bar, with the add button floating above it. Tabs read the trip from
-`TripIdProvider` (`src/features/trips/TripContext.tsx`), because a tab reached through the bar is
-not handed the route's `tripId`. What each tab shows comes from `src/domain/itinerary.ts`:
-- **Now** — *Up next* (the next three confirmed, non-task entries, check-outs included), *Open
-  tasks* with a tick, then trip facts and Trip documents.
-- **Timeline** — entries grouped by local day; dated ideas stay, cancelled items do not; confirmed
-  items with no date are listed under *No date yet* so they are never lost.
-- **Places** and **Notes** — read-only lists for now; their actions are S4.
-- Cards carry an Open control when the item has attachments, from one query per tab
-  (`listItemResourcesForTrip`) rather than one per card.
-- Launching the app opens straight into the trip when exactly one is in progress.
+**S4, what was built:**
+- **Item status actions** on item detail, from `statusActions` in `src/domain/status.ts`: *Move to
+  Timeline* for an idea (a screen that asks for a day, then `scheduleTripItem` → confirmed);
+  *Mark as cancelled* for a confirmed item, with a confirmation; *Restore* for a cancelled one; and
+  *Delete* only for ideas and cancelled items, naming how many saved files go with it. A confirmed
+  item says *mark it as cancelled first* instead (decision log D21). Delete is no longer on the Edit
+  screen, so the rule lives in one place. `UPDATE_TRIP_ITEM_STATUS` changes status and nothing else.
+- **Notes**: new and edit screens under `app/note/` — title, body, pin to the top, delete. The Notes
+  tab has a *New note* button and each card opens its note.
+- **Search**: a search icon in every trip tab's header opens `app/trip/[tripId]/search.tsx`, which
+  matches items — cancelled ones included, so their documents stay reachable — and notes as you type.
 
-**S3, how it was verified:** on the emulator — all four tabs, opening an item from a tab and coming
-back, the add button, a two-day hotel stay showing *Check in* and *Check out* on their days with
-the check-out under *Up next*, and a cold start landing on the active trip. No errors in the Metro
-log after a clean relaunch. The *database is locked* errors seen earlier appear only while routes
-are added or removed during development, which forces a full reload.
+**S4, how it was verified:** on the emulator — searching for an item and for text inside a note, the
+empty result; creating, pinning, finding and deleting a note; cancelling a confirmed stay (it left
+the Timeline and Now), finding it by search and restoring it; creating an idea, moving it onto
+today's timeline, then cancelling and deleting it. No errors in the Metro log.
+
+**S3, what was built:** a trip is `app/trip/[tripId]/(tabs)/` — Now, Timeline, Places and Notes behind
+a custom bottom bar, with the add button floating above it. Tabs read the trip from `TripIdProvider`
+(`src/features/trips/TripContext.tsx`), because a tab reached through the bar is not handed the
+route's `tripId`. What each tab shows comes from `src/domain/itinerary.ts`: *Up next* (the next three
+confirmed, non-task entries, check-outs included) and *Open tasks* on Now; entries grouped by local
+day on the Timeline, with dated ideas kept, cancelled items left off and undated confirmed items under
+*No date yet*. Launching the app opens straight into the trip when exactly one is in progress.
 
 **V1, what was built:** colour lives in `src/ui/theme/palette.ts` (ramps, the only hex values) and
 `roles.ts` (semantic roles for light and a derived dark scheme), read through `useColors()`.
@@ -98,6 +105,9 @@ are added or removed during development, which forces a full reload.
 load at start-up; icons are Lucide behind a name map in `Icon.tsx`. Verified in light and dark mode.
 The first launch after a rebuild shows a blank cream screen for a while: that is Metro bundling
 ~3,600 modules and the fonts arriving over the dev server, not a hang.
+
+**Development note:** *database is locked* errors appear in the Metro log only while routes are added
+or removed, which forces a full reload over a connection that is still open. None on a clean launch.
 
 **Noted during S2, for S8:** the PDF viewer's title bar shows the stored name (`<uuid>.pdf`), a
 cosmetic cost of naming files by id. And Android 17's photo picker needs a tap on *Done* even for

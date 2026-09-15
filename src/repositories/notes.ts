@@ -16,6 +16,11 @@ export async function listNotes(db: SQLiteDatabase, tripId: string): Promise<Not
   return rows.map(parseNoteRow);
 }
 
+export async function getNote(db: SQLiteDatabase, id: string): Promise<Note | null> {
+  const row = await db.getFirstAsync<NoteRow>(`SELECT * FROM trip_notes WHERE id = ?`, id);
+  return row ? parseNoteRow(row) : null;
+}
+
 export async function createNote(
   db: SQLiteDatabase,
   tripId: string,

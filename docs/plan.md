@@ -46,7 +46,7 @@ After C5, the core is complete and this machine's work is finished.
 | **S2** | Resource UI: pick PDF, pick image, add link, and the reusable `OpenResource` control | M3 | ✅ Done — PDF opened offline on the emulator |
 | **V1** | Visual foundation from `docs/design/`: colour roles over palette ramps, fonts, icons, shared components, restyle of existing screens | M4 | ✅ Done — checked on the emulator in light and dark mode |
 | **S3** | Trip tabs (Now · Timeline · Places · Notes) with the add button; the Now and Timeline screens | M4 | ✅ Done — verified on the emulator |
-| **S4** | Places and Notes tabs, search, and item status actions | M5 | no |
+| **S4** | Places and Notes tabs, search, and item status actions | M5 | ✅ Done — verified on the emulator |
 | **S5** | Export / import screen | M6 | no |
 | **S6** | Local notifications | M7 | **yes** |
 | **S7** | Share-to-App | M8 | **yes** |
@@ -233,11 +233,16 @@ Tabs that are queries over one table — the payoff of the domain model.
 1. ✅ Bookings query — `status='confirmed'`. **No tab uses it any more** (D20); kept and tested
 2. ✅ Places query — `status='idea'`, priority then title, unrated last
 3. ✅ Promote a place to a dated plan — `scheduleTripItem`, a single `UPDATE`
-4. ✅ `trip_notes` CRUD and pinning — Notes tab itself is S4
-5. ✅ Search across title, notes, location, address, `confirmation_code` **and trip notes**
-6. Cost fields (amount, currency, paid/unpaid) in the item form
+4. ✅ `trip_notes` CRUD and pinning — the Notes tab, new and edit screens, and pin to top (S4)
+5. ✅ Search across title, notes, location, address, `confirmation_code` **and trip notes** — a
+   header search on every trip tab that includes cancelled items (S4)
+6. ✅ Cost fields (amount, currency, paid/unpaid) in the item form — shipped with S1
+7. ✅ Item status actions (S4): *Move to Timeline* for an idea, *Mark as cancelled* and *Restore*,
+   and *Delete* only for ideas and cancelled items (decision log D21)
 
 **Done when:** the app is genuinely usable for a real trip. **Do not travel with it until M6.**
+**Verified 2026-09-15** on the emulator: search, notes, cancel and restore, promote, and the delete
+rule all work end to end.
 
 ---
 

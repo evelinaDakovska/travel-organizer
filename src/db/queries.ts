@@ -164,6 +164,11 @@ UPDATE trip_items SET
 WHERE id = $id
 `;
 
+/** Cancel or restore. Dates, notes and attachments are left exactly as they were. */
+export const UPDATE_TRIP_ITEM_STATUS = `
+UPDATE trip_items SET status = $status, updated_at = $now WHERE id = $id
+`;
+
 /** Cancelled rows stay searchable: finding the cancellation document is the point of keeping them. */
 export const SEARCH_TRIP_ITEMS = `
 SELECT i.*, t.default_tz AS trip_default_tz

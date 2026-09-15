@@ -633,8 +633,11 @@ app/                       expo-router routes ONLY — thin, no logic
     notes.tsx
     search.tsx             reached from the header, not a tab
   item/new.tsx             ?tripId=&kind=
-  item/[itemId]/index.tsx
+  item/[itemId]/index.tsx     detail, with the status actions (decision log D21)
   item/[itemId]/edit.tsx
+  item/[itemId]/schedule.tsx  move an idea onto the timeline
+  note/new.tsx             ?tripId=
+  note/[noteId].tsx        edit, pin, delete
   resource/[resourceId].tsx   rename, retype, remove an attachment
   resource/new-link.tsx
   share.tsx                share-intent landing (modal)

@@ -1,23 +1,27 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { formatMoment, formatMoney } from '../../../src/domain/format';
+import { statusActions } from '../../../src/domain/status';
 import { timezoneLabel } from '../../../src/domain/timezones';
 import {
   kindLabel,
   routeLabel,
   subkindLabel,
   transportDetails,
+  type TripItem,
 } from '../../../src/domain/tripItem';
 import { OpenResource } from '../../../src/features/resources/OpenResource';
 import { ResourceList } from '../../../src/features/resources/ResourceList';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import { listResources, RESOURCE_TABLES } from '../../../src/repositories/resources';
 import {
+  deleteTripItem,
   getTripItem,
   setTaskCompleted,
+  setTripItemStatus,
   TRIP_ITEM_TABLES,
 } from '../../../src/repositories/tripItems';
 import { Button } from '../../../src/ui/components/Button';
@@ -70,6 +74,7 @@ export default function ItemDetail() {
   const details = transportDetails(item);
   const route = routeLabel(details);
   const kind = item.subkind ? subkindLabel(item.subkind) : kindLabel(item.kind);
+  const actions = statusActions(item.status);
 
   const whenDetail = [
     item.end ? `until ${formatMoment(item.end.local, item.end.precision)}` : null,
@@ -149,8 +154,72 @@ export default function ItemDetail() {
           title="Tickets & links"
           emptyText="Attach the boarding pass, the booking confirmation, or a link to manage it."
         />
+
+        <View style={styles.actions}>
+          {actions.promote ? (
+            <Button
+              label="Move to Timeline"
+              onPress={() => router.push(`/item/${item.id}/schedule`)}
+            />
+          ) : null}
+          {actions.cancel ? (
+            <Button
+              label="Mark as cancelled"
+              variant="secondary"
+              onPress={() => confirmCancel(item, () => setTripItemStatus(db, item.id, 'cancelled'))}
+            />
+          ) : null}
+          {actions.restore ? (
+            <Button
+              label="Restore"
+              variant="secondary"
+              onPress={() => setTripItemStatus(db, item.id, 'confirmed')}
+            />
+          ) : null}
+          {actions.delete ? (
+            <Button
+              label="Delete"
+              variant="danger"
+              onPress={() =>
+                confirmDelete(item, resources?.filter((r) => r.kind === 'file').length ?? 0, async () => {
+                  await deleteTripItem(db, item.id);
+                  router.back();
+                })
+              }
+            />
+          ) : (
+            <Text style={[type.caption, styles.hint, { color: c.textMuted }]}>
+              To delete it, mark it as cancelled first — its tickets may be the only copies.
+            </Text>
+          )}
+        </View>
       </ScrollView>
     </Screen>
+  );
+}
+
+function confirmCancel(item: TripItem, cancel: () => void) {
+  Alert.alert(
+    `Mark ${item.title} as cancelled?`,
+    'It leaves the timeline and Now. Its tickets and documents stay with it.',
+    [
+      { text: 'Keep it', style: 'cancel' },
+      { text: 'Mark cancelled', style: 'destructive', onPress: cancel },
+    ],
+  );
+}
+
+/** Names the blast radius — these files may be the only copies. */
+function confirmDelete(item: TripItem, files: number, remove: () => Promise<void>) {
+  Alert.alert(
+    `Delete ${item.title}?`,
+    files > 0
+      ? `This also removes ${files} saved file${files === 1 ? '' : 's'}. It cannot be undone.`
+      : 'This cannot be undone.',
+    [
+      { text: 'Keep it', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => void remove() },
+    ],
   );
 }
 
@@ -188,5 +257,7 @@ const styles = StyleSheet.create({
   fact: { flexDirection: 'row', gap: spacing.lg },
   factLabel: { width: 108 },
   factValue: { flex: 1, gap: 2 },
+  actions: { gap: spacing.sm },
+  hint: { textAlign: 'center' },
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

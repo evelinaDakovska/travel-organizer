@@ -14,6 +14,7 @@ import {
   SET_TASK_COMPLETED,
   UPDATE_ITEM_INSTANTS,
   UPDATE_TRIP_ITEM,
+  UPDATE_TRIP_ITEM_STATUS,
 } from '../db/queries';
 import { parseNoteRow, type Note, type NoteRow } from '../domain/note';
 import { searchPattern } from '../domain/search';
@@ -24,6 +25,7 @@ import {
   type TripItem,
   type TripItemInput,
   type TripItemRow,
+  type TripItemStatus,
 } from '../domain/tripItem';
 
 export const TRIP_ITEM_TABLES = ['trip_items'] as const;
@@ -81,6 +83,19 @@ export async function updateTripItem(
 
 export async function deleteTripItem(db: SQLiteDatabase, id: string): Promise<void> {
   await db.runAsync(`DELETE FROM trip_items WHERE id = ?`, id);
+}
+
+/** Cancel or restore. Dates, notes and attachments are left as they were. */
+export async function setTripItemStatus(
+  db: SQLiteDatabase,
+  id: string,
+  status: TripItemStatus,
+): Promise<void> {
+  await db.runAsync(UPDATE_TRIP_ITEM_STATUS, {
+    $id: id,
+    $status: status,
+    $now: new Date().toISOString(),
+  });
 }
 
 export async function setTaskCompleted(

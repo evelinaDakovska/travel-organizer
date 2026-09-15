@@ -1,24 +1,22 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { tripItemFormValues } from '../../../src/domain/tripItem';
 import { ItemForm } from '../../../src/features/items/ItemForm';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
-import { listResources } from '../../../src/repositories/resources';
 import {
-  deleteTripItem,
   getTripItem,
   TRIP_ITEM_TABLES,
   updateTripItem,
 } from '../../../src/repositories/tripItems';
 import { getTrip, TRIP_TABLES } from '../../../src/repositories/trips';
-import { Button } from '../../../src/ui/components/Button';
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
-import { spacing, type, useColors } from '../../../src/ui/tokens';
+import { type, useColors } from '../../../src/ui/tokens';
 
+/** Deleting lives on the detail screen, where the cancel-first rule is shown (decision log D21). */
 export default function EditItem() {
   const c = useColors();
   const db = useSQLiteContext();
@@ -38,34 +36,10 @@ export default function EditItem() {
     [tripId],
   );
 
-  /** Names the blast radius — these files may be the only copies. */
-  const confirmDelete = useCallback(async () => {
-    const resources = await listResources(db, { scope: 'item', id: itemId });
-    const files = resources.filter((resource) => resource.kind === 'file').length;
-
-    Alert.alert(
-      `Delete ${item?.title ?? 'this item'}?`,
-      files > 0
-        ? `This also removes ${files} saved file${files === 1 ? '' : 's'}. It cannot be undone.`
-        : 'This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteTripItem(db, itemId);
-            router.replace(tripId ? `/trip/${tripId}` : '/');
-          },
-        },
-      ],
-    );
-  }, [db, itemId, item?.title, tripId, router]);
-
   if (loading || (item && !trip)) {
     return (
       <Screen>
-        <ScreenHeader title="Edit" />
+        <ScreenHeader title="Edit item" />
         <View style={styles.centre}>
           <ActivityIndicator color={c.accent} />
         </View>
@@ -76,7 +50,7 @@ export default function EditItem() {
   if (!item || !trip) {
     return (
       <Screen>
-        <ScreenHeader title="Edit" />
+        <ScreenHeader title="Edit item" />
         <View style={styles.centre}>
           <Text style={[type.body, { color: c.textMuted }]}>This item no longer exists.</Text>
         </View>
@@ -96,14 +70,10 @@ export default function EditItem() {
           router.back();
         }}
       />
-      <View style={styles.danger}>
-        <Button label="Delete item" variant="danger" onPress={confirmDelete} />
-      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  danger: { padding: spacing.xl, paddingTop: 0 },
 });

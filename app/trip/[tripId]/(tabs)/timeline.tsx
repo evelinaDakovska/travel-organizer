@@ -7,6 +7,7 @@ import { undatedConfirmed } from '../../../../src/domain/itinerary';
 import { groupResourcesByItem } from '../../../../src/domain/resource';
 import { buildTimeline } from '../../../../src/domain/timeline';
 import { EntryCard } from '../../../../src/features/timeline/EntryCard';
+import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { useTripId } from '../../../../src/features/trips/TripContext';
 import { useLiveQuery } from '../../../../src/hooks/useLiveQuery';
 import {
@@ -69,6 +70,7 @@ export default function TimelineScreen() {
       <ScreenHeader
         title="Timeline"
         subtitle={`${trip.name} · ${formatDateRange(trip.startDate, trip.endDate)}`}
+        action={<SearchButton tripId={tripId} />}
       />
 
       <ScrollView contentContainerStyle={styles.content}>

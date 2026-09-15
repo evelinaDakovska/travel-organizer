@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { useTripId } from '../../../../src/features/trips/TripContext';
 import { useLiveQuery } from '../../../../src/hooks/useLiveQuery';
 import { listPlaces, TRIP_ITEM_TABLES } from '../../../../src/repositories/tripItems';
@@ -10,7 +11,7 @@ import { Screen } from '../../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../../src/ui/components/ScreenHeader';
 import { radius, spacing, type, useColors } from '../../../../src/ui/tokens';
 
-/** Ideas, most wanted first. */
+/** Ideas, most wanted first. Opening one offers Move to Timeline. */
 export default function PlacesScreen() {
   const c = useColors();
   const router = useRouter();
@@ -24,7 +25,11 @@ export default function PlacesScreen() {
 
   return (
     <Screen>
-      <ScreenHeader title="Places" subtitle="Ideas, not yet booked" />
+      <ScreenHeader
+        title="Places"
+        subtitle="Ideas, not yet booked"
+        action={<SearchButton tripId={tripId} />}
+      />
 
       {loading ? (
         <View style={styles.centre}>
@@ -40,7 +45,7 @@ export default function PlacesScreen() {
             <View style={[styles.well, { backgroundColor: c.surfaceSunken }]}>
               <Text style={[type.body, { color: c.textMuted }]}>
                 No ideas saved yet. Add somewhere you might go — a café someone recommended, a
-                viewpoint — and book it later.
+                viewpoint — and move it onto the timeline once it is booked.
               </Text>
             </View>
           )}
