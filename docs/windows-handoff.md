@@ -115,7 +115,7 @@ Verify the toolchain any time with:
 
 ```powershell
 npx expo-doctor      # should report all checks passing
-npm test             # 249 tests
+npm test             # 366 tests
 npx tsc --noEmit     # must be clean
 ```
 
@@ -203,19 +203,20 @@ but it costs nothing.
 **Say *"continue with the plan"*.** Tick boxes live in **`docs/status.md`** and nowhere else —
 finish the first unticked task, commit, then tick it there.
 
-`docs/status.md` is authoritative. As of 2026-09-15:
+`docs/status.md` is authoritative. As of 2026-09-18:
 
-- **M0–M3 complete.** S1 and S2 verified on the Android 17 emulator: items created and edited,
-  a PDF attached and opened with airplane mode on, its file swept after the item was deleted
-- **C1–C5 complete** — timeline derivation, trip items, resources and file storage, the tab
-  queries, and the backup format. All pure or SQL, all covered by tests
-- **V1 built, not yet seen on a device** — the Claude Design handoff (`docs/design/`) as colour
-  roles, fonts, icons and a restyle of the existing screens. Needs the dev client rebuilt for
-  `react-native-svg`, then a look in light and dark mode
-- **283 tests passing**, typecheck clean
-- Next: finish V1, then **S3** — trip tabs, the Now screen and the Timeline
+- **Every task is done: C1–C5, V1 and S1–S8.** M0–M8 are complete. M9 is complete apart from the
+  reminder checks the owner left for later
+- **The app is in use** on the owner's Galaxy S26 Ultra: release build 0.1.0, signed with the private
+  key (see *Release build* below). It passed an end-to-end QA on the phone, including sharing from
+  Gmail, Chrome, Maps and Photos
+- **366 tests passing**, typecheck clean
+- **Open:** confirming the expo-notifications patch (reminders lost under memory pressure) on the
+  phone, and a reminder after a long idle period — both listed in `docs/status.md`
 
-Remaining device work: `S6`–`S8`. `S3`, `S4` and `S5` need only the emulator.
+New work now goes through `docs/ideas.md` and an explicit decision from the owner, not the plan.
+When shipping a change to the phone, rebuild the release (below) and `adb install -r` — never the
+dev build.
 
 **Running the app on this machine.** The repo lives at `C:\dev\travel-organizer` (see §7).
 Run `npx expo run:android` in a terminal you can see. Once, with its output redirected to a file,

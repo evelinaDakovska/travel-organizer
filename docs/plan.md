@@ -49,8 +49,8 @@ After C5, the core is complete and this machine's work is finished.
 | **S4** | Places and Notes tabs, search, and item status actions | M5 | ✅ Done — verified on the emulator |
 | **S5** | Export / import screen | M6 | ✅ Done — round trip verified on the emulator |
 | **S6** | Local notifications | M7 | ✅ Done — reminder fired and tapped through on the emulator |
-| **S7** | Share-to-App | M8 | ✅ Built — warm shares verified; cold start and Gmail/Chrome in the final phone QA |
-| **S8** | Visual pass, offline pass, edge cases, release build | M9 | ✅ Built — release build verified offline on the emulator; phone QA remains |
+| **S7** | Share-to-App | M8 | ✅ Done — Gmail, Chrome, Maps and Photos verified on the phone, app open and closed |
+| **S8** | Visual pass, offline pass, edge cases, release build | M9 | ✅ Done — release 0.1.0 QA'd end to end on the phone; reminder checks left for later |
 
 `OpenResource` (S2) is the most important control in the app: one file opens directly, several
 open a sheet. It belongs on the Overview card, timeline rows and item detail alike — build it

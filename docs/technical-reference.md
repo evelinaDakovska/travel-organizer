@@ -603,6 +603,15 @@ granted at install on Android 13+ and makes `expo-notifications` use `setExactAn
 Google Play restricts that permission to alarm and calendar apps, which doesn't matter for a
 sideloaded personal app. Revisit it only if the app ever goes to the Play Store.
 
+**Patched to survive memory pressure** (found in phone QA). When an alarm fires, expo-notifications
+relays through two more broadcasts (trigger → receive → present), and the app is idle between them.
+On the phone, a minute after a restart, Android's low-memory killer ended it in that gap and the
+reminder was never shown. `patches/expo-notifications+57.0.20.patch` presents it inside the alarm's
+own receiver whenever the app isn't in the foreground. In the foreground the relay is kept, so the
+JS handler still decides. Expo ships this module as a prebuilt AAR, so `package.json` lists it in
+`expo.autolinking.android.buildFromSource`. Without that entry the patch is silently ignored:
+check the build log for `:expo-notifications:compileReleaseKotlin`.
+
 A tapped reminder opens its item through `useLastNotificationResponse`, both from a running app and
 from a cold start. The response is then cleared, so returning to the app later doesn't reopen it.
 
