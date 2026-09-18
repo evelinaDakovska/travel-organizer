@@ -1,0 +1,68 @@
+diff --git a/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/service/delegates/ExpoPresentationDelegate.kt b/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/service/delegates/ExpoPresentationDelegate.kt
+index 38f6fba..42981c9 100644
+--- a/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/service/delegates/ExpoPresentationDelegate.kt
++++ b/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/service/delegates/ExpoPresentationDelegate.kt
+@@ -24,6 +24,7 @@ import expo.modules.notifications.service.interfaces.PresentationDelegate
+ import kotlinx.coroutines.CoroutineScope
+ import kotlinx.coroutines.Dispatchers
+ import kotlinx.coroutines.launch
++import kotlinx.coroutines.runBlocking
+ import org.json.JSONException
+ import org.json.JSONObject
+ import java.util.Date
+@@ -91,6 +92,20 @@ open class ExpoPresentationDelegate(
+    * we (may) play a sound, but then bail out early. You cannot
+    * set badge count without showing a notification.
+    */
++  /**
++   * Patched (travel-organizer): posts before returning. presentNotification hands the work to a
++   * coroutine and returns at once, which is too late for a caller that must finish inside a
++   * broadcast receiver's goAsync window — the process can be killed before the notify call.
++   */
++  fun presentNotificationNow(notification: Notification) {
++    val androidNotification = runBlocking { createNotification(notification, null) }
++    NotificationManagerCompat.from(context).notify(
++      notification.notificationRequest.identifier,
++      getNotifyId(notification.notificationRequest),
++      androidNotification
++    )
++  }
++
+   override fun presentNotification(notification: Notification, behavior: NotificationBehaviorRecord?) {
+     if (behavior?.shouldPresentAlert == false) {
+       if (behavior.shouldPlaySound) {
+diff --git a/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/service/delegates/ExpoSchedulingDelegate.kt b/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/service/delegates/ExpoSchedulingDelegate.kt
+index eddd142..861ce1d 100644
+--- a/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/service/delegates/ExpoSchedulingDelegate.kt
++++ b/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/service/delegates/ExpoSchedulingDelegate.kt
+@@ -6,6 +6,8 @@ import android.content.Context
+ import android.os.Build
+ import android.util.Log
+ import androidx.core.app.AlarmManagerCompat
++import androidx.lifecycle.Lifecycle
++import androidx.lifecycle.ProcessLifecycleOwner
+ import expo.modules.notifications.notifications.interfaces.SchedulableNotificationTrigger
+ import expo.modules.notifications.notifications.model.Notification
+ import expo.modules.notifications.notifications.model.NotificationRequest
+@@ -72,7 +74,20 @@ class ExpoSchedulingDelegate(protected val context: Context) : SchedulingDelegat
+   override fun triggerNotification(identifier: String) {
+     try {
+       val notificationRequest: NotificationRequest = store.getNotificationRequest(identifier)!!
+-      NotificationsService.receive(context, Notification(notificationRequest))
++      val notification = Notification(notificationRequest)
++      val content = notificationRequest.content
++      val hasText = !(content.title.isNullOrEmpty() && content.text.isNullOrEmpty())
++      val inForeground = ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
++      if (!inForeground && hasText) {
++        // Patched (travel-organizer): present here, inside the alarm's receiver, instead of
++        // relaying through two more broadcasts (receive, then present). Between those hops the
++        // process is cached, and under memory pressure — right after a reboot, on a real phone —
++        // Android killed it and the reminder was never shown. In the foreground the relay is
++        // kept, so the JS notification handler still decides.
++        ExpoPresentationDelegate(context).presentNotificationNow(notification)
++      } else {
++        NotificationsService.receive(context, notification)
++      }
+       NotificationsService.schedule(context, notificationRequest)
+     } catch (e: ClassNotFoundException) {
+       Log.e("expo-notifications", "An exception occurred while triggering notification " + identifier + ", removing. " + e.message)

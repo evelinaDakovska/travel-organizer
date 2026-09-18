@@ -48,6 +48,14 @@ export function timezoneLabel(tz: string): string {
   return tz.split('/').pop()!.replace(/_/g, ' ');
 }
 
+/**
+ * A formatted time with its zone when it states its own: "Sunday, 20 September · 16:50 · Sofia".
+ * Without the zone, an arrival in Sofia on a Vienna trip reads as Vienna time — an hour out.
+ */
+export function withZone(formatted: string, zoneOverride: string | null): string {
+  return zoneOverride ? `${formatted} · ${timezoneLabel(zoneOverride)}` : formatted;
+}
+
 export function searchTimezones(query: string): readonly string[] {
   const q = query.trim().toLowerCase();
   if (!q) return TIMEZONES;

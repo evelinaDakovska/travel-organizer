@@ -91,6 +91,9 @@ survives a compacted context.
    (`patches/`, applied by `patch-package` on install). Re-check the patch when upgrading it.
 8. The **dev client cannot be cold-started by a share**: its launcher fails on `ACTION_SEND`.
    Test that path on a release build.
+9. **Expo modules ship prebuilt** (`local-maven-repo/…aar`). A `patch-package` patch to one is
+   silently ignored unless `package.json` lists it in `expo.autolinking.android.buildFromSource`.
+   Check the build log for `:<module>:compileReleaseKotlin`. `expo-notifications` is listed.
 
 ## 4. Domain terminology
 

@@ -6,7 +6,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { formatMoment, formatMoney } from '../../../src/domain/format';
 import { reminderLabel } from '../../../src/domain/reminders';
 import { statusActions } from '../../../src/domain/status';
-import { timezoneLabel } from '../../../src/domain/timezones';
+import { withZone } from '../../../src/domain/timezones';
 import {
   kindLabel,
   routeLabel,
@@ -78,12 +78,10 @@ export default function ItemDetail() {
   const actions = statusActions(item.status);
   const reminder = reminderLabel(item);
 
-  const whenDetail = [
-    item.end ? `until ${formatMoment(item.end.local, item.end.precision)}` : null,
-    item.startTzOverride ? timezoneLabel(item.startTzOverride) : null,
-  ]
-    .filter(Boolean)
-    .join('\n');
+  // Each end carries its own zone: a flight leaving Vienna and landing in Sofia says so on both.
+  const whenDetail = item.end
+    ? `until ${withZone(formatMoment(item.end.local, item.end.precision), item.endTzOverride)}`
+    : '';
 
   return (
     <Screen>
@@ -116,7 +114,11 @@ export default function ItemDetail() {
         <View style={styles.facts}>
           <Fact
             label="When"
-            value={item.start ? formatMoment(item.start.local, item.start.precision) : 'No date yet'}
+            value={
+              item.start
+                ? withZone(formatMoment(item.start.local, item.start.precision), item.startTzOverride)
+                : 'No date yet'
+            }
             detail={whenDetail || null}
             muted={!item.start}
           />

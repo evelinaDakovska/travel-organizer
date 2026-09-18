@@ -13,3 +13,5 @@ Not MVP. Recorded so they are not lost.
 - Duplicate detection when importing
 - Per-item travellers (who is actually going to this one thing)
 - App lock (biometric) for passport scans and references
+- Import saved places from a **Google Takeout** export of Maps lists (CSV of names, notes, links)
+  into a trip as ideas — offline, no API. Asked about on 2026-09-18; not wanted for now

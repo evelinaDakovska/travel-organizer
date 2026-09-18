@@ -6,6 +6,7 @@ import {
   searchTimezones,
   TIMEZONES,
   timezoneLabel,
+  withZone,
 } from './timezones';
 
 describe('timezones', () => {
@@ -48,5 +49,17 @@ describe('isResolvableTimezone', () => {
   it('rejects nonsense and empty input', () => {
     expect(isResolvableTimezone('Mars/Olympus')).toBe(false);
     expect(isResolvableTimezone('')).toBe(false);
+  });
+});
+
+describe('withZone', () => {
+  it('names the zone a moment states for itself', () => {
+    expect(withZone('Sunday, 20 September · 16:50', 'Europe/Sofia')).toBe(
+      'Sunday, 20 September · 16:50 · Sofia',
+    );
+  });
+
+  it('leaves a moment that follows the trip as it is', () => {
+    expect(withZone('Sunday, 20 September · 14:00', null)).toBe('Sunday, 20 September · 14:00');
   });
 });

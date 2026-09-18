@@ -3,11 +3,11 @@
 **The** status board. `CLAUDE.md` and `plan.md` link here rather than repeat it, so there is one
 place to update and nothing can drift.
 
-Verified against the repo on 2026-09-18, on Windows: **364 tests passing, typecheck clean.** S2–S8 verified on the Android 17 emulator. S8 used the signed release build, offline.
+Verified against the repo on 2026-09-18, on Windows: **366 tests passing, typecheck clean.** S2–S8 verified on the Android 17 emulator, then the app end to end **on the Galaxy S26 Ultra** with the release build.
 
-> **Next: the final phone QA session** — install the release APK on the Galaxy and work through
-> *Final phone QA* below. Every task is built. The owner asked for exactly this on 2026-09-18: build
-> everything as far as the emulator allows, then test on the phone once.
+> **The app is in use on the owner's phone** — release build 0.1.0, installed 2026-09-18. What is
+> left is in *Final phone QA* below: the system integrations the owner chose to leave for later
+> (sharing from other apps, and the reminder checks), not the app itself.
 
 ---
 
@@ -203,16 +203,47 @@ compaction; this file does.
 One session on the Galaxy S26 Ultra, with the **release** build, once S8 is done. Each line is
 something the emulator cannot prove.
 
-- [ ] Share a PDF from **Gmail** and a link from **Chrome**, with the app open *and* closed (M8 done-when)
-- [ ] Share a place from **Google Maps** — it arrives titled with the place
-- [ ] Share several screenshots at once from Photos
-- [ ] A reminder fires on time with the phone locked and idle for an hour or more (Samsung battery
-      optimisation), and tapping it opens the item
-- [ ] Reminders survive a phone restart
-- [ ] Airplane mode: open every PDF, every tab, search (M9 offline pass)
-- [ ] Change the phone's time zone: times on tickets do not move (M4 done-when)
-- [ ] Export a backup to Drive, then restore it on the phone
-- [ ] Afterwards: turn **USB debugging off** again
+Run on 2026-09-18 with release 0.1.0 (Android 16, One UI). The owner asked to QA **the app itself**
+and to leave notifications and the other system integrations for later.
+
+**The app, end to end — ✅ all passed on the phone:** import of the sample backup; creating a trip
+(dates, time-zone search); a stay spanning three days; a flight leaving Vienna and landing in Sofia;
+an idea with a priority; *Move to Timeline*, cancel, restore, the delete rule and delete; editing an
+item and a trip, both reaching Timeline and Home live; attaching a PDF, a photo and a link; opening
+the PDF (viewer titled *qa-ticket.pdf*); renaming and removing an attachment; the attachment
+chooser; a pinned note, edited, found by search inside its body, deleted; completing a task from
+Now; exporting a backup to the share sheet; with **airplane mode** on — cold start, a PDF, a photo,
+search; deleting a trip with its items and files.
+
+**Found and fixed during it:**
+- **F1** — the trip card said *Times shown in Europe/Vienna*; it now says *Vienna time*.
+- **F2** — item detail showed the **end** of a journey without its zone: a flight landing in Sofia
+  read *until … 16:50* on a Vienna trip, an hour out. Both ends now carry their own zone
+  (`withZone`): *until Tuesday, 22 September · 19:20 · Sofia*.
+- **Reminders could be lost under memory pressure.** A reminder set for a minute after a restart
+  fired on time, but Android's low-memory killer ended the app three seconds later — between
+  expo-notifications' own relay broadcasts (trigger → receive → present) — and it was never shown.
+  `patches/expo-notifications+57.0.20.patch` presents it inside the alarm's own receiver when the app
+  is not in the foreground. Expo ships this module prebuilt, so `package.json` sets
+  `expo.autolinking.android.buildFromSource` for it — without that the patch is silently ignored.
+  **Installed, not yet verified on the phone** (owner: leave notifications for now).
+
+**Seen, not app bugs:** a photo attachment opens Android's *Open with* chooser on a phone with two
+image viewers — pick one and *Always* once. Samsung's **Auto Blocker** must be off to install.
+
+**Verified earlier in the session:** 25 reminders scheduled as exact alarms after the import, and
+one fired on time with the phone locked and dozing; tapping it opened the item. Reminders were
+re-registered after a restart.
+
+**Still to do on the phone, when wanted:**
+- [ ] Share a PDF from **Gmail** and a link from **Chrome**, app open *and* closed (M8 done-when)
+- [ ] Share a place from **Google Maps**; several screenshots at once from Photos
+- [ ] The memory-pressure reminder fix, observed firing on the phone
+- [ ] A reminder after an hour or more locked and idle (Samsung battery optimisation)
+- [ ] Change the phone's time zone: times do not move (proven on the emulator)
+- [ ] Export a backup **to Drive**, then restore it
+- [ ] Delete the sample Milan and Lapland trips before real use
+- [ ] Afterwards: **USB debugging off**, *Stay awake* off, **Auto Blocker** back on
 
 ## Open questions
 

@@ -1,6 +1,7 @@
 import { StyleSheet, Text } from 'react-native';
 
 import { formatDateRange, formatDuration } from '../../domain/format';
+import { timezoneLabel } from '../../domain/timezones';
 import { isTripActive, tripDurationDays, type Trip } from '../../domain/trip';
 import { Card } from '../../ui/components/Card';
 import { Tag } from '../../ui/components/Tag';
@@ -30,7 +31,7 @@ export function TripSummary({ trip }: { trip: Trip }) {
       {travellers ? <Text style={[type.body, { color: c.text }]}>{travellers}</Text> : null}
       {trip.notes ? <Text style={[type.body, { color: c.text }]}>{trip.notes}</Text> : null}
       <Text style={[type.caption, { color: c.textMuted }]}>
-        Times shown in {trip.defaultTz} unless an item says otherwise
+        Times shown in {timezoneLabel(trip.defaultTz)} time unless an item says otherwise
       </Text>
     </Card>
   );
