@@ -6,8 +6,8 @@ place to update and nothing can drift.
 Verified against the repo on 2026-09-18, on Windows: **366 tests passing, typecheck clean.** S2–S8 verified on the Android 17 emulator, then the app end to end **on the Galaxy S26 Ultra** with the release build.
 
 > **The app is in use on the owner's phone** — release build 0.1.0, installed 2026-09-18. What is
-> left is in *Final phone QA* below: the system integrations the owner chose to leave for later
-> (sharing from other apps, and the reminder checks), not the app itself.
+> left is in *Final phone QA* below: the reminder checks the owner chose to leave for later, and
+> tidying the phone after testing.
 
 ---
 
@@ -25,7 +25,7 @@ Feature map. `docs/plan.md` holds the detail for each.
 | **M5** | Places and Notes tabs, search within a trip, and item status actions | ✅ |
 | **M6** | Export and import everything as a zip — the only guard against data loss | ✅ |
 | **M7** | Local reminders for dated items | ✅ |
-| **M8** | Receive PDFs, images and links from the Android share sheet | ⬜ — emulator ✅, the phone checks are in *Final phone QA* |
+| **M8** | Receive PDFs, images and links from the Android share sheet | ✅ |
 | **M9** | Visual pass, offline pass, edge cases, release build | ⬜ — emulator ✅, the phone checks are in *Final phone QA* |
 
 M0–M6 were verified on a device, not just by tests. M6 is in, so a copy can now live off the phone —
@@ -236,8 +236,13 @@ one fired on time with the phone locked and dozing; tapping it opened the item. 
 re-registered after a restart.
 
 **Still to do on the phone, when wanted:**
-- [ ] Share a PDF from **Gmail** and a link from **Chrome**, app open *and* closed (M8 done-when)
-- [ ] Share a place from **Google Maps**; several screenshots at once from Photos
+- [x] Share a PDF from **Gmail** and a link from **Chrome**, app open *and* closed (M8 done-when) —
+      Chrome's page title and link arrived as a new place and as a trip document; Gmail's 470 KB PDF
+      was saved and opened from the app, and a share to the **closed** app cold-started into the
+      share screen for both
+- [x] Share a place from **Google Maps** — arrived titled *Lower Belvedere*, its `maps.app.goo.gl`
+      link saved as a Map and reopened Google Maps; **three images at once** from Google Photos
+      arrived with their names and sizes
 - [ ] The memory-pressure reminder fix, observed firing on the phone
 - [ ] A reminder after an hour or more locked and idle (Samsung battery optimisation)
 - [ ] Change the phone's time zone: times do not move (proven on the emulator)
