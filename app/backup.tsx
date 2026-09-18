@@ -11,6 +11,7 @@ import {
   planBackupImport,
   shareBackup,
 } from '../src/files/backupFiles';
+import { askForRemindersIfAnyDue } from '../src/notifications/reminders';
 import { Button } from '../src/ui/components/Button';
 import { Card } from '../src/ui/components/Card';
 import { ChoiceField } from '../src/ui/components/ChoiceField';
@@ -82,6 +83,7 @@ export default function Backup() {
       try {
         await applyBackupImport(db, picked.backup, plan);
         setResult("Import finished. The backup's trips are on Home.");
+        void askForRemindersIfAnyDue(db);
       } catch (error) {
         console.warn('Import failed', error);
         Alert.alert('Could not import', 'Nothing was changed — the import runs all at once or not at all.');

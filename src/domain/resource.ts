@@ -73,6 +73,22 @@ export function extensionFor(fileName: string | null, mimeType: string | null): 
 }
 
 /**
+ * What the viewer app shows in its title bar: the attachment's label, not the stored id. Stripped
+ * of characters Android will not put in a file name. The extension is kept from the stored file.
+ */
+export function viewerFileName(label: string, storedPath: string): string {
+  const ext = /\.([A-Za-z0-9]{1,8})$/.exec(storedPath)?.[1] ?? 'bin';
+  const base = label
+    .replace(/[\\/:*?"<>|\x00-\x1f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^\.+/, '')
+    .slice(0, 80)
+    .trim();
+  return `${base || 'Document'}.${ext}`;
+}
+
+/**
  * Named by id, not by the original filename, so two tickets called ticket.pdf cannot collide.
  * Throws on an id that would escape the media directory — this runs before any file is written.
  */

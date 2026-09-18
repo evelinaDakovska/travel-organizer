@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { formatMoney, formatShortMoment } from '../../domain/format';
+import { timezoneLabel } from '../../domain/timezones';
 import {
   kindLabel,
   routeLabel,
@@ -29,7 +30,7 @@ export function ItemRow({ item, onPress }: Props) {
       <View style={styles.top}>
         <StatusTag status={item.status} />
         <Text style={[type.caption, styles.when, { color: c.textMuted }]} numberOfLines={1}>
-          {item.start ? formatShortMoment(item.start.local, item.start.precision) : 'No date'}
+          {when(item)}
         </Text>
       </View>
 
@@ -45,7 +46,7 @@ export function ItemRow({ item, onPress }: Props) {
 
       <View style={styles.meta}>
         <Text style={[type.caption, { color: c.textMuted }]}>
-          {item.status === 'idea' && item.priority ? `${kind} · ${item.priority}` : kind}
+          {item.status === 'idea' && item.priority ? `${kind} · ${capitalise(item.priority)}` : kind}
           {done ? ' · done' : ''}
         </Text>
         {item.priceAmount !== null && item.priceCurrency ? (
@@ -56,6 +57,18 @@ export function ItemRow({ item, onPress }: Props) {
       </View>
     </Card>
   );
+}
+
+const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
+
+/**
+ * The date, with the zone when the item states its own. Nothing for an undated idea — on Places
+ * that is almost every card, so "No date" would only be noise. A booked item without one says so.
+ */
+function when(item: TripItem): string {
+  if (!item.start) return item.status === 'idea' ? '' : 'No date yet';
+  const date = formatShortMoment(item.start.local, item.start.precision);
+  return item.startTzOverride ? `${date} · ${timezoneLabel(item.startTzOverride)}` : date;
 }
 
 const styles = StyleSheet.create({

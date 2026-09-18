@@ -37,3 +37,6 @@ coverage/
 .kotlin/
 .metro-health-check*
 *.tsbuildinfo
+
+# Output of scripts/sample-backup.mjs
+sample-backup.zip

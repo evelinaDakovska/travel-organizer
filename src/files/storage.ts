@@ -12,6 +12,7 @@ import {
   orphanedStoredPaths,
   storedPathFor,
   toAbsoluteUri,
+  viewerFileName,
   toStoredPath,
   type FileResource,
 } from '../domain/resource';
@@ -89,10 +90,28 @@ export async function openStoredFile(resource: FileResource): Promise<void> {
   if (!file.exists) throw new Error(`Missing file: ${resource.storedPath}`);
 
   await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-    data: file.contentUri,
+    data: (await viewerCopy(file, resource)).contentUri,
     flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
     type: file.type || resource.mimeType || 'application/octet-stream',
   });
+}
+
+/**
+ * A copy in the cache named after the label, so the viewer's title bar reads "Boarding pass" rather
+ * than the stored id. Falls back to the original if the copy fails — opening must not depend on it.
+ */
+async function viewerCopy(file: File, resource: FileResource): Promise<File> {
+  try {
+    const directory = new Directory(Paths.cache, 'open');
+    if (!directory.exists) directory.create({ intermediates: true });
+    const copy = new File(directory, viewerFileName(resource.label, resource.storedPath));
+    if (copy.exists) copy.delete();
+    await file.copy(copy);
+    return copy;
+  } catch (error) {
+    console.warn('Opening the stored file directly', error);
+    return file;
+  }
 }
 
 /** Stored paths of everything actually sitting in the media directory. */

@@ -364,3 +364,20 @@ fixes that, and the Play policy that restricts it doesn't apply to a sideloaded 
 
 **Rejected:** a single default lead time in settings (open question 4, option 2); a custom time per
 item; asking for the notification permission at launch.
+
+---
+
+## D24 — Sideloaded, signed with a private key
+
+**Decision:** the app is installed as a release APK signed with a keystore that is generated on the
+build machine and kept outside the repo. It is not published on any store. `plugins/withReleaseSigning.js`
+wires the key into the regenerated `android/` project and falls back to the debug key when it is absent.
+
+**Why:** the generated project signs release builds with React Native's debug key. That key is
+public, so anyone could sign an APK that Android would accept as an update to this app, and the
+update would inherit the database and every stored PDF. A private key closes that. A store listing
+would add review, a developer account and policy constraints (see `USE_EXACT_ALARM`, D23) for an app
+with one user.
+
+**Cost:** the keystore must be backed up. Losing it means the next version can only be installed by
+uninstalling, which deletes the data unless a backup was exported first.

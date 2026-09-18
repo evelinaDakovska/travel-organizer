@@ -20,6 +20,7 @@ import {
   subtypesFor,
   toAbsoluteUri,
   toStoredPath,
+  viewerFileName,
   type FileResource,
   type LinkResource,
   type ResourceRow,
@@ -378,5 +379,25 @@ describe('showing an attachment', () => {
     expect(subtypesFor('file')).not.toContain('maps');
     expect(subtypesFor('file')).not.toContain('website');
     expect(subtypesFor('link')).toContain('wallet');
+  });
+});
+
+describe('viewerFileName', () => {
+  it('names the copy after the label, keeping the stored extension', () => {
+    expect(viewerFileName('Boarding pass SOF-BGY', 'media/1b2c.pdf')).toBe('Boarding pass SOF-BGY.pdf');
+  });
+
+  it('drops characters a file name cannot hold', () => {
+    expect(viewerFileName('Hotel: Brera / 2 nights?', 'media/a.pdf')).toBe('Hotel Brera 2 nights.pdf');
+    expect(viewerFileName('a\\b"c', 'media/a.jpg')).toBe('a b c.jpg');
+  });
+
+  it('never makes a hidden or empty name', () => {
+    expect(viewerFileName('...env', 'media/a.pdf')).toBe('env.pdf');
+    expect(viewerFileName('  //  ', 'media/a.pdf')).toBe('Document.pdf');
+  });
+
+  it('keeps long labels to a sensible length', () => {
+    expect(viewerFileName('x'.repeat(200), 'media/a.pdf')).toBe(`${'x'.repeat(80)}.pdf`);
   });
 });

@@ -3,11 +3,11 @@
 **The** status board. `CLAUDE.md` and `plan.md` link here rather than repeat it, so there is one
 place to update and nothing can drift.
 
-Verified against the repo on 2026-09-18, on Windows: **358 tests passing, typecheck clean.** S2–S7 verified on the Android 17 emulator.
+Verified against the repo on 2026-09-18, on Windows: **364 tests passing, typecheck clean.** S2–S8 verified on the Android 17 emulator. S8 used the signed release build, offline.
 
-> **Next task: S8** — the visual, offline and edge-case pass, and the release build. Then one QA
-> session on the real phone, working through *Final phone QA* below. The owner asked for exactly
-> that on 2026-09-18: build everything as far as the emulator allows, then test on the phone once.
+> **Next: the final phone QA session** — install the release APK on the Galaxy and work through
+> *Final phone QA* below. Every task is built. The owner asked for exactly this on 2026-09-18: build
+> everything as far as the emulator allows, then test on the phone once.
 
 ---
 
@@ -26,7 +26,7 @@ Feature map. `docs/plan.md` holds the detail for each.
 | **M6** | Export and import everything as a zip — the only guard against data loss | ✅ |
 | **M7** | Local reminders for dated items | ✅ |
 | **M8** | Receive PDFs, images and links from the Android share sheet | ⬜ — emulator ✅, the phone checks are in *Final phone QA* |
-| **M9** | Visual pass, offline pass, edge cases, release build | ⬜ |
+| **M9** | Visual pass, offline pass, edge cases, release build | ⬜ — emulator ✅, the phone checks are in *Final phone QA* |
 
 M0–M6 were verified on a device, not just by tests. M6 is in, so a copy can now live off the phone —
 **export before every trip**, and travel with a release build (S8), never the dev build.
@@ -70,8 +70,31 @@ it disagrees with the model, `docs/decision-log.md` D22 says which wins.
 | **S4** | Places and Notes actions, search, and item status actions (move to timeline, cancel, restore, delete) | M5 | no | ✅ |
 | **S5** | Export / import screen | M6 | no | ✅ |
 | **S6** | Local notifications | M7 | **yes** | ✅ |
-| **S7** | Share-to-App via the Android share sheet | M8 | **yes** | ✅ built — cold start waits for the release build |
-| **S8** | Visual pass, offline pass, edge cases, release build | M9 | **yes** | ⬜ |
+| **S7** | Share-to-App via the Android share sheet | M8 | **yes** | ✅ — cold start verified on the release build |
+| **S8** | Visual pass, offline pass, edge cases, release build | M9 | **yes** | ✅ built — phone checks in *Final phone QA* |
+
+**S8, what was built:**
+- **Release build, signed with a private key** (decision log D24). `plugins/withReleaseSigning.js`
+  reads the keystore from Gradle properties outside the repo, and falls back to the debug key when
+  they are absent. `windows-handoff.md` has the commands and the backup warning.
+- **`scripts/sample-backup.mjs`** builds the plan's two fixture trips, Milan and Lapland, as a backup
+  zip: 41 items, 28 PDFs, invented details. Load it through *Import*.
+- **Times say their zone** when it differs from the trip's: *Sat 19 Sep · 06:10 · Sofia*
+  (`entryZoneLabel`).
+- **The PDF viewer shows the label**, *Bus ticket.pdf*, not the stored id. The file is opened
+  through a label-named copy in the cache (`viewerFileName`).
+- **A rental car is picked up and dropped off**, instead of departing and arriving.
+- **Places cards** no longer repeat *No date*, and priority is capitalised.
+- **Import asks for notification permission** when the restored trips have upcoming reminders.
+  Before, a restored phone never asked.
+
+**S8, how it was verified:** the release APK was installed on the emulator. It is signed with the
+private certificate and not debuggable: `run-as` is refused. With **airplane mode on and no Metro**,
+the sample backup imported, PDFs opened from Now, the attachment chooser and Trip documents, and a PDF
+shared from Files **to the closed app** opened the share screen. That closes S7's cold-start gap. With
+the emulator switched to Tokyo time and the app force-killed, Milan's times stayed at 06:10, 07:40
+and 15:00. Checked in light and dark mode. The rebuilt APK installed over the old one and kept its
+data, so updates work.
 
 **S7, what was built:** `app/share.tsx` receives what other apps send. `src/domain/share.ts` parses
 the payload through Zod into files, a link or text. A Maps share (“Duomo di Milano” plus a link)

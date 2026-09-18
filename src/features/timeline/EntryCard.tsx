@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { formatShortMoment } from '../../domain/format';
-import { entryRoleLabel } from '../../domain/itinerary';
+import { entryRoleLabel, entryZoneLabel } from '../../domain/itinerary';
 import type { Resource } from '../../domain/resource';
 import type { TimelineEntry } from '../../domain/timeline';
 import { routeLabel, transportDetails, type TripItem } from '../../domain/tripItem';
@@ -25,9 +25,13 @@ export function EntryCard({ entry, resources, onPress, showDate = false }: Props
 
   const role = entryRoleLabel(entry);
   const where = routeLabel(transportDetails(item)) ?? item.locationName;
-  const when = showDate
-    ? formatShortMoment(moment.local, moment.precision)
-    : (entry.time ?? 'All day');
+  const zone = entryZoneLabel(entry);
+  const when = [
+    showDate ? formatShortMoment(moment.local, moment.precision) : (entry.time ?? 'All day'),
+    zone,
+  ]
+    .filter(Boolean)
+    .join(' · ');
   const done = item.kind === 'task' && item.completedAt !== null;
 
   return (

@@ -1,5 +1,6 @@
 import {
   entryRoleLabel,
+  entryZoneLabel,
   openTasks,
   singleActiveTrip,
   undatedConfirmed,
@@ -102,12 +103,28 @@ describe('undatedConfirmed', () => {
   });
 });
 
+describe('entryZoneLabel', () => {
+  const flight = { startTzOverride: 'Europe/Sofia', endTzOverride: null };
+
+  it('names the zone an end states for itself', () => {
+    expect(entryZoneLabel({ role: 'start', item: flight })).toBe('Sofia');
+    expect(entryZoneLabel({ role: 'full', item: flight })).toBe('Sofia');
+  });
+
+  it('says nothing for an end that follows the trip', () => {
+    expect(entryZoneLabel({ role: 'end', item: flight })).toBeNull();
+    expect(entryZoneLabel({ role: 'full', item: { startTzOverride: null, endTzOverride: null } })).toBeNull();
+  });
+});
+
 describe('entryRoleLabel', () => {
   it('names the two ends of a stay and of a journey', () => {
     expect(entryRoleLabel({ role: 'start', item: { kind: 'stay' } })).toBe('Check in');
     expect(entryRoleLabel({ role: 'end', item: { kind: 'stay' } })).toBe('Check out');
     expect(entryRoleLabel({ role: 'start', item: { kind: 'transport' } })).toBe('Departs');
     expect(entryRoleLabel({ role: 'end', item: { kind: 'transport' } })).toBe('Arrives');
+    expect(entryRoleLabel({ role: 'start', item: { kind: 'transport', subkind: 'car' } })).toBe('Pick up');
+    expect(entryRoleLabel({ role: 'end', item: { kind: 'transport', subkind: 'car' } })).toBe('Drop off');
   });
 
   it('falls back to starts and ends for anything else that spans days', () => {

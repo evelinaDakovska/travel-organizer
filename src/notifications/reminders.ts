@@ -52,7 +52,20 @@ async function hasPermission(): Promise<boolean> {
 export async function askForRemindersIfDue(db: SQLiteDatabase, itemId: string): Promise<void> {
   const item = await getTripItem(db, itemId);
   if (!item || !reminderFor(item, new Date())) return;
+  await askForPermission(db);
+}
 
+/**
+ * The same, after an import. Restoring onto a new phone saves no item, so without this a restored
+ * trip would never remind and never ask.
+ */
+export async function askForRemindersIfAnyDue(db: SQLiteDatabase): Promise<void> {
+  const now = new Date();
+  if (remindersFor(await listReminderCandidates(db, now), now).length === 0) return;
+  await askForPermission(db);
+}
+
+async function askForPermission(db: SQLiteDatabase): Promise<void> {
   const current = await Notifications.getPermissionsAsync();
   if (current.granted || !current.canAskAgain) return;
   if ((await Notifications.requestPermissionsAsync()).granted) await syncReminders(db);

@@ -262,6 +262,33 @@ or with any assistant.
 
 ---
 
+## Release build (S8)
+
+The build to travel with. It isn't debuggable, it needs no Metro, and it's signed with a **private
+key** that lives outside the repo:
+
+- `%USERPROFILE%.travel-organizerelease.jks` — the keystore
+- `%USERPROFILE%.gradlegradle.properties` — `TRAVEL_ORGANIZER_STORE_FILE`, `_STORE_PASSWORD`,
+  `_KEY_ALIAS`, `_KEY_PASSWORD`, read by `plugins/withReleaseSigning.js`
+
+> **Back both up somewhere safe, such as a password manager or an encrypted drive, never the repo.**
+> Android only accepts an update signed with the same key. Lose it, and the next version can only
+> be installed after uninstalling, which deletes every trip unless a backup was exported first.
+
+```bash
+npx expo prebuild --platform android      # after any app.json or native change
+cd android && ./gradlew assembleRelease   # ~9 min cold, ~1 min when only JS changed
+# → android/app/build/outputs/apk/release/app-release.apk (all ABIs, ~115 MB)
+adb install -r android/app/build/outputs/apk/release/app-release.apk
+```
+
+Certificate SHA-256 `63:8D:C6:86:…:52:35:E7`. Check any APK with `apksigner verify --print-certs`.
+A copy of the S8 build is at `%USERPROFILE%.travel-organizer	ravel-organizer-0.1.0.apk`.
+
+To switch the emulator between the dev build and the release, uninstall first: they are signed with
+different keys. Test data for the release comes from `node scripts/sample-backup.mjs`, pushed to
+Downloads and imported.
+
 ## Notes from S6 and S7
 
 - **After a native build, if the dev client sits on a white screen**, time `curl localhost:8081/status`.

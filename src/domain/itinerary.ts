@@ -5,6 +5,7 @@
 
 import { toInstant } from './time';
 import { timelineEntries, type TimelineEntry, type TimelineItem } from './timeline';
+import { timezoneLabel } from './timezones';
 import { isTripActive, type Trip } from './trip';
 
 /** The next confirmed things to be at. Tasks have their own list; ideas are not commitments. */
@@ -44,11 +45,12 @@ export function undatedConfirmed<T extends TimelineItem>(items: readonly T[]): T
 
 /**
  * How a split entry introduces itself: a stay reads 'Check in' then 'Check out' on the day each
- * happens, a journey 'Departs' then 'Arrives'. A single-day entry needs no prefix.
+ * happens, a journey 'Departs' then 'Arrives', a rental car 'Pick up' then 'Drop off'. A single-day
+ * entry needs no prefix.
  */
 export function entryRoleLabel(entry: {
   role: TimelineEntry['role'];
-  item: Pick<TimelineItem, 'kind'>;
+  item: Pick<TimelineItem, 'kind'> & { subkind?: string | null };
 }): string | null {
   if (entry.role === 'full') return null;
   const starting = entry.role === 'start';
@@ -57,10 +59,23 @@ export function entryRoleLabel(entry: {
     case 'stay':
       return starting ? 'Check in' : 'Check out';
     case 'transport':
+      if (entry.item.subkind === 'car') return starting ? 'Pick up' : 'Drop off';
       return starting ? 'Departs' : 'Arrives';
     default:
       return starting ? 'Starts' : 'Ends';
   }
+}
+
+/**
+ * 'Sofia' when this end of the entry states its own zone, null when it follows the trip. A 06:10
+ * departure from Sofia on a Milan trip must not read as 06:10 Milan time.
+ */
+export function entryZoneLabel(entry: {
+  role: TimelineEntry['role'];
+  item: { startTzOverride: string | null; endTzOverride: string | null };
+}): string | null {
+  const zone = entry.role === 'end' ? entry.item.endTzOverride : entry.item.startTzOverride;
+  return zone ? timezoneLabel(zone) : null;
 }
 
 /** Launch opens straight into a trip only when there is no doubt which one. */
