@@ -48,8 +48,8 @@ After C5, the core is complete and this machine's work is finished.
 | **S3** | Trip tabs (Now · Timeline · Places · Notes) with the add button; the Now and Timeline screens | M4 | ✅ Done — verified on the emulator |
 | **S4** | Places and Notes tabs, search, and item status actions | M5 | ✅ Done — verified on the emulator |
 | **S5** | Export / import screen | M6 | ✅ Done — round trip verified on the emulator |
-| **S6** | Local notifications | M7 | **yes** |
-| **S7** | Share-to-App | M8 | **yes** |
+| **S6** | Local notifications | M7 | ✅ Done — reminder fired and tapped through on the emulator |
+| **S7** | Share-to-App | M8 | ✅ Built — warm shares verified; cold start and Gmail/Chrome in the final phone QA |
 | **S8** | Visual pass, offline pass, edge cases, release build | M9 | **yes** |
 
 `OpenResource` (S2) is the most important control in the app: one file opens directly, several

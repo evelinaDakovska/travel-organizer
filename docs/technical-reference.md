@@ -552,6 +552,15 @@ tickets.
 5. **Validate the payload with Zod.** This is untrusted input from other applications.
 6. **Risk:** the only non-Expo native dependency. It will gate future SDK upgrades.
 
+**How it actually works on Android (checked against v8.0.1's source in S7).** Deep links are only
+the iOS path. On Android the share starts `MainActivity`, which is `singleTask`, with `ACTION_SEND`.
+The native module copies each shared file into the app's `cacheDir` and hands JS a `file://` path,
+so point 4 is already met by the time JS runs. The app then imports that path into `media/` on
+save. `ShareIntentProvider` wraps the root layout, and `ShareLanding` pushes `/share` whenever a
+share is present, both at cold start and while running. The screen reads the payload once and
+clears it. `disableIOS: true` keeps prebuild from generating an iOS extension for an Android-only
+app.
+
 ### Notifications
 
 Local/scheduled notifications work on Android in SDK 57. Push is not used at all.
@@ -560,6 +569,42 @@ Local/scheduled notifications work on Android in SDK 57. Push is not used at all
 moment in-app — a manifest entry alone is not enough.
 
 A notification may reference a deleted item. Resolve the id at tap time and fail gracefully.
+
+**Built in S6.** Open question 4 was answered by the owner:
+
+| Kind | Reminds |
+|---|---|
+| Travel | 3 hours before departure |
+| Stay | 09:00 on the check-in day (or at check-in, if that is earlier) |
+| Activity, food, other | 1 hour before |
+| To do | at its own time |
+| Anything with a date but no time | 09:00 on that day |
+
+Times are worked out in the **item's own zone**, so a Sofia departure reminds at 03:10 Sofia time
+wherever the phone is. Only confirmed, dated, unfinished items remind. Each item has an on/off
+switch, stored as `details.reminder = 'off'`. It is off only when set, so existing rows needed no
+migration. The rules are pure and tested in `src/domain/reminders.ts`.
+
+**Reconcile, don't track writes.** `src/notifications/reminders.ts` compares the reminders the
+database calls for with what is scheduled, cancels the difference and schedules the rest (the
+notification id is the item id). `useReminders` runs this at launch and after any change to
+`trip_items` or `trips`, debounced. So create, edit, cancel, restore, delete, import and a trip zone
+change are all handled in one place, with no reminder code at those call sites. Syncs are queued
+one at a time, because two overlapping syncs would each schedule the other's reminders again. At
+most 64 reminders are scheduled, nearest first, well under Android's per-app alarm limit.
+
+**Permission** is asked right after saving an item that would remind (new, edit, move to timeline),
+never at launch. After a refusal Android won't prompt again, and the app stays quiet.
+
+**Exact alarms.** Without them, Android delivers a reminder within a window that grows with how far
+ahead it was scheduled. The emulator showed about 2 minutes on a 3-minute reminder, so a
+week-ahead flight reminder could arrive very late. The app declares `USE_EXACT_ALARM`, which is
+granted at install on Android 13+ and makes `expo-notifications` use `setExactAndAllowWhileIdle`.
+Google Play restricts that permission to alarm and calendar apps, which doesn't matter for a
+sideloaded personal app. Revisit it only if the app ever goes to the Play Store.
+
+A tapped reminder opens its item through `useLastNotificationResponse`, both from a running app and
+from a cold start. The response is then cleared, so returning to the app later doesn't reopen it.
 
 ### Google Wallet
 
@@ -652,10 +697,15 @@ src/
     trip.ts  tripItem.ts  resource.ts  note.ts
     time.ts                wall-clock <-> instant, precision, formatting
     timeline.ts            day grouping, next-item derivation
+    reminders.ts           when each item reminds, and the reconcile plan
+    share.ts               share-sheet payloads: parse, classify, suggest a trip
   repositories/            SQL lives here and nowhere else
     trips.ts  tripItems.ts  resources.ts  notes.ts  settings.ts
   files/
     storage.ts             import, path resolution, GC sweep
+  notifications/
+    reminders.ts           permission, channel, reconcile the scheduled set with the database
+    useReminders.ts        sync on launch and on change; open the item a reminder is about
   hooks/
     useLiveQuery.ts
   ui/

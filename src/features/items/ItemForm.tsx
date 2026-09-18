@@ -3,6 +3,8 @@ import { useMemo } from 'react';
 import { Controller, useForm, type Control } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 
+import { isReminderOn, reminderLabel, withReminder } from '../../domain/reminders';
+import { localPrecision } from '../../domain/time';
 import {
   kindLabel,
   PRIORITIES,
@@ -11,8 +13,10 @@ import {
   TRIP_ITEM_KINDS,
   TRIP_ITEM_STATUSES,
   tripItemInputSchema,
+  type MomentInput,
   type TripItemFormValues,
   type TripItemInput,
+  type TripItemKind,
 } from '../../domain/tripItem';
 import { Button } from '../../ui/components/Button';
 import { ChoiceField } from '../../ui/components/ChoiceField';
@@ -43,6 +47,7 @@ export function ItemForm({ defaultValues, defaultTz, submitLabel, onSubmit }: Pr
   const {
     control,
     watch,
+    getValues,
     setValue,
     handleSubmit,
     formState: { errors, isSubmitting },
@@ -54,6 +59,8 @@ export function ItemForm({ defaultValues, defaultTz, submitLabel, onSubmit }: Pr
 
   const kind = watch('kind');
   const status = watch('status');
+  const start = watch('start');
+  const remind = isReminderOn(watch('details'));
   const subkinds = subkindsFor(kind);
 
   return (
@@ -73,9 +80,12 @@ export function ItemForm({ defaultValues, defaultTz, submitLabel, onSubmit }: Pr
                 onChange={(next) => {
                   if (!next) return;
                   field.onChange(next);
-                  // A subkind belongs to one kind, and details only to transport.
+                  // A subkind belongs to one kind, and route details only to transport. The
+                  // reminder switch belongs to every kind, so it survives the change.
                   setValue('subkind', null);
-                  if (next !== 'transport') setValue('details', undefined);
+                  if (next !== 'transport') {
+                    setValue('details', withReminder(undefined, isReminderOn(getValues('details'))));
+                  }
                 }}
               />
             </Field>
@@ -184,6 +194,23 @@ export function ItemForm({ defaultValues, defaultTz, submitLabel, onSubmit }: Pr
             </Field>
           )}
         />
+
+        {status === 'confirmed' && (
+          // Not a second Controller: `details` already has one in TransportFields.
+          <Field label="Reminder" hint={reminderHint(kind, start, defaultTz, remind)}>
+            <ChoiceField
+              value={remind ? 'on' : 'off'}
+              options={['on', 'off'] as const}
+              labelFor={(v) => (v === 'on' ? 'Remind me' : 'No reminder')}
+              onChange={(next) =>
+                next &&
+                setValue('details', withReminder(getValues('details'), next === 'on'), {
+                  shouldDirty: true,
+                })
+              }
+            />
+          </Field>
+        )}
 
         {kind === 'transport' && <TransportFields control={control} />}
 
@@ -374,6 +401,28 @@ function TransportFields({ control }: { control: Control<TripItemFormValues> }) 
       }}
     />
   );
+}
+
+/** The rule for this item in words, so "Remind me" never has to be taken on trust. */
+function reminderHint(
+  kind: TripItemKind,
+  start: MomentInput | undefined,
+  defaultTz: string,
+  on: boolean,
+): string {
+  if (!on) return 'Nothing will remind you of this one';
+  const precision = start ? localPrecision(start.local) : null;
+  if (!start || !precision) return 'Once it has a date, it reminds you before it starts';
+  const label = reminderLabel({
+    id: '',
+    kind,
+    status: 'confirmed',
+    title: '',
+    start: { local: start.local, tz: start.tz ?? defaultTz, precision },
+    completedAt: null,
+    details: null,
+  });
+  return label ?? '';
 }
 
 /** Money is stored in minor units, so the form's 25.00 becomes 2500 and never a float. */

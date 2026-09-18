@@ -96,11 +96,7 @@ export function groupTrips(
   trips: Trip[],
   now: Date = new Date(),
 ): { upcoming: Trip[]; past: Trip[] } {
-  const today = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, '0'),
-    String(now.getDate()).padStart(2, '0'),
-  ].join('-');
+  const today = deviceToday(now);
 
   const upcoming = trips
     .filter((t) => t.endDate >= today)
@@ -112,11 +108,16 @@ export function groupTrips(
   return { upcoming, past };
 }
 
-export function isTripActive(trip: Trip, now: Date = new Date()): boolean {
-  const today = [
+/** The device's local date as 'YYYY-MM-DD' — what "today" means to the person holding it. */
+export function deviceToday(now: Date = new Date()): string {
+  return [
     now.getFullYear(),
     String(now.getMonth() + 1).padStart(2, '0'),
     String(now.getDate()).padStart(2, '0'),
   ].join('-');
+}
+
+export function isTripActive(trip: Trip, now: Date = new Date()): boolean {
+  const today = deviceToday(now);
   return trip.startDate <= today && today <= trip.endDate;
 }

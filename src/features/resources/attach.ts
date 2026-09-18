@@ -40,7 +40,7 @@ export async function attachPhoto(db: SQLiteDatabase, owner: ResourceOwner): Pro
  * The copy lands before the row is written. If the insert fails, the file is an orphan the next
  * sweep collects — never a row pointing at nothing.
  */
-async function attachFile(
+export async function attachFile(
   db: SQLiteDatabase,
   owner: ResourceOwner,
   sourceUri: string,

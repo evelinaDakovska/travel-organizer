@@ -87,6 +87,10 @@ survives a compacted context.
    `LongPathsEnabled`**. Keep the repo at a short path such as `C:\dev\travel-organizer`.
 6. `withExclusiveTransactionAsync` writes through a **second connection** the change listener
    never hears, so every live query stays stale until a relaunch. Use `withTransactionAsync`.
+7. `expo-share-intent` 8.0.1 **crashes the app** on a shared URI it cannot read. It is patched
+   (`patches/`, applied by `patch-package` on install). Re-check the patch when upgrading it.
+8. The **dev client cannot be cold-started by a share**: its launcher fails on `ACTION_SEND`.
+   Test that path on a release build.
 
 ## 4. Domain terminology
 
@@ -211,6 +215,7 @@ src/db/           client + migrations. SQL schema lives here
 src/domain/       PURE TS. No React, no SQLite, no Expo imports. All testable logic
 src/repositories/ SQL queries. SQL lives here and nowhere else
 src/files/        file import, path resolution, GC
+src/notifications/ reminders: permission, channel, reconcile with the database
 src/hooks/        useLiveQuery and friends
 src/ui/           tokens + shared components
 src/features/     screen-level composition per feature

@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { formatMoment, formatMoney } from '../../../src/domain/format';
+import { reminderLabel } from '../../../src/domain/reminders';
 import { statusActions } from '../../../src/domain/status';
 import { timezoneLabel } from '../../../src/domain/timezones';
 import {
@@ -75,6 +76,7 @@ export default function ItemDetail() {
   const route = routeLabel(details);
   const kind = item.subkind ? subkindLabel(item.subkind) : kindLabel(item.kind);
   const actions = statusActions(item.status);
+  const reminder = reminderLabel(item);
 
   const whenDetail = [
     item.end ? `until ${formatMoment(item.end.local, item.end.precision)}` : null,
@@ -118,6 +120,7 @@ export default function ItemDetail() {
             detail={whenDetail || null}
             muted={!item.start}
           />
+          {reminder ? <Fact label="Reminder" value={reminder} muted={reminder === 'Off'} /> : null}
           {item.locationName || item.address ? (
             <Fact
               label="Where"

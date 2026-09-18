@@ -262,6 +262,18 @@ or with any assistant.
 
 ---
 
+## Notes from S6 and S7
+
+- **After a native build, if the dev client sits on a white screen**, time `curl localhost:8081/status`.
+  Twice Metro was alive but taking 14s or more to answer, and it only recovered after a restart.
+  Stop the Gradle daemons (`android/gradlew --stop`) and restart Metro.
+- **Use `adb reverse tcp:8081 tcp:8081` and `url=http://localhost:8081`** in the dev-client link. The
+  LAN IP changes between sessions (it was 192.168.0.3, then 192.168.0.6).
+- **If the emulator hangs at boot** with *OpenGL Core Profile not supported*, start it with
+  `emulator -avd Pixel_10_Pro -gpu swiftshader_indirect`.
+- **Testing a file share from adb:** `--grant-read-uri-permission` does not cover the `STREAM` extra,
+  so the app cannot read the file. Share from the Files app instead, which grants it properly.
+
 ## Note for S5 (export/import)
 
 Built in S5 — see `docs/technical-reference.md` §12 *The archive*. The zip is `fflate` (pure JS, no

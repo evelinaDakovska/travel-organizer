@@ -18,6 +18,7 @@ import { MomentField, type MomentValue } from '../../../src/ui/components/Moment
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
 import { spacing, type, useColors } from '../../../src/ui/tokens';
+import { askForRemindersIfDue } from '../../../src/notifications/reminders';
 
 /** Moving an idea onto the timeline: give it a day, and it becomes confirmed. */
 export default function ScheduleItem() {
@@ -71,6 +72,7 @@ function ScheduleForm({ item, trip }: { item: TripItem; trip: Trip }) {
     try {
       await scheduleTripItem(db, item.id, moment, 'confirmed');
       router.back();
+      void askForRemindersIfDue(db, item.id);
     } finally {
       setBusy(false);
     }

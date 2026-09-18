@@ -344,3 +344,23 @@ decisions. The owner confirmed each of these:
   express a time zone, a date-only moment or a day outside the trip (D4, D8).
 - **Up-next cards keep the Open-ticket control.** The prototype omitted it, and finding the ticket in
   seconds is the scenario the app exists for.
+
+---
+
+## D23 — Reminders by kind, reconciled rather than tracked
+
+**Decision:** the default lead time depends on the kind of item: 3 hours before travel, the morning
+of a check-in, 1 hour before an activity or meal, and a task at its own time. Each item can switch
+its reminder off, but there is no custom time per item. Android's scheduled set is reconciled
+against the database, rather than scheduled from every place that writes an item. The app holds
+`USE_EXACT_ALARM`.
+
+**Why:** a single lead time fits a coffee and a flight equally badly. One on/off switch covers the
+real need (“don't remind me about this one”) without a new column. A time per item can come later
+from `details` with no migration. Items are written from six places and change indirectly too,
+through a trip zone change or an import. Reconciling from one listener makes a missed call site
+impossible. Inexact alarms can arrive very late for reminders scheduled days ahead. `USE_EXACT_ALARM`
+fixes that, and the Play policy that restricts it doesn't apply to a sideloaded app.
+
+**Rejected:** a single default lead time in settings (open question 4, option 2); a custom time per
+item; asking for the notification permission at launch.

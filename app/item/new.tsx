@@ -11,6 +11,7 @@ import { getTrip, TRIP_TABLES } from '../../src/repositories/trips';
 import { Screen } from '../../src/ui/components/Screen';
 import { ScreenHeader } from '../../src/ui/components/ScreenHeader';
 import { type, useColors } from '../../src/ui/tokens';
+import { askForRemindersIfDue } from '../../src/notifications/reminders';
 
 export default function NewItem() {
   const c = useColors();
@@ -63,6 +64,7 @@ export default function NewItem() {
         onSubmit={async (input) => {
           const id = await createTripItem(db, trip.id, input);
           router.replace(`/item/${id}`);
+          void askForRemindersIfDue(db, id);
         }}
       />
     </Screen>

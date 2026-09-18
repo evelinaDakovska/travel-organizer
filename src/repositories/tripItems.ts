@@ -9,6 +9,7 @@ import {
   SELECT_BOOKINGS,
   SELECT_ITEMS_WITH_DEFAULT_TZ,
   SELECT_PLACES,
+  SELECT_REMINDER_CANDIDATES,
   SELECT_TRIP_ITEM,
   SELECT_TRIP_ITEMS,
   SET_TASK_COMPLETED,
@@ -52,6 +53,14 @@ export async function listPlaces(db: SQLiteDatabase, tripId: string): Promise<Tr
 export async function getTripItem(db: SQLiteDatabase, id: string): Promise<TripItem | null> {
   const row = await db.getFirstAsync<JoinedRow>(SELECT_TRIP_ITEM, { $id: id });
   return row ? parseTripItemRow(row, row.trip_default_tz) : null;
+}
+
+/** Items that may still need a reminder, across all trips. `domain/reminders` decides the rest. */
+export async function listReminderCandidates(db: SQLiteDatabase, now: Date): Promise<TripItem[]> {
+  const rows = await db.getAllAsync<JoinedRow>(SELECT_REMINDER_CANDIDATES, {
+    $now: now.toISOString(),
+  });
+  return rows.map((row) => parseTripItemRow(row, row.trip_default_tz));
 }
 
 export async function createTripItem(

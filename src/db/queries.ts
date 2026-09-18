@@ -31,6 +31,19 @@ SELECT ${ITEM_COLUMNS}
  WHERE i.id = $id
 `;
 
+/**
+ * Everything that could still remind: booked, dated, and not yet started, across every trip. A
+ * reminder never fires after its item starts, so a start in the past rules it out.
+ */
+export const SELECT_REMINDER_CANDIDATES = `
+SELECT ${ITEM_COLUMNS}
+  FROM trip_items i JOIN trips t ON t.id = i.trip_id
+ WHERE i.status = 'confirmed'
+   AND i.start_utc IS NOT NULL
+   AND i.start_utc > $now
+ ORDER BY i.start_utc
+`;
+
 export const INSERT_TRIP_ITEM = `
 INSERT INTO trip_items
   (id, trip_id, kind, subkind, status, priority, title,

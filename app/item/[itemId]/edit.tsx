@@ -15,6 +15,7 @@ import { getTrip, TRIP_TABLES } from '../../../src/repositories/trips';
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
 import { type, useColors } from '../../../src/ui/tokens';
+import { askForRemindersIfDue } from '../../../src/notifications/reminders';
 
 /** Deleting lives on the detail screen, where the cancel-first rule is shown (decision log D21). */
 export default function EditItem() {
@@ -68,6 +69,7 @@ export default function EditItem() {
         onSubmit={async (input) => {
           await updateTripItem(db, item.id, input);
           router.back();
+          void askForRemindersIfDue(db, item.id);
         }}
       />
     </Screen>
