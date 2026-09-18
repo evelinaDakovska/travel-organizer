@@ -214,7 +214,8 @@ finish the first unticked task, commit, then tick it there.
 - **Open:** confirming the expo-notifications patch (reminders lost under memory pressure) on the
   phone, and a reminder after a long idle period — both listed in `docs/status.md`
 
-New work now goes through `docs/ideas.md` and an explicit decision from the owner, not the plan.
+Next are **N1–N4** in `docs/status.md`: features the owner approved on 2026-09-18, not started.
+Anything beyond those goes through `docs/ideas.md` and an explicit decision from the owner.
 When shipping a change to the phone, rebuild the release (below) and `adb install -r` — never the
 dev build.
 

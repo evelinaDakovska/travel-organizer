@@ -7,7 +7,7 @@ Verified against the repo on 2026-09-18, on Windows: **366 tests passing, typech
 
 > **The app is in use on the owner's phone** — release build 0.1.0, installed 2026-09-18. What is
 > left is in *Final phone QA* below: the reminder checks the owner chose to leave for later, and
-> tidying the phone after testing.
+> tidying the phone after testing. **Next features: N1–N4** below, approved but not started.
 
 ---
 
@@ -186,12 +186,62 @@ plus Trip documents sit at the bottom of Now.
 
 ---
 
+## N — next features · approved 2026-09-18, not started
+
+Borrowed from Notion after the owner asked what it does well. Each one fits the product rules in
+`CLAUDE.md`: offline, on the phone only, no accounts or sync. Notion's collaboration and cloud sync
+were deliberately left out. Suggested order: N1 and N2 first, because both serve "find it in
+seconds" and are cheap.
+
+| | Feature | ✓ |
+|---|---|---|
+| **N1** | All documents in a trip, in one list | ⬜ |
+| **N2** | Checklists inside notes | ⬜ |
+| **N3** | Start a trip from a previous one | ⬜ |
+| **N4** | Search across all trips | ⬜ |
+
+**N1 — All documents.** Every file and link in a trip — attached to the trip *and* to its items — in
+one list, each row showing which item it belongs to, and opening in one tap. For when you know you
+have "the Belvedere tickets" but not which item they hang off.
+- Data exists already: `listItemResourcesForTrip` plus `listResources` for trip-level documents.
+  Reuse `ResourceRow` and `openResource`; group or sort by item (`groupResourcesByItem`).
+- **Decide first:** where it opens from. D20 fixed four tabs, so an icon in the trip header next to
+  search, or a *See all documents* link under *Trip documents* on Now — not a fifth tab.
+- Done when every attachment in the Milan sample trip is reachable from the list and opens offline.
+
+**N2 — Checklists in notes.** Packing lists with ticks. Lines written as `- [ ] Adapter` render as
+tappable checkboxes; a tap rewrites that line to `- [x]`.
+- **No migration:** the checklist lives in the note's `body` text, so it survives export/import and
+  stays readable as plain text. Pure parse and toggle functions in `src/domain/note.ts`, tested.
+- Needs: a way to add a line from the note screen (a *New item* field under the list), and a count on
+  the Notes card (*3 of 12 packed*).
+- **Decide:** whether ticked lines sink to the bottom.
+
+**N3 — Start from a previous trip.** When creating a trip, *Copy from…* an earlier one to bring over
+reusable parts, the way Notion templates are used.
+- **Decide what is copied** before building. Suggested: tasks and notes, with checklists reset to
+  unticked. Not bookings, places, or attachments, which belong to the old trip.
+- **Dates:** a copied task keeps its offset from the trip start ("2 days before departure"). An
+  undated task stays undated. The time zone follows the new trip.
+- One transaction, like `applyImport`. Reminders pick the new tasks up by themselves through the
+  reconcile in `src/notifications/`.
+
+**N4 — Search across all trips.** A search icon on Home, finding items, notes and attachment labels
+in every trip ("passport scan", "insurance"). Results are grouped by trip, and each opens where it
+lives.
+- Reuse `searchPattern` and the LIKE-escaping rules (technical reference §2), and add resource
+  labels to what is searched. The per-trip queries gain a version without `trip_id`, tested in node
+  like `SEARCH_TRIP_ITEMS`.
+- Cancelled items stay findable, the same as in per-trip search.
+
+---
+
 ## How to continue
 
 | The user says | Do this |
 |---|---|
 | *"do the next C task"* / *"do the priority work"* | First unticked **C** → finish → commit → tick here. **Stop after C5** |
-| *"continue with the plan"* | First unticked task overall — on Windows that is an **S** |
+| *"continue with the plan"* | First unticked task overall. Every C and S task is done, so that is an **N** |
 
 A task is not done until it is **committed and ticked here**. The conversation does not survive
 compaction; this file does.
