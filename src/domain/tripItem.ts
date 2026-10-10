@@ -148,6 +148,22 @@ export const transportDetailsSchema = z.object({
 
 export type TransportDetails = z.infer<typeof transportDetailsSchema>;
 
+/**
+ * Details that survive a change of kind: the route belongs to transport only; everything else —
+ * the reminder choice, refundable — belongs to any item. Undefined when nothing is left.
+ */
+export function detailsForKind(
+  details: Record<string, unknown> | null | undefined,
+  kind: TripItemKind,
+): Record<string, unknown> | undefined {
+  const kept = Object.fromEntries(
+    Object.entries(details ?? {}).filter(
+      ([key]) => kind === 'transport' || !(key in transportDetailsSchema.shape),
+    ),
+  );
+  return Object.keys(kept).length > 0 ? kept : undefined;
+}
+
 /** Unknown kinds stay permissive so a backup from a later version is not rejected on read. */
 export function detailsSchemaFor(kind: TripItemKind) {
   return kind === 'transport' ? transportDetailsSchema : z.record(z.string(), z.unknown());

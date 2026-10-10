@@ -5,7 +5,9 @@ import {
   reminderFor,
   reminderLabel,
   remindersFor,
+  reminderSetting,
   withReminder,
+  withReminderSetting,
   type Reminder,
 } from './reminders';
 import type { LocalMoment } from './time';
@@ -205,5 +207,60 @@ describe('planReminderSync', () => {
   it('does nothing when the two already agree', () => {
     const same = [r('a', '2026-09-20T10:00:00.000Z')];
     expect(planReminderSync(same, same)).toEqual({ cancel: [], schedule: [] });
+  });
+});
+
+describe('a reminder time chosen per item', () => {
+  const fire = (details: Record<string, unknown> | null, local = '2026-10-20T15:00', kind: Item['kind'] = 'activity') =>
+    reminderFor(item({ id: 'x', kind, start: at(local), details }), NOW)?.fireAt;
+
+  it('leaves every item saved before the choice existed on its by-kind rule', () => {
+    expect(reminderSetting(null)).toBe('default');
+    expect(reminderSetting({ from: 'Sofia' })).toBe('default');
+    // 1 hour before an activity, 15:00 Rome = 13:00Z.
+    expect(fire(null)).toBe('2026-10-20T12:00:00.000Z');
+  });
+
+  it('reads a value it does not know as the default rather than dropping the reminder', () => {
+    expect(reminderSetting({ reminder: 'fortnight' })).toBe('default');
+    expect(isReminderOn({ reminder: 'fortnight' })).toBe(true);
+  });
+
+  it('fires at the time, or a fixed lead before it', () => {
+    expect(fire({ reminder: 'at' })).toBe('2026-10-20T13:00:00.000Z');
+    expect(fire({ reminder: '15m' })).toBe('2026-10-20T12:45:00.000Z');
+    expect(fire({ reminder: '30m' })).toBe('2026-10-20T12:30:00.000Z');
+    expect(fire({ reminder: '3h' }, '2026-10-20T15:00', 'food')).toBe('2026-10-20T10:00:00.000Z');
+  });
+
+  it('fires on the morning, or at the start when that is earlier', () => {
+    expect(fire({ reminder: 'morning' })).toBe('2026-10-20T07:00:00.000Z');
+    expect(fire({ reminder: 'morning' }, '2026-10-20T06:10')).toBe('2026-10-20T04:10:00.000Z');
+  });
+
+  it('fires the day before at the same wall-clock time, across a clock change', () => {
+    expect(fire({ reminder: 'day-before' })).toBe('2026-10-19T13:00:00.000Z');
+    // Rome leaves summer time on 25 Oct 2026: 15:00 on the 26th is 14:00Z, the day before 13:00Z.
+    expect(fire({ reminder: 'day-before' }, '2026-10-26T15:00')).toBe('2026-10-25T14:00:00.000Z');
+  });
+
+  it('fires the morning before a date with no time', () => {
+    expect(fire({ reminder: 'day-before' }, '2026-11-01')).toBe('2026-10-31T08:00:00.000Z');
+  });
+
+  it('is stored as nothing when set back to the default', () => {
+    expect(withReminderSetting({ from: 'Sofia' }, '15m')).toEqual({ from: 'Sofia', reminder: '15m' });
+    expect(withReminderSetting({ reminder: '15m' }, 'default')).toBeUndefined();
+    expect(withReminderSetting({ from: 'Sofia', reminder: 'off' }, 'default')).toEqual({ from: 'Sofia' });
+  });
+
+  it('describes the chosen time in words', () => {
+    const label = (details: Record<string, unknown>, local = '2026-10-20T15:00') =>
+      reminderLabel(item({ id: 'x', start: at(local), details }));
+    expect(label({ reminder: '15m' })).toBe('15 min before');
+    expect(label({ reminder: 'at' })).toBe('At the time');
+    expect(label({ reminder: 'day-before' })).toBe('The day before, same time');
+    expect(label({ reminder: 'day-before' }, '2026-11-01')).toBe('The day before, at 09:00');
+    expect(label({ reminder: 'off' })).toBe('Off');
   });
 });

@@ -1,4 +1,5 @@
 import {
+  detailsForKind,
   followStart,
   isValidSubkind,
   kindLabel,
@@ -422,5 +423,18 @@ describe('followStart', () => {
     expect(followStart({ local: '2026-10-22' }, undefined)).toBeUndefined();
     const end = { local: '2026-10-20' };
     expect(followStart(undefined, end)).toBe(end);
+  });
+});
+
+describe('detailsForKind', () => {
+  it('drops the route when an item stops being travel, keeping everything else', () => {
+    const details = { from: 'Sofia', to: 'Bergamo', seat: '12A', reminder: '15m', refundable: true };
+    expect(detailsForKind(details, 'activity')).toEqual({ reminder: '15m', refundable: true });
+  });
+
+  it('keeps the lot for travel, and leaves nothing behind when nothing is left', () => {
+    expect(detailsForKind({ from: 'Sofia' }, 'transport')).toEqual({ from: 'Sofia' });
+    expect(detailsForKind({ from: 'Sofia' }, 'stay')).toBeUndefined();
+    expect(detailsForKind(undefined, 'stay')).toBeUndefined();
   });
 });

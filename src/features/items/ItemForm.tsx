@@ -4,9 +4,17 @@ import { Controller, useForm, type Control } from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 
 import { amountText, parseAmount } from '../../domain/format';
-import { isReminderOn, reminderLabel, withReminder } from '../../domain/reminders';
+import {
+  REMINDER_SETTINGS,
+  reminderLabel,
+  reminderSetting,
+  reminderSettingLabel,
+  withReminderSetting,
+  type ReminderSetting,
+} from '../../domain/reminders';
 import { localPrecision } from '../../domain/time';
 import {
+  detailsForKind,
   followStart,
   kindLabel,
   PRIORITIES,
@@ -65,7 +73,7 @@ export function ItemForm({ defaultValues, defaultTz, defaultDate, submitLabel, o
   const kind = watch('kind');
   const status = watch('status');
   const start = watch('start');
-  const remind = isReminderOn(watch('details'));
+  const reminder = reminderSetting(watch('details'));
   const subkinds = subkindsFor(kind);
 
   return (
@@ -82,12 +90,10 @@ export function ItemForm({ defaultValues, defaultTz, defaultDate, submitLabel, o
               onChange={(next) => {
                 if (!next) return;
                 field.onChange(next);
-                // A subkind belongs to one kind, and route details only to transport. The
-                // reminder switch belongs to every kind, so it survives the change.
+                // A subkind belongs to one kind, and the route only to transport. Everything
+                // else in details — the reminder, refundable — belongs to every kind.
                 setValue('subkind', null);
-                if (next !== 'transport') {
-                  setValue('details', withReminder(undefined, isReminderOn(getValues('details'))));
-                }
+                setValue('details', detailsForKind(getValues('details'), next));
               }}
             />
           </Field>
@@ -208,14 +214,14 @@ export function ItemForm({ defaultValues, defaultTz, defaultDate, submitLabel, o
 
       {status === 'confirmed' && (
         // Not a second Controller: `details` already has one in TransportFields.
-        <Field label="Reminder" hint={reminderHint(kind, start, defaultTz, remind)}>
+        <Field label="Reminder" hint={reminderHint(kind, start, defaultTz, reminder)}>
           <ChoiceField
-            value={remind ? 'on' : 'off'}
-            options={['on', 'off'] as const}
-            labelFor={(v) => (v === 'on' ? 'Remind me' : 'No reminder')}
+            value={reminder}
+            options={REMINDER_SETTINGS}
+            labelFor={reminderSettingLabel}
             onChange={(next) =>
               next &&
-              setValue('details', withReminder(getValues('details'), next === 'on'), {
+              setValue('details', withReminderSetting(getValues('details'), next), {
                 shouldDirty: true,
               })
             }
@@ -416,9 +422,9 @@ function reminderHint(
   kind: TripItemKind,
   start: MomentInput | undefined,
   defaultTz: string,
-  on: boolean,
+  setting: ReminderSetting,
 ): string {
-  if (!on) return 'Nothing will remind you of this one';
+  if (setting === 'off') return 'Nothing will remind you of this one';
   const precision = start ? localPrecision(start.local) : null;
   if (!start || !precision) return 'Once it has a date, it reminds you before it starts';
   const label = reminderLabel({
@@ -428,9 +434,10 @@ function reminderHint(
     title: '',
     start: { local: start.local, tz: start.tz ?? defaultTz, precision },
     completedAt: null,
-    details: null,
+    details: withReminderSetting(undefined, setting) ?? null,
   });
-  return label ?? '';
+  // The usual rule is named, so "Usual" never has to be taken on trust.
+  return setting === 'default' ? `Usual for this kind: ${label?.toLowerCase()}` : (label ?? '');
 }
 
 type PriceInputProps = {

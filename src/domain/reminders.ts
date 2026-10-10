@@ -4,7 +4,7 @@
  *
  * The rules (decided for S6): travel 3 hours before, a stay on the morning of check-in, an
  * activity, meal or anything else 1 hour before, a task at its own time. A date with no time
- * reminds on that morning. Each item can switch its reminder off.
+ * reminds on that morning. Each item can switch its reminder off, or pick its own time (U3).
  */
 
 import { timeOfDay, toInstant, type LocalMoment } from './time';
@@ -40,19 +40,78 @@ type ReminderItem = Pick<
   'id' | 'kind' | 'status' | 'title' | 'start' | 'completedAt' | 'details'
 >;
 
-/** Kept in the free-form `details` column: absent means on, so no existing row needs a migration. */
-export function isReminderOn(details: Record<string, unknown> | null | undefined): boolean {
-  return details?.reminder !== 'off';
+/**
+ * What an item asks for, kept in `details.reminder`. Absent is `'default'` — the by-kind rule —
+ * so every row written before the choice existed means exactly what it meant then, with no
+ * migration. A value this version does not know (a backup from a later one) also reads as default.
+ */
+export const REMINDER_SETTINGS = [
+  'default',
+  'at',
+  '15m',
+  '30m',
+  '1h',
+  '3h',
+  'morning',
+  'day-before',
+  'off',
+] as const;
+export type ReminderSetting = (typeof REMINDER_SETTINGS)[number];
+
+/** Minutes before a timed start, for the settings that are a fixed lead. */
+const SETTING_LEAD: Partial<Record<ReminderSetting, number>> = {
+  at: 0,
+  '15m': 15,
+  '30m': 30,
+  '1h': 60,
+  '3h': 180,
+};
+
+type Details = Record<string, unknown> | null | undefined;
+
+export function reminderSetting(details: Details): ReminderSetting {
+  const value = details?.reminder;
+  return REMINDER_SETTINGS.includes(value as ReminderSetting) && value !== 'default'
+    ? (value as ReminderSetting)
+    : 'default';
 }
 
-/** Undefined when nothing else is left, so switching back on does not leave `{}` behind. */
-export function withReminder(
-  details: Record<string, unknown> | null | undefined,
-  on: boolean,
+export function isReminderOn(details: Details): boolean {
+  return reminderSetting(details) !== 'off';
+}
+
+/**
+ * The default is stored as nothing at all, and undefined comes back when nothing else is left,
+ * so choosing the default again does not leave `{}` behind.
+ */
+export function withReminderSetting(
+  details: Details,
+  setting: ReminderSetting,
 ): Record<string, unknown> | undefined {
   const { reminder: _previous, ...rest } = details ?? {};
-  const next = on ? rest : { ...rest, reminder: 'off' };
+  const next = setting === 'default' ? rest : { ...rest, reminder: setting };
   return Object.keys(next).length > 0 ? next : undefined;
+}
+
+/** The on/off switch as it was before U3: on means the default rule. */
+export function withReminder(details: Details, on: boolean): Record<string, unknown> | undefined {
+  return withReminderSetting(details, on ? 'default' : 'off');
+}
+
+const SETTING_LABELS: Record<ReminderSetting, string> = {
+  default: 'Usual',
+  at: 'At the time',
+  '15m': '15 min before',
+  '30m': '30 min before',
+  '1h': '1 hour before',
+  '3h': '3 hours before',
+  morning: 'That morning',
+  'day-before': 'The day before',
+  off: 'No reminder',
+};
+
+export function reminderSettingLabel(setting: ReminderSetting): string {
+  return SETTING_LABELS[setting];
 }
 
 /** Only booked, dated, still-open items remind. */
@@ -70,11 +129,31 @@ function morningOf(start: LocalMoment): string {
   });
 }
 
+function dayBefore(local: string): string {
+  const [year, month, day] = local.slice(0, 10).split('-').map(Number);
+  const previous = new Date(Date.UTC(year, month - 1, day - 1));
+  return previous.toISOString().slice(0, 10);
+}
+
 function fireAtFor(item: ReminderItem & { start: LocalMoment }): string {
   const { start } = item;
+  const setting = reminderSetting(item.details);
+
+  if (setting === 'day-before') {
+    // On the wall clock, not 24 hours: across a clock change those differ by one.
+    const previous = { ...start, local: dayBefore(start.local) + start.local.slice(10) };
+    return previous.precision === 'date' ? morningOf(previous) : toInstant(previous);
+  }
   if (start.precision === 'date') return morningOf(start);
 
   const startsAt = toInstant(start);
+  const lead = SETTING_LEAD[setting];
+  if (lead !== undefined) return new Date(Date.parse(startsAt) - lead * 60_000).toISOString();
+  if (setting === 'morning') {
+    const morning = morningOf(start);
+    return morning < startsAt ? morning : startsAt;
+  }
+
   if (item.kind === 'stay') {
     // A check-in earlier than the morning reminds at the check-in itself.
     const morning = morningOf(start);
@@ -120,9 +199,15 @@ export function remindersFor(items: readonly ReminderItem[], now: Date): Reminde
  */
 export function reminderLabel(item: ReminderItem): string | null {
   if (item.status !== 'confirmed' || item.start === null) return null;
-  if (!isReminderOn(item.details)) return 'Off';
+  const setting = reminderSetting(item.details);
+  if (setting === 'off') return 'Off';
   if (item.kind === 'task' && item.completedAt !== null) return 'Done — no reminder';
+  if (setting === 'day-before') {
+    return item.start.precision === 'date' ? `The day before, at ${MORNING}` : 'The day before, same time';
+  }
   if (item.start.precision === 'date') return `On the morning, at ${MORNING}`;
+  if (setting === 'morning') return `On the morning, at ${MORNING}`;
+  if (setting !== 'default') return setting === 'at' ? 'At the time' : SETTING_LABELS[setting];
   if (item.kind === 'stay') return `On the morning of check-in, at ${MORNING}`;
   const lead = LEAD_MINUTES[item.kind];
   if (lead === 0) return 'At the time';

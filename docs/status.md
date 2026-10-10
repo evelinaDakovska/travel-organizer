@@ -248,7 +248,7 @@ exports a backup to Drive, and the update is rehearsed on the emulator over the 
 |---|---|---|
 | **U1** | Small fixes: Delete trip clears the navigation bar; forms scroll the focused field above the keyboard; time zones found by country and city (Milan, Italy); EUR by default; *+* on *Open tasks*; pick several files or photos at once; **the price field kept its decimal point** | ✅ |
 | **U2** | Dates: a new item opens on the trip's start date; an end follows its start and cannot precede it; the trip's dates picked as one range | ✅ |
-| **U3** | Reminder time chosen per item (at the time … the day before), the by-kind rule staying the default | ⬜ |
+| **U3** | Reminder time chosen per item (at the time … the day before), the by-kind rule staying the default | ✅ |
 | **U4** | A trip document also attached to an item — one file, shown in both places | ⬜ |
 | **U5** | Places: *Open in Maps* for an address; place names suggested from the trip; booked items with an address listed on Places | ⬜ |
 | **U6** | Refundable or not, and the trip's expenses: booked items plus cancelled non-refundable ones, paid and to pay, per currency | ⬜ |
@@ -284,6 +284,18 @@ range mode — tap the first day, then the last; nothing changes until *Use thes
 **U2, how it was verified:** on the emulator — Lapland's dates picked as 18–26 Nov on one calendar
 (9 days) and saved; a new item's date and end both opened on 18 Nov, not today; moving the start to
 21 Nov moved the end with it, and the end's picker had 20 Nov disabled.
+
+**U3, what was built:** `details.reminder` holds a choice — *Usual*, at the time, 15 or 30
+minutes, 1 or 3 hours before, that morning, the day before, or none. *Usual* is stored as nothing,
+so every item saved before U3 keeps the by-kind rule unchanged, and a value this version does not
+know reads as *Usual* rather than switching the reminder off. *The day before* is the same wall-clock
+time in the item's own zone, not 24 hours, which differ across a clock change. The form names the
+usual rule (*Usual for this kind: 3 hours before*). Changing an item's kind now drops only the route
+fields from `details` (`detailsForKind`); before, it dropped everything but the reminder.
+
+**U3, how it was verified:** on the emulator — the Helsinki flight (Fri 20 Nov, 09:20 Sofia) set to
+*The day before*; item detail says *The day before, same time*, and `dumpsys alarm` holds an exact
+alarm for 2026-11-19 07:20Z, which is 09:20 in Sofia.
 
 **Decided with the owner:** item dates stay unrestricted (CLAUDE.md §5.7) — only the default
 changes. *Open tasks* keeps its name. Each flight leg is its own item so its zone, reminder and
