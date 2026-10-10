@@ -3,7 +3,7 @@
 **The** status board. `CLAUDE.md` and `plan.md` link here rather than repeat it, so there is one
 place to update and nothing can drift.
 
-Verified against the repo on 2026-09-18, on Windows: **366 tests passing, typecheck clean.** S2–S8 verified on the Android 17 emulator, then the app end to end **on the Galaxy S26 Ultra** with the release build.
+Verified against the repo on 2026-10-10, on Windows: **445 tests passing, typecheck clean.** S2–S8 verified on the Android 17 emulator, then the app end to end **on the Galaxy S26 Ultra** with the release build.
 
 > **The app is in use on the owner's phone** — release build 0.1.0, installed 2026-09-18. What is
 > left is in *Final phone QA* below: the reminder checks the owner chose to leave for later, and
@@ -351,6 +351,36 @@ same `details.journeyId`. Item detail lists the *Rest of this journey*. Editing 
 **U7, how it was verified:** on the emulator — a confirmed flight Sofia → Vienna → Milan with a return
 Milan → Sofia: saving without the return's departure was refused with the leg marked and nothing
 written; with it, three items were created and each lists the other two.
+
+**U8, the rehearsal — done on the emulator, 2026-10-10.** Release **0.2.0** (versionCode 2), signed
+with the same key as 0.1.0 (certificate `638dc686…`, checked with `apksigner`). The exact 0.1.0 APK
+from `%USERPROFILE%\.travel-organizer` was installed and loaded with the sample backup (2 trips,
+41 items, 4 notes, 28 files), and a reminder was switched off in it. Then 0.2.0 went on with
+`adb install -r` — no uninstall — as it will on the phone. Afterwards: the first-install time was
+kept; the export still said *Backed up 2 trips and 28 saved files*; both trips' timelines matched
+the 0.1.0 capture line for line; 13 alarms before and after; the reminder switched off in 0.1.0
+read *Off*; with **airplane mode on**, PDFs opened from an item, from Trip documents and from the
+attachment chooser; Expenses read the old prices correctly.
+
+**Found during U8, present in 0.1.0:** after moving between trips, a Timeline once showed *Nothing on
+the timeline yet* while Now showed the items — until a relaunch. `useLiveQuery` turned a failed read
+into no data and never retried. Fixed in `b95eb4e`: a failed read keeps its last data, logs, and
+retries (0.3 s, 1 s, 3 s); the Timeline says it could not load rather than that the trip is empty.
+Verified by injecting two read failures (since removed). The native cause of the failed read did
+not reproduce on demand and is still unknown.
+
+**The APK to install** is the one rebuilt after that fix (`app-release.apk`, also copied to
+`%USERPROFILE%.travel-organizer	ravel-organizer-0.2.0.apk`). The rehearsal was repeated on it: fresh
+0.1.0 plus the sample backup, then this APK over the top — same export counts, Lapland identical line
+for line, a boarding pass opened with airplane mode on.
+
+**U8, still to do — needs the owner and the phone:**
+1. On the phone: *Backup → Export everything* → save to **Drive**. Check the zip is there.
+2. Connect the phone (Auto Blocker off, USB debugging on).
+3. `adb -s <serial> install -r --user 0 android/app/build/outputs/apk/release/app-release.apk` —
+   **never uninstall first**: that deletes the data.
+4. Open the app; check the trip, a few PDFs, and Expenses. Then USB debugging off, Auto Blocker on.
+5. Check prices entered with cents (the U1 price bug may have stored them ×100).
 
 **Decided with the owner:** item dates stay unrestricted (CLAUDE.md §5.7) — only the default
 changes. *Open tasks* keeps its name. Each flight leg is its own item so its zone, reminder and

@@ -14,7 +14,7 @@ single source of truth for schema, time, files, queries). Read in this order:
 5. `docs/decision-log.md` — why, and what was rejected (D1–D24)
 6. `docs/windows-handoff.md` — machine setup, release build, Windows specifics
 
-Last verified: **2026-10-10**, commit `1190cbd`, clean tree, **366 tests**, typecheck clean.
+Last verified: **2026-10-10**, after U1–U7, **445 tests**, typecheck clean.
 
 ---
 
@@ -52,8 +52,14 @@ Milestones **M0–M8** complete; **M9** complete apart from two reminder checks 
 
 The app is **in real use**: release build 0.1.0, signed with the owner's private key, installed on
 the Galaxy on 2026-09-18, and QA'd end to end there. It needs neither this laptop nor Metro.
+**It now holds a real trip** — nothing may risk that data (see `docs/status.md` → *U*).
 
-**Next up: N1–N4** in `docs/status.md` — four features approved on 2026-09-18 after the owner asked
+**U1–U7 are built (2026-10-10)** from the owner's list after real use; **U8** — installing 0.2.0
+on the phone — waits for the owner, with the steps written out in `docs/status.md`. None of the U
+work needed a migration: new per-item facts live in `details` (`reminder`, `refundable`,
+`journeyId`).
+
+**After that: N1–N4** in `docs/status.md` — four features approved on 2026-09-18 after the owner asked
 what Notion does well, not started:
 
 | | Feature | First decision to make |
