@@ -251,7 +251,7 @@ exports a backup to Drive, and the update is rehearsed on the emulator over the 
 | **U3** | Reminder time chosen per item (at the time … the day before), the by-kind rule staying the default | ✅ |
 | **U4** | A trip document also attached to an item — one file, shown in both places | ✅ |
 | **U5** | Places: *Open in Maps* for an address; place names suggested from the trip; booked items with an address listed on Places | ✅ |
-| **U6** | Refundable or not, and the trip's expenses: booked items plus cancelled non-refundable ones, paid and to pay, per currency | ⬜ |
+| **U6** | Refundable or not, and the trip's expenses: booked items plus cancelled non-refundable ones, paid and to pay, per currency | ✅ |
 | **U7** | Flights with connections and a return: one form creates each leg as its own item, linked by `details.journeyId` | ⬜ |
 | **U8** | Phone: owner exports to Drive, rehearsal on the emulator over 0.1.0, release build installed over the top | ⬜ |
 
@@ -323,6 +323,18 @@ timeline order (`bookedPlaces`).
 the rental car (Rovaniemi station) and the cabin; *Open in Maps* on the cabin opened Google Maps on
 the search; typing *rov* on the cabin's edit form offered *Rovaniemi station* and *Near Rovaniemi*,
 and a tap filled the place.
+
+**U6, what was built:** `details.refundable` — true, false, or absent for *not said*, which is every
+item saved before U6. The form offers *Refundable / Not refundable* once there is a price; item detail
+says it beside *Paid*. **Expenses** on Now (`tripExpenses`, `ExpensesCard`): per currency, never
+converted — the total, how many items, paid and to pay, and how much of it went on cancellations
+that were not refundable. Counted: confirmed items with a price, and cancelled ones marked not
+refundable. A cancellation marked refundable, or not marked, is assumed to come back.
+
+**U6, how it was verified:** on the emulator, Lapland — Expenses read EUR 1692.50 over 6 items,
+1680.00 paid and 12.50 to pay, which matches the sample data's five paid bookings plus the 12.50
+to-do added in U1. The Northern lights hunt (EUR 180) marked not refundable, then cancelled: the
+total stayed and the card said *Includes EUR 180.00 for cancelled bookings that were not refundable*.
 
 **Decided with the owner:** item dates stay unrestricted (CLAUDE.md §5.7) — only the default
 changes. *Open tasks* keeps its name. Each flight leg is its own item so its zone, reminder and

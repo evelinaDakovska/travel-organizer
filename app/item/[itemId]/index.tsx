@@ -4,6 +4,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { refundableOf } from '../../../src/domain/expenses';
 import { formatMoment, formatMoney } from '../../../src/domain/format';
 import { mapsUrl } from '../../../src/domain/places';
 import { reminderLabel } from '../../../src/domain/reminders';
@@ -147,7 +148,12 @@ export default function ItemDetail() {
             <Fact
               label="Price"
               value={formatMoney(item.priceAmount, item.priceCurrency)}
-              detail={item.isPaid ? 'Paid' : 'Not paid yet'}
+              detail={[
+                item.isPaid ? 'Paid' : 'Not paid yet',
+                REFUNDABLE_LABEL[String(refundableOf(item.details))],
+              ]
+                .filter(Boolean)
+                .join(' · ')}
             />
           ) : null}
           {item.notes ? <Fact label="Notes" value={item.notes} /> : null}
@@ -250,6 +256,12 @@ function confirmDelete(item: TripItem, files: number, remove: () => Promise<void
     ],
   );
 }
+
+const REFUNDABLE_LABEL: Record<string, string | null> = {
+  true: 'Refundable',
+  false: 'Not refundable',
+  null: null,
+};
 
 const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 

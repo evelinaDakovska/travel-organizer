@@ -3,10 +3,12 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { tripExpenses } from '../../../../src/domain/expenses';
 import { openTasks, upNext } from '../../../../src/domain/itinerary';
 import { groupResourcesByItem } from '../../../../src/domain/resource';
 import { ResourceList } from '../../../../src/features/resources/ResourceList';
 import { EntryCard } from '../../../../src/features/timeline/EntryCard';
+import { ExpensesCard } from '../../../../src/features/trips/ExpensesCard';
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { TaskRow } from '../../../../src/features/trips/TaskRow';
 import { useTripId } from '../../../../src/features/trips/TripContext';
@@ -61,6 +63,7 @@ export default function NowScreen() {
 
   const next = useMemo(() => upNext(items ?? [], now), [items, now]);
   const tasks = useMemo(() => openTasks(items ?? []), [items]);
+  const expenses = useMemo(() => tripExpenses(items ?? []), [items]);
   const byItem = useMemo(() => groupResourcesByItem(attachments ?? []), [attachments]);
 
   if (loading) {
@@ -152,6 +155,13 @@ export default function NowScreen() {
           <SectionLabel>This trip</SectionLabel>
           <TripSummary trip={trip} />
         </View>
+
+        {expenses.length > 0 ? (
+          <View style={styles.section}>
+            <SectionLabel>Expenses</SectionLabel>
+            <ExpensesCard totals={expenses} />
+          </View>
+        ) : null}
 
         <ResourceList
           owner={{ scope: 'trip', id: trip.id }}

@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Controller, useForm, type Control } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { refundableOf, withRefundable } from '../../domain/expenses';
 import { amountText, parseAmount } from '../../domain/format';
 import { suggestPlaces, type KnownPlace } from '../../domain/places';
 import {
@@ -84,6 +85,8 @@ export function ItemForm({
   const status = watch('status');
   const start = watch('start');
   const reminder = reminderSetting(watch('details'));
+  const refundable = refundableOf(watch('details'));
+  const hasPrice = watch('priceAmount') !== undefined;
   const subkinds = subkindsFor(kind);
 
   return (
@@ -355,6 +358,26 @@ export function ItemForm({
           </Field>
         )}
       />
+
+      {hasPrice && (
+        // Not a second Controller: `details` already has one in TransportFields.
+        <Field
+          label="Refundable"
+          hint="Optional. A cancelled booking that is not refundable still counts in the expenses">
+          <ChoiceField
+            value={refundable === null ? null : refundable ? 'yes' : 'no'}
+            options={['yes', 'no'] as const}
+            labelFor={(v) => (v === 'yes' ? 'Refundable' : 'Not refundable')}
+            onChange={(next) => {
+              const value = next === null ? null : next === 'yes';
+              setValue('details', withRefundable(getValues('details'), value), {
+                shouldDirty: true,
+              });
+            }}
+            clearable
+          />
+        </Field>
+      )}
 
       <Controller
         control={control}
