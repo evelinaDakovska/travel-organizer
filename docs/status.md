@@ -252,7 +252,7 @@ exports a backup to Drive, and the update is rehearsed on the emulator over the 
 | **U4** | A trip document also attached to an item — one file, shown in both places | ✅ |
 | **U5** | Places: *Open in Maps* for an address; place names suggested from the trip; booked items with an address listed on Places | ✅ |
 | **U6** | Refundable or not, and the trip's expenses: booked items plus cancelled non-refundable ones, paid and to pay, per currency | ✅ |
-| **U7** | Flights with connections and a return: one form creates each leg as its own item, linked by `details.journeyId` | ⬜ |
+| **U7** | Flights with connections and a return: one form creates each leg as its own item, linked by `details.journeyId` | ✅ |
 | **U8** | Phone: owner exports to Drive, rehearsal on the emulator over 0.1.0, release build installed over the top | ⬜ |
 
 **U1, what was built:** `FormScroll` replaces each form's `KeyboardAvoidingView`, which had been
@@ -335,6 +335,22 @@ refundable. A cancellation marked refundable, or not marked, is assumed to come 
 1680.00 paid and 12.50 to pay, which matches the sample data's five paid bookings plus the 12.50
 to-do added in U1. The Northern lights hunt (EUR 180) marked not refundable, then cancelled: the
 total stayed and the card said *Includes EUR 180.00 for cancelled bookings that were not refundable*.
+
+**U7, what was built:** `src/domain/journey.ts` and `JourneyFields`. Creating a *Travel* item offers
+*Direct / With connections* and *One way / With return*. Either one turns When and the route into
+legs — *Way out*, *Way back* — each with from, to, departure, arrival (each with its own zone),
+number and seat; a new connection starts where the last leg landed, the way back where the way out
+ended. Back to direct folds the legs into one, first departure to last arrival. On save every leg
+is checked (a departure is required; a leg cannot leave before the previous one lands, compared as
+instants across zones) and parsed by the item schema **before anything is written**; then
+`createTripItems` writes them in one transaction. Each leg is its own transport item —
+*Flight to Milan (1/2)*, *(2/2)*, *Return: Flight to Milan* — sharing status, confirmation, notes,
+reminder and refundable, with the price on the first leg only so expenses count it once, and the
+same `details.journeyId`. Item detail lists the *Rest of this journey*. Editing stays per leg.
+
+**U7, how it was verified:** on the emulator — a confirmed flight Sofia → Vienna → Milan with a return
+Milan → Sofia: saving without the return's departure was refused with the leg marked and nothing
+written; with it, three items were created and each lists the other two.
 
 **Decided with the owner:** item dates stay unrestricted (CLAUDE.md §5.7) — only the default
 changes. *Open tasks* keeps its name. Each flight leg is its own item so its zone, reminder and

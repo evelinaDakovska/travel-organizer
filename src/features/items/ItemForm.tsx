@@ -1,10 +1,22 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { randomUUID } from 'expo-crypto';
 import { useMemo, useState } from 'react';
 import { Controller, useForm, type Control } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { refundableOf, withRefundable } from '../../domain/expenses';
 import { amountText, parseAmount } from '../../domain/format';
+import {
+  firstReturnLeg,
+  isMultiLeg,
+  journeyItemValues,
+  journeyProblems,
+  mergeToDirect,
+  nextLeg,
+  type Journey,
+  type Leg,
+  type LegProblem,
+} from '../../domain/journey';
 import { suggestPlaces, type KnownPlace } from '../../domain/places';
 import {
   REMINDER_SETTINGS,
@@ -36,6 +48,7 @@ import { ChoiceField } from '../../ui/components/ChoiceField';
 import { Field, Input } from '../../ui/components/Field';
 import { MomentField } from '../../ui/components/MomentField';
 import { SectionLabel } from '../../ui/components/SectionLabel';
+import { JourneyFields } from './JourneyFields';
 import { opacity, radius, spacing, type, useColors } from '../../ui/tokens';
 
 type Props = {
@@ -47,6 +60,8 @@ type Props = {
   knownPlaces?: readonly KnownPlace[];
   submitLabel: string;
   onSubmit: (input: TripItemInput) => Promise<void>;
+  /** Offered only when creating: connections and a return save one item per leg (U7). */
+  onSubmitJourney?: (inputs: TripItemInput[]) => Promise<void>;
 };
 
 const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
@@ -64,6 +79,7 @@ export function ItemForm({
   knownPlaces = [],
   submitLabel,
   onSubmit,
+  onSubmitJourney,
 }: Props) {
   // The schema closes over the trip's zone, so it must not be rebuilt on every render.
   const schema = useMemo(() => tripItemInputSchema(defaultTz), [defaultTz]);
@@ -88,6 +104,96 @@ export function ItemForm({
   const refundable = refundableOf(watch('details'));
   const hasPrice = watch('priceAmount') !== undefined;
   const subkinds = subkindsFor(kind);
+  const c = useColors();
+
+  // Null is the ordinary form; a journey replaces its When and route with a list of legs.
+  const [journey, setJourney] = useState<Journey | null>(null);
+  const [problems, setProblems] = useState<LegProblem[]>([]);
+  const [journeyError, setJourneyError] = useState<string | null>(null);
+
+  /** The ordinary form's single trip, as the first leg. */
+  const legFromForm = (): Leg => {
+    const values = getValues();
+    const details = (values.details ?? {}) as Record<string, unknown>;
+    const text = (key: string) =>
+      typeof details[key] === 'string' ? (details[key] as string) : undefined;
+    return {
+      from: text('from'),
+      to: text('to'),
+      number: text('number'),
+      seat: text('seat'),
+      departs: values.start,
+      arrives: values.end,
+    };
+  };
+
+  /**
+   * Keeps the form and the legs from disagreeing: back to one direct leg, that leg goes into the
+   * ordinary fields; into legs, the ordinary fields are emptied so they cannot fail validation
+   * while hidden.
+   */
+  const applyJourney = (next: Journey) => {
+    setProblems([]);
+    setJourneyError(null);
+    const shared = detailsForKind(getValues('details'), 'other');
+
+    if (!isMultiLeg(next)) {
+      const [leg] = next.outbound;
+      setValue('start', leg?.departs);
+      setValue('end', leg?.arrives);
+      const details = { ...shared, ...(leg ? routeOf(leg) : {}) };
+      setValue('details', Object.keys(details).length > 0 ? details : undefined);
+      setJourney(null);
+      return;
+    }
+    setValue('start', undefined);
+    setValue('end', undefined);
+    setValue('details', shared);
+    setJourney(next);
+  };
+
+  const current = (): Journey => journey ?? { outbound: [legFromForm()], returning: [] };
+
+  const setConnections = (on: boolean) => {
+    const now = current();
+    const [first] = now.outbound;
+    const outbound = on
+      ? now.outbound.length > 1
+        ? now.outbound
+        : [first, nextLeg(first)]
+      : [mergeToDirect(now.outbound)];
+    applyJourney({ ...now, outbound });
+  };
+
+  const setReturn = (on: boolean) => {
+    const now = current();
+    const returning = on
+      ? now.returning.length > 0
+        ? now.returning
+        : [firstReturnLeg(now.outbound)]
+      : [];
+    applyJourney({ ...now, returning });
+  };
+
+  /** Every leg checked before anything is written; then all of them in one transaction. */
+  const submitJourney = async (legs: Journey) => {
+    const found = journeyProblems(legs, defaultTz);
+    setProblems(found);
+    if (found.length > 0) {
+      setJourneyError('Check the legs marked above');
+      return;
+    }
+    const values = journeyItemValues(getValues(), legs, randomUUID());
+    const parsed = values.map((value) => schema.safeParse(value));
+    const failed = parsed.findIndex((result) => !result.success);
+    if (failed >= 0) {
+      const issue = parsed[failed].error?.issues[0]?.message ?? 'Something is not right';
+      setJourneyError(`${values[failed].title}: ${issue}`);
+      return;
+    }
+    setJourneyError(null);
+    await onSubmitJourney?.(parsed.map((result) => result.data!));
+  };
 
   return (
     <FormScroll>
@@ -106,6 +212,11 @@ export function ItemForm({
                 // A subkind belongs to one kind, and the route only to transport. Everything
                 // else in details — the reminder, refundable — belongs to every kind.
                 setValue('subkind', null);
+                // Legs are travel only; leaving travel folds them back into one.
+                if (journey && next !== 'transport') {
+                  const outbound = [mergeToDirect(journey.outbound)];
+                  applyJourney({ outbound, returning: [] });
+                }
                 setValue('details', detailsForKind(getValues('details'), next));
               }}
             />
@@ -181,49 +292,84 @@ export function ItemForm({
         />
       )}
 
-      <SectionLabel>When</SectionLabel>
-
-      <Controller
-        control={control}
-        name="start"
-        render={({ field }) => (
-          <Field label="Starts" error={errors.start?.message}>
-            <MomentField
-              value={field.value}
-              onChange={(next) => {
-                field.onChange(next);
-                // An end left on an earlier day would only fail validation; carry it along.
-                const end = getValues('end');
-                const followed = followStart(next, end);
-                if (followed !== end) setValue('end', followed, { shouldDirty: true });
-              }}
-              defaultTz={defaultTz}
-              addLabel="Add a date"
-              initial={defaultDate}
+      {onSubmitJourney && kind === 'transport' && (
+        <>
+          <Field label="Route">
+            <ChoiceField
+              value={journey && journey.outbound.length > 1 ? 'connections' : 'direct'}
+              options={['direct', 'connections'] as const}
+              labelFor={(v) => (v === 'direct' ? 'Direct' : 'With connections')}
+              onChange={(next) => next && setConnections(next === 'connections')}
             />
           </Field>
-        )}
-      />
-
-      <Controller
-        control={control}
-        name="end"
-        render={({ field }) => (
           <Field
-            label="Ends"
-            error={errors.end?.message}
-            hint="A stay or a journey that finishes on another day gets its own timeline entry">
-            <MomentField
-              value={field.value}
-              onChange={field.onChange}
-              defaultTz={defaultTz}
-              addLabel="Add an end"
-              initial={start?.local ?? defaultDate}
-              minDate={start?.local.slice(0, 10)}
+            label="Return"
+            hint={journey ? 'Each leg is saved as its own item, with its own times' : undefined}>
+            <ChoiceField
+              value={journey && journey.returning.length > 0 ? 'return' : 'oneway'}
+              options={['oneway', 'return'] as const}
+              labelFor={(v) => (v === 'oneway' ? 'One way' : 'With return')}
+              onChange={(next) => next && setReturn(next === 'return')}
             />
           </Field>
-        )}
-      />
+        </>
+      )}
+
+      {journey ? (
+        <JourneyFields
+          journey={journey}
+          onChange={applyJourney}
+          defaultTz={defaultTz}
+          defaultDate={defaultDate}
+          problems={problems}
+        />
+      ) : (
+        <>
+          <SectionLabel>When</SectionLabel>
+
+          <Controller
+            control={control}
+            name="start"
+            render={({ field }) => (
+              <Field label="Starts" error={errors.start?.message}>
+                <MomentField
+                  value={field.value}
+                  onChange={(next) => {
+                    field.onChange(next);
+                    // An end left on an earlier day would only fail validation; carry it along.
+                    const end = getValues('end');
+                    const followed = followStart(next, end);
+                    if (followed !== end) setValue('end', followed, { shouldDirty: true });
+                  }}
+                  defaultTz={defaultTz}
+                  addLabel="Add a date"
+                  initial={defaultDate}
+                />
+              </Field>
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="end"
+            render={({ field }) => (
+              <Field
+                label="Ends"
+                error={errors.end?.message}
+                hint="A stay or a journey that finishes on another day gets its own timeline entry">
+                <MomentField
+                  value={field.value}
+                  onChange={field.onChange}
+                  defaultTz={defaultTz}
+                  addLabel="Add an end"
+                  initial={start?.local ?? defaultDate}
+                  minDate={start?.local.slice(0, 10)}
+                />
+              </Field>
+            )}
+          />
+        </>
+      )}
 
       {status === 'confirmed' && (
         // Not a second Controller: `details` already has one in TransportFields.
@@ -242,7 +388,7 @@ export function ItemForm({
         </Field>
       )}
 
-      {kind === 'transport' && <TransportFields control={control} />}
+      {kind === 'transport' && !journey && <TransportFields control={control} />}
 
       <SectionLabel>Where</SectionLabel>
 
@@ -398,11 +544,15 @@ export function ItemForm({
       />
 
       <View style={styles.actions}>
+        {journeyError ? (
+          <Text style={[type.body, styles.error, { color: c.danger }]}>{journeyError}</Text>
+        ) : null}
         <Button
           label={submitLabel}
           busy={isSubmitting}
           onPress={handleSubmit(async (values) => {
-            await onSubmit(values);
+            if (journey) await submitJourney(journey);
+            else await onSubmit(values);
           })}
         />
       </View>
@@ -520,6 +670,16 @@ function PlaceSuggestions({
   );
 }
 
+/** The route fields a leg fills in the ordinary form's `details`. */
+function routeOf(leg: Leg): Record<string, string> {
+  const route: Record<string, string> = {};
+  for (const key of ['from', 'to', 'number', 'seat'] as const) {
+    const value = leg[key]?.trim();
+    if (value) route[key] = value;
+  }
+  return route;
+}
+
 type PriceInputProps = {
   value: number | undefined;
   onChange: (minorUnits: number | undefined) => void;
@@ -560,5 +720,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   multiline: { minHeight: 110, textAlignVertical: 'top' },
-  actions: { marginTop: spacing.sm },
+  actions: { marginTop: spacing.sm, gap: spacing.md },
+  error: { textAlign: 'center' },
 });

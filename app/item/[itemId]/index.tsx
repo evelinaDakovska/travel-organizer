@@ -1,11 +1,12 @@
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { refundableOf } from '../../../src/domain/expenses';
 import { formatMoment, formatMoney } from '../../../src/domain/format';
+import { journeyLegs } from '../../../src/domain/journey';
 import { mapsUrl } from '../../../src/domain/places';
 import { reminderLabel } from '../../../src/domain/reminders';
 import { statusActions } from '../../../src/domain/status';
@@ -28,13 +29,16 @@ import {
 import {
   deleteTripItem,
   getTripItem,
+  listTripItems,
   setTaskCompleted,
   setTripItemStatus,
   TRIP_ITEM_TABLES,
 } from '../../../src/repositories/tripItems';
 import { Button } from '../../../src/ui/components/Button';
+import { ItemRow } from '../../../src/ui/components/ItemRow';
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
+import { SectionLabel } from '../../../src/ui/components/SectionLabel';
 import { StatusTag } from '../../../src/ui/components/StatusTag';
 import { Tag } from '../../../src/ui/components/Tag';
 import { spacing, type, useColors } from '../../../src/ui/tokens';
@@ -55,6 +59,21 @@ export default function ItemDetail() {
     useCallback((database) => listResources(database, { scope: 'item', id: itemId }), [itemId]),
     RESOURCE_TABLES,
     [itemId],
+  );
+
+  // The other legs of a journey entered together (U7); empty for everything else.
+  const tripId = item?.tripId;
+  const { data: tripItems } = useLiveQuery(
+    useCallback(
+      async (database) => (tripId ? listTripItems(database, tripId) : []),
+      [tripId],
+    ),
+    TRIP_ITEM_TABLES,
+    [tripId],
+  );
+  const legs = useMemo(
+    () => (item && tripItems ? journeyLegs(tripItems, item) : []),
+    [item, tripItems],
   );
 
   if (loading) {
@@ -169,6 +188,15 @@ export default function ItemDetail() {
             variant={item.completedAt ? 'secondary' : 'primary'}
             onPress={() => setTaskCompleted(db, item.id, item.completedAt === null)}
           />
+        ) : null}
+
+        {legs.length > 0 ? (
+          <View style={styles.legs}>
+            <SectionLabel>Rest of this journey</SectionLabel>
+            {legs.map((leg) => (
+              <ItemRow key={leg.id} item={leg} onPress={() => router.push(`/item/${leg.id}`)} />
+            ))}
+          </View>
         ) : null}
 
         <ResourceList
@@ -298,6 +326,7 @@ const styles = StyleSheet.create({
   factLabel: { width: 108 },
   factValue: { flex: 1, gap: 2 },
   actions: { gap: spacing.sm },
+  legs: { gap: spacing.md },
   hint: { textAlign: 'center' },
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

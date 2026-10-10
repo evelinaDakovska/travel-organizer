@@ -85,6 +85,23 @@ export async function createTripItem(
   return id;
 }
 
+/**
+ * The legs of one journey (U7), all or none: a connection saved without the flight before it would
+ * be worse than nothing. Not `withExclusiveTransactionAsync` — its second connection is never heard
+ * by the change listener (CLAUDE.md, finding 6).
+ */
+export async function createTripItems(
+  db: SQLiteDatabase,
+  tripId: string,
+  inputs: readonly TripItemInput[],
+): Promise<string[]> {
+  const ids: string[] = [];
+  await db.withTransactionAsync(async () => {
+    for (const input of inputs) ids.push(await createTripItem(db, tripId, input));
+  });
+  return ids;
+}
+
 export async function updateTripItem(
   db: SQLiteDatabase,
   id: string,

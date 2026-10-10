@@ -9,6 +9,7 @@ import { ItemForm } from '../../src/features/items/ItemForm';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
 import {
   createTripItem,
+  createTripItems,
   listKnownPlaces,
   TRIP_ITEM_TABLES,
 } from '../../src/repositories/tripItems';
@@ -74,6 +75,11 @@ export default function NewItem() {
           title: '',
           priceCurrency: DEFAULT_CURRENCY,
           isPaid: false,
+        }}
+        onSubmitJourney={async (inputs) => {
+          const [first] = await createTripItems(db, trip.id, inputs);
+          router.replace(`/item/${first}`);
+          void askForRemindersIfDue(db, first);
         }}
         onSubmit={async (input) => {
           const id = await createTripItem(db, trip.id, input);

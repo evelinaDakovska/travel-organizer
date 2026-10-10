@@ -144,6 +144,8 @@ export const transportDetailsSchema = z.object({
   carrier: z.string().trim().max(60).optional(),
   number: z.string().trim().max(24).optional(),
   seat: z.string().trim().max(24).optional(),
+  /** Shared by the legs of one journey entered together (U7). */
+  journeyId: z.string().max(64).optional(),
 });
 
 export type TransportDetails = z.infer<typeof transportDetailsSchema>;
