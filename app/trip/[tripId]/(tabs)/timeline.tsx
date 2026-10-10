@@ -32,7 +32,7 @@ export default function TimelineScreen() {
     TRIP_TABLES,
     [tripId],
   );
-  const { data: items } = useLiveQuery(
+  const { data: items, error: itemsError } = useLiveQuery(
     useCallback((database) => listTripItems(database, tripId), [tripId]),
     TRIP_ITEM_TABLES,
     [tripId],
@@ -77,7 +77,10 @@ export default function TimelineScreen() {
         {days.length === 0 && undated.length === 0 ? (
           <View style={[styles.well, { backgroundColor: c.surfaceSunken }]}>
             <Text style={[type.body, { color: c.textMuted }]}>
-              Nothing on the timeline yet. Anything with a date appears here, day by day.
+              {/* A read that failed is not an empty trip, and must not say it is. */}
+              {items === undefined && itemsError
+                ? 'Could not load the timeline just now. It tries again by itself.'
+                : 'Nothing on the timeline yet. Anything with a date appears here, day by day.'}
             </Text>
           </View>
         ) : null}
