@@ -249,7 +249,7 @@ exports a backup to Drive, and the update is rehearsed on the emulator over the 
 | **U1** | Small fixes: Delete trip clears the navigation bar; forms scroll the focused field above the keyboard; time zones found by country and city (Milan, Italy); EUR by default; *+* on *Open tasks*; pick several files or photos at once; **the price field kept its decimal point** | ✅ |
 | **U2** | Dates: a new item opens on the trip's start date; an end follows its start and cannot precede it; the trip's dates picked as one range | ✅ |
 | **U3** | Reminder time chosen per item (at the time … the day before), the by-kind rule staying the default | ✅ |
-| **U4** | A trip document also attached to an item — one file, shown in both places | ⬜ |
+| **U4** | A trip document also attached to an item — one file, shown in both places | ✅ |
 | **U5** | Places: *Open in Maps* for an address; place names suggested from the trip; booked items with an address listed on Places | ⬜ |
 | **U6** | Refundable or not, and the trip's expenses: booked items plus cancelled non-refundable ones, paid and to pay, per currency | ⬜ |
 | **U7** | Flights with connections and a return: one form creates each leg as its own item, linked by `details.journeyId` | ⬜ |
@@ -296,6 +296,20 @@ fields from `details` (`detailsForKind`); before, it dropped everything but the 
 **U3, how it was verified:** on the emulator — the Helsinki flight (Fri 20 Nov, 09:20 Sofia) set to
 *The day before*; item detail says *The day before, same time*, and `dumpsys alarm` holds an exact
 alarm for 2026-11-19 07:20Z, which is 09:20 in Sofia.
+
+**U4, what was built:** *Also attach to an item* on any attachment opens `app/resource/attach-to.tsx`:
+the trip's items in timeline order, those already holding it greyed out. Choosing one inserts a
+second `resources` row pointing at the **same** `stored_path` or `url` (`COPY_RESOURCE_TO_ITEM`) —
+no bytes copied, no migration. The GC sweep collects only files no row references, so the file
+stays while either row exists; the backup manifest already lists every row per file. Removing one
+of them says *The file stays where else it is attached*; deleting an item or a trip counts each file
+once and leaves out files still held elsewhere (`COUNT_ITEM_OWN_FILES`, `COUNT_TRIP_CONTENTS` now
+`DISTINCT`).
+
+**U4, how it was verified:** SQL in node — shared row, sweep keeps the file until both rows go,
+counts, cascade on trip delete. On the emulator — Lapland's *Winter driving guide* attached to the
+rental car showed and opened there; removed from the car, the dialog said the file stays; after a
+relaunch (the sweep runs on start) the trip's copy still opened in the PDF viewer.
 
 **Decided with the owner:** item dates stay unrestricted (CLAUDE.md §5.7) — only the default
 changes. *Open tasks* keeps its name. Each flight leg is its own item so its zone, reminder and

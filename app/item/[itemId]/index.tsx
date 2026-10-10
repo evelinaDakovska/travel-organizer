@@ -17,7 +17,11 @@ import {
 import { OpenResource } from '../../../src/features/resources/OpenResource';
 import { ResourceList } from '../../../src/features/resources/ResourceList';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
-import { listResources, RESOURCE_TABLES } from '../../../src/repositories/resources';
+import {
+  countItemOwnFiles,
+  listResources,
+  RESOURCE_TABLES,
+} from '../../../src/repositories/resources';
 import {
   deleteTripItem,
   getTripItem,
@@ -185,8 +189,9 @@ export default function ItemDetail() {
             <Button
               label="Delete"
               variant="danger"
-              onPress={() =>
-                confirmDelete(item, resources?.filter((r) => r.kind === 'file').length ?? 0, async () => {
+              onPress={async () =>
+                // Files also attached elsewhere stay, so they are not counted as lost.
+                confirmDelete(item, await countItemOwnFiles(db, item.id), async () => {
                   await deleteTripItem(db, item.id);
                   router.back();
                 })

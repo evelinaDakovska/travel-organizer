@@ -9,7 +9,8 @@ import { LIKE_ESCAPE_CLAUSE } from '../domain/search';
 export const COUNT_TRIP_CONTENTS = `
 SELECT
   (SELECT COUNT(*) FROM trip_items WHERE trip_id = $id) AS items,
-  (SELECT COUNT(*) FROM resources r
+  -- Distinct: one file attached to the trip and to an item is still one file.
+  (SELECT COUNT(DISTINCT r.stored_path) FROM resources r
      WHERE r.kind = 'file'
        AND (r.trip_id = $id
             OR r.trip_item_id IN (SELECT id FROM trip_items WHERE trip_id = $id))) AS files
@@ -148,6 +149,55 @@ SELECT stored_path FROM resources
  WHERE kind = 'file' AND stored_path IS NOT NULL
    AND (trip_id = $tripId
         OR trip_item_id IN (SELECT id FROM trip_items WHERE trip_id = $tripId))
+`;
+
+/**
+ * Attaches an existing attachment to an item as well (U4): a second row pointing at the SAME
+ * stored file or link. Nothing is copied, and the file stays while either row exists — the sweep
+ * collects only files no row references.
+ */
+export const COPY_RESOURCE_TO_ITEM = `
+INSERT INTO resources
+  (id, trip_id, trip_item_id, kind, subtype, label,
+   url, stored_path, file_name, mime_type, size_bytes, sort_order, created_at)
+SELECT $id, NULL, $itemId, kind, subtype, label,
+       url, stored_path, file_name, mime_type, size_bytes,
+       COALESCE((SELECT MAX(sort_order) + 1 FROM resources WHERE trip_item_id = $itemId), 0),
+       $now
+  FROM resources WHERE id = $sourceId
+`;
+
+/** The trip an attachment belongs to, whether it hangs off the trip or one of its items. */
+export const SELECT_RESOURCE_TRIP_ID = `
+SELECT COALESCE(r.trip_id, i.trip_id) AS trip_id
+  FROM resources r LEFT JOIN trip_items i ON i.id = r.trip_item_id
+ WHERE r.id = $id
+`;
+
+/** Items already holding this same file or link, so they are not offered twice. */
+export const SELECT_ITEMS_SHARING_RESOURCE = `
+SELECT DISTINCT o.trip_item_id AS item_id
+  FROM resources r JOIN resources o
+    ON o.kind = r.kind
+   AND ((r.kind = 'file' AND o.stored_path = r.stored_path)
+     OR (r.kind = 'link' AND o.url = r.url))
+ WHERE r.id = $id AND o.trip_item_id IS NOT NULL
+`;
+
+/** Other rows pointing at this attachment's file: removing this one then keeps the file. */
+export const COUNT_OTHER_FILE_REFERENCES = `
+SELECT COUNT(*) AS n
+  FROM resources r JOIN resources o ON o.stored_path = r.stored_path AND o.id <> r.id
+ WHERE r.id = $id AND r.kind = 'file'
+`;
+
+/** Files that deleting this item would really remove: those no other row also points at. */
+export const COUNT_ITEM_OWN_FILES = `
+SELECT COUNT(DISTINCT r.stored_path) AS n
+  FROM resources r
+ WHERE r.trip_item_id = $id AND r.kind = 'file'
+   AND NOT EXISTS (SELECT 1 FROM resources o
+                    WHERE o.stored_path = r.stored_path AND o.trip_item_id IS NOT $id)
 `;
 
 /** Bookings: what is settled. Grouped by kind in the UI, so kind leads the ordering. */

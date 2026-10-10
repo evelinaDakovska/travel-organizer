@@ -2,12 +2,17 @@ import { randomUUID } from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import {
+  COPY_RESOURCE_TO_ITEM,
+  COUNT_ITEM_OWN_FILES,
+  COUNT_OTHER_FILE_REFERENCES,
   INSERT_RESOURCE,
   SELECT_ALL_STORED_PATHS,
   SELECT_ITEM_RESOURCES_FOR_TRIP,
+  SELECT_ITEMS_SHARING_RESOURCE,
   SELECT_RESOURCE,
   SELECT_RESOURCES_FOR_ITEM,
   SELECT_RESOURCES_FOR_TRIP,
+  SELECT_RESOURCE_TRIP_ID,
   SELECT_TRIP_STORED_PATHS,
   UPDATE_RESOURCE_LABEL,
 } from '../db/queries';
@@ -98,4 +103,45 @@ export async function listTripStoredPaths(db: SQLiteDatabase, tripId: string): P
     $tripId: tripId,
   });
   return rows.map((r) => r.stored_path);
+}
+
+/** The same file or link, attached to an item as well. One file on disk, two rows. */
+export async function attachResourceToItem(
+  db: SQLiteDatabase,
+  sourceId: string,
+  itemId: string,
+): Promise<void> {
+  await db.runAsync(COPY_RESOURCE_TO_ITEM, {
+    $id: randomUUID(),
+    $itemId: itemId,
+    $sourceId: sourceId,
+    $now: new Date().toISOString(),
+  });
+}
+
+export async function resourceTripId(db: SQLiteDatabase, id: string): Promise<string | null> {
+  const row = await db.getFirstAsync<{ trip_id: string | null }>(SELECT_RESOURCE_TRIP_ID, {
+    $id: id,
+  });
+  return row?.trip_id ?? null;
+}
+
+/** Items that already hold this file or link. */
+export async function itemsSharingResource(db: SQLiteDatabase, id: string): Promise<string[]> {
+  const rows = await db.getAllAsync<{ item_id: string }>(SELECT_ITEMS_SHARING_RESOURCE, {
+    $id: id,
+  });
+  return rows.map((row) => row.item_id);
+}
+
+/** How many other places hold this attachment's file — removing it here then keeps the file. */
+export async function countOtherFileReferences(db: SQLiteDatabase, id: string): Promise<number> {
+  const row = await db.getFirstAsync<{ n: number }>(COUNT_OTHER_FILE_REFERENCES, { $id: id });
+  return row?.n ?? 0;
+}
+
+/** Files deleting this item would really remove, leaving out ones also attached elsewhere. */
+export async function countItemOwnFiles(db: SQLiteDatabase, itemId: string): Promise<number> {
+  const row = await db.getFirstAsync<{ n: number }>(COUNT_ITEM_OWN_FILES, { $id: itemId });
+  return row?.n ?? 0;
 }

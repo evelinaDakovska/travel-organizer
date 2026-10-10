@@ -6,6 +6,7 @@ import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { ResourceEditForm } from '../../src/features/resources/ResourceEditForm';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
 import {
+  countOtherFileReferences,
   deleteResource,
   getResource,
   renameResource,
@@ -49,12 +50,16 @@ export default function EditResource() {
     );
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
+    // A file also attached elsewhere stays for those; only this row goes.
+    const elsewhere = await countOtherFileReferences(db, resource.id);
     Alert.alert(
       `Remove ${resource.label}?`,
-      resource.kind === 'file'
-        ? 'The copy saved on this phone is removed too. It cannot be undone.'
-        : 'This cannot be undone.',
+      resource.kind !== 'file'
+        ? 'This cannot be undone.'
+        : elsewhere > 0
+          ? 'The file stays where else it is attached.'
+          : 'The copy saved on this phone is removed too. It cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -78,7 +83,10 @@ export default function EditResource() {
           await renameResource(db, resource.id, values.label, values.subtype);
           router.back();
         }}
-        onDelete={confirmDelete}
+        onDelete={() => void confirmDelete()}
+        onAttachToItem={() =>
+          router.push({ pathname: '/resource/attach-to', params: { resourceId: resource.id } })
+        }
       />
     </Screen>
   );

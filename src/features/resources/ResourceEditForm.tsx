@@ -21,9 +21,11 @@ type Props = {
   resource: Resource;
   onSave: (values: ResourceEdit) => Promise<void>;
   onDelete: () => void;
+  /** Show the same file or link on an item as well. */
+  onAttachToItem: () => void;
 };
 
-export function ResourceEditForm({ resource, onSave, onDelete }: Props) {
+export function ResourceEditForm({ resource, onSave, onDelete, onAttachToItem }: Props) {
   const c = useColors();
   const {
     control,
@@ -82,6 +84,7 @@ export function ResourceEditForm({ resource, onSave, onDelete }: Props) {
           await onSave(values);
         })}
       />
+      <Button label="Also attach to an item" variant="secondary" onPress={onAttachToItem} />
       <Button label="Remove attachment" variant="danger" onPress={onDelete} />
     </FormScroll>
   );

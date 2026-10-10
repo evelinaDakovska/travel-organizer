@@ -2,9 +2,15 @@ import Database from 'better-sqlite3';
 
 import { MIGRATIONS } from './migrations';
 import {
+  COPY_RESOURCE_TO_ITEM,
+  COUNT_ITEM_OWN_FILES,
+  COUNT_OTHER_FILE_REFERENCES,
+  COUNT_TRIP_CONTENTS,
   INSERT_RESOURCE,
   SELECT_ALL_STORED_PATHS,
   SELECT_ITEM_RESOURCES_FOR_TRIP,
+  SELECT_ITEMS_SHARING_RESOURCE,
+  SELECT_RESOURCE_TRIP_ID,
   SELECT_RESOURCE,
   SELECT_RESOURCES_FOR_ITEM,
   SELECT_RESOURCES_FOR_TRIP,
@@ -245,5 +251,70 @@ describe('the paths the sweep keeps', () => {
     expect(orphanedStoredPaths(before, paths(db, SELECT_ALL_STORED_PATHS))).toEqual([
       'media/onItem1.pdf',
     ]);
+  });
+});
+
+describe('one attachment on the trip and on an item (U4)', () => {
+  function shared() {
+    const s = setup();
+    s.item('i2', 't1');
+    s.add({ id: 'doc', tripId: 't1', label: 'Museum tickets' });
+    s.db.prepare(COPY_RESOURCE_TO_ITEM).run({ id: 'copy', itemId: 'i1', sourceId: 'doc', now });
+    return s;
+  }
+
+  it('points the item at the same stored file, copying no bytes', () => {
+    const { forItem, forTrip } = shared();
+    const [onItem] = forItem('i1');
+    expect(onItem).toMatchObject({
+      id: 'copy',
+      trip_id: null,
+      label: 'Museum tickets',
+      stored_path: 'media/doc.pdf',
+    });
+    expect(forTrip('t1')).toHaveLength(1);
+  });
+
+  it('keeps the file while either row is left, and lets the sweep take it after both', () => {
+    const { db } = shared();
+    const referenced = () =>
+      (db.prepare(SELECT_ALL_STORED_PATHS).all() as { stored_path: string }[]).map(
+        (r) => r.stored_path,
+      );
+
+    db.prepare('DELETE FROM resources WHERE id = ?').run('doc');
+    expect(orphanedStoredPaths(['media/doc.pdf'], referenced())).toEqual([]);
+
+    db.prepare('DELETE FROM resources WHERE id = ?').run('copy');
+    expect(orphanedStoredPaths(['media/doc.pdf'], referenced())).toEqual(['media/doc.pdf']);
+  });
+
+  it('knows which items already hold it, and the trip it belongs to', () => {
+    const { db } = shared();
+    const sharing = db.prepare(SELECT_ITEMS_SHARING_RESOURCE).all({ id: 'doc' });
+    expect(sharing).toEqual([{ item_id: 'i1' }]);
+    expect(db.prepare(SELECT_RESOURCE_TRIP_ID).get({ id: 'copy' })).toEqual({ trip_id: 't1' });
+    expect(db.prepare(SELECT_RESOURCE_TRIP_ID).get({ id: 'doc' })).toEqual({ trip_id: 't1' });
+  });
+
+  it('says a removal keeps the file only when another row still points at it', () => {
+    const { db, add } = shared();
+    add({ id: 'alone', tripItemId: 'i2' });
+    expect(db.prepare(COUNT_OTHER_FILE_REFERENCES).get({ id: 'doc' })).toEqual({ n: 1 });
+    expect(db.prepare(COUNT_OTHER_FILE_REFERENCES).get({ id: 'alone' })).toEqual({ n: 0 });
+  });
+
+  it('counts only the files deleting an item would really remove', () => {
+    const { db, add } = shared();
+    add({ id: 'own', tripItemId: 'i1' });
+    expect(db.prepare(COUNT_ITEM_OWN_FILES).get({ id: 'i1' })).toEqual({ n: 1 });
+  });
+
+  it('counts a shared file once for the trip, and both rows go with the trip', () => {
+    const { db } = shared();
+    expect(db.prepare(COUNT_TRIP_CONTENTS).get({ id: 't1' })).toEqual({ items: 1 + 1, files: 1 });
+
+    db.prepare('DELETE FROM trips WHERE id = ?').run('t1');
+    expect(db.prepare('SELECT COUNT(*) AS n FROM resources').get()).toEqual({ n: 0 });
   });
 });
