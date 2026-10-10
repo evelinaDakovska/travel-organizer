@@ -6,7 +6,8 @@ what is still open, and the conventions to follow.
 | Doc | Role |
 |---|---|
 | **`CLAUDE.md`** (this file) | Authoritative summary. Decisions, terminology, conventions |
-| `docs/status.md` | **Status board** — milestones, C and S tasks, open questions. The one place status lives |
+| `docs/session-handoff.md` | **Starting fresh? Read after this file.** How the work goes: decisions in context, the machine, driving a device, what bit us |
+| `docs/status.md` | **Status board** — milestones, C, S and N tasks, open questions. The one place status lives |
 | `docs/technical-reference.md` | **Single source of truth** for schema, time model, file storage, queries |
 | `docs/plan.md` | Step-by-step implementation plan and current position |
 | `docs/decision-log.md` | *Why* things were decided. Rationale only — no authoritative detail |

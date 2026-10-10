@@ -12,10 +12,11 @@ file's paths here.** This one replaces it.
 
 1. **`docs/status.md` — what is done and what is next. The only place status lives.**
 2. `CLAUDE.md` — product, decisions, terminology, conventions
-3. `docs/technical-reference.md` — schema, time model, file storage, export. **Single source of
+3. `docs/session-handoff.md` — how the work goes, the device workflows, and the traps
+4. `docs/technical-reference.md` — schema, time model, file storage, export. **Single source of
    truth for how things work**
-4. `docs/plan.md` — the done-when criteria for each task
-5. `docs/decision-log.md` — why each decision was made, and what was rejected
+5. `docs/plan.md` — the done-when criteria for each task
+6. `docs/decision-log.md` — why each decision was made, and what was rejected
 
 Nothing in `src/`, `app/`, or the schema is platform-specific. Only the setup is.
 
