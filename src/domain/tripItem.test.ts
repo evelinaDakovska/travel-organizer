@@ -374,6 +374,19 @@ describe('tripItemFormValues', () => {
     expect(written.start_local).toBe('2026-09-19T15:00');
     expect(written.start_utc).toBe('2026-09-19T12:00:00.000Z');
   });
+
+  it('offers EUR for an item with no price, and stores no currency unless a price is added', () => {
+    const values = tripItemFormValues(stored({ price_amount: null, price_currency: null }));
+    expect(values.priceCurrency).toBe('EUR');
+
+    const written = tripItemWriteValues(schema.parse(values), ROME);
+    expect([written.price_amount, written.price_currency]).toEqual([null, null]);
+  });
+
+  it('keeps the currency a price was stored in', () => {
+    const values = tripItemFormValues(stored({ price_amount: 900, price_currency: 'BGN' }));
+    expect(tripItemWriteValues(schema.parse(values), ROME).price_currency).toBe('BGN');
+  });
 });
 
 describe('kindLabel', () => {

@@ -95,3 +95,22 @@ export function formatFileSize(bytes: number): string {
   const megabytes = bytes / (1024 * 1024);
   return `${megabytes < 10 ? megabytes.toFixed(1) : Math.round(megabytes)} MB`;
 }
+
+/**
+ * A typed amount in minor units: '12.50' and '12,50' are both 1250 — a phone set to a European
+ * locale puts a comma on the decimal key. Undefined for an empty or unreadable entry.
+ */
+export function parseAmount(text: string): number | undefined {
+  const cleaned = text.replace(/\s/g, '').replace(',', '.').replace(/[^0-9.]/g, '');
+  if (cleaned === '' || cleaned === '.') return undefined;
+  const value = Number(cleaned);
+  return Number.isFinite(value) ? Math.round(value * 100) : undefined;
+}
+
+/** What the price field shows for a stored amount: '12.50', '25', never a float artefact. */
+export function amountText(minorUnits: number | undefined): string {
+  if (minorUnits === undefined) return '';
+  const whole = Math.trunc(minorUnits / 100);
+  const cents = Math.abs(minorUnits % 100);
+  return cents === 0 ? String(whole) : `${whole}.${String(cents).padStart(2, '0')}`;
+}

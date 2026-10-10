@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import {
   linkFormSchema,
@@ -10,6 +10,7 @@ import {
   type ResourceInput,
 } from '../../domain/resource';
 import { Button } from '../../ui/components/Button';
+import { FormScroll } from '../../ui/components/FormScroll';
 import { Field, Input } from '../../ui/components/Field';
 import { spacing } from '../../ui/tokens';
 
@@ -27,10 +28,7 @@ export function LinkForm({ onSubmit }: Props) {
   });
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <FormScroll>
         <Controller
           control={control}
           name="url"
@@ -76,12 +74,9 @@ export function LinkForm({ onSubmit }: Props) {
             await onSubmit(linkResourceInput(values));
           })}
         />
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </FormScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  content: { padding: spacing.xl, gap: spacing.xl, paddingBottom: spacing.xxxl },
 });

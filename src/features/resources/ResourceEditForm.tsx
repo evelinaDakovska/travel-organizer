@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import {
   resourceEditSchema,
@@ -11,6 +11,7 @@ import {
   type ResourceEdit,
 } from '../../domain/resource';
 import { Button } from '../../ui/components/Button';
+import { FormScroll } from '../../ui/components/FormScroll';
 import { ChoiceField } from '../../ui/components/ChoiceField';
 import { Field, Input } from '../../ui/components/Field';
 import { SectionLabel } from '../../ui/components/SectionLabel';
@@ -35,10 +36,7 @@ export function ResourceEditForm({ resource, onSave, onDelete }: Props) {
   });
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <FormScroll>
         <View style={[styles.source, { backgroundColor: c.surfaceSunken }]}>
           <SectionLabel>{resource.kind === 'file' ? 'Saved file' : 'Link'}</SectionLabel>
           <Text style={[type.body, { color: c.text }]} selectable numberOfLines={3}>
@@ -85,13 +83,10 @@ export function ResourceEditForm({ resource, onSave, onDelete }: Props) {
           })}
         />
         <Button label="Remove attachment" variant="danger" onPress={onDelete} />
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </FormScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  content: { padding: spacing.xl, gap: spacing.xl, paddingBottom: spacing.xxxl },
   source: { borderRadius: radius.lg, padding: spacing.lg, gap: spacing.xs },
 });

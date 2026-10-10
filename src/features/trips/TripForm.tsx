@@ -1,11 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { tripInputSchema, type TripInput } from '../../domain/trip';
 import { Button } from '../../ui/components/Button';
 import { DateField } from '../../ui/components/DateField';
 import { Field, Input } from '../../ui/components/Field';
+import { FormScroll } from '../../ui/components/FormScroll';
 import { TimezoneField } from '../../ui/components/TimezoneField';
 import { spacing } from '../../ui/tokens';
 
@@ -27,10 +28,7 @@ export function TripForm({ defaultValues, submitLabel, onSubmit }: Props) {
   });
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <FormScroll>
         <Controller
           control={control}
           name="name"
@@ -184,14 +182,12 @@ export function TripForm({ defaultValues, submitLabel, onSubmit }: Props) {
             })}
           />
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </FormScroll>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { padding: spacing.xl, gap: spacing.xl, paddingBottom: spacing.xxxl },
   row: { flexDirection: 'row', gap: spacing.lg },
   multiline: { minHeight: 100, textAlignVertical: 'top' },
   actions: { marginTop: spacing.sm },

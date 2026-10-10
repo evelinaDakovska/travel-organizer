@@ -1,7 +1,12 @@
 import { useMemo, useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { searchTimezones, timezoneLabel } from '../../domain/timezones';
+import {
+  searchTimezones,
+  timezoneCountry,
+  timezoneLabel,
+  timezoneMatch,
+} from '../../domain/timezones';
 import { opacity, spacing, type, useColors } from '../tokens';
 import { Input } from './Field';
 import { Icon } from './Icon';
@@ -22,7 +27,7 @@ export function TimezoneField({ value, onChange, invalid = false }: Props) {
       <PickerButton
         value={value ? timezoneLabel(value) : null}
         placeholder="Pick a timezone"
-        detail={value || null}
+        detail={value ? [timezoneCountry(value), value].filter(Boolean).join(' · ') : null}
         invalid={invalid}
         onPress={() => {
           setQuery('');
@@ -42,7 +47,7 @@ export function TimezoneField({ value, onChange, invalid = false }: Props) {
           <Input
             value={query}
             onChangeText={setQuery}
-            placeholder="Search cities"
+            placeholder="Search a city or country"
             autoCorrect={false}
             autoCapitalize="none"
           />
@@ -56,7 +61,7 @@ export function TimezoneField({ value, onChange, invalid = false }: Props) {
             )}
             ListEmptyComponent={
               <Text style={[type.body, styles.empty, { color: c.textMuted }]}>
-                No match. The list is curated — add the zone to src/domain/timezones.ts.
+                No match. Try the country, or the nearest big city.
               </Text>
             }
             renderItem={({ item }) => (
@@ -68,7 +73,9 @@ export function TimezoneField({ value, onChange, invalid = false }: Props) {
                 style={({ pressed }) => [styles.row, { opacity: pressed ? opacity.pressed : 1 }]}>
                 <View style={styles.rowText}>
                   <Text style={[type.body, { color: c.text }]}>{timezoneLabel(item)}</Text>
-                  <Text style={[type.caption, { color: c.textMuted }]}>{item}</Text>
+                  <Text style={[type.caption, { color: c.textMuted }]}>
+                    {zoneDetail(item, query)}
+                  </Text>
                 </View>
                 {item === value ? <Icon name="check" color={c.accentText} /> : null}
               </Pressable>
@@ -88,3 +95,10 @@ const styles = StyleSheet.create({
   separator: { height: StyleSheet.hairlineWidth },
   empty: { paddingVertical: spacing.xl },
 });
+
+/** 'Milan · Italy · Europe/Rome' — the place that matched, so a city search never looks wrong. */
+function zoneDetail(tz: string, query: string): string {
+  const match = timezoneMatch(tz, query);
+  const country = timezoneCountry(tz);
+  return [match !== country ? match : null, country, tz].filter(Boolean).join(' · ');
+}

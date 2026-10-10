@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TripForm } from '../../../src/features/trips/TripForm';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
@@ -22,6 +23,8 @@ export default function EditTrip() {
   const db = useSQLiteContext();
   const router = useRouter();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  // The screen draws under the navigation bar, so the pinned button must clear it itself.
+  const insets = useSafeAreaInsets();
 
   const { data: trip, loading } = useLiveQuery(
     useCallback((database) => getTrip(database, tripId), [tripId]),
@@ -98,7 +101,7 @@ export default function EditTrip() {
           router.back();
         }}
       />
-      <View style={styles.danger}>
+      <View style={[styles.danger, { paddingBottom: spacing.xl + insets.bottom }]}>
         <Button label="Delete trip" variant="danger" onPress={confirmDelete} />
       </View>
     </Screen>

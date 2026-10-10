@@ -1,8 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Controller, useForm, type Control } from 'react-hook-form';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { amountText, parseAmount } from '../../domain/format';
 import { isReminderOn, reminderLabel, withReminder } from '../../domain/reminders';
 import { localPrecision } from '../../domain/time';
 import {
@@ -19,6 +20,7 @@ import {
   type TripItemKind,
 } from '../../domain/tripItem';
 import { Button } from '../../ui/components/Button';
+import { FormScroll } from '../../ui/components/FormScroll';
 import { ChoiceField } from '../../ui/components/ChoiceField';
 import { Field, Input } from '../../ui/components/Field';
 import { MomentField } from '../../ui/components/MomentField';
@@ -64,10 +66,7 @@ export function ItemForm({ defaultValues, defaultTz, submitLabel, onSubmit }: Pr
   const subkinds = subkindsFor(kind);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <FormScroll>
         <Controller
           control={control}
           name="kind"
@@ -271,12 +270,10 @@ export function ItemForm({ defaultValues, defaultTz, submitLabel, onSubmit }: Pr
               name="priceAmount"
               render={({ field }) => (
                 <Field label="Price" error={errors.priceAmount?.message} hint="Optional">
-                  <Input
-                    value={field.value === undefined ? '' : String(field.value / 100)}
-                    onChangeText={(text) => field.onChange(toMinorUnits(text))}
+                  <PriceInput
+                    value={field.value}
+                    onChange={field.onChange}
                     onBlur={field.onBlur}
-                    keyboardType="decimal-pad"
-                    placeholder="25.00"
                     invalid={!!errors.priceAmount}
                   />
                 </Field>
@@ -348,8 +345,7 @@ export function ItemForm({ defaultValues, defaultTz, submitLabel, onSubmit }: Pr
             })}
           />
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </FormScroll>
   );
 }
 
@@ -425,17 +421,37 @@ function reminderHint(
   return label ?? '';
 }
 
-/** Money is stored in minor units, so the form's 25.00 becomes 2500 and never a float. */
-function toMinorUnits(text: string): number | undefined {
-  const cleaned = text.replace(/[^0-9.]/g, '');
-  if (cleaned === '') return undefined;
-  return Math.round(Number(cleaned) * 100);
+type PriceInputProps = {
+  value: number | undefined;
+  onChange: (minorUnits: number | undefined) => void;
+  onBlur: () => void;
+  invalid: boolean;
+};
+
+/**
+ * Keeps the text as typed. Rendering it back from the stored minor units dropped the decimal
+ * point the moment it was typed — '12.50' became 1250.00 — so the number only flows outwards.
+ */
+function PriceInput({ value, onChange, onBlur, invalid }: PriceInputProps) {
+  const [text, setText] = useState(() => amountText(value));
+
+  return (
+    <Input
+      value={text}
+      onChangeText={(next) => {
+        setText(next);
+        onChange(parseAmount(next));
+      }}
+      onBlur={onBlur}
+      keyboardType="decimal-pad"
+      placeholder="25.00"
+      invalid={invalid}
+    />
+  );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
   grow: { flex: 1 },
-  content: { padding: spacing.xl, gap: spacing.xl, paddingBottom: spacing.xxxl },
   row: { flexDirection: 'row', gap: spacing.lg },
   currency: { width: 110 },
   multiline: { minHeight: 110, textAlignVertical: 'top' },

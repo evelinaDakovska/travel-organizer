@@ -1,4 +1,5 @@
 import {
+  amountText,
   formatDateRange,
   formatDayHeading,
   formatDuration,
@@ -8,6 +9,7 @@ import {
   formatRelative,
   formatShortDate,
   formatShortMoment,
+  parseAmount,
 } from './format';
 
 describe('formatDateRange', () => {
@@ -103,5 +105,37 @@ describe('formatFileSize', () => {
     expect(formatFileSize(240_000)).toBe('234 KB');
     expect(formatFileSize(2_500_000)).toBe('2.4 MB');
     expect(formatFileSize(18_000_000)).toBe('17 MB');
+  });
+});
+
+describe('parseAmount', () => {
+  it('reads a point or a comma as the decimal separator', () => {
+    expect(parseAmount('12.50')).toBe(1250);
+    expect(parseAmount('12,50')).toBe(1250);
+    expect(parseAmount('12.5')).toBe(1250);
+  });
+
+  it('keeps a half-typed amount readable while the user is still typing', () => {
+    expect(parseAmount('12.')).toBe(1200);
+    expect(parseAmount('12,')).toBe(1200);
+  });
+
+  it('is undefined for nothing at all', () => {
+    expect(parseAmount('')).toBeUndefined();
+    expect(parseAmount('.')).toBeUndefined();
+  });
+
+  it('never stores a float', () => {
+    expect(parseAmount('0.29')).toBe(29);
+    expect(Number.isInteger(parseAmount('19.99'))).toBe(true);
+  });
+});
+
+describe('amountText', () => {
+  it('shows cents only when there are some', () => {
+    expect(amountText(1250)).toBe('12.50');
+    expect(amountText(2500)).toBe('25');
+    expect(amountText(5)).toBe('0.05');
+    expect(amountText(undefined)).toBe('');
   });
 });

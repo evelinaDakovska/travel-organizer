@@ -25,10 +25,11 @@ import {
   TRIP_ITEM_TABLES,
 } from '../../../../src/repositories/tripItems';
 import { getTrip, TRIP_TABLES } from '../../../../src/repositories/trips';
+import { Icon } from '../../../../src/ui/components/Icon';
 import { Screen } from '../../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../../../../src/ui/components/SectionLabel';
-import { spacing, type, useColors } from '../../../../src/ui/tokens';
+import { opacity, spacing, type, useColors } from '../../../../src/ui/tokens';
 
 export default function NowScreen() {
   const c = useColors();
@@ -119,7 +120,20 @@ export default function NowScreen() {
         ) : null}
 
         <View style={styles.section}>
-          <SectionLabel>Open tasks</SectionLabel>
+          <View style={styles.sectionHead}>
+            <SectionLabel>Open tasks</SectionLabel>
+            <Pressable
+              onPress={() =>
+                router.push({ pathname: '/item/new', params: { tripId: trip.id, kind: 'task' } })
+              }
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Add a task"
+              style={({ pressed }) => [styles.addTask, { opacity: pressed ? opacity.pressed : 1 }]}>
+              <Icon name="add" size={18} color={c.accentText} strokeWidth={2.5} />
+              <Text style={[type.bodyStrong, { color: c.accentText }]}>Add</Text>
+            </Pressable>
+          </View>
           {tasks.length > 0 ? (
             tasks.map((task) => (
               <TaskRow
@@ -155,5 +169,7 @@ const styles = StyleSheet.create({
   // Room at the bottom for the floating add button.
   content: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.xl, paddingBottom: 120 },
   section: { gap: spacing.md },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  addTask: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

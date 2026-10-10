@@ -58,18 +58,19 @@ Do not duplicate status anywhere else; update that one file.
 
 Work is tracked by **task ID**, not milestone: **C1–C5** (core — domain, schema, repositories,
 files, export; no device needed), **S1–S8** (surface — screens and anything needing a device, done
-on a personal Windows machine, see `docs/windows-handoff.md`), and **N1–N4** (the features approved
-after those: see `docs/status.md`).
+on a personal Windows machine, see `docs/windows-handoff.md`), **U1–U8** (the owner's list after
+real use, 2026-10-10) and **N1–N4** (features approved before that). Both are in `docs/status.md`.
 
 **C, V and S are all done, and the app is in daily use** on the owner's phone as a signed release
-build. New work starts at the first unticked **N**.
+build, **holding a real trip**. New work starts at the first unticked **U**, then **N**. No U task
+may need a schema migration: new per-item facts go in the `details` JSON column.
 
 **How to be asked to work:**
 
 | The user says | Do this |
 |---|---|
 | *"do the next C task"* / *"do the priority work"* | First unticked **C** in `docs/status.md` → finish → commit → tick it there. **Stop after C5** |
-| *"continue with the plan"* | First unticked task overall — every C and S is done, so that is an **N** |
+| *"continue with the plan"* | First unticked task overall — every C and S is done, so that is a **U**, then an **N** |
 
 **C before S on purpose.** Core mistakes ripple through every screen and migrations are painful;
 surface mistakes are visible immediately and cheap to fix. `src/domain/` imports nothing native,

@@ -5,7 +5,9 @@ import {
   isResolvableTimezone,
   searchTimezones,
   TIMEZONES,
+  timezoneCountry,
   timezoneLabel,
+  timezoneMatch,
   withZone,
 } from './timezones';
 
@@ -37,6 +39,44 @@ describe('timezones', () => {
     expect(searchTimezones('sofia')).toEqual(['Europe/Sofia']);
     expect(searchTimezones('buenos aires')).toContain('America/Argentina/Buenos_Aires');
     expect(searchTimezones('')).toBe(TIMEZONES);
+  });
+});
+
+describe('searching by country and city', () => {
+  it('finds Rome time for Milan and for Italy', () => {
+    expect(searchTimezones('milan')).toEqual(['Europe/Rome']);
+    expect(searchTimezones('Italy')).toEqual(['Europe/Rome']);
+  });
+
+  it('says which place matched, unless the zone matched by its own name', () => {
+    expect(timezoneMatch('Europe/Rome', 'milan')).toBe('Milan');
+    expect(timezoneMatch('Europe/Rome', 'rome')).toBeNull();
+    expect(timezoneMatch('Europe/Rome', '')).toBeNull();
+  });
+
+  it('lists every zone a country spans', () => {
+    expect(searchTimezones('australia')).toHaveLength(5);
+    expect(searchTimezones('indonesia')).toEqual(['Asia/Jakarta', 'Asia/Makassar']);
+  });
+
+  it('puts a place in the zone whose clock it keeps, not its capital', () => {
+    expect(searchTimezones('bali')).toEqual(['Asia/Makassar']);
+    expect(searchTimezones('tenerife')).toEqual(['Atlantic/Canary']);
+  });
+
+  it('finds accented places by either spelling', () => {
+    expect(searchTimezones('krakow')).toEqual(['Europe/Warsaw']);
+    expect(searchTimezones('kraków')).toEqual(['Europe/Warsaw']);
+  });
+
+  it('names the country of a zone', () => {
+    expect(timezoneCountry('Europe/Rome')).toBe('Italy');
+    expect(timezoneCountry('UTC')).toBeNull();
+    expect(timezoneCountry('Europe/Andorra')).toBeNull();
+  });
+
+  it('gives every zone but UTC at least its country', () => {
+    expect(TIMEZONES.filter((tz) => timezoneCountry(tz) === null)).toEqual(['UTC']);
   });
 });
 

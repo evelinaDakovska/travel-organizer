@@ -7,7 +7,7 @@ import type { Resource, ResourceOwner } from '../../domain/resource';
 import { Button } from '../../ui/components/Button';
 import { SectionLabel } from '../../ui/components/SectionLabel';
 import { radius, spacing, type, useColors } from '../../ui/tokens';
-import { attachDocument, attachPhoto } from './attach';
+import { attachDocument, attachPhoto, type AttachResult } from './attach';
 import { openResource } from './open';
 import { ResourceRow } from './ResourceRow';
 
@@ -18,7 +18,7 @@ type Props = {
   emptyText: string;
 };
 
-type Picker = (db: SQLiteDatabase, owner: ResourceOwner) => Promise<boolean>;
+type Picker = (db: SQLiteDatabase, owner: ResourceOwner) => Promise<AttachResult>;
 
 export function ResourceList({ owner, resources, title, emptyText }: Props) {
   const c = useColors();
@@ -29,7 +29,13 @@ export function ResourceList({ owner, resources, title, emptyText }: Props) {
   const attach = async (which: 'file' | 'photo', pick: Picker) => {
     setBusy(which);
     try {
-      await pick(db, owner);
+      const { attached, failed } = await pick(db, owner);
+      if (failed > 0) {
+        Alert.alert(
+          attached > 0 ? `${failed} of ${attached + failed} could not be attached` : 'Could not attach',
+          'Those files could not be saved. Try again, or pick another copy.',
+        );
+      }
     } catch (error) {
       console.warn('Attach failed', error);
       Alert.alert('Could not attach', 'The file could not be saved. Try again, or pick another copy.');

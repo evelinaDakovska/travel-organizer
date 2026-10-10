@@ -236,6 +236,50 @@ lives.
 
 ---
 
+## U — the owner's list after real use · 2026-10-10
+
+Collected while planning a real trip on the phone, with that trip's data already in the app.
+**Ahead of N1–N4.** The rule for all of it: **no schema migration**. New per-item facts go in the
+`details` JSON column, so every row already on the phone stays exactly as it is, and the update is
+an install over the top with the same signing key. Before installing on the phone: the owner
+exports a backup to Drive, and the update is rehearsed on the emulator over the 0.1.0 APK.
+
+| | Task | ✓ |
+|---|---|---|
+| **U1** | Small fixes: Delete trip clears the navigation bar; forms scroll the focused field above the keyboard; time zones found by country and city (Milan, Italy); EUR by default; *+* on *Open tasks*; pick several files or photos at once; **the price field kept its decimal point** | ✅ |
+| **U2** | Dates: a new item opens on the trip's start date; an end follows its start and cannot precede it; the trip's dates picked as one range | ⬜ |
+| **U3** | Reminder time chosen per item (at the time … the day before), the by-kind rule staying the default | ⬜ |
+| **U4** | A trip document also attached to an item — one file, shown in both places | ⬜ |
+| **U5** | Places: *Open in Maps* for an address; place names suggested from the trip; booked items with an address listed on Places | ⬜ |
+| **U6** | Refundable or not, and the trip's expenses: booked items plus cancelled non-refundable ones, paid and to pay, per currency | ⬜ |
+| **U7** | Flights with connections and a return: one form creates each leg as its own item, linked by `details.journeyId` | ⬜ |
+| **U8** | Phone: owner exports to Drive, rehearsal on the emulator over 0.1.0, release build installed over the top | ⬜ |
+
+**U1, what was built:** `FormScroll` replaces each form's `KeyboardAvoidingView`, which had been
+switched off on Android (`behavior` was iOS-only). The app draws edge to edge, where `adjustResize`
+no longer resizes the window, so the view pads itself. Time zones carry their country and cities
+(`TIMEZONE_PLACES`), filed by the clock they keep — Bali is on Makassar time, the Canaries are not
+on Madrid's. The picker row says what matched: *Rome · Milan · Italy*. A task added from *+ Add*
+starts as confirmed, so it does not also appear on Places as an idea. A currency without a price is
+not stored.
+
+**Found during U1 — already on the phone in 0.1.0:** the price field rendered itself from the stored
+minor units on every keystroke, so the decimal point vanished as it was typed: *12.50* saved as
+**1,250.00**, and *12,50* the same way. `PriceInput` now keeps the typed text, and `parseAmount`
+reads a point or a comma. Prices the owner entered with cents should be checked.
+
+**U1, how it was verified:** on the emulator with the sample trips — Delete trip clears the gesture
+bar; the trip form's last field, Notes, sits above the keyboard (every form uses the same
+`FormScroll`); *milan*, *italy*
+and *bali* find Rome and Makassar on Hermes; a task from *+ Add* opened as confirmed with EUR and
+saved; *12,50* saved as EUR 12.50; two PDFs picked in one go both attached.
+
+**Decided with the owner:** item dates stay unrestricted (CLAUDE.md §5.7) — only the default
+changes. *Open tasks* keeps its name. Each flight leg is its own item so its zone, reminder and
+timeline place keep working. Expenses never convert currencies.
+
+---
+
 ## How to continue
 
 | The user says | Do this |

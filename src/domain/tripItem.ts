@@ -227,6 +227,9 @@ export function tripItemInputSchema(defaultTz: string) {
     });
 }
 
+/** What the currency field starts on, for a new item and for one that has no price yet. */
+export const DEFAULT_CURRENCY = 'EUR';
+
 /** After parsing: defaults applied, so `status` and `isPaid` are always present. */
 export type TripItemInput = z.output<ReturnType<typeof tripItemInputSchema>>;
 
@@ -272,7 +275,8 @@ export function tripItemWriteValues(input: TripItemInput, defaultTz: string) {
     notes: input.notes ?? null,
     details: input.details ? JSON.stringify(input.details) : null,
     price_amount: input.priceAmount ?? null,
-    price_currency: input.priceCurrency ?? null,
+    // The form always holds a currency (EUR unless changed); without an amount it means nothing.
+    price_currency: input.priceAmount === undefined ? null : (input.priceCurrency ?? null),
     is_paid: input.isPaid ? 1 : 0,
   };
 }
@@ -384,7 +388,8 @@ export function tripItemFormValues(item: TripItem): TripItemFormValues {
     notes: item.notes ?? undefined,
     details: item.details ?? undefined,
     priceAmount: item.priceAmount ?? undefined,
-    priceCurrency: item.priceCurrency ?? undefined,
+    priceCurrency: item.priceCurrency ?? DEFAULT_CURRENCY,
     isPaid: item.isPaid,
   };
 }
+

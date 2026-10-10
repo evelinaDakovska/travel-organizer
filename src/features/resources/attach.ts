@@ -7,33 +7,72 @@ import { defaultFileLabel, resourceInputSchema, type ResourceOwner } from '../..
 import { importFile } from '../../files/storage';
 import { createResource } from '../../repositories/resources';
 
-/**
- * Resolves false when the user backs out. Not `File.pickFileAsync`: on Android its `name` is the
- * document id ('document:35'), so every attachment would be labelled with it.
- */
-export async function attachDocument(db: SQLiteDatabase, owner: ResourceOwner): Promise<boolean> {
-  const picked = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: false });
-  if (picked.canceled) return false;
+/** How many of the picked files were saved, and how many could not be. */
+export type AttachResult = { attached: number; failed: number };
 
-  const asset = picked.assets[0];
-  await attachFile(db, owner, asset.uri, {
+const NOTHING: AttachResult = { attached: 0, failed: 0 };
+
+/**
+ * Several at once — a booking often comes as a ticket per person. Not `File.pickFileAsync`: on
+ * Android its `name` is the document id ('document:35'), so every attachment would be labelled
+ * with it.
+ */
+export async function attachDocument(
+  db: SQLiteDatabase,
+  owner: ResourceOwner,
+): Promise<AttachResult> {
+  const picked = await DocumentPicker.getDocumentAsync({
+    type: '*/*',
+    copyToCacheDirectory: false,
+    multiple: true,
+  });
+  if (picked.canceled) return NOTHING;
+
+  const files = picked.assets.map((asset) => ({
+    uri: asset.uri,
     fileName: asset.name || null,
     mimeType: asset.mimeType ?? null,
-  }, 'Document');
-  return true;
+  }));
+  return attachEach(db, owner, files, 'Document');
 }
 
 /** Screenshots are a large share of real boarding passes, hence the photo picker. */
-export async function attachPhoto(db: SQLiteDatabase, owner: ResourceOwner): Promise<boolean> {
-  const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
-  if (picked.canceled) return false;
+export async function attachPhoto(
+  db: SQLiteDatabase,
+  owner: ResourceOwner,
+): Promise<AttachResult> {
+  const picked = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    quality: 1,
+    allowsMultipleSelection: true,
+  });
+  if (picked.canceled) return NOTHING;
 
-  const asset = picked.assets[0];
-  await attachFile(db, owner, asset.uri, {
+  const files = picked.assets.map((asset) => ({
+    uri: asset.uri,
     fileName: asset.fileName ?? null,
     mimeType: asset.mimeType ?? null,
-  }, 'Photo');
-  return true;
+  }));
+  return attachEach(db, owner, files, 'Photo');
+}
+
+/** One at a time, so a file that cannot be read does not cost the others. */
+async function attachEach(
+  db: SQLiteDatabase,
+  owner: ResourceOwner,
+  files: { uri: string; fileName: string | null; mimeType: string | null }[],
+  fallbackLabel: string,
+): Promise<AttachResult> {
+  let failed = 0;
+  for (const file of files) {
+    try {
+      await attachFile(db, owner, file.uri, file, fallbackLabel);
+    } catch (error) {
+      console.warn('Attach failed', error);
+      failed += 1;
+    }
+  }
+  return { attached: files.length - failed, failed };
 }
 
 /**

@@ -1,10 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import type { z } from 'zod';
 
 import { noteInputSchema, type NoteInput } from '../../domain/note';
 import { Button } from '../../ui/components/Button';
+import { FormScroll } from '../../ui/components/FormScroll';
 import { ChoiceField } from '../../ui/components/ChoiceField';
 import { Field, Input } from '../../ui/components/Field';
 import { spacing } from '../../ui/tokens';
@@ -31,10 +32,7 @@ export function NoteForm({ defaultValues, submitLabel, onSubmit, footer }: Props
   });
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <FormScroll>
         <Controller
           control={control}
           name="title"
@@ -93,13 +91,10 @@ export function NoteForm({ defaultValues, submitLabel, onSubmit, footer }: Props
           })}
         />
         {footer}
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </FormScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  content: { padding: spacing.xl, gap: spacing.xl, paddingBottom: spacing.xxxl },
   body: { minHeight: 200, textAlignVertical: 'top' },
 });

@@ -3,7 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
-import { TRIP_ITEM_KINDS, type TripItemKind } from '../../src/domain/tripItem';
+import { DEFAULT_CURRENCY, TRIP_ITEM_KINDS, type TripItemKind } from '../../src/domain/tripItem';
 import { ItemForm } from '../../src/features/items/ItemForm';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
 import { createTripItem } from '../../src/repositories/tripItems';
@@ -55,10 +55,12 @@ export default function NewItem() {
         defaultTz={trip.defaultTz}
         defaultValues={{
           kind: asKind(kind),
+          // A to-do is not an idea to book later; as one it would also land on Places.
           subkind: null,
-          status: 'idea',
+          status: asKind(kind) === 'task' ? 'confirmed' : 'idea',
           priority: null,
           title: '',
+          priceCurrency: DEFAULT_CURRENCY,
           isPaid: false,
         }}
         onSubmit={async (input) => {
