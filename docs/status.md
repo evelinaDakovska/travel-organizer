@@ -247,7 +247,7 @@ exports a backup to Drive, and the update is rehearsed on the emulator over the 
 | | Task | ✓ |
 |---|---|---|
 | **U1** | Small fixes: Delete trip clears the navigation bar; forms scroll the focused field above the keyboard; time zones found by country and city (Milan, Italy); EUR by default; *+* on *Open tasks*; pick several files or photos at once; **the price field kept its decimal point** | ✅ |
-| **U2** | Dates: a new item opens on the trip's start date; an end follows its start and cannot precede it; the trip's dates picked as one range | ⬜ |
+| **U2** | Dates: a new item opens on the trip's start date; an end follows its start and cannot precede it; the trip's dates picked as one range | ✅ |
 | **U3** | Reminder time chosen per item (at the time … the day before), the by-kind rule staying the default | ⬜ |
 | **U4** | A trip document also attached to an item — one file, shown in both places | ⬜ |
 | **U5** | Places: *Open in Maps* for an address; place names suggested from the trip; booked items with an address listed on Places | ⬜ |
@@ -273,6 +273,17 @@ bar; the trip form's last field, Notes, sits above the keyboard (every form uses
 `FormScroll`); *milan*, *italy*
 and *bali* find Rome and Makassar on Hermes; a task from *+ Add* opened as confirmed with EUR and
 saved; *12,50* saved as EUR 12.50; two PDFs picked in one go both attached.
+
+**U2, what was built:** *Add a date* fills in `defaultItemDate` — the trip's first day, or today
+while the trip is under way — on the item form and on *Move to Timeline*. *Add an end* fills in the
+start. Moving the start carries an end on an earlier day along (`followStart`), keeping its time and
+zone, and the end's picker refuses days before the start (`minDate`). The trip's dates are one
+**`DateRangeField`**: a calendar the app draws (`domain/calendar.ts`), since Android's picker has no
+range mode — tap the first day, then the last; nothing changes until *Use these dates*.
+
+**U2, how it was verified:** on the emulator — Lapland's dates picked as 18–26 Nov on one calendar
+(9 days) and saved; a new item's date and end both opened on 18 Nov, not today; moving the start to
+21 Nov moved the end with it, and the end's picker had 20 Nov disabled.
 
 **Decided with the owner:** item dates stay unrestricted (CLAUDE.md §5.7) — only the default
 changes. *Open tasks* keeps its name. Each flight leg is its own item so its zone, reminder and

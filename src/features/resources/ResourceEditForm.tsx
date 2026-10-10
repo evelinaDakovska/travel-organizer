@@ -37,53 +37,53 @@ export function ResourceEditForm({ resource, onSave, onDelete }: Props) {
 
   return (
     <FormScroll>
-        <View style={[styles.source, { backgroundColor: c.surfaceSunken }]}>
-          <SectionLabel>{resource.kind === 'file' ? 'Saved file' : 'Link'}</SectionLabel>
-          <Text style={[type.body, { color: c.text }]} selectable numberOfLines={3}>
-            {resource.kind === 'file' ? (resource.fileName ?? resource.storedPath) : resource.url}
-          </Text>
-          <Text style={[type.caption, { color: c.textMuted }]}>{resourceMeta(resource)}</Text>
-        </View>
+      <View style={[styles.source, { backgroundColor: c.surfaceSunken }]}>
+        <SectionLabel>{resource.kind === 'file' ? 'Saved file' : 'Link'}</SectionLabel>
+        <Text style={[type.body, { color: c.text }]} selectable numberOfLines={3}>
+          {resource.kind === 'file' ? (resource.fileName ?? resource.storedPath) : resource.url}
+        </Text>
+        <Text style={[type.caption, { color: c.textMuted }]}>{resourceMeta(resource)}</Text>
+      </View>
 
-        <Controller
-          control={control}
-          name="label"
-          render={({ field }) => (
-            <Field label="Label" error={errors.label?.message}>
-              <Input
-                value={field.value}
-                onChangeText={field.onChange}
-                onBlur={field.onBlur}
-                invalid={!!errors.label}
-              />
-            </Field>
-          )}
-        />
+      <Controller
+        control={control}
+        name="label"
+        render={({ field }) => (
+          <Field label="Label" error={errors.label?.message}>
+            <Input
+              value={field.value}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              invalid={!!errors.label}
+            />
+          </Field>
+        )}
+      />
 
-        <Controller
-          control={control}
-          name="subtype"
-          render={({ field }) => (
-            <Field label="What is it?">
-              <ChoiceField
-                value={field.value}
-                options={subtypesFor(resource.kind)}
-                onChange={(value) => value && field.onChange(value)}
-                labelFor={subtypeLabel}
-              />
-            </Field>
-          )}
-        />
+      <Controller
+        control={control}
+        name="subtype"
+        render={({ field }) => (
+          <Field label="What is it?">
+            <ChoiceField
+              value={field.value}
+              options={subtypesFor(resource.kind)}
+              onChange={(value) => value && field.onChange(value)}
+              labelFor={subtypeLabel}
+            />
+          </Field>
+        )}
+      />
 
-        <Button
-          label="Save"
-          busy={isSubmitting}
-          onPress={handleSubmit(async (values) => {
-            await onSave(values);
-          })}
-        />
-        <Button label="Remove attachment" variant="danger" onPress={onDelete} />
-      </FormScroll>
+      <Button
+        label="Save"
+        busy={isSubmitting}
+        onPress={handleSubmit(async (values) => {
+          await onSave(values);
+        })}
+      />
+      <Button label="Remove attachment" variant="danger" onPress={onDelete} />
+    </FormScroll>
   );
 }
 

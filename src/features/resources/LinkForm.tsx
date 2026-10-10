@@ -29,52 +29,52 @@ export function LinkForm({ onSubmit }: Props) {
 
   return (
     <FormScroll>
-        <Controller
-          control={control}
-          name="url"
-          render={({ field }) => (
-            <Field
-              label="Link"
-              error={errors.url?.message}
-              hint="A booking page, a Wallet pass, a Google Maps pin">
-              <Input
-                value={field.value}
-                onChangeText={field.onChange}
-                onBlur={field.onBlur}
-                placeholder="https://"
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-                autoFocus
-                invalid={!!errors.url}
-              />
-            </Field>
-          )}
-        />
+      <Controller
+        control={control}
+        name="url"
+        render={({ field }) => (
+          <Field
+            label="Link"
+            error={errors.url?.message}
+            hint="A booking page, a Wallet pass, a Google Maps pin">
+            <Input
+              value={field.value}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              placeholder="https://"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              autoFocus
+              invalid={!!errors.url}
+            />
+          </Field>
+        )}
+      />
 
-        <Controller
-          control={control}
-          name="label"
-          render={({ field }) => (
-            <Field label="Label" error={errors.label?.message} hint="Optional. Defaults to the site name">
-              <Input
-                value={field.value ?? ''}
-                onChangeText={field.onChange}
-                onBlur={field.onBlur}
-                placeholder="Manage booking"
-              />
-            </Field>
-          )}
-        />
+      <Controller
+        control={control}
+        name="label"
+        render={({ field }) => (
+          <Field label="Label" error={errors.label?.message} hint="Optional. Defaults to the site name">
+            <Input
+              value={field.value ?? ''}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              placeholder="Manage booking"
+            />
+          </Field>
+        )}
+      />
 
-        <Button
-          label="Save link"
-          busy={isSubmitting}
-          onPress={handleSubmit(async (values) => {
-            await onSubmit(linkResourceInput(values));
-          })}
-        />
-      </FormScroll>
+      <Button
+        label="Save link"
+        busy={isSubmitting}
+        onPress={handleSubmit(async (values) => {
+          await onSubmit(linkResourceInput(values));
+        })}
+      />
+    </FormScroll>
   );
 }
 

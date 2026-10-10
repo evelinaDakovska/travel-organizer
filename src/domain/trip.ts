@@ -121,3 +121,16 @@ export function isTripActive(trip: Trip, now: Date = new Date()): boolean {
   const today = deviceToday(now);
   return trip.startDate <= today && today <= trip.endDate;
 }
+
+/**
+ * The day a new item's date picker opens on: today while the trip is under way, otherwise the
+ * trip's first day — items are mostly entered weeks ahead, when today is the wrong month.
+ * Only a starting point: items may still be dated outside the trip (CLAUDE.md §5.7).
+ */
+export function defaultItemDate(
+  trip: Pick<Trip, 'startDate' | 'endDate'>,
+  now: Date = new Date(),
+): string {
+  const today = deviceToday(now);
+  return trip.startDate <= today && today <= trip.endDate ? today : trip.startDate;
+}

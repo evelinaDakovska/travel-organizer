@@ -1,4 +1,5 @@
 import {
+  defaultItemDate,
   groupTrips,
   isTripActive,
   parseTripRow,
@@ -125,5 +126,21 @@ describe('isTripActive', () => {
   it('is false either side', () => {
     expect(isTripActive(trip, new Date(2026, 8, 18, 23, 0))).toBe(false);
     expect(isTripActive(trip, new Date(2026, 8, 23, 1, 0))).toBe(false);
+  });
+});
+
+describe('defaultItemDate', () => {
+  const trip = { startDate: '2026-10-19', endDate: '2026-10-23' };
+
+  it('opens on the first day of a trip that has not started', () => {
+    expect(defaultItemDate(trip, new Date(2026, 9, 10, 12))).toBe('2026-10-19');
+  });
+
+  it('opens on today while the trip is under way', () => {
+    expect(defaultItemDate(trip, new Date(2026, 9, 21, 12))).toBe('2026-10-21');
+  });
+
+  it('opens on the first day of a trip that is over', () => {
+    expect(defaultItemDate(trip, new Date(2026, 10, 2, 12))).toBe('2026-10-19');
   });
 });

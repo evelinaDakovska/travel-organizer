@@ -4,10 +4,16 @@ import { useState } from 'react';
 import { formatDateRange } from '../../domain/format';
 import { PickerButton } from './PickerButton';
 
-type Props = { value: string; onChange: (isoDate: string) => void; invalid?: boolean };
+type Props = {
+  value: string;
+  onChange: (isoDate: string) => void;
+  invalid?: boolean;
+  /** 'YYYY-MM-DD'. Days before it cannot be picked — an end before its start. */
+  minDate?: string;
+};
 
 /** Stores and emits a bare 'YYYY-MM-DD' — never a Date, never an instant. */
-export function DateField({ value, onChange, invalid = false }: Props) {
+export function DateField({ value, onChange, invalid = false, minDate }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -23,7 +29,8 @@ export function DateField({ value, onChange, invalid = false }: Props) {
         <DateTimePicker
           mode="date"
           display="calendar"
-          value={toLocalDate(value)}
+          value={toLocalDate(minDate && value < minDate ? minDate : value)}
+          minimumDate={minDate ? toLocalDate(minDate) : undefined}
           onChange={(event, picked) => {
             setOpen(false);
             if (event.type === 'set' && picked) onChange(toIsoDate(picked));

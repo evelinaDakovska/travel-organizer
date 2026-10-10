@@ -2,6 +2,7 @@ import {
   CalendarDays,
   Check,
   ChevronLeft,
+  ChevronRight,
   DatabaseBackup,
   Ellipsis,
   FileText,
@@ -27,6 +28,7 @@ import { useColors } from '../tokens';
  */
 const ICONS = {
   back: ChevronLeft,
+  forward: ChevronRight,
   close: X,
   add: Plus,
   check: Check,

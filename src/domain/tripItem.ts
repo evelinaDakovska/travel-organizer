@@ -393,3 +393,17 @@ export function tripItemFormValues(item: TripItem): TripItemFormValues {
   };
 }
 
+/**
+ * Keeps an end from falling before its start when the start moves: an end on an earlier day
+ * moves to the start's day, keeping its own time and zone. Undefined stays undefined — an end
+ * is optional and is never invented here.
+ */
+export function followStart(
+  start: MomentInput | undefined,
+  end: MomentInput | undefined,
+): MomentInput | undefined {
+  if (!start || !end) return end;
+  const startDay = start.local.slice(0, 10);
+  if (end.local.slice(0, 10) >= startDay) return end;
+  return { ...end, local: startDay + end.local.slice(10) };
+}

@@ -7,6 +7,7 @@ import { amountText, parseAmount } from '../../domain/format';
 import { isReminderOn, reminderLabel, withReminder } from '../../domain/reminders';
 import { localPrecision } from '../../domain/time';
 import {
+  followStart,
   kindLabel,
   PRIORITIES,
   subkindLabel,
@@ -30,6 +31,8 @@ import { spacing } from '../../ui/tokens';
 type Props = {
   defaultValues: TripItemFormValues;
   defaultTz: string;
+  /** 'YYYY-MM-DD' that "Add a date" fills in — the trip's, not today's (`defaultItemDate`). */
+  defaultDate: string;
   submitLabel: string;
   onSubmit: (input: TripItemInput) => Promise<void>;
 };
@@ -42,7 +45,7 @@ const STATUS_HINTS = {
   cancelled: 'Kept for its documents, hidden from the Timeline',
 } as const;
 
-export function ItemForm({ defaultValues, defaultTz, submitLabel, onSubmit }: Props) {
+export function ItemForm({ defaultValues, defaultTz, defaultDate, submitLabel, onSubmit }: Props) {
   // The schema closes over the trip's zone, so it must not be rebuilt on every render.
   const schema = useMemo(() => tripItemInputSchema(defaultTz), [defaultTz]);
 
@@ -67,285 +70,294 @@ export function ItemForm({ defaultValues, defaultTz, submitLabel, onSubmit }: Pr
 
   return (
     <FormScroll>
-        <Controller
-          control={control}
-          name="kind"
-          render={({ field }) => (
-            <Field label="What is it">
-              <ChoiceField
-                value={field.value ?? 'other'}
-                options={TRIP_ITEM_KINDS}
-                labelFor={kindLabel}
-                onChange={(next) => {
-                  if (!next) return;
-                  field.onChange(next);
-                  // A subkind belongs to one kind, and route details only to transport. The
-                  // reminder switch belongs to every kind, so it survives the change.
-                  setValue('subkind', null);
-                  if (next !== 'transport') {
-                    setValue('details', withReminder(undefined, isReminderOn(getValues('details'))));
-                  }
-                }}
-              />
-            </Field>
-          )}
-        />
-
-        <Controller
-          control={control}
-          name="title"
-          render={({ field }) => (
-            <Field label="Title" error={errors.title?.message}>
-              <Input
-                value={field.value}
-                onChangeText={field.onChange}
-                onBlur={field.onBlur}
-                placeholder={kind === 'transport' ? 'Flight to Bergamo' : 'Duomo Fast Track'}
-                invalid={!!errors.title}
-                autoFocus={!defaultValues.title}
-              />
-            </Field>
-          )}
-        />
-
-        {subkinds.length > 0 && (
-          <Controller
-            control={control}
-            name="subkind"
-            render={({ field }) => (
-              <Field label="Type" error={errors.subkind?.message} hint="Optional">
-                <ChoiceField
-                  value={(field.value as string | null) ?? null}
-                  options={subkinds}
-                  labelFor={subkindLabel}
-                  onChange={field.onChange}
-                  clearable
-                />
-              </Field>
-            )}
-          />
-        )}
-
-        <Controller
-          control={control}
-          name="status"
-          render={({ field }) => (
-            <Field label="Status" hint={STATUS_HINTS[status ?? 'idea']}>
-              <ChoiceField
-                value={field.value ?? 'idea'}
-                options={TRIP_ITEM_STATUSES}
-                labelFor={capitalise}
-                onChange={(next) => next && field.onChange(next)}
-              />
-            </Field>
-          )}
-        />
-
-        {status === 'idea' && (
-          <Controller
-            control={control}
-            name="priority"
-            render={({ field }) => (
-              <Field label="How much do you want it" hint="Optional">
-                <ChoiceField
-                  value={(field.value as string | null) ?? null}
-                  options={PRIORITIES}
-                  labelFor={capitalise}
-                  onChange={field.onChange}
-                  clearable
-                />
-              </Field>
-            )}
-          />
-        )}
-
-        <SectionLabel>When</SectionLabel>
-
-        <Controller
-          control={control}
-          name="start"
-          render={({ field }) => (
-            <Field label="Starts" error={errors.start?.message}>
-              <MomentField
-                value={field.value}
-                onChange={field.onChange}
-                defaultTz={defaultTz}
-                addLabel="Add a date"
-              />
-            </Field>
-          )}
-        />
-
-        <Controller
-          control={control}
-          name="end"
-          render={({ field }) => (
-            <Field
-              label="Ends"
-              error={errors.end?.message}
-              hint="A stay or a journey that finishes on another day gets its own timeline entry">
-              <MomentField
-                value={field.value}
-                onChange={field.onChange}
-                defaultTz={defaultTz}
-                addLabel="Add an end"
-              />
-            </Field>
-          )}
-        />
-
-        {status === 'confirmed' && (
-          // Not a second Controller: `details` already has one in TransportFields.
-          <Field label="Reminder" hint={reminderHint(kind, start, defaultTz, remind)}>
+      <Controller
+        control={control}
+        name="kind"
+        render={({ field }) => (
+          <Field label="What is it">
             <ChoiceField
-              value={remind ? 'on' : 'off'}
-              options={['on', 'off'] as const}
-              labelFor={(v) => (v === 'on' ? 'Remind me' : 'No reminder')}
-              onChange={(next) =>
-                next &&
-                setValue('details', withReminder(getValues('details'), next === 'on'), {
-                  shouldDirty: true,
-                })
-              }
+              value={field.value ?? 'other'}
+              options={TRIP_ITEM_KINDS}
+              labelFor={kindLabel}
+              onChange={(next) => {
+                if (!next) return;
+                field.onChange(next);
+                // A subkind belongs to one kind, and route details only to transport. The
+                // reminder switch belongs to every kind, so it survives the change.
+                setValue('subkind', null);
+                if (next !== 'transport') {
+                  setValue('details', withReminder(undefined, isReminderOn(getValues('details'))));
+                }
+              }}
             />
           </Field>
         )}
+      />
 
-        {kind === 'transport' && <TransportFields control={control} />}
-
-        <SectionLabel>Where</SectionLabel>
-
-        <Controller
-          control={control}
-          name="locationName"
-          render={({ field }) => (
-            <Field label="Place" error={errors.locationName?.message} hint="Optional">
-              <Input
-                value={field.value ?? ''}
-                onChangeText={field.onChange}
-                onBlur={field.onBlur}
-                placeholder="Piazza del Duomo"
-              />
-            </Field>
-          )}
-        />
-
-        <Controller
-          control={control}
-          name="address"
-          render={({ field }) => (
-            <Field label="Address" error={errors.address?.message} hint="Optional">
-              <Input
-                value={field.value ?? ''}
-                onChangeText={field.onChange}
-                onBlur={field.onBlur}
-                placeholder="Via Roma 1, Milano"
-              />
-            </Field>
-          )}
-        />
-
-        <SectionLabel>Booking</SectionLabel>
-
-        <Controller
-          control={control}
-          name="confirmationCode"
-          render={({ field }) => (
-            <Field label="Confirmation" error={errors.confirmationCode?.message} hint="Optional">
-              <Input
-                value={field.value ?? ''}
-                onChangeText={field.onChange}
-                onBlur={field.onBlur}
-                autoCapitalize="characters"
-                placeholder="ABC123"
-              />
-            </Field>
-          )}
-        />
-
-        <View style={styles.row}>
-          <View style={styles.grow}>
-            <Controller
-              control={control}
-              name="priceAmount"
-              render={({ field }) => (
-                <Field label="Price" error={errors.priceAmount?.message} hint="Optional">
-                  <PriceInput
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    invalid={!!errors.priceAmount}
-                  />
-                </Field>
-              )}
+      <Controller
+        control={control}
+        name="title"
+        render={({ field }) => (
+          <Field label="Title" error={errors.title?.message}>
+            <Input
+              value={field.value}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              placeholder={kind === 'transport' ? 'Flight to Bergamo' : 'Duomo Fast Track'}
+              invalid={!!errors.title}
+              autoFocus={!defaultValues.title}
             />
-          </View>
-          <View style={styles.currency}>
-            <Controller
-              control={control}
-              name="priceCurrency"
-              render={({ field }) => (
-                <Field label="Currency" error={errors.priceCurrency?.message}>
-                  <Input
-                    value={field.value ?? ''}
-                    onChangeText={(text) =>
-                      field.onChange(text.toUpperCase().slice(0, 3) || undefined)
-                    }
-                    onBlur={field.onBlur}
-                    autoCapitalize="characters"
-                    maxLength={3}
-                    placeholder="EUR"
-                    invalid={!!errors.priceCurrency}
-                  />
-                </Field>
-              )}
-            />
-          </View>
-        </View>
+          </Field>
+        )}
+      />
 
+      {subkinds.length > 0 && (
         <Controller
           control={control}
-          name="isPaid"
+          name="subkind"
           render={({ field }) => (
-            <Field label="Paid">
+            <Field label="Type" error={errors.subkind?.message} hint="Optional">
               <ChoiceField
-                value={field.value ? 'paid' : 'unpaid'}
-                options={['unpaid', 'paid'] as const}
-                labelFor={(v) => (v === 'paid' ? 'Paid' : 'Not paid yet')}
-                onChange={(next) => field.onChange(next === 'paid')}
+                value={(field.value as string | null) ?? null}
+                options={subkinds}
+                labelFor={subkindLabel}
+                onChange={field.onChange}
+                clearable
               />
             </Field>
           )}
         />
+      )}
 
+      <Controller
+        control={control}
+        name="status"
+        render={({ field }) => (
+          <Field label="Status" hint={STATUS_HINTS[status ?? 'idea']}>
+            <ChoiceField
+              value={field.value ?? 'idea'}
+              options={TRIP_ITEM_STATUSES}
+              labelFor={capitalise}
+              onChange={(next) => next && field.onChange(next)}
+            />
+          </Field>
+        )}
+      />
+
+      {status === 'idea' && (
         <Controller
           control={control}
-          name="notes"
+          name="priority"
           render={({ field }) => (
-            <Field label="Notes" hint="Optional">
-              <Input
-                value={field.value ?? ''}
-                onChangeText={field.onChange}
-                onBlur={field.onBlur}
-                multiline
-                numberOfLines={4}
-                style={styles.multiline}
-                placeholder="Anything worth remembering"
+            <Field label="How much do you want it" hint="Optional">
+              <ChoiceField
+                value={(field.value as string | null) ?? null}
+                options={PRIORITIES}
+                labelFor={capitalise}
+                onChange={field.onChange}
+                clearable
               />
             </Field>
           )}
         />
+      )}
 
-        <View style={styles.actions}>
-          <Button
-            label={submitLabel}
-            busy={isSubmitting}
-            onPress={handleSubmit(async (values) => {
-              await onSubmit(values);
-            })}
+      <SectionLabel>When</SectionLabel>
+
+      <Controller
+        control={control}
+        name="start"
+        render={({ field }) => (
+          <Field label="Starts" error={errors.start?.message}>
+            <MomentField
+              value={field.value}
+              onChange={(next) => {
+                field.onChange(next);
+                // An end left on an earlier day would only fail validation; carry it along.
+                const end = getValues('end');
+                const followed = followStart(next, end);
+                if (followed !== end) setValue('end', followed, { shouldDirty: true });
+              }}
+              defaultTz={defaultTz}
+              addLabel="Add a date"
+              initial={defaultDate}
+            />
+          </Field>
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="end"
+        render={({ field }) => (
+          <Field
+            label="Ends"
+            error={errors.end?.message}
+            hint="A stay or a journey that finishes on another day gets its own timeline entry">
+            <MomentField
+              value={field.value}
+              onChange={field.onChange}
+              defaultTz={defaultTz}
+              addLabel="Add an end"
+              initial={start?.local ?? defaultDate}
+              minDate={start?.local.slice(0, 10)}
+            />
+          </Field>
+        )}
+      />
+
+      {status === 'confirmed' && (
+        // Not a second Controller: `details` already has one in TransportFields.
+        <Field label="Reminder" hint={reminderHint(kind, start, defaultTz, remind)}>
+          <ChoiceField
+            value={remind ? 'on' : 'off'}
+            options={['on', 'off'] as const}
+            labelFor={(v) => (v === 'on' ? 'Remind me' : 'No reminder')}
+            onChange={(next) =>
+              next &&
+              setValue('details', withReminder(getValues('details'), next === 'on'), {
+                shouldDirty: true,
+              })
+            }
+          />
+        </Field>
+      )}
+
+      {kind === 'transport' && <TransportFields control={control} />}
+
+      <SectionLabel>Where</SectionLabel>
+
+      <Controller
+        control={control}
+        name="locationName"
+        render={({ field }) => (
+          <Field label="Place" error={errors.locationName?.message} hint="Optional">
+            <Input
+              value={field.value ?? ''}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              placeholder="Piazza del Duomo"
+            />
+          </Field>
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="address"
+        render={({ field }) => (
+          <Field label="Address" error={errors.address?.message} hint="Optional">
+            <Input
+              value={field.value ?? ''}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              placeholder="Via Roma 1, Milano"
+            />
+          </Field>
+        )}
+      />
+
+      <SectionLabel>Booking</SectionLabel>
+
+      <Controller
+        control={control}
+        name="confirmationCode"
+        render={({ field }) => (
+          <Field label="Confirmation" error={errors.confirmationCode?.message} hint="Optional">
+            <Input
+              value={field.value ?? ''}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              autoCapitalize="characters"
+              placeholder="ABC123"
+            />
+          </Field>
+        )}
+      />
+
+      <View style={styles.row}>
+        <View style={styles.grow}>
+          <Controller
+            control={control}
+            name="priceAmount"
+            render={({ field }) => (
+              <Field label="Price" error={errors.priceAmount?.message} hint="Optional">
+                <PriceInput
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  invalid={!!errors.priceAmount}
+                />
+              </Field>
+            )}
           />
         </View>
-      </FormScroll>
+        <View style={styles.currency}>
+          <Controller
+            control={control}
+            name="priceCurrency"
+            render={({ field }) => (
+              <Field label="Currency" error={errors.priceCurrency?.message}>
+                <Input
+                  value={field.value ?? ''}
+                  onChangeText={(text) =>
+                    field.onChange(text.toUpperCase().slice(0, 3) || undefined)
+                  }
+                  onBlur={field.onBlur}
+                  autoCapitalize="characters"
+                  maxLength={3}
+                  placeholder="EUR"
+                  invalid={!!errors.priceCurrency}
+                />
+              </Field>
+            )}
+          />
+        </View>
+      </View>
+
+      <Controller
+        control={control}
+        name="isPaid"
+        render={({ field }) => (
+          <Field label="Paid">
+            <ChoiceField
+              value={field.value ? 'paid' : 'unpaid'}
+              options={['unpaid', 'paid'] as const}
+              labelFor={(v) => (v === 'paid' ? 'Paid' : 'Not paid yet')}
+              onChange={(next) => field.onChange(next === 'paid')}
+            />
+          </Field>
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="notes"
+        render={({ field }) => (
+          <Field label="Notes" hint="Optional">
+            <Input
+              value={field.value ?? ''}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              multiline
+              numberOfLines={4}
+              style={styles.multiline}
+              placeholder="Anything worth remembering"
+            />
+          </Field>
+        )}
+      />
+
+      <View style={styles.actions}>
+        <Button
+          label={submitLabel}
+          busy={isSubmitting}
+          onPress={handleSubmit(async (values) => {
+            await onSubmit(values);
+          })}
+        />
+      </View>
+    </FormScroll>
   );
 }
 

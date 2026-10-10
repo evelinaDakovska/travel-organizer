@@ -3,7 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import type { Trip } from '../../../src/domain/trip';
+import { defaultItemDate, type Trip } from '../../../src/domain/trip';
 import type { TripItem } from '../../../src/domain/tripItem';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import {
@@ -86,7 +86,12 @@ function ScheduleForm({ item, trip }: { item: TripItem; trip: Trip }) {
       </Text>
 
       <Field label="When" hint="A day is enough. Add a time if you know it">
-        <MomentField value={moment} onChange={setMoment} defaultTz={trip.defaultTz} />
+        <MomentField
+          value={moment}
+          onChange={setMoment}
+          defaultTz={trip.defaultTz}
+          initial={defaultItemDate(trip)}
+        />
       </Field>
 
       <Button label="Move to Timeline" disabled={!moment} busy={busy} onPress={() => void move()} />

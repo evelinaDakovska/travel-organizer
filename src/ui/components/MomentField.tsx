@@ -15,6 +15,10 @@ type Props = {
   /** The trip's zone, shown as what an unset moment will be read in. */
   defaultTz: string;
   addLabel?: string;
+  /** What "Add a date" fills in: 'YYYY-MM-DD', or a full moment such as the start's. */
+  initial?: string;
+  /** 'YYYY-MM-DD'. Earlier days are not offered. */
+  minDate?: string;
 };
 
 /** Device-local, not UTC: toISOString would give yesterday for a morning east of Greenwich. */
@@ -31,14 +35,21 @@ function today(): string {
  * Date, optional time, optional zone — the three things the model stores. Leaving the time
  * off is a real choice, not a blank field: it means the day is known and the hour is not.
  */
-export function MomentField({ value, onChange, defaultTz, addLabel = 'Add a date' }: Props) {
+export function MomentField({
+  value,
+  onChange,
+  defaultTz,
+  addLabel = 'Add a date',
+  initial,
+  minDate,
+}: Props) {
   const c = useColors();
   const [editingZone, setEditingZone] = useState(false);
 
   if (!value) {
     return (
       <Pressable
-        onPress={() => onChange({ local: today() })}
+        onPress={() => onChange({ local: initial ?? today() })}
         accessibilityRole="button"
         style={({ pressed }) => [
           styles.add,
@@ -60,7 +71,7 @@ export function MomentField({ value, onChange, defaultTz, addLabel = 'Add a date
     <View style={styles.stack}>
       <View style={styles.row}>
         <View style={styles.grow}>
-          <DateField value={date} onChange={setDate} />
+          <DateField value={date} onChange={setDate} minDate={minDate} />
         </View>
         <View style={styles.grow}>
           <TimeField value={time} onChange={setTime} />

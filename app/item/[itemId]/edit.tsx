@@ -3,6 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { defaultItemDate } from '../../../src/domain/trip';
 import { tripItemFormValues } from '../../../src/domain/tripItem';
 import { ItemForm } from '../../../src/features/items/ItemForm';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
@@ -65,6 +66,7 @@ export default function EditItem() {
       <ItemForm
         submitLabel="Save changes"
         defaultTz={trip.defaultTz}
+        defaultDate={defaultItemDate(trip)}
         defaultValues={tripItemFormValues(item)}
         onSubmit={async (input) => {
           await updateTripItem(db, item.id, input);

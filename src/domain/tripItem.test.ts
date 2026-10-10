@@ -1,4 +1,5 @@
 import {
+  followStart,
   isValidSubkind,
   kindLabel,
   parseTripItemRow,
@@ -399,5 +400,27 @@ describe('kindLabel', () => {
       'To do',
       'Other',
     ]);
+  });
+});
+
+describe('followStart', () => {
+  it('moves an end on an earlier day to the start day, keeping its time and zone', () => {
+    const end = { local: '2026-10-20T11:00', tz: 'Europe/Sofia' };
+    expect(followStart({ local: '2026-10-22T15:00' }, end)).toEqual({
+      local: '2026-10-22T11:00',
+      tz: 'Europe/Sofia',
+    });
+  });
+
+  it('leaves an end that is still on or after the start day alone', () => {
+    const end = { local: '2026-10-23' };
+    expect(followStart({ local: '2026-10-22T15:00' }, end)).toBe(end);
+    expect(followStart({ local: '2026-10-23' }, end)).toBe(end);
+  });
+
+  it('never invents an end, and leaves one alone when the start is removed', () => {
+    expect(followStart({ local: '2026-10-22' }, undefined)).toBeUndefined();
+    const end = { local: '2026-10-20' };
+    expect(followStart(undefined, end)).toBe(end);
   });
 });
