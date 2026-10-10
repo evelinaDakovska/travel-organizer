@@ -57,15 +57,19 @@ never exist. No enterprise patterns; this is a personal app that should still be
 Do not duplicate status anywhere else; update that one file.
 
 Work is tracked by **task ID**, not milestone: **C1–C5** (core — domain, schema, repositories,
-files, export; no device needed) and **S1–S8** (surface — screens and anything needing a device,
-done on a personal Windows machine, see `docs/windows-handoff.md`).
+files, export; no device needed), **S1–S8** (surface — screens and anything needing a device, done
+on a personal Windows machine, see `docs/windows-handoff.md`), and **N1–N4** (the features approved
+after those: see `docs/status.md`).
+
+**C, V and S are all done, and the app is in daily use** on the owner's phone as a signed release
+build. New work starts at the first unticked **N**.
 
 **How to be asked to work:**
 
 | The user says | Do this |
 |---|---|
 | *"do the next C task"* / *"do the priority work"* | First unticked **C** in `docs/status.md` → finish → commit → tick it there. **Stop after C5** |
-| *"continue with the plan"* | First unticked task overall — on Windows that will be an **S** |
+| *"continue with the plan"* | First unticked task overall — every C and S is done, so that is an **N** |
 
 **C before S on purpose.** Core mistakes ripple through every screen and migrations are painful;
 surface mistakes are visible immediately and cheap to fix. `src/domain/` imports nothing native,
