@@ -4,6 +4,7 @@ import { MIGRATIONS } from './migrations';
 import {
   INSERT_TRIP_ITEM,
   SELECT_ITEMS_WITH_DEFAULT_TZ,
+  SELECT_KNOWN_PLACES,
   SELECT_TRIP_ITEM,
   SELECT_TRIP_ITEMS,
   SET_TASK_COMPLETED,
@@ -233,5 +234,27 @@ describe('recomputing instants after the trip zone changes', () => {
     const row = get('follows');
     expect(row.start_utc).toBe('2026-09-19T11:00:00.000Z');
     expect(row.start_local).toBe('2026-09-19T14:00');
+  });
+});
+
+describe('SELECT_KNOWN_PLACES', () => {
+  it('offers named places from every trip, this one first, cancelled ones left out', () => {
+    const { db, insert } = setup();
+    db.prepare(
+      `INSERT INTO trips (id, name, start_date, end_date, default_tz, created_at, updated_at)
+       VALUES ('t0', 'Earlier', '2026-01-01', '2026-01-02', 'Europe/Rome', ?, ?)`,
+    ).run(now, now);
+    insert('i1', { ...duomo, locationName: 'Piazza del Duomo', address: 'Milano' });
+    insert('i2', { ...duomo, locationName: '  ' });
+    insert('i3', { ...duomo, status: 'cancelled', locationName: 'Gone' });
+    db.prepare(
+      `INSERT INTO trip_items (id, trip_id, kind, status, title, location_name, created_at, updated_at)
+       VALUES ('old', 't0', 'stay', 'confirmed', 'Hotel', 'Hotel Brera', ?, ?)`,
+    ).run(now, now);
+
+    expect(db.prepare(SELECT_KNOWN_PLACES).all({ tripId: 't1' })).toEqual([
+      { name: 'Piazza del Duomo', address: 'Milano' },
+      { name: 'Hotel Brera', address: null },
+    ]);
   });
 });

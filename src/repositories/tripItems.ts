@@ -8,6 +8,7 @@ import {
   SEARCH_TRIP_NOTES,
   SELECT_BOOKINGS,
   SELECT_ITEMS_WITH_DEFAULT_TZ,
+  SELECT_KNOWN_PLACES,
   SELECT_PLACES,
   SELECT_REMINDER_CANDIDATES,
   SELECT_TRIP_ITEM,
@@ -18,6 +19,7 @@ import {
   UPDATE_TRIP_ITEM_STATUS,
 } from '../db/queries';
 import { parseNoteRow, type Note, type NoteRow } from '../domain/note';
+import type { KnownPlace } from '../domain/places';
 import { searchPattern } from '../domain/search';
 import { localPrecision, toInstant, type LocalMoment, type TimePrecision } from '../domain/time';
 import {
@@ -48,6 +50,11 @@ export async function listBookings(db: SQLiteDatabase, tripId: string): Promise<
 export async function listPlaces(db: SQLiteDatabase, tripId: string): Promise<TripItem[]> {
   const rows = await db.getAllAsync<JoinedRow>(SELECT_PLACES, { $tripId: tripId });
   return rows.map((row) => parseTripItemRow(row, row.trip_default_tz));
+}
+
+/** Place names written before, in any trip — this one first. */
+export async function listKnownPlaces(db: SQLiteDatabase, tripId: string): Promise<KnownPlace[]> {
+  return db.getAllAsync<KnownPlace>(SELECT_KNOWN_PLACES, { $tripId: tripId });
 }
 
 export async function getTripItem(db: SQLiteDatabase, id: string): Promise<TripItem | null> {

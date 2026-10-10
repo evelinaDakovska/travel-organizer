@@ -7,7 +7,11 @@ import { defaultItemDate } from '../../src/domain/trip';
 import { DEFAULT_CURRENCY, TRIP_ITEM_KINDS, type TripItemKind } from '../../src/domain/tripItem';
 import { ItemForm } from '../../src/features/items/ItemForm';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
-import { createTripItem } from '../../src/repositories/tripItems';
+import {
+  createTripItem,
+  listKnownPlaces,
+  TRIP_ITEM_TABLES,
+} from '../../src/repositories/tripItems';
 import { getTrip, TRIP_TABLES } from '../../src/repositories/trips';
 import { Screen } from '../../src/ui/components/Screen';
 import { ScreenHeader } from '../../src/ui/components/ScreenHeader';
@@ -23,6 +27,11 @@ export default function NewItem() {
   const { data: trip, loading } = useLiveQuery(
     useCallback((database) => getTrip(database, tripId), [tripId]),
     TRIP_TABLES,
+    [tripId],
+  );
+  const { data: knownPlaces } = useLiveQuery(
+    useCallback((database) => listKnownPlaces(database, tripId), [tripId]),
+    TRIP_ITEM_TABLES,
     [tripId],
   );
 
@@ -55,6 +64,7 @@ export default function NewItem() {
         submitLabel="Add"
         defaultTz={trip.defaultTz}
         defaultDate={defaultItemDate(trip)}
+        knownPlaces={knownPlaces ?? []}
         defaultValues={{
           kind: asKind(kind),
           // A to-do is not an idea to book later; as one it would also land on Places.

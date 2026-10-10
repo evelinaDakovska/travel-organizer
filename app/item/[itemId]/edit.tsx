@@ -9,6 +9,7 @@ import { ItemForm } from '../../../src/features/items/ItemForm';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import {
   getTripItem,
+  listKnownPlaces,
   TRIP_ITEM_TABLES,
   updateTripItem,
 } from '../../../src/repositories/tripItems';
@@ -35,6 +36,14 @@ export default function EditItem() {
   const { data: trip } = useLiveQuery(
     useCallback(async (database) => (tripId ? getTrip(database, tripId) : null), [tripId]),
     TRIP_TABLES,
+    [tripId],
+  );
+  const { data: knownPlaces } = useLiveQuery(
+    useCallback(
+      async (database) => (tripId ? listKnownPlaces(database, tripId) : []),
+      [tripId],
+    ),
+    TRIP_ITEM_TABLES,
     [tripId],
   );
 
@@ -67,6 +76,7 @@ export default function EditItem() {
         submitLabel="Save changes"
         defaultTz={trip.defaultTz}
         defaultDate={defaultItemDate(trip)}
+        knownPlaces={knownPlaces ?? []}
         defaultValues={tripItemFormValues(item)}
         onSubmit={async (input) => {
           await updateTripItem(db, item.id, input);

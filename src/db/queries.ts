@@ -200,6 +200,18 @@ SELECT COUNT(DISTINCT r.stored_path) AS n
                     WHERE o.stored_path = r.stored_path AND o.trip_item_id IS NOT $id)
 `;
 
+/**
+ * Every place name already written, in any trip, offered while typing one (U5). This trip's
+ * first, then the most recently edited; `suggestPlaces` filters and de-duplicates.
+ */
+export const SELECT_KNOWN_PLACES = `
+SELECT location_name AS name, address
+  FROM trip_items
+ WHERE location_name IS NOT NULL AND TRIM(location_name) <> '' AND status <> 'cancelled'
+ ORDER BY (trip_id = $tripId) DESC, updated_at DESC
+ LIMIT 500
+`;
+
 /** Bookings: what is settled. Grouped by kind in the UI, so kind leads the ordering. */
 export const SELECT_BOOKINGS = `
 SELECT i.*, t.default_tz AS trip_default_tz

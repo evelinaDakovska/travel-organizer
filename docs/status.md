@@ -250,7 +250,7 @@ exports a backup to Drive, and the update is rehearsed on the emulator over the 
 | **U2** | Dates: a new item opens on the trip's start date; an end follows its start and cannot precede it; the trip's dates picked as one range | ✅ |
 | **U3** | Reminder time chosen per item (at the time … the day before), the by-kind rule staying the default | ✅ |
 | **U4** | A trip document also attached to an item — one file, shown in both places | ✅ |
-| **U5** | Places: *Open in Maps* for an address; place names suggested from the trip; booked items with an address listed on Places | ⬜ |
+| **U5** | Places: *Open in Maps* for an address; place names suggested from the trip; booked items with an address listed on Places | ✅ |
 | **U6** | Refundable or not, and the trip's expenses: booked items plus cancelled non-refundable ones, paid and to pay, per currency | ⬜ |
 | **U7** | Flights with connections and a return: one form creates each leg as its own item, linked by `details.journeyId` | ⬜ |
 | **U8** | Phone: owner exports to Drive, rehearsal on the emulator over 0.1.0, release build installed over the top | ⬜ |
@@ -310,6 +310,19 @@ once and leaves out files still held elsewhere (`COUNT_ITEM_OWN_FILES`, `COUNT_T
 counts, cascade on trip delete. On the emulator — Lapland's *Winter driving guide* attached to the
 rental car showed and opened there; removed from the car, the dialog said the file stays; after a
 relaunch (the sweep runs on start) the trip's copy still opened in the PDF viewer.
+
+**U5, what was built:** `src/domain/places.ts`. *Open in Maps* on item detail for anything with a
+place or address: a `geo:` link (`mapsUrl`) — the name and address searched together, coordinates
+pinned when present — which Android gives to the installed maps app, offline maps included. No
+Google API, key or network of our own. Typing a place offers names already written in any trip, this
+one first (`SELECT_KNOWN_PLACES`, `suggestPlaces`); a tap fills the place, and the address only when
+it is empty. Places has a second section, *Booked*: confirmed items with a place or address, in
+timeline order (`bookedPlaces`).
+
+**U5, how it was verified:** on the emulator — Lapland's Places listed the ideas, then *Booked* with
+the rental car (Rovaniemi station) and the cabin; *Open in Maps* on the cabin opened Google Maps on
+the search; typing *rov* on the cabin's edit form offered *Rovaniemi station* and *Near Rovaniemi*,
+and a tap filled the place.
 
 **Decided with the owner:** item dates stay unrestricted (CLAUDE.md §5.7) — only the default
 changes. *Open tasks* keeps its name. Each flight leg is its own item so its zone, reminder and

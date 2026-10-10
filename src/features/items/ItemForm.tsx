@@ -1,9 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMemo, useState } from 'react';
 import { Controller, useForm, type Control } from 'react-hook-form';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { amountText, parseAmount } from '../../domain/format';
+import { suggestPlaces, type KnownPlace } from '../../domain/places';
 import {
   REMINDER_SETTINGS,
   reminderLabel,
@@ -34,13 +35,15 @@ import { ChoiceField } from '../../ui/components/ChoiceField';
 import { Field, Input } from '../../ui/components/Field';
 import { MomentField } from '../../ui/components/MomentField';
 import { SectionLabel } from '../../ui/components/SectionLabel';
-import { spacing } from '../../ui/tokens';
+import { opacity, radius, spacing, type, useColors } from '../../ui/tokens';
 
 type Props = {
   defaultValues: TripItemFormValues;
   defaultTz: string;
   /** 'YYYY-MM-DD' that "Add a date" fills in — the trip's, not today's (`defaultItemDate`). */
   defaultDate: string;
+  /** Place names written before, offered while typing one. */
+  knownPlaces?: readonly KnownPlace[];
   submitLabel: string;
   onSubmit: (input: TripItemInput) => Promise<void>;
 };
@@ -53,7 +56,14 @@ const STATUS_HINTS = {
   cancelled: 'Kept for its documents, hidden from the Timeline',
 } as const;
 
-export function ItemForm({ defaultValues, defaultTz, defaultDate, submitLabel, onSubmit }: Props) {
+export function ItemForm({
+  defaultValues,
+  defaultTz,
+  defaultDate,
+  knownPlaces = [],
+  submitLabel,
+  onSubmit,
+}: Props) {
   // The schema closes over the trip's zone, so it must not be rebuilt on every render.
   const schema = useMemo(() => tripItemInputSchema(defaultTz), [defaultTz]);
 
@@ -243,6 +253,16 @@ export function ItemForm({ defaultValues, defaultTz, defaultDate, submitLabel, o
               onChangeText={field.onChange}
               onBlur={field.onBlur}
               placeholder="Piazza del Duomo"
+            />
+            <PlaceSuggestions
+              places={suggestPlaces(knownPlaces, field.value ?? '')}
+              onPick={(place) => {
+                field.onChange(place.name);
+                // Only an empty address is filled: one typed by hand is never overwritten.
+                if (place.address && !getValues('address')) {
+                  setValue('address', place.address, { shouldDirty: true });
+                }
+              }}
             />
           </Field>
         )}
@@ -440,6 +460,43 @@ function reminderHint(
   return setting === 'default' ? `Usual for this kind: ${label?.toLowerCase()}` : (label ?? '');
 }
 
+/** Names written before that match what is being typed; a tap fills the place in. */
+function PlaceSuggestions({
+  places,
+  onPick,
+}: {
+  places: readonly KnownPlace[];
+  onPick: (place: KnownPlace) => void;
+}) {
+  const c = useColors();
+  if (places.length === 0) return null;
+
+  return (
+    <View style={styles.suggestions}>
+      {places.map((place) => (
+        <Pressable
+          key={place.name}
+          onPress={() => onPick(place)}
+          accessibilityRole="button"
+          accessibilityLabel={`Use ${place.name}`}
+          style={({ pressed }) => [
+            styles.suggestion,
+            { backgroundColor: c.surfaceSunken, opacity: pressed ? opacity.pressed : 1 },
+          ]}>
+          <Text style={[type.body, { color: c.text }]} numberOfLines={1}>
+            {place.name}
+          </Text>
+          {place.address ? (
+            <Text style={[type.caption, { color: c.textMuted }]} numberOfLines={1}>
+              {place.address}
+            </Text>
+          ) : null}
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 type PriceInputProps = {
   value: number | undefined;
   onChange: (minorUnits: number | undefined) => void;
@@ -473,6 +530,12 @@ const styles = StyleSheet.create({
   grow: { flex: 1 },
   row: { flexDirection: 'row', gap: spacing.lg },
   currency: { width: 110 },
+  suggestions: { gap: spacing.xs },
+  suggestion: {
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
   multiline: { minHeight: 110, textAlignVertical: 'top' },
   actions: { marginTop: spacing.sm },
 });

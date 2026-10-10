@@ -1,9 +1,11 @@
+import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { formatMoment, formatMoney } from '../../../src/domain/format';
+import { mapsUrl } from '../../../src/domain/places';
 import { reminderLabel } from '../../../src/domain/reminders';
 import { statusActions } from '../../../src/domain/status';
 import { withZone } from '../../../src/domain/timezones';
@@ -81,6 +83,8 @@ export default function ItemDetail() {
   const kind = item.subkind ? subkindLabel(item.subkind) : kindLabel(item.kind);
   const actions = statusActions(item.status);
   const reminder = reminderLabel(item);
+  // The place or address only; a journey's from and to are not searched.
+  const maps = mapsUrl(item);
 
   // Each end carries its own zone: a flight leaving Vienna and landing in Sofia says so on both.
   const whenDetail = item.end
@@ -149,6 +153,10 @@ export default function ItemDetail() {
           {item.notes ? <Fact label="Notes" value={item.notes} /> : null}
         </View>
 
+        {maps ? (
+          <Button label="Open in Maps" variant="secondary" onPress={() => void openMaps(maps)} />
+        ) : null}
+
         {item.kind === 'task' ? (
           <Button
             label={item.completedAt ? 'Mark as not done' : 'Mark as done'}
@@ -206,6 +214,16 @@ export default function ItemDetail() {
       </ScrollView>
     </Screen>
   );
+}
+
+/** Never throws: a phone with no maps app is told so rather than left wondering. */
+async function openMaps(url: string) {
+  try {
+    await Linking.openURL(url);
+  } catch (error) {
+    console.warn('Open in Maps failed', error);
+    Alert.alert('Could not open Maps', 'No maps app on this phone can show this place.');
+  }
 }
 
 function confirmCancel(item: TripItem, cancel: () => void) {
