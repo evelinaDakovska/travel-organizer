@@ -263,7 +263,7 @@ change or a native change; R5 changes how shared files are copied.
 | **R6** | *Open ticket* from `subtype='ticket'`, other documents behind it | ✅ |
 | **R7** | Timeline opens on today during the trip; a Today button | ✅ |
 | **R8** | Wording: *planned* is not *booked* | ✅ |
-| **R9** | Expense form: mark a booking Paid rather than adding it again | ⬜ |
+| **R9** | Expense form: mark a booking Paid rather than adding it again | ✅ |
 | **R10** | Cancelled with refund not specified: shown as not counted | ⬜ |
 | **R11** | Documentation reconciled with the code | ⬜ |
 
@@ -358,6 +358,10 @@ heading, its subtitle and empty text), *Add to itinerary* instead of *Move to Ti
 detail and its screen, one line in Bookings, and the user guide. *Booking* stays where it means a
 reservation: the item form's section with the confirmation code and price, Expenses' *Bookings*.
 No new status or field. Seen on the emulator: Places and an idea's *Add to itinerary*.
+
+**R9:** one line under the amount in the expense form — *Paying for something already booked? Mark
+that booking Paid instead — adding it here too counts it twice.* — and the same rule in the user
+guide. No reconciliation. Seen on the emulator in *New expense*.
 
 ---
 

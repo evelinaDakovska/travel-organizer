@@ -275,6 +275,10 @@ The **Expenses** tab (between Places and Notes) answers *what does this trip cos
 
 What you pay for **during** the trip: a taxi, groceries, a souvenir.
 
+**Paying for something already booked** — the hotel at check-out, say — is not a new expense: open
+the booking and mark it **Paid**. Its price is already in the trip total, so adding it here as well
+would count it twice. The form says so under the amount.
+
 On the Expenses tab, **+** opens **New expense**:
 
 | Field | |

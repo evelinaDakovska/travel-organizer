@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { ReactNode } from 'react';
 import { Controller, useForm, type DefaultValues } from 'react-hook-form';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import {
   categoryLabel,
@@ -16,7 +16,7 @@ import { DateField } from '../../ui/components/DateField';
 import { Field, Input } from '../../ui/components/Field';
 import { FormScroll } from '../../ui/components/FormScroll';
 import { AmountInput, CurrencyInput } from '../../ui/components/MoneyInputs';
-import { spacing } from '../../ui/tokens';
+import { spacing, type, useColors } from '../../ui/tokens';
 
 type Props = {
   /** Partial: a new expense starts with only a currency and a date. */
@@ -31,6 +31,7 @@ type Props = {
 
 /** Built for one hand at a till: the amount first, with the keypad already open. */
 export function ExpenseForm({ defaultValues, submitLabel, onSubmit, receipts, footer }: Props) {
+  const c = useColors();
   const {
     control,
     handleSubmit,
@@ -78,6 +79,11 @@ export function ExpenseForm({ defaultValues, submitLabel, onSubmit, receipts, fo
           />
         </View>
       </View>
+      {/* A booking paid on the trip is already in the total through its price (review R9). */}
+      <Text style={[type.caption, { color: c.textMuted }]}>
+        Paying for something already booked? Mark that booking Paid instead — adding it here too
+        counts it twice.
+      </Text>
 
       <Controller
         control={control}
