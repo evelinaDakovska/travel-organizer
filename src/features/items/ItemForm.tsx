@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { randomUUID } from 'expo-crypto';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm, type Control } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -41,6 +41,7 @@ import {
   type TripItemInput,
   type TripItemKind,
 } from '../../domain/tripItem';
+import { withSuggestedZone } from '../../domain/zoneHints';
 import { Button } from '../../ui/components/Button';
 import { FormScroll } from '../../ui/components/FormScroll';
 import { ChoiceField } from '../../ui/components/ChoiceField';
@@ -100,6 +101,14 @@ export function ItemForm({
   const kind = watch('kind');
   const status = watch('status');
   const start = watch('start');
+  const end = watch('end');
+  const details = watch('details') as Record<string, unknown> | undefined;
+  const routeEnd = (key: 'from' | 'to') => {
+    const value = details?.[key];
+    return kind === 'transport' && typeof value === 'string' ? value : undefined;
+  };
+  const from = routeEnd('from');
+  const to = routeEnd('to');
   const reminder = reminderSetting(watch('details'));
   const refundable = refundableOf(watch('details'));
   const hasPrice = watch('priceAmount') !== undefined;
@@ -110,6 +119,16 @@ export function ItemForm({
   const [journey, setJourney] = useState<Journey | null>(null);
   const [problems, setProblems] = useState<LegProblem[]>([]);
   const [journeyError, setJourneyError] = useState<string | null>(null);
+
+  // A city in From or To fills that end's zone when it keeps another clock (N6). Also on opening an
+  // item saved without one: the hint under the time says so, and nothing is written until Save.
+  useEffect(() => {
+    if (journey) return;
+    const filledStart = withSuggestedZone(from, start, defaultTz);
+    if (filledStart !== start) setValue('start', filledStart, { shouldDirty: true });
+    const filledEnd = withSuggestedZone(to, end, defaultTz);
+    if (filledEnd !== end) setValue('end', filledEnd, { shouldDirty: true });
+  }, [journey, from, to, start, end, defaultTz, setValue]);
 
   /** The ordinary form's single trip, as the first leg. */
   const legFromForm = (): Leg => {
@@ -344,6 +363,7 @@ export function ItemForm({
                   defaultTz={defaultTz}
                   addLabel="Add a date"
                   initial={defaultDate}
+                  place={from}
                 />
               </Field>
             )}
@@ -362,6 +382,7 @@ export function ItemForm({
                   onChange={field.onChange}
                   defaultTz={defaultTz}
                   addLabel="Add an end"
+                  place={to}
                   initial={start?.local ?? defaultDate}
                   minDate={start?.local.slice(0, 10)}
                 />

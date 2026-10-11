@@ -18,6 +18,8 @@ import {
   transportDetails,
   type TripItem,
 } from '../../../src/domain/tripItem';
+import { zoneMismatches } from '../../../src/domain/zoneHints';
+import { ZoneNotice } from '../../../src/features/items/ZoneNotice';
 import { OpenResource } from '../../../src/features/resources/OpenResource';
 import { ResourceList } from '../../../src/features/resources/ResourceList';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
@@ -103,6 +105,7 @@ export default function ItemDetail() {
   const kind = item.subkind ? subkindLabel(item.subkind) : kindLabel(item.kind);
   const actions = statusActions(item.status);
   const reminder = reminderLabel(item);
+  const mismatches = zoneMismatches(item, details);
   // The place or address only; a journey's from and to are not searched.
   const maps = mapsUrl(item);
 
@@ -150,6 +153,7 @@ export default function ItemDetail() {
             detail={whenDetail || null}
             muted={!item.start}
           />
+          {mismatches.length > 0 ? <ZoneNotice item={item} mismatches={mismatches} /> : null}
           {reminder ? <Fact label="Reminder" value={reminder} muted={reminder === 'Off'} /> : null}
           {item.locationName || item.address ? (
             <Fact

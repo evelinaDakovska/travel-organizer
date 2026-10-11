@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { nextLeg, type Journey, type Leg, type LegProblem } from '../../domain/journey';
 import { followStart } from '../../domain/tripItem';
+import { withLegZones } from '../../domain/zoneHints';
 import { Button } from '../../ui/components/Button';
 import { Card } from '../../ui/components/Card';
 import { Field, Input } from '../../ui/components/Field';
@@ -73,8 +74,10 @@ type LegProps = {
 
 function LegCard({ title, leg, onChange, onRemove, defaultTz, defaultDate, problem }: LegProps) {
   const c = useColors();
+  // Every change passes through here, so a city typed in From or To fills that end's zone (N6).
+  const change = (next: Leg) => onChange(withLegZones(next, defaultTz));
   const text = (key: 'from' | 'to' | 'number' | 'seat') => (value: string) =>
-    onChange({ ...leg, [key]: value === '' ? undefined : value });
+    change({ ...leg, [key]: value === '' ? undefined : value });
 
   return (
     <Card style={styles.card}>
@@ -104,9 +107,10 @@ function LegCard({ title, leg, onChange, onRemove, defaultTz, defaultDate, probl
         <MomentField
           value={leg.departs}
           onChange={(departs) =>
-            onChange({ ...leg, departs, arrives: followStart(departs, leg.arrives) })
+            change({ ...leg, departs, arrives: followStart(departs, leg.arrives) })
           }
           defaultTz={defaultTz}
+          place={leg.from}
           addLabel="Add the departure"
           initial={defaultDate}
         />
@@ -115,8 +119,9 @@ function LegCard({ title, leg, onChange, onRemove, defaultTz, defaultDate, probl
       <Field label="Arrives" hint="Optional. Set its zone if it lands somewhere else">
         <MomentField
           value={leg.arrives}
-          onChange={(arrives) => onChange({ ...leg, arrives })}
+          onChange={(arrives) => change({ ...leg, arrives })}
           defaultTz={defaultTz}
+          place={leg.to}
           addLabel="Add the arrival"
           initial={leg.departs?.local ?? defaultDate}
           minDate={leg.departs?.local.slice(0, 10)}

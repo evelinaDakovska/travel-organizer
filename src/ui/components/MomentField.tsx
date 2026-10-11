@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { timezoneLabel } from '../../domain/timezones';
+import { zoneHint, zoneHintText, zoneSuggestion } from '../../domain/zoneHints';
 import { opacity, radius, spacing, type, useColors } from '../tokens';
 import { DateField } from './DateField';
+import { Icon } from './Icon';
 import { TimeField } from './TimeField';
 import { TimezoneField } from './TimezoneField';
 
@@ -19,6 +21,8 @@ type Props = {
   initial?: string;
   /** 'YYYY-MM-DD'. Earlier days are not offered. */
   minDate?: string;
+  /** The city at this end of a journey, when there is one: explains a zone that came from it. */
+  place?: string | null;
 };
 
 /** Device-local, not UTC: toISOString would give yesterday for a morning east of Greenwich. */
@@ -42,6 +46,7 @@ export function MomentField({
   addLabel = 'Add a date',
   initial,
   minDate,
+  place,
 }: Props) {
   const c = useColors();
   const [editingZone, setEditingZone] = useState(false);
@@ -60,6 +65,8 @@ export function MomentField({
     );
   }
 
+  const zoneName = timezoneLabel(value.tz ?? defaultTz);
+  const hint = zoneHint(place, value, defaultTz);
   const date = value.local.slice(0, 10);
   const time = value.local.length > 10 ? value.local.slice(11, 16) : null;
 
@@ -79,21 +86,48 @@ export function MomentField({
       </View>
 
       <View style={styles.row}>
+        {/* A chip, not a caption: a grey label did not read as something to tap. */}
+        <Pressable
+          onPress={() => setEditingZone((open) => !open)}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`Time zone: ${zoneName}. Change`}
+          accessibilityState={{ expanded: editingZone }}
+          style={({ pressed }) => [
+            styles.chip,
+            { backgroundColor: c.accentSoft, opacity: pressed ? opacity.pressed : 1 },
+          ]}>
+          <Icon name="zone" size={15} color={c.accentText} />
+          <Text style={[type.caption, { color: c.accentText }]}>{zoneName} time</Text>
+          <Icon name="expand" size={15} color={c.accentText} />
+        </Pressable>
+        <View style={styles.grow} />
         {time ? (
           <Pressable onPress={clearTime} hitSlop={8}>
             <Text style={[type.caption, { color: c.textMuted }]}>Remove time</Text>
           </Pressable>
         ) : null}
-        <Pressable onPress={() => setEditingZone((open) => !open)} hitSlop={8}>
-          <Text style={[type.caption, { color: c.textMuted }]}>
-            {value.tz ? timezoneLabel(value.tz) : `In ${timezoneLabel(defaultTz)}`}
-          </Text>
-        </Pressable>
-        <View style={styles.grow} />
         <Pressable onPress={() => onChange(undefined)} hitSlop={8}>
           <Text style={[type.caption, { color: c.danger }]}>Remove</Text>
         </Pressable>
       </View>
+
+      {hint && (
+        <View style={styles.hint}>
+          <Text style={[type.caption, styles.grow, { color: c.textMuted }]}>
+            {zoneHintText(hint)}
+          </Text>
+          {/* Pinned to the trip's zone, not cleared, or the city would fill it back. */}
+          <Pressable
+            onPress={() => onChange({ ...value, tz: defaultTz })}
+            hitSlop={8}
+            accessibilityRole="button">
+            <Text style={[type.caption, { color: c.accentText }]}>
+              Use {timezoneLabel(defaultTz)} time
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
       {editingZone && (
         <View style={styles.stack}>
@@ -101,8 +135,17 @@ export function MomentField({
             value={value.tz ?? defaultTz}
             onChange={(tz) => onChange({ ...value, tz })}
           />
-          {value.tz ? (
-            <Pressable onPress={() => onChange({ local: value.local })} hitSlop={8}>
+          {value.tz && value.tz !== defaultTz ? (
+            <Pressable
+              onPress={() =>
+                // Following the trip clears the zone, unless the city would fill it straight back.
+                onChange(
+                  zoneSuggestion(place, { local: value.local }, defaultTz)
+                    ? { ...value, tz: defaultTz }
+                    : { local: value.local },
+                )
+              }
+              hitSlop={8}>
               <Text style={[type.caption, { color: c.textMuted }]}>
                 Use the trip&apos;s timezone
               </Text>
@@ -118,6 +161,15 @@ const styles = StyleSheet.create({
   stack: { gap: spacing.sm },
   row: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   grow: { flex: 1 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  hint: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
   add: {
     minHeight: 50,
     borderWidth: 1.5,

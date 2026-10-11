@@ -12,6 +12,12 @@
 
 import { toInstant, type LocalMoment } from './time';
 import { TIMEZONE_PLACES, TIMEZONES, timezoneLabel } from './timezones';
+import {
+  tripItemFormValues,
+  tripItemInputSchema,
+  type TripItem,
+  type TripItemInput,
+} from './tripItem';
 
 const normalise = (text: string) => text.trim().toLowerCase().replace(/_/g, ' ');
 
@@ -72,6 +78,33 @@ export function zoneSuggestion(
   const tz = zoneForPlace(place);
   if (!tz || !differentClock(tz, tripTz, moment.local)) return null;
   return tz;
+}
+
+/**
+ * The moment with the city's zone filled in, or the same object when there is nothing to fill —
+ * so a caller can tell by identity whether anything changed.
+ */
+export function withSuggestedZone<M extends FormMoment>(
+  place: string | null | undefined,
+  moment: M | undefined,
+  tripTz: string,
+): M | undefined {
+  const tz = zoneSuggestion(place, moment, tripTz);
+  return tz && moment ? { ...moment, tz } : moment;
+}
+
+type RouteLeg = {
+  from?: string;
+  to?: string;
+  departs?: FormMoment;
+  arrives?: FormMoment;
+};
+
+/** A journey leg with both ends' zones filled from From and To in one step. Same object if none. */
+export function withLegZones<L extends RouteLeg>(leg: L, tripTz: string): L {
+  const departs = withSuggestedZone(leg.from, leg.departs, tripTz);
+  const arrives = withSuggestedZone(leg.to, leg.arrives, tripTz);
+  return departs === leg.departs && arrives === leg.arrives ? leg : { ...leg, departs, arrives };
 }
 
 /**
@@ -169,4 +202,23 @@ export function mismatchText(mismatch: ZoneMismatch): string {
     `${verb} ${mismatch.place}, but this time is read in ${timezoneLabel(mismatch.readIn)} time. ` +
     `${mismatch.place} is ${gap} ${direction}.`
   );
+}
+
+/**
+ * The item as it would be saved with one end's zone set to its city's, keeping the typed time —
+ * what the detail page's one-tap fix writes. Validated with the same schema as the edit form, so
+ * a change that would put the arrival before the departure is refused rather than stored.
+ */
+export function withMomentZone(
+  item: TripItem,
+  end: 'start' | 'end',
+  tz: string,
+  tripTz: string,
+): { ok: true; input: TripItemInput } | { ok: false; reason: string } {
+  const values = tripItemFormValues(item);
+  const moment = values[end];
+  if (!moment) return { ok: false, reason: 'This item has no such time.' };
+  const parsed = tripItemInputSchema(tripTz).safeParse({ ...values, [end]: { ...moment, tz } });
+  if (parsed.success) return { ok: true, input: parsed.data };
+  return { ok: false, reason: parsed.error.issues[0]?.message ?? 'That would not be valid.' };
 }

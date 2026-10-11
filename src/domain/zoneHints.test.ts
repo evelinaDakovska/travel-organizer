@@ -1,4 +1,5 @@
 import type { LocalMoment } from './time';
+import type { TripItem } from './tripItem';
 import {
   differentClock,
   durationText,
@@ -8,6 +9,8 @@ import {
   zoneHintText,
   zoneMismatches,
   zoneSuggestion,
+  withMomentZone,
+  withSuggestedZone,
 } from './zoneHints';
 
 const HEL = 'Europe/Helsinki';
@@ -79,6 +82,18 @@ describe('zoneSuggestion', () => {
     expect(zoneSuggestion('Munich', { local: '2026-11-20' }, HEL)).toBeNull();
     expect(zoneSuggestion('Atlantis', { local: '2026-11-20T09:00' }, HEL)).toBeNull();
     expect(zoneSuggestion('Munich', undefined, HEL)).toBeNull();
+  });
+});
+
+describe('withSuggestedZone', () => {
+  it('fills the zone, and returns the very same object when there is nothing to fill', () => {
+    expect(withSuggestedZone('Munich', { local: '2026-11-20T09:00' }, HEL)).toEqual({
+      local: '2026-11-20T09:00',
+      tz: 'Europe/Berlin',
+    });
+    const sofia = { local: '2026-11-20T06:30' };
+    expect(withSuggestedZone('Sofia', sofia, HEL)).toBe(sofia);
+    expect(withSuggestedZone('Munich', undefined, HEL)).toBeUndefined();
   });
 });
 
@@ -166,5 +181,51 @@ describe('durationText', () => {
     expect(durationText(-120)).toBe('2 hours');
     expect(durationText(30)).toBe('30 minutes');
     expect(durationText(90)).toBe('1 hour 30 minutes');
+  });
+});
+
+describe('withMomentZone', () => {
+  const flight: TripItem = {
+    id: 'f',
+    tripId: 't',
+    kind: 'transport',
+    subkind: 'flight',
+    status: 'confirmed',
+    priority: null,
+    title: 'Munich - Helsinki',
+    start: { local: '2026-11-20T09:00', tz: HEL, precision: 'time' },
+    end: { local: '2026-11-20T12:05', tz: HEL, precision: 'time' },
+    startTzOverride: null,
+    endTzOverride: null,
+    completedAt: null,
+    locationName: null,
+    address: null,
+    latitude: null,
+    longitude: null,
+    confirmationCode: null,
+    notes: 'keep me',
+    details: { from: 'Munich', to: 'Helsinki', reminder: 'off' },
+    priceAmount: null,
+    priceCurrency: null,
+    isPaid: false,
+    createdAt: '',
+    updatedAt: '',
+  };
+
+  it('sets only that end zone, keeping the typed time and everything else', () => {
+    const result = withMomentZone(flight, 'start', 'Europe/Berlin', HEL);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.input.start).toEqual({ local: '2026-11-20T09:00', tz: 'Europe/Berlin' });
+    expect(result.input.end).toEqual({ local: '2026-11-20T12:05' });
+    expect(result.input.notes).toBe('keep me');
+    expect(result.input.details).toEqual({ from: 'Munich', to: 'Helsinki', reminder: 'off' });
+  });
+
+  it('refuses a change that would put the arrival before the departure', () => {
+    // 11:30 Helsinki is 09:30 UTC; 11:00 in Tokyo would be 02:00 UTC, long before.
+    const short = { ...flight, end: { ...flight.end!, local: '2026-11-20T11:30' } };
+    const result = withMomentZone(short, 'end', 'Asia/Tokyo', HEL);
+    expect(result.ok).toBe(false);
   });
 });
