@@ -80,3 +80,13 @@ export function isPastDate(endDate: string, now: Date = new Date()): boolean {
   ].join('-');
   return endDate < deviceToday;
 }
+
+/** 'YYYY-MM-DD' at that instant in that zone — the date it is *there*, whatever the device says. */
+export function localDateIn(now: Date, tz: string): string {
+  const zoned = new TZDate(now.getTime(), tz);
+  return [
+    zoned.getFullYear(),
+    String(zoned.getMonth() + 1).padStart(2, '0'),
+    String(zoned.getDate()).padStart(2, '0'),
+  ].join('-');
+}

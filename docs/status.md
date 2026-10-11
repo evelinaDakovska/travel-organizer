@@ -255,8 +255,8 @@ change or a native change; R5 changes how shared files are copied.
 | | Step | ✓ |
 |---|---|---|
 | ~~R0~~ | ~~Finish N6 as suggest-only on existing items~~ — **dropped**: the owner keeps N6 decision B (D26) | — |
-| **R1** | Now: *Happening now* — an event stays while it is on, 15 min after its end, 60 min if it has none (`nowSections`) | ⬜ |
-| **R2** | Now: *Today, no fixed time* and *Maybe today* (ideas) — date-only entries through their day, in the item's zone | ⬜ |
+| **R1** | Now: *Happening now* — an event stays while it is on, 15 min after its end, 60 min if it has none (`nowSections`) | ✅ |
+| **R2** | Now: *Today, no fixed time* and *Maybe today* (ideas) — date-only entries through their day, in the item's zone | ✅ |
 | **R3** | Transport zones named on both ends on item detail; the journey form's hint | ⬜ |
 | **R4** | Loading, failed, missing, empty and stale told apart on every screen, with Retry | ⬜ |
 | **R5** | Share-to-app keeps what worked and says exactly what failed and how to retry | ⬜ |
@@ -266,6 +266,22 @@ change or a native change; R5 changes how shared files are copied.
 | **R9** | Expense form: mark a booking Paid rather than adding it again | ⬜ |
 | **R10** | Cancelled with refund not specified: shown as not counted | ⬜ |
 | **R11** | Documentation reconciled with the code | ⬜ |
+
+**R1 + R2, what was built:** `nowSections` in `src/domain/itinerary.ts` (with `happeningNote`,
+`todayNote`, and `localDateIn` in `time.ts`); Now renders *Happening now*, *Today, no fixed
+time*, *Maybe today* and *Up next* through one small `NowSection`; `EntryCard` takes a `note`
+line. `upNext` is unchanged. One rule beyond the decisions, from the same reasoning as stays:
+anything **longer than 24 hours** (a rental car, a festival pass) is never a Happening card; its
+end waits in Up next. `useNow` now also refreshes on returning to the app.
+
+**R1 + R2, how it was verified:** 21 new domain tests (the reviewer's list). On the emulator, dev
+build, sample Lapland trip, the clock moved with `cmd alarm set-time` and the app brought back
+from the background each time: 21 Nov 13:05 — *Husky safari · Until 16:00* with its voucher, not
+repeated in Up next; 16:10 — *Ended 16:00*; 16:16 — gone; 20 Nov 23:00 — the sleeper train
+*Arrives Sat 21 Nov · 07:40*, its arrival not repeated; the 3-day rental car never a card;
+22 Nov 00:05 — *Santa Claus Village* under *Today, no fixed time*; 22:00 — the Northern lights
+hunt *Ends Mon 23 Nov · 01:00* above Santa Claus Village. *Maybe today* is covered by tests only
+(the sample has no dated idea).
 
 ---
 

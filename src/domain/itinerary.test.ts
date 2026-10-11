@@ -1,5 +1,9 @@
 import {
+  ENDED_GRACE_MINUTES,
   entryRoleLabel,
+  happeningNote,
+  nowSections,
+  todayNote,
   entryZoneLabel,
   openTasks,
   singleActiveTrip,
@@ -151,5 +155,205 @@ describe('singleActiveTrip', () => {
     const overlapping = [trip('a', '2026-09-19', '2026-09-22'), trip('b', '2026-09-20', '2026-09-21')];
     expect(singleActiveTrip(overlapping, midTrip)).toBeNull();
     expect(singleActiveTrip([trip('later', '2026-11-20', '2026-11-24')], midTrip)).toBeNull();
+  });
+});
+
+describe('nowSections', () => {
+  const keys = (entries: { key: string }[]) => entries.map((entry) => entry.key);
+  /** The review's case: 09:00–11:15 in Helsinki on 22 November. */
+  const husky = item({
+    id: 'husky',
+    start: at('2026-11-22T09:00', 'Europe/Helsinki'),
+    end: at('2026-11-22T11:15', 'Europe/Helsinki'),
+  });
+  const helsinki = (time: string) => new Date(`2026-11-22T${time}:00+02:00`);
+
+  describe('happening now', () => {
+    it('is not happening before the start, and is still up next', () => {
+      const sections = nowSections([husky], helsinki('08:59'));
+      expect(sections.happening).toEqual([]);
+      expect(keys(sections.upNext)).toEqual(['husky']);
+    });
+
+    it('is happening exactly at the start, and not repeated in up next', () => {
+      const sections = nowSections([husky], helsinki('09:00'));
+      expect(keys(sections.happening)).toEqual(['husky']);
+      expect(sections.upNext).toEqual([]);
+    });
+
+    it('is happening during the event', () => {
+      expect(keys(nowSections([husky], helsinki('09:05')).happening)).toEqual(['husky']);
+    });
+
+    it('stays for the grace minutes after the end, then goes', () => {
+      expect(ENDED_GRACE_MINUTES).toBe(15);
+      expect(keys(nowSections([husky], helsinki('11:15')).happening)).toEqual(['husky']);
+      expect(keys(nowSections([husky], helsinki('11:29')).happening)).toEqual(['husky']);
+      expect(nowSections([husky], helsinki('11:30')).happening).toEqual([]);
+    });
+
+    it('keeps an event with no end for 60 minutes after its start, with no grace on top', () => {
+      const open = item({ id: 'open', start: at('2026-11-22T09:00', 'Europe/Helsinki') });
+      expect(keys(nowSections([open], helsinki('09:59')).happening)).toEqual(['open']);
+      expect(nowSections([open], helsinki('10:00')).happening).toEqual([]);
+    });
+
+    it('never shows a cancelled event, an idea or a task', () => {
+      const others = [
+        { ...husky, id: 'cancelled', status: 'cancelled' as const },
+        { ...husky, id: 'idea', status: 'idea' as const },
+        { ...husky, id: 'task', kind: 'task' as const },
+      ];
+      const sections = nowSections(others, helsinki('09:30'));
+      expect(sections.happening).toEqual([]);
+      expect(sections.upNext).toEqual([]);
+    });
+
+    it('shows an overnight journey between departure and arrival, without repeating Arrives', () => {
+      const train = item({
+        id: 'train',
+        kind: 'transport',
+        start: at('2026-11-21T22:10', 'Europe/Helsinki'),
+        end: at('2026-11-22T06:40', 'Europe/Helsinki'),
+      });
+      const sections = nowSections([train, husky], helsinki('02:00'));
+      expect(keys(sections.happening)).toEqual(['train']);
+      expect(sections.happening[0].role).toBe('full');
+      expect(keys(sections.upNext)).toEqual(['husky']);
+    });
+
+    it('shows overlapping events together, by start', () => {
+      const lunch = item({
+        id: 'lunch',
+        kind: 'food',
+        start: at('2026-11-22T10:30', 'Europe/Helsinki'),
+        end: at('2026-11-22T12:00', 'Europe/Helsinki'),
+      });
+      expect(keys(nowSections([lunch, husky], helsinki('10:45')).happening)).toEqual([
+        'husky',
+        'lunch',
+      ]);
+    });
+
+    it('never makes a stay a card: during it, its check-out waits in up next', () => {
+      const hotel = item({
+        id: 'hotel',
+        kind: 'stay',
+        start: at('2026-11-20T15:00', 'Europe/Helsinki'),
+        end: at('2026-11-24T11:00', 'Europe/Helsinki'),
+      });
+      const sections = nowSections([hotel], helsinki('12:00'));
+      expect(sections.happening).toEqual([]);
+      expect(keys(sections.upNext)).toEqual(['hotel:end']);
+    });
+
+    it('treats anything longer than a day as a span, like a stay', () => {
+      const car = item({
+        id: 'car',
+        kind: 'transport',
+        start: at('2026-11-20T10:00', 'Europe/Helsinki'),
+        end: at('2026-11-23T10:00', 'Europe/Helsinki'),
+      });
+      const sections = nowSections([car], helsinki('12:00'));
+      expect(sections.happening).toEqual([]);
+      expect(keys(sections.upNext)).toEqual(['car:end']);
+    });
+  });
+
+  describe('today, no fixed time', () => {
+    const santa = item({ id: 'santa', start: at('2026-11-22', 'Europe/Helsinki') });
+
+    it('is up next, not today, the evening before', () => {
+      const sections = nowSections([santa], new Date('2026-11-21T23:59:00+02:00'));
+      expect(sections.today).toEqual([]);
+      expect(keys(sections.upNext)).toEqual(['santa']);
+    });
+
+    it('shows all through its day in the item zone, and not in up next', () => {
+      for (const time of ['00:00', '12:00', '23:59']) {
+        const sections = nowSections([santa], helsinki(time));
+        expect(keys(sections.today)).toEqual(['santa']);
+        expect(sections.upNext).toEqual([]);
+      }
+    });
+
+    it('is gone the next day', () => {
+      expect(nowSections([santa], new Date('2026-11-23T00:00:00+02:00')).today).toEqual([]);
+    });
+
+    it('uses the item zone, not the device or the trip', () => {
+      const tokyo = item({ id: 'tokyo', start: at('2026-11-23', 'Asia/Tokyo') });
+      // 23:30 on the 22nd in Helsinki is already 06:30 on the 23rd in Tokyo.
+      const sections = nowSections([tokyo, santa], helsinki('23:30'));
+      expect(keys(sections.today)).toEqual(['santa', 'tokyo']);
+    });
+
+    it('shows a multi-day date-only plan on each of its days', () => {
+      const pass = item({
+        id: 'pass',
+        start: at('2026-11-21', 'Europe/Helsinki'),
+        end: at('2026-11-23', 'Europe/Helsinki'),
+      });
+      for (const day of ['2026-11-21', '2026-11-22', '2026-11-23']) {
+        const sections = nowSections([pass], new Date(`${day}T12:00:00+02:00`));
+        expect(keys(sections.today)).toEqual(['pass']);
+        expect(sections.upNext).toEqual([]);
+      }
+      expect(nowSections([pass], new Date('2026-11-24T12:00:00+02:00')).today).toEqual([]);
+    });
+
+    it('puts a dated idea in maybe today, a task in neither, a cancelled plan nowhere', () => {
+      const sections = nowSections(
+        [
+          { ...santa, id: 'idea', status: 'idea' as const },
+          { ...santa, id: 'task', kind: 'task' as const },
+          { ...santa, id: 'gone', status: 'cancelled' as const },
+        ],
+        helsinki('12:00'),
+      );
+      expect(sections.today).toEqual([]);
+      expect(keys(sections.maybeToday)).toEqual(['idea']);
+      expect(sections.upNext).toEqual([]);
+    });
+  });
+});
+
+describe('happeningNote', () => {
+  const ends = (local: string, endTzOverride: string | null = null) => ({
+    kind: 'activity' as const,
+    start: at('2026-11-22T09:00', 'Europe/Helsinki'),
+    end: at(local, 'Europe/Helsinki'),
+    endTzOverride,
+  });
+  const during = new Date('2026-11-22T10:00:00+02:00');
+
+  it('says until when on the same day', () => {
+    expect(happeningNote(ends('2026-11-22T11:15'), during)).toBe('Until 11:15');
+  });
+
+  it('says ended once it has', () => {
+    expect(happeningNote(ends('2026-11-22T09:50'), during)).toBe('Ended 09:50');
+  });
+
+  it('names the arrival day and zone of an overnight journey', () => {
+    const train = { ...ends('2026-11-23T06:40', 'Europe/Helsinki'), kind: 'transport' as const };
+    expect(happeningNote(train, during)).toMatch(/^Arrives .*06:40 · Helsinki$/);
+  });
+
+  it('has nothing to say with no end', () => {
+    expect(happeningNote({ ...ends('2026-11-22T11:15'), end: null }, during)).toBeNull();
+  });
+});
+
+describe('todayNote', () => {
+  const pass = item({
+    id: 'pass',
+    start: at('2026-11-21', 'Europe/Helsinki'),
+    end: at('2026-11-23', 'Europe/Helsinki'),
+  });
+
+  it('says until when on every day but the last', () => {
+    expect(todayNote(pass, new Date('2026-11-21T12:00:00+02:00'))).toMatch(/^Until .*23/);
+    expect(todayNote(pass, new Date('2026-11-23T12:00:00+02:00'))).toBeNull();
   });
 });

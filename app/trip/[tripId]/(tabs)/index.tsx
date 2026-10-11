@@ -3,8 +3,15 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { openTasks, upNext } from '../../../../src/domain/itinerary';
-import { groupResourcesByItem } from '../../../../src/domain/resource';
+import {
+  happeningNote,
+  nowSections,
+  openTasks,
+  todayNote,
+} from '../../../../src/domain/itinerary';
+import type { TimelineEntry } from '../../../../src/domain/timeline';
+import type { TripItem } from '../../../../src/domain/tripItem';
+import { groupResourcesByItem, type Resource } from '../../../../src/domain/resource';
 import { ResourceList } from '../../../../src/features/resources/ResourceList';
 import { EntryCard } from '../../../../src/features/timeline/EntryCard';
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
@@ -59,7 +66,7 @@ export default function NowScreen() {
     [tripId],
   );
 
-  const next = useMemo(() => upNext(items ?? [], now), [items, now]);
+  const sections = useMemo(() => nowSections(items ?? [], now), [items, now]);
   const tasks = useMemo(() => openTasks(items ?? []), [items]);
   const byItem = useMemo(() => groupResourcesByItem(attachments ?? []), [attachments]);
 
@@ -104,20 +111,26 @@ export default function NowScreen() {
       />
 
       <ScrollView contentContainerStyle={styles.content}>
-        {next.length > 0 ? (
-          <View style={styles.section}>
-            <SectionLabel>Up next</SectionLabel>
-            {next.map((entry) => (
-              <EntryCard
-                key={entry.key}
-                entry={entry}
-                resources={byItem.get(entry.item.id) ?? []}
-                showDate
-                onPress={() => router.push(`/item/${entry.item.id}`)}
-              />
-            ))}
-          </View>
-        ) : null}
+        {/* The thing you are late for first, then today's plans without a time, then what is next. */}
+        <NowSection
+          label="Happening now"
+          entries={sections.happening}
+          byItem={byItem}
+          noteFor={(item) => happeningNote(item, now)}
+        />
+        <NowSection
+          label="Today, no fixed time"
+          entries={sections.today}
+          byItem={byItem}
+          noteFor={(item) => todayNote(item, now)}
+        />
+        <NowSection
+          label="Maybe today"
+          entries={sections.maybeToday}
+          byItem={byItem}
+          noteFor={(item) => todayNote(item, now)}
+        />
+        <NowSection label="Up next" entries={sections.upNext} byItem={byItem} showDate />
 
         <View style={styles.section}>
           <View style={styles.sectionHead}>
@@ -161,6 +174,40 @@ export default function NowScreen() {
         />
       </ScrollView>
     </Screen>
+  );
+}
+
+/** One of Now's lists of entries. Nothing at all when it is empty. */
+function NowSection({
+  label,
+  entries,
+  byItem,
+  noteFor,
+  showDate = false,
+}: {
+  label: string;
+  entries: readonly TimelineEntry<TripItem>[];
+  byItem: ReadonlyMap<string, Resource[]>;
+  noteFor?: (item: TripItem) => string | null;
+  showDate?: boolean;
+}) {
+  const router = useRouter();
+  if (entries.length === 0) return null;
+
+  return (
+    <View style={styles.section}>
+      <SectionLabel>{label}</SectionLabel>
+      {entries.map((entry) => (
+        <EntryCard
+          key={entry.key}
+          entry={entry}
+          resources={byItem.get(entry.item.id) ?? []}
+          showDate={showDate}
+          note={noteFor?.(entry.item)}
+          onPress={() => router.push(`/item/${entry.item.id}`)}
+        />
+      ))}
+    </View>
   );
 }
 

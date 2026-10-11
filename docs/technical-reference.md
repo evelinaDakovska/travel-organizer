@@ -107,6 +107,12 @@ overnight train's arrival lands on the day it actually happens. A single row bec
 entries is not something the query should try to express, and a trip holds tens of items, not
 thousands, so deriving in memory costs nothing.
 
+**Now is `nowSections`** (`src/domain/itinerary.ts`, D27): *Happening now* (confirmed, timed, not a
+task or a stay, at most 24 hours long; from its start until 15 minutes after its end, or 60 minutes
+after a start with no end), *Today, no fixed time* and *Maybe today* (date-only, confirmed or idea,
+today in the item's own zone), then *Up next* with nothing above repeated. `useNow` also refreshes
+when the app returns to the foreground.
+
 One consequence: **the Now card considers check-out entries too**, not just `start_utc`. At 08:00
 on your last morning, "Check out 11:00" is genuinely the next thing you have to do, and the
 `start_utc >= now` query alone would never surface it.

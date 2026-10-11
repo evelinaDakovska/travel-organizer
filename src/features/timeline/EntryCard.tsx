@@ -16,10 +16,12 @@ type Props = {
   onPress: () => void;
   /** On Now the day is not in a heading above, so the card carries it. */
   showDate?: boolean;
+  /** A line under the place, e.g. 'Until 11:15' on a Happening now card. */
+  note?: string | null;
 };
 
 /** One timeline entry: a whole item, or one end of a stay or journey that spans days. */
-export function EntryCard({ entry, resources, onPress, showDate = false }: Props) {
+export function EntryCard({ entry, resources, onPress, showDate = false, note }: Props) {
   const c = useColors();
   const { item, moment } = entry;
 
@@ -50,6 +52,12 @@ export function EntryCard({ entry, resources, onPress, showDate = false }: Props
       {where ? (
         <Text style={[type.body, { color: c.textMuted }]} numberOfLines={1}>
           {where}
+        </Text>
+      ) : null}
+
+      {note ? (
+        <Text style={[type.bodyStrong, { color: c.accentText }]} numberOfLines={1}>
+          {note}
         </Text>
       ) : null}
 

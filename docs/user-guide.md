@@ -210,9 +210,15 @@ missing from this phone** instead of opening nothing. Attach it again.
 
 The trip opens on **Now**:
 
+- **Happening now**: what is on right now — the tour you are five minutes late for, the train you
+  are on — with its ticket one tap away. It stays until **15 minutes after its end** (*Ended
+  16:00*), or **an hour after its start** if it has no end. Hotel stays and anything longer than a
+  day are not shown here; during a stay its *Check out* is in Up next.
+- **Today, no fixed time**: plans for today with only a date, such as *Santa Claus Village*, all
+  day long — in the place's own time zone. **Maybe today** lists ideas dated today, apart.
 - **Up next**: what happens next, with the time and route, and **Open attachments** to reach the
-  tickets in one tap. It follows the items, not the trip's dates, so a check-in task the day
-  before the trip shows up too.
+  tickets in one tap. It follows the items, not the trip's dates, so a flight the day before the
+  trip shows up too. Tasks are not here; they are under Open tasks.
 - **Open tasks**: tick them off (**+** adds one).
 - **This trip**: dates, who is travelling, which zone times are shown in.
 - **Trip documents**.
