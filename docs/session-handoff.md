@@ -14,7 +14,7 @@ single source of truth for schema, time, files, queries). Read in this order:
 5. `docs/decision-log.md` — why, and what was rejected (D1–D24)
 6. `docs/windows-handoff.md` — machine setup, release build, Windows specifics
 
-Last verified: **2026-10-11** (second session), N5a built (not yet on the phone), **495 tests**,
+Last verified: **2026-10-11** (second session), N5a built (not yet on the phone), **496 tests**,
 typecheck clean.
 
 > **Starting fresh? Jump to §11 first** — it is the exact point the last session stopped, what is
@@ -228,7 +228,7 @@ Moving the repo to `C:\dev` is what fixed the first Windows build.
 
 ```bash
 npm install                 # postinstall applies the patches
-npm test                    # 495 tests, ~3s
+npm test                    # 496 tests, ~3s
 npx tsc --noEmit            # must be clean
 npx expo prebuild --platform android      # after any app.json or native change
 # EXPO_NO_GIT_STATUS=1 when the tree is dirty, or prebuild stops on a prompt
@@ -289,6 +289,12 @@ Hard-won details:
   from exactly this.
 - **The dev client cannot be cold-started by a share** — its launcher fails on `ACTION_SEND`
   (`Set.addAll` on null) before app code runs. Test that path on a release build.
+- **The dev client's floating Tools button covers the Edit button** (top right, ~1154,282 on the
+  emulator). Turn it off: dev menu → *Tools button*.
+- **Typing tests go through the on-screen keys.** `adb input text` and chained keyevents pass
+  through Gboard's composing text; the currency bug only showed its real shape with key taps.
+- **The new-expense form focuses Amount**, so the keyboard covers the receipt buttons. Close it
+  first (`KEYCODE_BACK`).
 - **After a native build, if the dev client sits on a white screen**, time
   `curl localhost:8081/status`. Metro twice took 14s+ to answer and only recovered after a restart;
   stop the Gradle daemons (`android/gradlew --stop`) and restart Metro.
@@ -468,7 +474,11 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
   `bookingCosts.ts`). All pushed.
 - The plan for these, and a step-by-step review of how it went, is at the end of
   `docs/n5-plan.md` (*Follow-up*).
-- **Next: §11.5 step 3 (Gap D)**, then step 4 (ask the owner how to do Gap B), and so on.
+- **Gap D done, plus a regression pass** against 0.2.0: no regression. Two bugs fixed on the way:
+  camera receipts were labelled with a UUID (`8ee84d8`), and currency fields snapped back to EUR
+  when cleared, an old bug (`05e0c29`). Details at the end of `docs/n5-plan.md`.
+- **Next: §11.5 step 4** — ask the owner how to do Gap B. Note: the emulator's share sheet *does*
+  list Drive; it lacks a Google account, not the target.
 - **The emulator now runs the dev build** (release 0.3.0 was uninstalled there, sample data
   only): the sample backup plus one *Groceries 7.20 EUR* expense with a PDF receipt. Good for
   Gap D. For the final rehearsal, reinstall 0.2.0 as §11.3 describes.

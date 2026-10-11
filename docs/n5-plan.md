@@ -74,7 +74,7 @@ the file sweep. Deleting a trip now also names its expenses in the warning.
 | **What** | `attach.ts` reorganised around three pickers (file, photo, camera). A new expense holds its picked receipts until Save. |
 | **Status** | ✅ for file and photo (emulator: a PDF receipt saved with a new expense). |
 | ✅ **Decision 4** | Receipts picked on a new expense are copied into the app at once; if the form is closed without saving, those copies are deleted at the next app start. **Owner: change it** — delete them at once. Done, `02f76d4`; see the follow-up below. |
-| 🔎 **Gap D** | **The camera was not tested** — neither the permission question nor taking a photo. Needs the emulator's camera, or the phone. |
+| 🔎 **Gap D** | **The camera was not tested** — neither the permission question nor taking a photo. ✅ **Done on the emulator, 2026-10-11** — see *Gap D and the regression pass* below. |
 | 🔎 Note | Sharing from other apps uses the same `attachFile` — unchanged in behaviour, but re-test one share on the phone. |
 
 ## Step 7 — Screens
@@ -85,7 +85,7 @@ the file sweep. Deleting a trip now also names its expenses in the warning.
 - **Bookings:** the U9 list (To pay, Paid). ✅ moved; the U9 page is removed.
 - **+** on the Expenses tab adds an expense. ✅
 - **Expense form** in the agreed order; receipts section. ✅
-- **Editing an expense:** same form, receipts, Delete. ⬜ not yet tapped through on the emulator.
+- **Editing an expense:** same form, receipts, Delete. ✅ tapped through on the emulator (Gap D, below).
 - The Expenses card left Now. ✅
 
 ✅ **Decision 5 — the tappable card from U9 (0.2.1) was removed again** *(owner: yes)*: Bookings is now a view
@@ -127,7 +127,7 @@ reminders → add one expense with a camera receipt → USB debugging off, Auto 
 
 1. ~~Decisions 1–6: yes or no.~~ ✅ Answered 2026-10-11: yes to 1, 2, 3, 5, 6; D4 changed.
 2. ~~Gap A (import message names expenses) and Gap C (rename) — small, each with tests.~~ ✅ Done.
-3. Gap D (camera) and editing/deleting an expense — tap through on the emulator.
+3. ~~Gap D (camera) and editing/deleting an expense — tap through on the emulator.~~ ✅ Done, with a regression pass.
 4. Step 9 (documentation), after its plan is agreed.
 5. A fresh rehearsal on the final build.
 
@@ -207,3 +207,70 @@ notes and 28 saved files."* (no expenses, old wording), as expected.
   remembering when driving the form (close the keyboard first). No product change proposed.
 - Each step: `npm test` + `tsc`, commit, push. **495 tests** (one new), typecheck clean. All
   three commits pushed to `origin/main`.
+
+---
+
+## Gap D and the regression pass (2026-10-11)
+
+The owner said go ahead with Gap D and asked to **make sure today's work caused no regressions**.
+Everything ran on the emulator's **dev build** with the sample backup.
+
+### Gap D: the tap-through
+
+| Check | Result |
+|---|---|
+| + Camera, permission **refused** | ✅ *The camera is not allowed. Allow the camera for this app in Settings.* with *Not now / Open Settings*. |
+| *Open Settings* | ✅ Opens the app's info page. Granted from there (Permissions → Camera), back to the app. |
+| + Camera, **allowed**, on an existing expense | ✅ Emulator camera → shutter → Done; the photo is attached at once (media 29 → 30). |
+| The photo's label | ❌ → ✅ **Bug:** labelled with a UUID (`30450f8b-…`), the camera's generated file name. **Fixed** in `8ee84d8` (`defaultFileLabel` treats a bare UUID like a media-store id, with a test); a camera receipt now reads *Photo*. |
+| + Camera on a **new** expense, saved | ✅ Pending receipt reads *Photo*; saved; the paperclip shows on the row; the file is kept. |
+| A receipt's page | ✅ No *Also attach to an item* (D6). |
+| Opening a receipt | ✅ The PDF opens in the viewer. |
+| **Editing** an expense | ✅ 7.20 Groceries → 9.80 Transport "Bus": row, category bar and trip total (EUR 1689.80) all follow. |
+| **Deleting** an expense with 2 receipts | ✅ *Delete Bus? Its 2 receipts go too.* → gone, total back to EUR 1680.00. Both files swept at the next start, leaving exactly the 28 sample files. |
+| Removing a pending receipt | ✅ Done earlier the same day (D4 test 1). |
+| Another currency | ✅ HUF 3000 on an expense: totalled separately from EUR, never converted. |
+
+### The regression pass
+
+**Method.** I read the code diff from 0.2.0 (`550d500`, the build on the phone) to now, minus the
+new expense code, and checked on the emulator every existing behaviour it touches. **Static
+review:** every query reading `resources` by trip either leaves receipts out
+(`SELECT_RESOURCES_FOR_TRIP`), or joins through items (`SELECT_ITEM_RESOURCES_FOR_TRIP`), or
+should count them (`COUNT_TRIP_CONTENTS`: deleting a trip takes its receipts). Search does not
+read `resources`. `attach.ts` keeps the same pickers and options for items and trips.
+`AmountInput`/`CurrencyInput` moved over unchanged. No timeline, itinerary or time code changed.
+
+| # | Existing behaviour touched by N5a | Result |
+|---|---|---|
+| R1 | **Now**: no Expenses card, trip documents, their buttons | ✅ No card; only the 2 trip documents (the camera receipt is **not** listed); File / Photo / Link. |
+| R2 | **+** on Now, Timeline, Places, Notes | ✅ Opens *Add to trip* on all four; only Expenses adds an expense. |
+| R3 | **Item price** (moved to `MoneyInputs`) | ✅ 12.50 saved as 12.50, not ×100. Edit opens with 12.50 and the currency. ⚠️ Found the currency bug below. |
+| R4 | **Attaching to an item** (`attach.ts` reorganised) | ✅ + File → listed → opens in the PDF viewer; File / Photo / Link (no Camera) on items. |
+| R5 | **A trip document's page** | ✅ *Also attach to an item* still offered (hidden only for receipts). |
+| R6 | **Delete-trip warning** (now names expenses) | ✅ *24 items, 2 expenses and 18 saved files*, matching the sample (23 + 1 items; 16 + 2 files). Cancelled. |
+| R7 | **Backup export** | ✅ *Backed up 2 trips and 30 saved files* = the files in `media/`. Share sheet cancelled. |
+| R8 | **Timeline** | ✅ Renders; no timeline code changed since 0.2.0; compared line by line in the 0.3.0 rehearsal. |
+| R9 | **Search** | ✅ Finds items and notes; no receipts appear. |
+| — | **Sharing from another app** (`attachFile`), reminders, the update itself | ⬜ Release-build only: the dev client cannot be started by a share. Covered by the **final rehearsal** on the rebuilt APK (§11.5 step 6). |
+
+**No regression found.** One **old** bug surfaced, now fixed:
+
+❌ → ✅ **Currency fields could not be cleared and retyped** (`05e0c29`). Deleting "EUR" put "EUR"
+straight back, and typing CHF did nothing. Cause: `CurrencyInput` reported an empty field as
+`undefined`, and react-hook-form 7.87 shows a field's **default** while its value is `undefined`
+(`useWatch` → `get(formValues, name, defaultValue)`). The keyboard then composed onto the
+restored text and `maxLength=3` dropped the rest. **0.2.0 had the same code** in the item form, so
+it is not a regression, but it also affected the new expense form and would have blocked changing
+the currency abroad. The fix keeps the text in the input, as `AmountInput` already did. Checked
+with the **on-screen keyboard**, not `adb input`: EUR → CHF on a new item (saved CHF 12.50); edit
+opens with 12.50 CHF; an emptied currency now shows *Pick a currency* under an **empty** field
+(before, the error sat under a field that read EUR); EUR → HUF on a new expense.
+
+**Tests:** 496 (one new, for the label), typecheck clean. Commits `8ee84d8`, `05e0c29`, pushed.
+
+**Practicalities found on the way** (also in the handoff):
+- The dev client's floating **Tools** button sits on top of every screen's *Edit* button; a tap
+  there opens the dev menu. Turn it off in the dev menu (*Tools button*).
+- `adb input text` and chained `keyevent`s go through Gboard's composing text and can mislead.
+  For anything about typing, tap the on-screen keys.
