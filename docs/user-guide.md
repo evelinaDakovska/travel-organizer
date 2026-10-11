@@ -242,6 +242,10 @@ Every dated item, **day by day**, in time order. Each day is the **local** day w
 a 23:30 dinner stays on its own evening. Tap an entry for its detail page. Cancelled items are
 not shown.
 
+**During the trip** it opens on **today** (marked *Today*), or the next day with something on
+it; earlier days are still above. **Today** at the top brings you back. It never jumps on its
+own while you read another day. Before and after the trip it starts at the beginning.
+
 ### Search
 
 The magnifier at the top of a trip searches **titles, places, references and notes**, including

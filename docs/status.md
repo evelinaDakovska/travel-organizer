@@ -261,7 +261,7 @@ change or a native change; R5 changes how shared files are copied.
 | **R4** | Loading, failed, missing, empty and stale told apart on every screen, with Retry | ✅ |
 | **R5** | Share-to-app keeps what worked and says exactly what failed and how to retry | ✅ |
 | **R6** | *Open ticket* from `subtype='ticket'`, other documents behind it | ✅ |
-| **R7** | Timeline opens on today during the trip; a Today button | ⬜ |
+| **R7** | Timeline opens on today during the trip; a Today button | ✅ |
 | **R8** | Wording: *planned* is not *booked* | ⬜ |
 | **R9** | Expense form: mark a booking Paid rather than adding it again | ⬜ |
 | **R10** | Cancelled with refund not specified: shown as not counted | ⬜ |
@@ -341,6 +341,16 @@ nothing marked ticket it is one button, as before. No migration, nothing stored.
 Boarding pass SOF-HEL* over *Open Flight booking*, the sleeper *Open Sleeper tickets* over *Open
 Cabin details*; the main button opened the PDF straight into the viewer. The several-tickets sheet
 is the existing sheet with its list and title changed; its grouping is tested.
+
+**R7, what was built:** `landingDay` (`src/domain/timeline.ts`, 5 tests): during the trip, the first
+day with entries from today (device date). The Timeline scrolls there once, when that day is first
+laid out; today's heading carries a *Today* tag; a **Today** button in the header scrolls back. A
+strip of days to jump between was left for later, as planned.
+
+**R7, how it was verified:** on the emulator, clock at 22 Nov 12:00: the Timeline opened on *Sun 22
+Nov · Today*; scrolled up to 18 Nov, a task ticked on Now, back on the Timeline — still on 18 Nov;
+an item opened and closed — still there; **Today** scrolled back to 22 Nov. With the real clock
+(11 Oct, before the trip): no Today button, the list starts at 18 Nov.
 
 ---
 

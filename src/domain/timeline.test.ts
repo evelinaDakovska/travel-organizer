@@ -1,6 +1,7 @@
 import {
   buildTimeline,
   entriesOnDay,
+  landingDay,
   minutesUntilEntry,
   nextEntries,
   timelineEntries,
@@ -276,5 +277,30 @@ describe('helpers', () => {
 
     expect(entriesOnDay(timeline, '2026-09-19').map((e) => e.key)).toEqual(['a']);
     expect(entriesOnDay(timeline, '2026-09-20')).toEqual([]);
+  });
+});
+
+describe('landingDay', () => {
+  const trip = { startDate: '2026-11-20', endDate: '2026-11-24' };
+  const days = ['2026-11-18', '2026-11-20', '2026-11-21', '2026-11-23', '2026-11-24'];
+
+  it('starts at the top before the trip, even with a task dated before it', () => {
+    expect(landingDay(days, '2026-11-18', trip)).toBeNull();
+  });
+
+  it('lands on today during the trip', () => {
+    expect(landingDay(days, '2026-11-21', trip)).toBe('2026-11-21');
+  });
+
+  it('lands on the next day with entries when today has none', () => {
+    expect(landingDay(days, '2026-11-22', trip)).toBe('2026-11-23');
+  });
+
+  it('starts at the top when nothing is left from today', () => {
+    expect(landingDay(['2026-11-20'], '2026-11-22', trip)).toBeNull();
+  });
+
+  it('starts at the top after the trip', () => {
+    expect(landingDay(days, '2026-11-25', trip)).toBeNull();
   });
 });

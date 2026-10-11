@@ -123,3 +123,17 @@ export function entriesOnDay<T extends TimelineItem>(
 ): TimelineEntry<T>[] {
   return days.find((d) => d.day === day)?.entries ?? [];
 }
+
+/**
+ * Where the Timeline opens (R7): during the trip, the first day with entries from today on — or
+ * null to start at the top, before or after the trip, or when nothing is left from today. `today`
+ * is the device's date: this is only where the list starts, and every earlier day stays above it.
+ */
+export function landingDay(
+  days: readonly string[],
+  today: string,
+  trip: { startDate: string; endDate: string },
+): string | null {
+  if (today < trip.startDate || today > trip.endDate) return null;
+  return days.find((day) => day >= today) ?? null;
+}
