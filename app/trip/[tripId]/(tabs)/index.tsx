@@ -159,7 +159,10 @@ export default function NowScreen() {
         {expenses.length > 0 ? (
           <View style={styles.section}>
             <SectionLabel>Expenses</SectionLabel>
-            <ExpensesCard totals={expenses} />
+            <ExpensesCard
+              totals={expenses}
+              onPress={() => router.push(`/trip/${trip.id}/expenses`)}
+            />
           </View>
         ) : null}
 

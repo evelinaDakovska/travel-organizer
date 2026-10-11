@@ -253,7 +253,8 @@ exports a backup to Drive, and the update is rehearsed on the emulator over the 
 | **U5** | Places: *Open in Maps* for an address; place names suggested from the trip; booked items with an address listed on Places | ✅ |
 | **U6** | Refundable or not, and the trip's expenses: booked items plus cancelled non-refundable ones, paid and to pay, per currency | ✅ |
 | **U7** | Flights with connections and a return: one form creates each leg as its own item, linked by `details.journeyId` | ✅ |
-| **U8** | Phone: owner exports to Drive, rehearsal on the emulator over 0.1.0, release build installed over the top | ⬜ |
+| **U8** | Phone: owner exports to Drive, rehearsal on the emulator over 0.1.0, release build installed over the top | ✅ |
+| **U9** | Expenses: the card on Now opens a page listing every expense, *To pay* then *Paid* (0.2.1) | ✅ |
 
 **U1, what was built:** `FormScroll` replaces each form's `KeyboardAvoidingView`, which had been
 switched off on Android (`behavior` was iOS-only). The app draws edge to edge, where `adjustResize`
@@ -374,13 +375,24 @@ not reproduce on demand and is still unknown.
 0.1.0 plus the sample backup, then this APK over the top — same export counts, Lapland identical line
 for line, a boarding pass opened with airplane mode on.
 
-**U8, still to do — needs the owner and the phone:**
-1. On the phone: *Backup → Export everything* → save to **Drive**. Check the zip is there.
-2. Connect the phone (Auto Blocker off, USB debugging on).
-3. `adb -s <serial> install -r --user 0 android/app/build/outputs/apk/release/app-release.apk` —
-   **never uninstall first**: that deletes the data.
-4. Open the app; check the trip, a few PDFs, and Expenses. Then USB debugging off, Auto Blocker on.
-5. Check prices entered with cents (the U1 price bug may have stored them ×100).
+**U8, done on the phone — 2026-10-11.** The owner exported to Drive first. Import was then proven on
+the emulator: a fresh 0.2.0 with no data restored the sample backup, both timelines matched the
+originals line for line and a PDF opened in airplane mode; the backup code is unchanged since 0.1.0.
+On the phone, *Import* with *Keep mine* on the Drive zip read it whole and changed nothing. Then
+0.2.0 went on with `adb install -r --user 0` — no uninstall — and launched without a crash.
+
+**Open, from the phone:** the owner reports a flight showing **EUR 92326.00** that was **993.26**
+in 0.1.0. Not explained yet: `formatMoney` and every display of a price are unchanged since M2, no
+migration ran, and only *Edit → Save* writes a price. Asked the owner whether that item was saved
+from Edit after the update. The Drive backup holds the value from before. Note: the U1 "×100" bug
+was found by typing with `adb input`; on the phone's keyboard 0.1.0 may have kept the decimal point
+(a controlled input whose value does not change is not reset), so that claim is unproven there.
+
+**U9, what was built:** `expenseGroups` in `src/domain/expenses.ts` — the items behind the totals,
+split into to pay and paid, in trip order. `app/trip/[tripId]/expenses.tsx` shows the totals card,
+then each item as an `ItemRow` that opens the item. The card on Now gets *See each expense*.
+**Verified** on the emulator with release 0.2.1 installed over 0.2.0: Lapland lists its five items
+(EUR 1680.00), and an item opens from the list.
 
 **Decided with the owner:** item dates stay unrestricted (CLAUDE.md §5.7) — only the default
 changes. *Open tasks* keeps its name. Each flight leg is its own item so its zone, reminder and

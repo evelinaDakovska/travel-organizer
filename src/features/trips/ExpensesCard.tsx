@@ -3,17 +3,25 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { CurrencyTotal } from '../../domain/expenses';
 import { formatMoney } from '../../domain/format';
 import { Card } from '../../ui/components/Card';
+import { Icon } from '../../ui/components/Icon';
 import { spacing, type, useColors } from '../../ui/tokens';
+
+type Props = {
+  totals: readonly CurrencyTotal[];
+  /** Given on Now, where the card leads to the full list; absent on that list itself. */
+  onPress?: () => void;
+};
 
 /**
  * What the trip costs, one block per currency — nothing is converted. Booked items plus
  * cancellations that cannot be refunded (`tripExpenses`).
  */
-export function ExpensesCard({ totals }: { totals: readonly CurrencyTotal[] }) {
+export function ExpensesCard({ totals, onPress }: Props) {
   const c = useColors();
 
   return (
-    <Card style={styles.card}>
+    <Card style={styles.card} onPress={onPress} accessibilityLabel="Expenses">
+
       {totals.map((line, index) => (
         <View
           key={line.currency}
@@ -40,6 +48,12 @@ export function ExpensesCard({ totals }: { totals: readonly CurrencyTotal[] }) {
           ) : null}
         </View>
       ))}
+      {onPress ? (
+        <View style={styles.more}>
+          <Text style={[type.bodyStrong, { color: c.accentText }]}>See each expense</Text>
+          <Icon name="forward" size={18} color={c.accentText} strokeWidth={2.5} />
+        </View>
+      ) : null}
     </Card>
   );
 }
@@ -62,4 +76,5 @@ const styles = StyleSheet.create({
   divided: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: spacing.lg },
   split: { flexDirection: 'row', gap: spacing.xl, marginTop: spacing.sm },
   amount: { gap: 2 },
+  more: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
 });

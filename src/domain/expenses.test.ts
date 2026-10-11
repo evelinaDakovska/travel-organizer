@@ -1,4 +1,4 @@
-import { countsAsSpent, refundableOf, tripExpenses, withRefundable } from './expenses';
+import { countsAsSpent, expenseGroups, refundableOf, tripExpenses, withRefundable } from './expenses';
 
 type Priced = Parameters<typeof countsAsSpent>[0];
 
@@ -63,5 +63,28 @@ describe('tripExpenses', () => {
 
   it('is empty when nothing has a price', () => {
     expect(tripExpenses([priced({ priceAmount: null, priceCurrency: null })])).toEqual([]);
+  });
+});
+
+describe('expenseGroups', () => {
+  it('lists the items behind the totals, owed first, in the order given', () => {
+    const a = priced({ priceAmount: 100 });
+    const b = priced({ priceAmount: 200, isPaid: true });
+    const c = priced({ priceAmount: 300 });
+    const lost = priced({ status: 'cancelled', isPaid: true, details: { refundable: false } });
+    const idea = priced({ status: 'idea' });
+    const comesBack = priced({ status: 'cancelled', isPaid: true, details: { refundable: true } });
+    const free = priced({ priceAmount: null, priceCurrency: null });
+
+    expect(expenseGroups([a, idea, b, comesBack, c, lost, free])).toEqual({
+      toPay: [a, c],
+      paid: [b, lost],
+    });
+  });
+
+  it('agrees with the totals on how many items count', () => {
+    const items = [priced({}), priced({ isPaid: true }), priced({ status: 'idea' })];
+    const { toPay, paid } = expenseGroups(items);
+    expect(toPay.length + paid.length).toBe(tripExpenses(items)[0].items);
   });
 });

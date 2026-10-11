@@ -74,3 +74,17 @@ export function tripExpenses(items: readonly Priced[]): CurrencyTotal[] {
     (a, b) => b.total - a.total || a.currency.localeCompare(b.currency),
   );
 }
+
+export type ExpenseGroups<T> = { toPay: T[]; paid: T[] };
+
+/**
+ * Every item behind `tripExpenses`, split by what is still owed. Keeps the order it is given —
+ * the trip's own order — so the list reads like the timeline.
+ */
+export function expenseGroups<T extends Priced>(items: readonly T[]): ExpenseGroups<T> {
+  const groups: ExpenseGroups<T> = { toPay: [], paid: [] };
+  for (const item of items) {
+    if (countsAsSpent(item)) (item.isPaid ? groups.paid : groups.toPay).push(item);
+  }
+  return groups;
+}
