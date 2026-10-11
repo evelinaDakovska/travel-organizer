@@ -9,6 +9,7 @@ import {
   linkResourceInput,
   missingFiles,
   normaliseUrl,
+  openGroups,
   openLabel,
   orphanedStoredPaths,
   parseOwnerParams,
@@ -415,5 +416,49 @@ describe('viewerFileName', () => {
 
   it('keeps long labels to a sensible length', () => {
     expect(viewerFileName('x'.repeat(200), 'media/a.pdf')).toBe(`${'x'.repeat(80)}.pdf`);
+  });
+});
+
+describe('openGroups', () => {
+  const ticket = (id: string, label: string) => file({ id, label, subtype: 'ticket' });
+  const shape = (resources: Parameters<typeof openGroups>[0]) =>
+    openGroups(resources).map((group) => [group.label, group.resources.map((r) => r.id)]);
+
+  it('has nothing to open with no attachments', () => {
+    expect(openGroups([])).toEqual([]);
+  });
+
+  it('keeps one button for everything when nothing is marked ticket', () => {
+    expect(shape([file({ id: 'a' }), link('https://booking.com', { id: 'b' })])).toEqual([
+      ['Open attachments (2)', ['a', 'b']],
+    ]);
+  });
+
+  it('opens the one ticket directly, the rest behind a second button', () => {
+    const groups = openGroups([
+      file({ id: 'conf', label: 'Booking confirmation' }),
+      ticket('bp', 'Boarding pass SOF-HEL'),
+      link('https://www.finnair.com', { id: 'web' }),
+      link('https://maps.app.goo.gl/x', { id: 'map', subtype: 'maps' }),
+    ]);
+    expect(groups.map((g) => [g.label, g.sheetTitle, g.resources.map((r) => r.id)])).toEqual([
+      ['Open Boarding pass SOF-HEL', 'Tickets', ['bp']],
+      ['Other documents (3)', 'Other documents', ['conf', 'web', 'map']],
+    ]);
+  });
+
+  it('offers a sheet of only the tickets when there are several — a boarding pass each', () => {
+    expect(
+      shape([ticket('a', 'Pass 1'), ticket('b', 'Pass 2'), ticket('c', 'Pass 3')]),
+    ).toEqual([['Open tickets (3)', ['a', 'b', 'c']]]);
+  });
+
+  it('names a single other attachment rather than counting it', () => {
+    expect(shape([ticket('t', 'Sleeper tickets'), file({ id: 'c', label: 'Cabin details' })])).toEqual(
+      [
+        ['Open Sleeper tickets', ['t']],
+        ['Open Cabin details', ['c']],
+      ],
+    );
   });
 });

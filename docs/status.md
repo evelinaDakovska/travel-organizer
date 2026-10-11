@@ -260,7 +260,7 @@ change or a native change; R5 changes how shared files are copied.
 | **R3** | Transport zones named on both ends on item detail; the journey form's hint | ✅ |
 | **R4** | Loading, failed, missing, empty and stale told apart on every screen, with Retry | ✅ |
 | **R5** | Share-to-app keeps what worked and says exactly what failed and how to retry | ✅ |
-| **R6** | *Open ticket* from `subtype='ticket'`, other documents behind it | ⬜ |
+| **R6** | *Open ticket* from `subtype='ticket'`, other documents behind it | ✅ |
 | **R7** | Timeline opens on today during the trip; a Today button | ⬜ |
 | **R8** | Wording: *planned* is not *booked* | ⬜ |
 | **R9** | Expense form: mark a booking Paid rather than adding it again | ⬜ |
@@ -331,6 +331,16 @@ temporary development-only switch failing the third copy (removed before the com
 *Saved 2 of 3 files. Not saved: boarding-pass-3.pdf …* named the new item, OK opened it with two
 files; sharing the third again into *An item → boarding-pass-1* gave three files and still one
 item. Still to do on a **release** build: a share to the closed app (part of the 0.4.0 rehearsal).
+
+**R6, what was built:** `openGroups` (`src/domain/resource.ts`, 5 tests) splits an item's attachments
+into the ones marked *Ticket* (main button: one opens directly, several open a sheet titled
+*Tickets*) and the rest (a secondary button: one named, several *Other documents (n)*). With
+nothing marked ticket it is one button, as before. No migration, nothing stored.
+
+**R6, how it was verified:** on the emulator, sample Lapland: *Flight to Helsinki* reads *Open
+Boarding pass SOF-HEL* over *Open Flight booking*, the sleeper *Open Sleeper tickets* over *Open
+Cabin details*; the main button opened the PDF straight into the viewer. The several-tickets sheet
+is the existing sheet with its list and title changed; its grouping is tested.
 
 ---
 

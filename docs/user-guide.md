@@ -182,6 +182,11 @@ The file is **copied into the app**, so it opens without internet and keeps work
 delete the original. Tap an attachment to open it; tap its pencil to **rename** it, say what it
 is (*Document*, *Ticket*, *Confirmation*), or **Remove attachment**.
 
+**Mark the ticket as *Ticket*.** Then the item's main button opens it straight away — *Open
+Boarding pass SOF-HEL* — on Now, the Timeline and the detail page, and everything else sits on a
+second button (*Open Flight booking*, or *Other documents (3)*). Several tickets (a boarding pass
+each) open a list of just the tickets. A shared or picked file starts as *Document*.
+
 ### Trip documents
 
 At the bottom of **Now**, **Trip documents** holds what belongs to the whole trip: insurance, a
@@ -369,13 +374,14 @@ At home, on wifi, a day or two before:
 2. **Time zones**: open each flight's detail page. No ⚠ notice under *When* means its times are
    read in the right clock. Both ends name their zone (*Departs … 08:15 · Berlin time*): check
    each is where that end really is.
-3. **Tickets attached**: open each one once.
+3. **Tickets attached**: open each one once, and mark each as *Ticket* so its card opens it in one tap.
 4. **Airplane mode test**: switch it on, open the trip, open every ticket, switch it off.
 5. **Reminders** on where you want them; notifications allowed.
 6. **Backup**: Export everything → Drive.
 7. Glance at **Expenses → Bookings**: anything still *To pay*?
 
-On the road: Now shows what is next; tickets are one tap away under **Open attachments**.
+On the road: Now shows what is happening and what is next; a ticket marked *Ticket* is one tap
+away on its card.
 Photograph receipts as you pay.
 
 ---

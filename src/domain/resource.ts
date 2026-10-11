@@ -359,6 +359,41 @@ export function openLabel(resources: readonly Resource[]): string {
     : `Open ${name}`;
 }
 
+/** One button's worth of attachments: what it says, and what it opens (one directly, several in a sheet). */
+export type OpenGroup = { label: string; sheetTitle: string; resources: Resource[] };
+
+/**
+ * The fastest path to the ticket (R6): attachments marked *ticket* get the main button, the rest a
+ * second one. Nothing marked ticket — everything under one button, as before. Several tickets (a
+ * boarding pass each) open a sheet of only the tickets. Nothing stored decides which is "the"
+ * ticket, so nothing can point at one that was removed. Empty when there is nothing to open.
+ */
+export function openGroups(resources: readonly Resource[]): OpenGroup[] {
+  const tickets = resources.filter((resource) => resource.subtype === 'ticket');
+  if (tickets.length === 0) {
+    return resources.length === 0
+      ? []
+      : [{ label: openLabel(resources), sheetTitle: 'Open', resources: [...resources] }];
+  }
+
+  const others = resources.filter((resource) => resource.subtype !== 'ticket');
+  const groups: OpenGroup[] = [
+    {
+      label: tickets.length === 1 ? openLabel(tickets) : `Open tickets (${tickets.length})`,
+      sheetTitle: 'Tickets',
+      resources: tickets,
+    },
+  ];
+  if (others.length > 0) {
+    groups.push({
+      label: others.length === 1 ? openLabel(others) : `Other documents (${others.length})`,
+      sheetTitle: 'Other documents',
+      resources: others,
+    });
+  }
+  return groups;
+}
+
 /** Item attachments keyed by the item they hang off. Trip documents are left out. */
 export function groupResourcesByItem(resources: readonly Resource[]): Map<string, Resource[]> {
   const byItem = new Map<string, Resource[]>();
