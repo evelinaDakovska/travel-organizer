@@ -24,7 +24,7 @@ type Props = {
   submitLabel: string;
   onSubmit: (input: ExpenseInput) => Promise<void>;
   /** The receipts section: pending files on a new expense, saved ones on an existing one. */
-  receipts: ReactNode;
+  receipts?: ReactNode;
   /** Under the save button, for deleting an existing expense. */
   footer?: ReactNode;
 };

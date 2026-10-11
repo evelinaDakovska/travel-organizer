@@ -39,6 +39,7 @@ import {
   TRIP_ITEM_TABLES,
 } from '../../../src/repositories/tripItems';
 import { Button } from '../../../src/ui/components/Button';
+import { Fact } from '../../../src/ui/components/Fact';
 import { ItemRow } from '../../../src/ui/components/ItemRow';
 import { KindTile } from '../../../src/ui/components/KindTile';
 import { LoadFailed, QueryScreen, StaleNotice } from '../../../src/ui/components/QueryStates';
@@ -309,30 +310,6 @@ const REFUNDABLE_LABEL: Record<string, string | null> = {
 
 const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
-type FactProps = {
-  label: string;
-  value: string;
-  detail?: string | null;
-  muted?: boolean;
-  /** Long-press to copy — a reference is read out at a desk or pasted into a form. */
-  selectable?: boolean;
-};
-
-function Fact({ label, value, detail, muted = false, selectable = false }: FactProps) {
-  const c = useColors();
-  return (
-    <View style={styles.fact}>
-      <Text style={[type.bodyStrong, styles.factLabel, { color: c.text }]}>{label}</Text>
-      <View style={styles.factValue}>
-        <Text style={[type.body, { color: muted ? c.textMuted : c.text }]} selectable={selectable}>
-          {value}
-        </Text>
-        {detail ? <Text style={[type.caption, { color: c.textMuted }]}>{detail}</Text> : null}
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   kindRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   kindText: { flex: 1 },
@@ -340,9 +317,6 @@ const styles = StyleSheet.create({
   heading: { gap: spacing.sm },
   tags: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
   facts: { gap: spacing.md },
-  fact: { flexDirection: 'row', gap: spacing.lg },
-  factLabel: { width: 108 },
-  factValue: { flex: 1, gap: 2 },
   actions: { gap: spacing.sm },
   legs: { gap: spacing.md },
   hint: { textAlign: 'center' },

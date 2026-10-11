@@ -299,8 +299,9 @@ On the Expenses tab, **+** opens **New expense**:
 | **Receipts** | **+ Camera** (photograph it at the till), **+ Photo**, **+ File**. |
 
 Tap **Save expense**. The view shows a bar per category, then each expense by day; a paperclip
-marks one with receipts. Tap an expense to edit it, add or open receipts, or **Delete expense**
-(it says how many receipts go with it).
+marks one with receipts. Tap an expense for its page: the amount, the date, the description and
+its receipts (open them, or add more). **Edit** at the top changes it; **Delete expense** at the
+bottom removes it (it says how many receipts go with it).
 
 Receipts belong to their expense. They are **not** listed under Trip documents, and they are in
 the backup.

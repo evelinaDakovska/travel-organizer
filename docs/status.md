@@ -404,7 +404,7 @@ Planned in [`feedback-plan.md`](feedback-plan.md) (owner: go). Ships as 0.5.0 wi
 | **F2** | The **+** button shows a different icon when it does something else (e.g. adds an expense on the Expenses tab) | ✅ |
 | **F3** | Now: *This trip* at the top; *Open tasks* gets a way to see the completed ones | ✅ |
 | **F4** | Detail pages hide fields that are empty | ✅ |
-| **F5** | An expense opens a detail page, with Edit, not the form directly | ⬜ |
+| **F5** | An expense opens a detail page, with Edit, not the form directly | ✅ |
 | **F6** | An image attachment shows a small round thumbnail of itself, not *IMG* | ⬜ |
 
 **F1, F2, F4, what was built and seen on the emulator (dev build, sample data):**
@@ -428,6 +428,18 @@ through, and their circle un-ticks them; with every task done the list says *All
 **F3, how it was verified:** on the emulator: the band read *Finland · 20–24 Nov 2026 / In 40 days ·
 Helsinki time · Evelina, Sample Friend* and stayed while the list scrolled; a task ticked → *Show
 done (1)* → shown struck through → un-ticked from there → back in Open tasks.
+
+**F5, what was built:** `app/expense/[expenseId]/index.tsx` is a read-only page — the category
+icon and title, the amount large, *Category* (when a label is the title), *Date*, *Description* if
+any, **Receipts** (open, add) and **Delete expense** — with **Edit** at the top; the form moved,
+unchanged apart from its title, to `app/expense/[expenseId]/edit.tsx`, without receipts or Delete.
+**Deviation from the plan:** Delete moved to the detail page, as on items — on the edit screen it
+would have returned to a detail page whose expense was gone. `Fact` moved out of item detail to
+`src/ui/components/Fact.tsx`, its second user.
+
+**F5, how it was verified:** on the emulator: an expense added (Transport, EUR 450) → tapped →
+detail → Edit → amount 32 → *Save changes* → back on the detail page reading EUR 32.00 → *Delete
+expense* → back on the list, total EUR 1680.00 again.
 
 ---
 

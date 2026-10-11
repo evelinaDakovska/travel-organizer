@@ -831,7 +831,8 @@ app/                       expo-router routes: each screen composes its feature 
     edit.tsx               edit or delete the trip
     search.tsx             reached from the header, not a tab
   expense/new.tsx          ?tripId= — with pending receipts
-  expense/[expenseId].tsx  edit, receipts, delete
+  expense/[expenseId]/index.tsx  detail: amount, date, receipts, delete (F5)
+  expense/[expenseId]/edit.tsx   the form
   item/new.tsx             ?tripId=&kind=
   item/[itemId]/index.tsx     detail, with the status actions (decision log D21)
   item/[itemId]/edit.tsx
