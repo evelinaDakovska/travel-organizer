@@ -4,7 +4,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { refundableOf } from '../../../src/domain/expenses';
+import { refundableOf } from '../../../src/domain/bookingCosts';
 import { formatMoment, formatMoney } from '../../../src/domain/format';
 import { journeyLegs } from '../../../src/domain/journey';
 import { mapsUrl } from '../../../src/domain/places';

@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import type { CurrencyTotal } from '../../domain/expenses';
+import type { CurrencyTotal } from '../../domain/bookingCosts';
 import { formatMoney } from '../../domain/format';
 import { Card } from '../../ui/components/Card';
 import { spacing, type, useColors } from '../../ui/tokens';

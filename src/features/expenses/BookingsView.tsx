@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { expenseGroups, type CurrencyTotal } from '../../domain/expenses';
+import { expenseGroups, type CurrencyTotal } from '../../domain/bookingCosts';
 import type { TripItem } from '../../domain/tripItem';
 import { ItemRow } from '../../ui/components/ItemRow';
 import { SectionLabel } from '../../ui/components/SectionLabel';

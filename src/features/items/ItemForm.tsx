@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { Controller, useForm, type Control } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { refundableOf, withRefundable } from '../../domain/expenses';
+import { refundableOf, withRefundable } from '../../domain/bookingCosts';
 import {
   firstReturnLeg,
   isMultiLeg,

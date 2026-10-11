@@ -139,7 +139,8 @@ Screens stay thin and call these. No class hierarchy, no strategy objects — a 
 ## Build order (each step committed with tests)
 
 1. Migration `002` + its tests on a database shaped like real data; backup round trip.
-2. Domain: `split.ts`, `expenses.ts` additions — fully tested before any screen.
+2. Domain: `split.ts`, `spending.ts` additions — fully tested before any screen.
+   (`expenses.ts`, the booking costs from U6, is now `bookingCosts.ts`.)
 3. Repositories: expenses and payments CRUD (SQL tests in Node).
 4. Expenses tab with the three views; the card leaves Now.
 5. Add / edit form, receipts (camera needs the `CAMERA` permission — a native rebuild).

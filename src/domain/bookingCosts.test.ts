@@ -1,4 +1,10 @@
-import { countsAsSpent, expenseGroups, refundableOf, tripExpenses, withRefundable } from './expenses';
+import {
+  countsAsSpent,
+  expenseGroups,
+  refundableOf,
+  tripExpenses,
+  withRefundable,
+} from './bookingCosts';
 
 type Priced = Parameters<typeof countsAsSpent>[0];
 

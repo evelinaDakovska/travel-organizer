@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
-import { tripExpenses } from '../../../../src/domain/expenses';
+import { tripExpenses } from '../../../../src/domain/bookingCosts';
 import { spendingTotals, tripTotals } from '../../../../src/domain/spending';
 import { BookingsView } from '../../../../src/features/expenses/BookingsView';
 import { SpendingView } from '../../../../src/features/expenses/SpendingView';
