@@ -199,6 +199,7 @@ seconds" and are cheap.
 | **N2** | Checklists inside notes | ⬜ |
 | **N3** | Start a trip from a previous one | ⬜ |
 | **N4** | Search across all trips | ⬜ |
+| **N5** | Expenses tab and splitting, like Splitwise — **after the owner's trip** (first migration). Spec: [`expenses-spec.md`](expenses-spec.md) | ⬜ |
 
 **N1 — All documents.** Every file and link in a trip — attached to the trip *and* to its items — in
 one list, each row showing which item it belongs to, and opening in one tap. For when you know you
