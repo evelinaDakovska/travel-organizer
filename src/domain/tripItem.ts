@@ -46,6 +46,14 @@ export function subkindsFor(kind: TripItemKind): readonly string[] {
   return SUBKINDS[kind];
 }
 
+/**
+ * Which icon an item shows (F1): its subkind when that is valid for its kind, its kind otherwise —
+ * so an item moved to another kind never keeps a stale subkind's icon.
+ */
+export function itemIconKey(kind: TripItemKind, subkind: string | null): TripItemKind | Subkind {
+  return subkind !== null && isValidSubkind(kind, subkind) ? (subkind as Subkind) : kind;
+}
+
 /** Subkind is always optional — 'other' is expressed as no subkind, not a value. */
 export function isValidSubkind(kind: TripItemKind, subkind: string | null): boolean {
   if (subkind === null) return true;

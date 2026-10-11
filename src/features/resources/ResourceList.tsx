@@ -16,7 +16,8 @@ type Props = {
   owner: ResourceOwner;
   resources: readonly Resource[];
   title: string;
-  emptyText: string;
+  /** A help line while there is nothing yet. Without one, an empty list is just its add buttons (F4). */
+  emptyText?: string;
 };
 
 /** Receipts are photographed on the spot; documents arrive as files and links. */
@@ -76,11 +77,11 @@ export function ResourceList({ owner, resources, title, emptyText }: Props) {
             />
           ))}
         </View>
-      ) : (
+      ) : emptyText ? (
         <View style={[styles.empty, { backgroundColor: c.surfaceSunken }]}>
           <Text style={[type.body, { color: c.textMuted }]}>{emptyText}</Text>
         </View>
-      )}
+      ) : null}
 
       <View style={styles.actions}>
         {BUTTONS[owner.scope === 'expense' ? 'receipts' : 'documents'].map((kind) => (

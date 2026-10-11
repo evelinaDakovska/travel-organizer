@@ -11,6 +11,7 @@ import {
 } from '../../domain/tripItem';
 import { opacity, spacing, type, useColors } from '../tokens';
 import { Card } from './Card';
+import { KindTile } from './KindTile';
 import { StatusTag } from './StatusTag';
 
 type Props = { item: TripItem; onPress: () => void };
@@ -34,15 +35,19 @@ export function ItemRow({ item, onPress }: Props) {
         </Text>
       </View>
 
-      <Text style={[type.heading, { color: c.text }, done && styles.done]} numberOfLines={2}>
-        {item.title}
-      </Text>
-
-      {where ? (
-        <Text style={[type.body, { color: c.textMuted }]} numberOfLines={1}>
-          {where}
-        </Text>
-      ) : null}
+      <View style={styles.titleRow}>
+        <KindTile kind={item.kind} subkind={item.subkind} />
+        <View style={styles.titleText}>
+          <Text style={[type.heading, { color: c.text }, done && styles.done]} numberOfLines={2}>
+            {item.title}
+          </Text>
+          {where ? (
+            <Text style={[type.body, { color: c.textMuted }]} numberOfLines={1}>
+              {where}
+            </Text>
+          ) : null}
+        </View>
+      </View>
 
       <View style={styles.meta}>
         <Text style={[type.caption, { color: c.textMuted }]}>
@@ -74,6 +79,8 @@ function when(item: TripItem): string {
 const styles = StyleSheet.create({
   top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
   when: { flexShrink: 1 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  titleText: { flex: 1, gap: 2 },
   meta: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm },
   done: { textDecorationLine: 'line-through', opacity: 0.7 },
   dimmed: { opacity: opacity.dimmed },

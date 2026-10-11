@@ -8,7 +8,6 @@ import { queryView } from '../../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../../src/hooks/useLiveQuery';
 import { listNotes, NOTE_TABLES } from '../../../../src/repositories/notes';
 import { getTrip, TRIP_TABLES } from '../../../../src/repositories/trips';
-import { Button } from '../../../../src/ui/components/Button';
 import { LoadFailed, StaleNotice } from '../../../../src/ui/components/QueryStates';
 import { Card } from '../../../../src/ui/components/Card';
 import { Screen } from '../../../../src/ui/components/Screen';
@@ -45,12 +44,7 @@ export default function NotesScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
-          <Button
-            label="New note"
-            variant="secondary"
-            compact
-            onPress={() => router.push({ pathname: '/note/new', params: { tripId } })}
-          />
+          {/* New notes come from the floating button, which adds a note on this tab (F2). */}
 
           <StaleNotice queries={[notesQuery]} />
           {notesView === 'failed' ? (
@@ -73,7 +67,8 @@ export default function NotesScreen() {
           ) : (
             <View style={[styles.well, { backgroundColor: c.surfaceSunken }]}>
               <Text style={[type.body, { color: c.textMuted }]}>
-                No notes for this trip yet — door codes, Wi-Fi passwords, who to call.
+                No notes for this trip yet — door codes, Wi-Fi passwords, who to call. Tap + to add
+                one.
               </Text>
             </View>
           )}

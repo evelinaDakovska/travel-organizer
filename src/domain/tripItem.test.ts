@@ -2,6 +2,7 @@ import {
   detailsForKind,
   followStart,
   isValidSubkind,
+  itemIconKey,
   kindLabel,
   parseTripItemRow,
   routeLabel,
@@ -436,5 +437,20 @@ describe('detailsForKind', () => {
     expect(detailsForKind({ from: 'Sofia' }, 'transport')).toEqual({ from: 'Sofia' });
     expect(detailsForKind({ from: 'Sofia' }, 'stay')).toBeUndefined();
     expect(detailsForKind(undefined, 'stay')).toBeUndefined();
+  });
+});
+
+describe('itemIconKey', () => {
+  it('uses the subkind when there is one', () => {
+    expect(itemIconKey('transport', 'flight')).toBe('flight');
+    expect(itemIconKey('task', 'packing')).toBe('packing');
+  });
+
+  it('falls back to the kind without a subkind', () => {
+    expect(itemIconKey('stay', null)).toBe('stay');
+  });
+
+  it('ignores a subkind that does not belong to the kind', () => {
+    expect(itemIconKey('food', 'flight')).toBe('food');
   });
 });

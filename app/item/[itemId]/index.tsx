@@ -40,6 +40,7 @@ import {
 } from '../../../src/repositories/tripItems';
 import { Button } from '../../../src/ui/components/Button';
 import { ItemRow } from '../../../src/ui/components/ItemRow';
+import { KindTile } from '../../../src/ui/components/KindTile';
 import { LoadFailed, QueryScreen, StaleNotice } from '../../../src/ui/components/QueryStates';
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
@@ -144,18 +145,19 @@ export default function ItemDetail() {
             ) : null}
           </View>
           <Text style={[type.display, { color: c.text }]}>{item.title}</Text>
-          <Text style={[type.body, { color: c.textMuted }]}>{route ? `${kind} · ${route}` : kind}</Text>
+          <View style={styles.kindRow}>
+            <KindTile kind={item.kind} subkind={item.subkind} size={32} />
+            <Text style={[type.body, styles.kindText, { color: c.textMuted }]}>
+              {route ? `${kind} · ${route}` : kind}
+            </Text>
+          </View>
         </View>
 
         <OpenResource resources={resources ?? []} />
 
         <View style={styles.facts}>
-          <Fact
-            label="When"
-            value={startText}
-            detail={whenDetail || null}
-            muted={!item.start}
-          />
+          {/* Empty fields are not shown (F4): no date, no When. */}
+          {item.start ? <Fact label="When" value={startText} detail={whenDetail || null} /> : null}
           {mismatches.length > 0 ? <ZoneNotice item={item} mismatches={mismatches} /> : null}
           {reminder ? <Fact label="Reminder" value={reminder} muted={reminder === 'Off'} /> : null}
           {item.locationName || item.address ? (
@@ -217,7 +219,6 @@ export default function ItemDetail() {
             owner={{ scope: 'item', id: item.id }}
             resources={resources ?? []}
             title="Tickets & links"
-            emptyText="Attach the boarding pass, the booking confirmation, or a link to manage it."
           />
         )}
 
@@ -333,6 +334,8 @@ function Fact({ label, value, detail, muted = false, selectable = false }: FactP
 }
 
 const styles = StyleSheet.create({
+  kindRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  kindText: { flex: 1 },
   content: { padding: spacing.xl, paddingTop: spacing.sm, gap: spacing.xl, paddingBottom: spacing.xxxl },
   heading: { gap: spacing.sm },
   tags: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },

@@ -6,6 +6,7 @@ import type { Resource } from '../../domain/resource';
 import type { TimelineEntry } from '../../domain/timeline';
 import { routeLabel, transportDetails, type TripItem } from '../../domain/tripItem';
 import { Card } from '../../ui/components/Card';
+import { KindTile } from '../../ui/components/KindTile';
 import { StatusTag } from '../../ui/components/StatusTag';
 import { spacing, type, useColors } from '../../ui/tokens';
 import { OpenResource } from '../resources/OpenResource';
@@ -45,15 +46,19 @@ export function EntryCard({ entry, resources, onPress, showDate = false, note }:
         </Text>
       </View>
 
-      <Text style={[type.heading, { color: c.text }, done && styles.done]} numberOfLines={2}>
-        {role ? `${role} · ${item.title}` : item.title}
-      </Text>
-
-      {where ? (
-        <Text style={[type.body, { color: c.textMuted }]} numberOfLines={1}>
-          {where}
-        </Text>
-      ) : null}
+      <View style={styles.titleRow}>
+        <KindTile kind={item.kind} subkind={item.subkind} />
+        <View style={styles.titleText}>
+          <Text style={[type.heading, { color: c.text }, done && styles.done]} numberOfLines={2}>
+            {role ? `${role} · ${item.title}` : item.title}
+          </Text>
+          {where ? (
+            <Text style={[type.body, { color: c.textMuted }]} numberOfLines={1}>
+              {where}
+            </Text>
+          ) : null}
+        </View>
+      </View>
 
       {note ? (
         <Text style={[type.bodyStrong, { color: c.accentText }]} numberOfLines={1}>
@@ -73,6 +78,8 @@ export function EntryCard({ entry, resources, onPress, showDate = false, note }:
 const styles = StyleSheet.create({
   top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
   when: { flexShrink: 1 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  titleText: { flex: 1, gap: 2 },
   done: { textDecorationLine: 'line-through', opacity: 0.7 },
   open: { marginTop: spacing.xs },
 });

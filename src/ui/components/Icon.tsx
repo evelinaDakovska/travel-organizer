@@ -1,35 +1,69 @@
 import {
+  Bed,
   BedDouble,
+  Binoculars,
   Bus,
+  CalendarCheck,
   CalendarDays,
+  Car,
+  CarTaxiFront,
   Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Coffee,
+  Croissant,
   DatabaseBackup,
   Ellipsis,
+  FerrisWheel,
   FileText,
+  Flag,
+  Flower2,
+  Footprints,
+  Frame,
   Globe,
+  Hotel,
+  House,
   Image,
+  Landmark,
   Link,
+  Luggage,
   MapPin,
+  MountainSnow,
+  NotebookPen,
   NotebookText,
   Paperclip,
+  PartyPopper,
+  Plane,
+  PlaneTakeoff,
   Plus,
+  ReceiptText,
+  Route,
   Search,
   Shapes,
   Share2,
+  ShieldCheck,
+  Ship,
   ShoppingBag,
   ShoppingBasket,
+  SquareCheckBig,
+  SquareParking,
+  Store,
   Sun,
+  Tent,
+  Theater,
   Ticket,
+  TrainFront,
   TriangleAlert,
   Utensils,
+  Van,
   Wallet,
+  Wine,
   X,
   type LucideIcon,
 } from 'lucide-react-native';
 
+import type { Subkind, TripItemKind } from '../../domain/tripItem';
 import { useColors } from '../tokens';
 
 /**
@@ -68,6 +102,9 @@ const ICONS = {
   shopping: ShoppingBag,
   accommodation: BedDouble,
   other: Shapes,
+  // What the + button adds, when it is not an item (F2).
+  addExpense: ReceiptText,
+  addNote: NotebookPen,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
@@ -79,4 +116,69 @@ export function Icon({ name, size = 22, color, strokeWidth = 2.2 }: Props) {
   const c = useColors();
   const Glyph = ICONS[name];
   return <Glyph size={size} color={color ?? c.text} strokeWidth={strokeWidth} />;
+}
+
+/**
+ * An item's icon by what it is (F1): the subkind's when it has one, the kind's otherwise. Typed
+ * against every kind and subkind, so a new one without an icon does not compile. Shape, not colour,
+ * tells them apart (WCAG 1.4.1).
+ */
+const ITEM_ICONS = {
+  transport: Route,
+  flight: Plane,
+  train: TrainFront,
+  bus: Bus,
+  ferry: Ship,
+  car: Car,
+  taxi: CarTaxiFront,
+  transfer: Van,
+  walk: Footprints,
+  stay: BedDouble,
+  hotel: Hotel,
+  apartment: House,
+  hostel: Bed,
+  guesthouse: House,
+  camping: Tent,
+  activity: Ticket,
+  museum: Landmark,
+  gallery: Frame,
+  tour: Flag,
+  attraction: FerrisWheel,
+  event: PartyPopper,
+  theatre: Theater,
+  outdoor: MountainSnow,
+  spa: Flower2,
+  food: Utensils,
+  restaurant: Utensils,
+  cafe: Coffee,
+  bar: Wine,
+  bakery: Croissant,
+  market: Store,
+  task: SquareCheckBig,
+  'check-in': PlaneTakeoff,
+  booking: CalendarCheck,
+  document: FileText,
+  packing: Luggage,
+  other: Shapes,
+  luggage: Luggage,
+  insurance: ShieldCheck,
+  parking: SquareParking,
+  shopping: ShoppingBag,
+  viewpoint: Binoculars,
+} satisfies Record<TripItemKind | Subkind, LucideIcon>;
+
+export type ItemIconKey = keyof typeof ITEM_ICONS;
+
+export function ItemIcon({
+  iconKey,
+  size = 20,
+  color,
+}: {
+  iconKey: ItemIconKey;
+  size?: number;
+  color?: string;
+}) {
+  const c = useColors();
+  const Glyph = ITEM_ICONS[iconKey];
+  return <Glyph size={size} color={color ?? c.text} strokeWidth={2.2} />;
 }

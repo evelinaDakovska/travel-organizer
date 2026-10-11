@@ -44,8 +44,13 @@ it.
 
 ### Add what is booked
 
-Inside a trip, tap the round **+** at the bottom right (on Now, Timeline, Places or Notes). It
-opens **Add to trip**.
+Inside a trip, tap the round **+** at the bottom right (on Now, Timeline or Places). It opens
+**Add to trip**. The button shows what it adds: a plain **+** for an item, a receipt on Expenses
+(a new expense), a notebook on Notes (a new note).
+
+Every item carries an **icon of what it is** — a plane, a train, a bed, a museum, a fork and knife,
+a ticked box for a task — so a list can be read without reading it. The icon follows the *Type*
+you pick (*Flight*, *Museum*…), or the kind (*Travel*, *Stay*…) when there is no type.
 
 1. **What is it**: *Travel*, *Stay*, *Activity*, *Food*, *To do* or *Other*. Then an optional
    **Type** (flight, train, car, hotel, museum, tour…) that picks the icon.
@@ -336,8 +341,8 @@ Nothing is copied; it is the same item.
 
 ### Notes
 
-Free text per trip: a plan, opening hours, the cabin's key code. **New note**, a title and the
-text. **Pin** keeps a note at the top. Notes are searchable.
+Free text per trip: a plan, opening hours, the cabin's key code. The **+** on the Notes tab, a
+title and the text. **Pin** keeps a note at the top. Notes are searchable.
 
 ---
 
