@@ -394,9 +394,9 @@ session.
 
 ---
 
-## F — feedback from a senior frontend developer (the owner's husband) · 2026-10-11, not planned yet
+## F — feedback from a senior frontend developer (the owner's husband) and the owner · 2026-10-11
 
-Written down as given; each needs a plan and the owner's decisions first (plan-first rule).
+Planned in [`feedback-plan.md`](feedback-plan.md) (owner: go). Ships as 0.5.0 with N6 and R1–R11.
 
 | | Feedback | ✓ |
 |---|---|---|
@@ -404,6 +404,8 @@ Written down as given; each needs a plan and the owner's decisions first (plan-f
 | **F2** | The **+** button shows a different icon when it does something else (e.g. adds an expense on the Expenses tab) | ⬜ |
 | **F3** | Now: *This trip* at the top; *Open tasks* gets a way to see the completed ones | ⬜ |
 | **F4** | Detail pages hide fields that are empty | ⬜ |
+| **F5** | An expense opens a detail page, with Edit, not the form directly | ⬜ |
+| **F6** | An image attachment shows a small round thumbnail of itself, not *IMG* | ⬜ |
 
 ---
 

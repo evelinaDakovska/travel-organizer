@@ -10,7 +10,8 @@ what is still open, and the conventions to follow.
 | `docs/status.md` | **Status board** — milestones, C, S and N tasks, open questions. The one place status lives |
 | `docs/technical-reference.md` | **Single source of truth** for schema, time model, file storage, queries |
 | `docs/plan.md` | Step-by-step implementation plan and current position |
-| `docs/review-plan.md` | **Next work:** R1–R11 from the independent review, decisions answered |
+| `docs/review-plan.md` | R1–R11 from the independent review (done) |
+| `docs/feedback-plan.md` | **Next work:** F1–F6, feedback after showing the app |
 | `docs/decision-log.md` | *Why* things were decided. Rationale only — no authoritative detail |
 | `docs/windows-handoff.md` | **Continuing on Windows** — read this instead of `dev-setup.md` there |
 | `docs/dev-setup.md` | Machine setup for the macOS machine it was started on |
