@@ -381,10 +381,12 @@ originals line for line and a PDF opened in airplane mode; the backup code is un
 On the phone, *Import* with *Keep mine* on the Drive zip read it whole and changed nothing. Then
 0.2.0 went on with `adb install -r --user 0` — no uninstall — and launched without a crash.
 
-**Open, from the phone:** the owner reports a flight showing **EUR 92326.00** that was **993.26**
+**Watch for, from the phone:** the owner reports a flight showing **EUR 92326.00** that was **993.26**
 in 0.1.0. Not explained yet: `formatMoney` and every display of a price are unchanged since M2, no
-migration ran, and only *Edit → Save* writes a price. Asked the owner whether that item was saved
-from Edit after the update. The Drive backup holds the value from before. Note: the U1 "×100" bug
+migration ran, and only *Edit → Save* writes a price. The owner did **not** edit it after the update, saw
+993.26 on the item page, has corrected it by hand, and thinks it may have been their own typing
+error — every other price was right. **Keep in mind: if a price is ever wrong again, suspect this
+first** and compare with the latest Drive backup before anyone retypes it. The Drive backup holds the value from before. Note: the U1 "×100" bug
 was found by typing with `adb input`; on the phone's keyboard 0.1.0 may have kept the decimal point
 (a controlled input whose value does not change is not reset), so that claim is unproven there.
 
