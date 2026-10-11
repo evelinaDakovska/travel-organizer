@@ -31,7 +31,8 @@ run this app. Workflow is `expo prebuild` then `npx expo run:android`.
 
 ## 2. Domain model
 
-Five tables: `trips`, `trip_items`, `trip_notes`, `resources`, `settings`.
+Seven tables: `trips`, `trip_items`, `trip_notes`, `resources`, `settings` (migration 001), and
+`expenses`, `payments` (migration 002, N5). See §13 for expenses.
 
 ### Two independent axes on a TripItem
 
@@ -83,7 +84,8 @@ WHERE trip_id = ? AND status = 'idea'
 ORDER BY CASE priority
            WHEN 'must' THEN 0 WHEN 'want' THEN 1 WHEN 'maybe' THEN 2 ELSE 3 END, title
 
--- Bookings: no tab uses this since the design handoff (decision log D20); kept and tested
+-- Bookings: no tab uses this since the design handoff (decision log D20); kept and tested.
+-- (The Expenses tab's *Bookings* view is booking COSTS, derived from items in TypeScript — §13.)
 WHERE trip_id = ? AND status = 'confirmed'
 ORDER BY (start_utc IS NULL), start_utc, title
 
@@ -268,6 +270,54 @@ CREATE TABLE settings (
 -- 'notification_lead_minutes' integer as text
 ```
 
+**Migration 002 (`src/db/migrations/002-expenses.ts`, N5)** — purely additive: two tables and one
+nullable column. No existing row is rewritten. It carries N5b's splitting columns (`paid_by`,
+`split`, `payments`) unused, so the phone needs this one migration for the whole of N5
+(decision log D25).
+
+```sql
+CREATE TABLE expenses (
+  id       TEXT PRIMARY KEY,
+  trip_id  TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+  category TEXT NOT NULL CHECK (category IN ('food','groceries','transport','activities',
+                                             'shopping','accommodation','other')),
+  label    TEXT,                     -- optional; the UI titles a label-less expense by category
+  amount   INTEGER NOT NULL CHECK (amount > 0),   -- MINOR UNITS
+  currency TEXT NOT NULL,            -- ISO 4217; never converted
+  spent_on TEXT NOT NULL,            -- 'YYYY-MM-DD', a local date
+  notes    TEXT,
+  paid_by  TEXT,                     -- N5b, unused in N5a
+  split    TEXT,                     -- N5b JSON, unused in N5a
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX idx_expenses_trip ON expenses(trip_id, spent_on);
+
+CREATE TABLE payments (              -- N5b "settle up"; unused in N5a
+  id TEXT PRIMARY KEY,
+  trip_id   TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+  from_name TEXT NOT NULL,
+  to_name   TEXT NOT NULL,
+  amount    INTEGER NOT NULL CHECK (amount > 0),
+  currency  TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX idx_payments_trip ON payments(trip_id);
+
+-- A receipt is a resource with trip_id = the expense's trip AND expense_id set, so the
+-- one-owner CHECK on resources still holds and the table is not rebuilt.
+ALTER TABLE resources ADD COLUMN expense_id TEXT REFERENCES expenses(id) ON DELETE CASCADE;
+CREATE INDEX idx_resources_expense ON resources(expense_id);
+```
+
+**Receipts and the trip-document queries.** Because a receipt has a `trip_id`, every query that
+reads resources by trip must decide about it: `SELECT_RESOURCES_FOR_TRIP` (Trip documents)
+excludes `expense_id IS NOT NULL`; `SELECT_ITEM_RESOURCES_FOR_TRIP` joins through items, so never
+sees one; `COUNT_TRIP_CONTENTS` counts them (deleting a trip takes its receipts);
+`SELECT_ALL_STORED_PATHS` includes them (the sweep keeps their files). `INSERT_RECEIPT` takes the
+trip id from the expense row, so a receipt can never name a trip other than its expense's.
+`ResourceOwner` has a third scope, `expense`.
+
 ### Conventions
 
 - **Ids** are UUIDs from `expo-crypto`, generated in app code. No autoincrement.
@@ -296,6 +346,19 @@ Hand-written, append-only, numbered: `src/db/migrations/001-initial.ts`, `002-�
 `PRAGMA user_version` holds the applied version. Run via `SQLiteProvider`'s `onInit`.
 
 **Never edit a shipped migration** — add a new one. There is no ORM and no schema-diffing tool.
+
+**A migration and its `user_version` commit together.** `migrationBatch(migration)` appends
+`PRAGMA user_version = N` to the migration's SQL and `migrate` runs the batch in one transaction.
+Before 0.3.0 the version was written in a separate statement afterwards, so an app killed in
+between had the tables but not the version, re-ran the migration and failed on `CREATE TABLE`.
+The migration tests run the same batch the app runs.
+
+`migrate` uses `withExclusiveTransactionAsync`. That is fine here, unlike for imports (§12): it runs
+in `onInit`, before any screen subscribes to changes.
+
+Migrations are tested from a database shaped like the phone's (`002-expenses.test.ts`: one of
+everything, awkward values, rows compared before/after, a failing batch leaves nothing). Before
+0.3.0 shipped, 002 was also run on a copy of the owner's real rows; all came through identical.
 
 ---
 
@@ -422,6 +485,31 @@ Reasons:
 - Share-intent payloads land in a cache path the OS can reclaim.
 - The original file may be deleted or moved by the user.
 
+### Attaching: three pickers, and receipts before their expense exists
+
+`src/features/resources/attach.ts` has one picker per source — `file` (expo-document-picker,
+several at once), `photo` (image library, several), `camera` (asks the CAMERA permission and
+throws `CameraPermissionError`, which the screen turns into *Open Settings*) — and two ways to use
+them:
+
+- `attach(db, owner, kind)` picks, copies each file in and writes its row at once, one file at a
+  time so one unreadable file does not cost the others. Items, trip documents and an existing
+  expense's receipts use it. `attachFile` is the same for one file and serves the share sheet.
+- `pickAndImport(kind)` copies files in **without a row**, for a new expense whose id does not
+  exist yet. The form holds the `ResourceInput`s and `createExpense` writes them with the expense
+  in one transaction.
+
+A copy no row will ever point at is deleted at once: removing a pending receipt, or leaving the
+new-expense form unsaved, calls `deleteStoredFile` (media paths only, best effort). The form does
+not delete once a save has started, since rows may already point at the files; a save that throws
+has rolled back and re-enables the cleanup. Anything a kill leaves behind is the start-up sweep's.
+
+A label comes from the file name (`defaultFileLabel`), except names that mean nothing — a
+media-store id (`37.png`) or a generated UUID (the camera's) — which get the picker's fallback,
+*Document* or *Photo*.
+
+The documents' buttons are *File · Photo · Link*; a receipt's are *Camera · Photo · File*.
+
 ### Paths are relative
 
 `resources.stored_path` holds `media/<uuid>.<ext>`, joined to `Paths.document` at read time.
@@ -515,8 +603,8 @@ a clear message, not crash and not silently show nothing.
 
 **Manual export/import is the plan; Android Auto Backup is a backstop only.**
 
-Export produces a `.zip` containing a JSON dump of all five tables plus the document files, handed
-to the Android share sheet (→ Drive, or anywhere). Import restores it.
+Export produces a `.zip` containing a JSON dump of every table plus the document files, handed
+to the Android share sheet (→ Drive, or anywhere). Import restores it. Format and import rules: §12.
 
 Android Auto Backup is enabled because it costs one line of config, but is **not relied on**: it
 is size-capped, only runs on wifi + charging + idle, and only restores during new-device setup.
@@ -682,12 +770,17 @@ app/                       expo-router routes ONLY — thin, no logic
   backup.tsx               export everything as one zip, and import one back
   trip/new.tsx
   trip/[tripId]/
-    _layout.tsx            bottom tabs: Now · Timeline · Places · Notes (decision log D20)
-    index.tsx              Now (default) — up next, open tasks, trip info, trip documents
-    timeline.tsx
-    places.tsx
-    notes.tsx
+    (tabs)/_layout.tsx     bottom tabs: Now · Timeline · Places · Expenses · Notes (D20, D25);
+                           the + adds an expense on Expenses, an item everywhere else
+    (tabs)/index.tsx       Now (default) — up next, open tasks, trip info, trip documents
+    (tabs)/timeline.tsx
+    (tabs)/places.tsx
+    (tabs)/expenses.tsx    trip total, then Spending | Bookings (§13)
+    (tabs)/notes.tsx
+    edit.tsx               edit or delete the trip
     search.tsx             reached from the header, not a tab
+  expense/new.tsx          ?tripId= — with pending receipts
+  expense/[expenseId].tsx  edit, receipts, delete
   item/new.tsx             ?tripId=&kind=
   item/[itemId]/index.tsx     detail, with the status actions (decision log D21)
   item/[itemId]/edit.tsx
@@ -696,22 +789,28 @@ app/                       expo-router routes ONLY — thin, no logic
   note/[noteId].tsx        edit, pin, delete
   resource/[resourceId].tsx   rename, retype, remove an attachment
   resource/new-link.tsx
+  resource/attach-to.tsx   show one file on an item as well (U4)
   share.tsx                share-intent landing (modal)
 
 src/
   db/
     client.ts              open + pragmas
-    migrations/001-initial.ts, index.ts
+    migrations/001-initial.ts, 002-expenses.ts, index.ts
+    queries.ts             every SQL string
   domain/                  PURE TS — no React, no SQLite, no Expo
     trip.ts  tripItem.ts  resource.ts  note.ts
     time.ts                wall-clock <-> instant, precision, formatting
     timeline.ts            day grouping, next-item derivation
     reminders.ts           when each item reminds, and the reconcile plan
     share.ts               share-sheet payloads: parse, classify, suggest a trip
+    spending.ts            expenses (N5): categories, form schema, by day, totals
+    bookingCosts.ts        booking costs from items (U6): what counts, paid / to pay
+    export.ts  archive.ts  backup document and zip (§12)
   repositories/            SQL lives here and nowhere else
-    trips.ts  tripItems.ts  resources.ts  notes.ts  settings.ts
+    trips.ts  tripItems.ts  resources.ts  notes.ts  settings.ts  expenses.ts  backup.ts
   files/
-    storage.ts             import, path resolution, GC sweep
+    storage.ts             import, path resolution, delete an unsaved copy, GC sweep
+    backupFiles.ts         export / import the zip
   notifications/
     reminders.ts           permission, channel, reconcile the scheduled set with the database
     useReminders.ts        sync on launch and on change; open the item a reminder is about
@@ -721,9 +820,9 @@ src/
     theme/palette.ts       raw colour ramps — the only hex values in the app
     theme/roles.ts         semantic colour roles per scheme, contrast-tested
     tokens.ts              useColors(), fonts, type scale, spacing, radius, elevation
-    components/            Card, Tag, StatusTag, SectionLabel, Button, Field, Icon, …
+    components/            Card, Tag, StatusTag, SectionLabel, Button, Field, Icon, MoneyInputs, …
   features/
-    items/  resources/  trips/  timeline/  places/  notes/  share/
+    items/  resources/  trips/  timeline/  places/  notes/  share/  expenses/
 ```
 
 **`src/domain/` imports nothing native.** If a domain module needs an Expo import, the design is
@@ -793,7 +892,14 @@ travel-organizer-backup-2026-09-11.zip
   media/<id>.<ext>     every file any resource points at
 ```
 
-`backup.json` carries all five tables verbatim plus a **file manifest** — one entry per distinct
+**Format 2** (0.3.0, `EXPORT_FORMAT_VERSION`) added `expenses`, `payments` and
+`resources.expense_id`. A **format-1** backup (0.2.0) still imports: the Zod schema defaults the
+missing tables to `[]` and `expense_id` to null. A newer format is refused. `EXPORT_COLUMNS` lists
+every table's columns, and a test fails if a table in the schema is missing from it — it caught
+exactly that while N5 was built. On import, expenses are written before resources, so a receipt's
+`expense_id` always has its row.
+
+`backup.json` carries every table verbatim plus a **file manifest** — one entry per distinct
 file listing every resource that references it, since two resources can share one file.
 
 ### Open question 5, resolved: one archive for everything
@@ -828,6 +934,11 @@ change listener never reports, so every open screen would keep showing the pre-i
 being partly read, and manifest paths are validated with the same `isStoredPath` guard as the
 media directory, so a tampered archive cannot write outside it.
 
+The confirmation names what will be added (`summariseImportPlan`): *Adds 1 trip, 24 items, 2 notes,
+2 expenses and 18 saved files. 1 trip already here is left as it is.* The expenses clause appears
+only when there are some, so a format-1 backup reads as it always did. Receipts count as saved
+files.
+
 `planImport` reports `missingFiles` — rows whose file is not in the archive — so the UI can say
 what will not open rather than restoring a dead reference silently.
 
@@ -858,3 +969,57 @@ start-up sweep collects, never rows pointing at nothing. A stored file already o
 since stored names are unique ids.
 
 `File.bytes()` is asynchronous (`bytesSync()` exists); `File.write()` takes a `Uint8Array`.
+
+---
+
+## 13. Expenses (N5a)
+
+Spec and the rest of N5 (splitting): `docs/expenses-spec.md`. Plan and audit: `docs/n5-plan.md`.
+
+### Two kinds of cost, two sources
+
+| | Spending | Bookings |
+|---|---|---|
+| What | Paid during the trip: a taxi, groceries | The prices on the trip's items |
+| Stored in | `expenses` (migration 002) | `trip_items.price_amount` / `price_currency` / `is_paid` |
+| Domain | `src/domain/spending.ts` | `src/domain/bookingCosts.ts` |
+| Counted | Every expense | `countsAsSpent`: confirmed items, plus cancelled ones marked not refundable. Ideas and refundable or unspecified cancellations are not |
+
+**An expense is not a TripItem.** It has no time, place, status or reminder, and putting it in
+`trip_items` would make every timeline, Now and search query filter it out.
+
+### The tab
+
+`app/trip/[tripId]/(tabs)/expenses.tsx`: `TripTotalCard` (`tripTotals`: bookings + spending, per
+currency), then a switch — tapped, not swiped — between **Spending** (`CategoryBreakdown` from
+`spendingTotals`, then `expensesByDay`, newest day first) and **Bookings** (`expenseGroups`: paid
+and to pay, in trip order). A row shows a paperclip when `COUNT_RECEIPTS_FOR_TRIP` has receipts for
+it.
+
+**Currencies are never converted or summed across** (CLAUDE.md §7): every total is a list, one
+entry per currency.
+
+### Rules (pure, tested)
+
+| Function | Rule |
+|---|---|
+| `expenseInputSchema` | amount > 0 in minor units; currency three capitals; category one of seven; label ≤ 120; date `YYYY-MM-DD` |
+| `expenseTitle` | the label, else the category's name |
+| `nextCurrency` | the currency of the latest expense entered on this trip, else EUR |
+| `expensesByDay` | grouped by `spent_on`, newest first |
+| `spendingTotals` | per currency, per category, largest first |
+| `tripTotals` | bookings + spending per currency, both parts kept |
+
+### Repository
+
+`src/repositories/expenses.ts`: `listExpenses`, `getExpense`, `createExpense` (with its receipts,
+one transaction), `updateExpense` (never writes `paid_by` / `split`, which no form sets yet),
+`deleteExpense` (receipt rows cascade; their files go in the next sweep), `countReceipts`.
+`EXPENSE_TABLES` is what `useLiveQuery` listens to.
+
+### Forms
+
+`ExpenseForm` focuses Amount on open. `AmountInput` and `CurrencyInput` (`src/ui/components/MoneyInputs.tsx`,
+shared with the item form) **keep their own text**: react-hook-form shows a field's default while
+its value is `undefined`, so rendering from the form value dropped a typed decimal point
+(`12.50` → 1250) and snapped a cleared currency back to its default (fixed 2026-10-11).

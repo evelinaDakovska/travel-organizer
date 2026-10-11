@@ -322,6 +322,8 @@ Search is a header action. Trip info and Trip documents sit at the bottom of Now
 Four tabs reach comfortably one-handed on a tall phone. `SELECT_BOOKINGS` stays, tested, with no
 screen using it yet.
 
+*Amended by D25 (2026-10-11): a fifth tab, **Expenses**, between Places and Notes.*
+
 ---
 
 ## D21 — A confirmed item is cancelled before it can be deleted
@@ -381,3 +383,55 @@ with one user.
 
 **Cost:** the keystore must be backed up. Losing it means the next version can only be installed by
 uninstalling, which deletes the data unless a backup was exported first.
+
+---
+
+## D25 — Expenses (N5): a tab, its own table, one migration for all of N5
+
+Specified with the owner on 2026-10-11 (`docs/expenses-spec.md`), after looking at Splitwise,
+Tricount and Splid. N5a (no splitting) was built first, at the owner's request before their trip.
+It was built without a plan agreed beforehand; `docs/n5-plan.md` is that plan written afterwards
+and audited. Decisions 1–6 below were put to the owner and answered the same day.
+
+**Decision — a fifth tab.** *Expenses*, with **Spending · Bookings** inside it (and *Settle up*
+with N5b), switched by tapping, not swiping. Amends D20. **Rejected:** a card on Now that opens a
+page (U9, 0.2.1, never installed). Expenses are looked at often during a trip and deserve a
+place of their own. **Decision 5:** the card on Now was removed again. *Owner: yes.*
+
+**Decision — spending is its own table, not a TripItem.** An expense has no time, place, status
+or reminder. In `trip_items` it would need filtering out of every timeline, Now, Places and search
+query. **Booking costs stay on the items** (U6) and are derived, so a price is never entered twice.
+
+**Decision 1 — N5b's columns ship in migration 002.** `paid_by`, `split` and `payments` are created
+now, unused. **Rejected:** adding them in a migration 003. **Why:** every migration is a moment of
+risk on the phone; one additive migration for the whole feature halves it. Unused columns cost
+nothing. *Owner: yes.*
+
+**Decision 2 — receipts are resources.** A receipt is a `resources` row carrying the expense's
+`trip_id` and an `expense_id`. **Rejected:** a `receipts` table, or making `trip_id` nullable for a
+third owner. The first duplicates the whole file lifecycle (import, open, sweep, backup); the
+second needs a table rebuild, the riskiest migration there is. **Cost:** every query reading
+resources by trip must decide about receipts (technical reference §3). *Owner: yes.*
+
+**Decision 3 — a migration and its `user_version` commit together.** Found while writing 002: the
+version was written after the migration, so a kill in between would re-run it and fail on
+`CREATE TABLE` at every start. *Owner: keep it.*
+
+**Decision 4 — receipts on a new expense are copied in at once, and deleted at once if
+abandoned.** **Rejected:** copying only on Save (slower Save, a source URI that may no longer be
+readable, a partial-failure path). As built first, abandoned copies waited for the start-up
+sweep. *Owner: change it* — they now go at once, and the sweep is only the fallback.
+
+**Decision 6 — screen choices made while building.** A trip total card above the views; an
+expense without a label is titled by its category; deleting an expense says how many receipts go
+with it; a receipt does not offer *Also attach to an item*. *Owner: yes.*
+
+**Decision — currencies are settled separately, never converted** (from the spec). No exchange
+rates, which would need the internet and go stale. Every total is a list per currency.
+
+**Decision — unequal splits are an amount per person only** (N5b, from the spec). **Rejected:**
+shares and percentages. The owner's own trips are family and do not split; one simple model is
+enough.
+
+**Decision — bookings take part in the split** (N5b, from the spec). A hotel paid by one person is
+the biggest thing to settle; leaving it out would make the split wrong.

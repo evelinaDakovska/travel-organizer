@@ -15,6 +15,7 @@ what is still open, and the conventions to follow.
 | `docs/dev-setup.md` | Machine setup for the macOS machine it was started on |
 | `docs/original-spec.md` | The original brief. Historical; superseded where this file disagrees |
 | `docs/ideas.md` | Someday/maybe. Deliberately out of scope |
+| `docs/user-guide.md` | **How to use the app**, for the owner — every screen, backup, the pre-flight checklist |
 
 ---
 
@@ -136,7 +137,8 @@ This collapses Places, Bookings and Timeline into three queries over one table, 
 
 ### 5.2 One `trip_items` table
 
-Plus `trips`, `trip_notes`, `resources`, `settings`. Five tables total. No per-kind tables.
+Plus `trips`, `trip_notes`, `resources`, `settings`, and since migration 002 `expenses` and
+`payments` (N5; an expense is not a TripItem, D25). No per-kind tables.
 Kind-specific extras live in a Zod-validated `details` JSON column.
 
 ### 5.3 Time: store wall-clock + IANA zone, derive the instant

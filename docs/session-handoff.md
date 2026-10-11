@@ -128,8 +128,8 @@ activity, food, task, other) and `status` (idea, confirmed, cancelled). A café 
 `kind='food', status='idea'`. Places, Bookings and Timeline are three queries over one table, and
 promoting a place to a plan is a single `UPDATE`.
 
-**One `trip_items` table.** Five tables total: `trips`, `trip_items`, `trip_notes`, `resources`,
-`settings`. Kind-specific extras live in a Zod-validated `details` JSON column, pinned to transport
+**One `trip_items` table.** Seven tables: `trips`, `trip_items`, `trip_notes`, `resources`,
+`settings`, and `expenses` + `payments` from migration 002 (an expense is not a TripItem, D25). Kind-specific extras live in a Zod-validated `details` JSON column, pinned to transport
 (from, to, carrier, number, seat) and permissive elsewhere.
 
 **Time: store wall-clock + IANA zone, derive the instant.** Never store a bare UTC instant for a
@@ -156,8 +156,8 @@ and self-healing. **Never pass a failed read into the sweep** — an empty refer
 need is "re-render when the DB changes", met by `useLiveQuery` over
 `addDatabaseChangeListener`. Never mirror rows into memory.
 
-**Four trip tabs, no Bookings tab (D20).** Now · Timeline · Places · Notes, with the add button
-floating above the bar. Trip facts and trip documents sit at the bottom of Now. `SELECT_BOOKINGS`
+**Five trip tabs, no Bookings tab (D20, D25).** Now · Timeline · Places · Expenses · Notes, with the
+add button floating above the bar (it adds an expense on Expenses). Trip facts and trip documents sit at the bottom of Now. `SELECT_BOOKINGS`
 still exists and is tested, with no screen using it.
 
 **A confirmed item is cancelled before it can be deleted (D21).** Its tickets may be the only
@@ -488,8 +488,10 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 - **Found in the real data:** no item has its own zone, so legs from or to Germany on the Lapland
   trip are an hour out in countdown/Up next (the screen shows the times as typed). Told the owner;
   they can set the zones on the phone.
-- **Next: §11.5 step 5 — the documentation.** The user guide is Markdown, `docs/user-guide.md`
-  (owner's choice). Show the outline and get a yes before writing. Then step 7, the phone.
+- **Step 5 done: the documentation.** `docs/user-guide.md` (new, outline approved by the owner),
+  `technical-reference.md` (migration 002, receipts, the attach pipeline, backup format 2, §13
+  Expenses), `decision-log.md` (D25, N5's decisions as answered; D20 amended).
+- **Next: §11.5 step 7, the phone** — the owner's call. The APK is ready.
 - **The emulator holds the owner's real data** (0.3.0 release, plus two test expenses and one
   shared test PDF), and `real-backup.zip` sits in its Downloads. Wipe it when it is no longer
   needed (`adb uninstall`, remove the zip).

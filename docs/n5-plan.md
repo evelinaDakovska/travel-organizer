@@ -111,10 +111,12 @@ alarms, documents and the backup recorded → **0.3.0 installed over the top** (
 | PDF in airplane mode | ✅ opens |
 | Backup | ✅ "2 trips and 28 saved files", as before |
 
-## Step 9 — Documentation ⬜
+## Step 9 — Documentation ✅
 
-A user guide for the whole app, and the technical reference brought up to date. Plan to be
-shown to the owner before writing.
+A user guide for the whole app, and the technical reference brought up to date. The outline was
+shown to the owner and approved (2026-10-11). Written: `docs/user-guide.md` (Markdown in the repo,
+owner's choice), `technical-reference.md` (§3 migration 002 and receipts, §5 attaching, §12
+format 2, §13 Expenses), `decision-log.md` (D25).
 
 ## Step 10 — The phone ⬜
 
@@ -128,7 +130,7 @@ reminders → add one expense with a camera receipt → USB debugging off, Auto 
 1. ~~Decisions 1–6: yes or no.~~ ✅ Answered 2026-10-11: yes to 1, 2, 3, 5, 6; D4 changed.
 2. ~~Gap A (import message names expenses) and Gap C (rename) — small, each with tests.~~ ✅ Done.
 3. ~~Gap D (camera) and editing/deleting an expense — tap through on the emulator.~~ ✅ Done, with a regression pass.
-4. Step 9 (documentation), after its plan is agreed.
+4. ~~Step 9 (documentation), after its plan is agreed.~~ ✅
 5. ~~A fresh rehearsal on the final build.~~ ✅ Done with the owner's real backup, see below.
 
 ---
