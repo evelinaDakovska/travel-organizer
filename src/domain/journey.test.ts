@@ -1,6 +1,7 @@
 import {
   firstReturnLeg,
   isMultiLeg,
+  legDefaultDate,
   journeyItemValues,
   journeyLegs,
   journeyProblems,
@@ -155,5 +156,29 @@ describe('journeyLegs', () => {
 
   it('is empty for an item that is not part of a journey', () => {
     expect(journeyLegs(legs, legs[4])).toEqual([]);
+  });
+});
+
+describe('legDefaultDate', () => {
+  const at = (local: string) => ({ local });
+
+  it('opens the first leg on the fallback', () => {
+    expect(legDefaultDate([{}, {}], 0, '2026-10-11')).toBe('2026-10-11');
+  });
+
+  it('opens a connection on the day the leg before it lands', () => {
+    const legs = [{ departs: at('2026-10-12T10:00'), arrives: at('2026-10-12T11:10') }, {}];
+    expect(legDefaultDate(legs, 1, '2026-10-11')).toBe('2026-10-12');
+  });
+
+  it('uses the departure when the leg before has no arrival, and looks further back if needed', () => {
+    expect(legDefaultDate([{ departs: at('2026-10-13') }, {}], 1, '2026-10-11')).toBe('2026-10-13');
+    expect(legDefaultDate([{ departs: at('2026-10-13') }, {}, {}], 2, '2026-10-11')).toBe(
+      '2026-10-13',
+    );
+  });
+
+  it('falls back when no earlier leg has a date yet', () => {
+    expect(legDefaultDate([{}, {}], 1, '2026-10-11')).toBe('2026-10-11');
   });
 });

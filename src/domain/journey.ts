@@ -39,6 +39,19 @@ export function nextLeg(previous: Leg | undefined): Leg {
   return { from: previous.to, departs };
 }
 
+/**
+ * The day a leg's date picker opens on: the day the leg before it landed (or left), so a
+ * connection is not dated from the trip's first day — found in the end-to-end pass, when both legs
+ * appeared at once and the second opened on the wrong day. The fallback for the first leg.
+ */
+export function legDefaultDate(legs: readonly Leg[], index: number, fallback: string): string {
+  for (let i = index - 1; i >= 0; i -= 1) {
+    const landed = legs[i].arrives ?? legs[i].departs;
+    if (landed) return landed.local.slice(0, 10);
+  }
+  return fallback;
+}
+
 /** The way back starts where the way out ended and goes home. Dates are left to fill in. */
 export function firstReturnLeg(outbound: readonly Leg[]): Leg {
   return { from: outbound[outbound.length - 1]?.to, to: outbound[0]?.from };

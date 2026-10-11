@@ -1,6 +1,12 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { nextLeg, type Journey, type Leg, type LegProblem } from '../../domain/journey';
+import {
+  legDefaultDate,
+  nextLeg,
+  type Journey,
+  type Leg,
+  type LegProblem,
+} from '../../domain/journey';
 import { followStart } from '../../domain/tripItem';
 import { withLegZones } from '../../domain/zoneHints';
 import { Button } from '../../ui/components/Button';
@@ -40,7 +46,7 @@ export function JourneyFields({ journey, onChange, defaultTz, defaultDate, probl
               legs.length > minimum ? () => set(legs.filter((_, i) => i !== index)) : undefined
             }
             defaultTz={defaultTz}
-            defaultDate={defaultDate}
+            defaultDate={legDefaultDate(legs, index, defaultDate)}
             problem={problems.find((p) => p.part === name && p.index === index)?.message}
           />
         ))}
