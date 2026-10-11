@@ -259,7 +259,7 @@ change or a native change; R5 changes how shared files are copied.
 | **R2** | Now: *Today, no fixed time* and *Maybe today* (ideas) — date-only entries through their day, in the item's zone | ✅ |
 | **R3** | Transport zones named on both ends on item detail; the journey form's hint | ✅ |
 | **R4** | Loading, failed, missing, empty and stale told apart on every screen, with Retry | ✅ |
-| **R5** | Share-to-app keeps what worked and says exactly what failed and how to retry | ⬜ |
+| **R5** | Share-to-app keeps what worked and says exactly what failed and how to retry | ✅ |
 | **R6** | *Open ticket* from `subtype='ticket'`, other documents behind it | ⬜ |
 | **R7** | Timeline opens on today during the trip; a Today button | ⬜ |
 | **R8** | Wording: *planned* is not *booked* | ⬜ |
@@ -314,6 +314,23 @@ detail opened during a failure said *Could not load this item*, and *Try again* 
 *missing* state is unchanged and covered by tests. Found on the way: editing a module everything
 imports while the dev client runs can leave Fast Refresh with *database is locked*; a cold restart
 clears it (development only).
+
+**R5, what was built:** `saveShare` copies each shared file with `importAsInput`, keeping the ones
+that copy and the names of those that do not; `saveSharedRows` (`src/repositories/share.ts`)
+writes the new item and every row in one transaction; a failed write deletes the copies and says
+*Nothing was saved. Try again.*; no file copied means nothing written. A partial share shows
+`shareOutcomeMessage` before anything else (not dismissable by tapping outside), then opens the
+item. `attachFile` is now private to `attach.ts`. New test helper `src/db/testing/asyncDatabase.ts`
+runs repository functions over `better-sqlite3`, so a transaction is tested, not only its SQL.
+
+**R5, how it was verified:** 4 repository tests (item and rows together; a failing row rolls the
+item back too — checked to fail on the constraint, not on test setup; all or none for an existing
+owner; a deleted item) and 5 message tests. On the emulator, dev build, the app already open (a
+share cannot cold-start the dev client): three PDFs shared from Files as a *New item*, with a
+temporary development-only switch failing the third copy (removed before the commit) — the alert
+*Saved 2 of 3 files. Not saved: boarding-pass-3.pdf …* named the new item, OK opened it with two
+files; sharing the third again into *An item → boarding-pass-1* gave three files and still one
+item. Still to do on a **release** build: a share to the closed app (part of the 0.4.0 rehearsal).
 
 ---
 

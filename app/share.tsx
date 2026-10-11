@@ -136,28 +136,43 @@ function ShareForm({ content }: { content: SharedContent }) {
   const save = async () => {
     if (!trip) return;
     setBusy(true);
+    const itemTitle = items?.find((item) => item.id === itemId)?.title ?? 'the same item';
     try {
-      const href = await saveShare(
+      const { href, message } = await saveShare(
         db,
         trip,
         content,
         destination === 'new-item'
           ? { to: 'new-item', kind, status, priority, title }
           : destination === 'item'
-            ? { to: 'item', itemId: itemId! }
+            ? { to: 'item', itemId: itemId!, itemTitle }
             : destination === 'note'
               ? { to: 'note', title }
               : { to: 'trip-documents' },
       );
-      router.replace(href);
-    } catch (error) {
-      console.warn('Saving a share failed', error);
+      if (!message) {
+        router.replace(href!);
+        return;
+      }
+      // Said before anything else, and only then on to what was saved (R5).
       Alert.alert(
-        'Could not save it',
-        content.kind === 'files'
-          ? 'The shared file could not be copied. Share it again from the other app.'
-          : 'Nothing was saved. Try again.',
+        message.title,
+        message.body,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              if (href) router.replace(href);
+              else setBusy(false);
+            },
+          },
+        ],
+        { cancelable: false },
       );
+    } catch (error) {
+      // The rows go in one transaction and the copies are deleted, so this is true.
+      console.warn('Saving a share failed', error);
+      Alert.alert('Could not save it', 'Nothing was saved. Try again.');
       setBusy(false);
     }
   };

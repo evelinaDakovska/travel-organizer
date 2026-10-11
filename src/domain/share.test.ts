@@ -6,6 +6,7 @@ import {
   MAX_SHARED_FILES,
   noteTitleFor,
   parseSharedContent,
+  shareOutcomeMessage,
   suggestTrip,
   titleAround,
   type SharedContent,
@@ -205,5 +206,56 @@ describe('noteTitleFor', () => {
   it('uses the first line, shortened', () => {
     expect(noteTitleFor('\nDoor code 4321\nSecond floor')).toBe('Door code 4321');
     expect(noteTitleFor('x'.repeat(80))).toHaveLength(58);
+  });
+});
+
+describe('shareOutcomeMessage', () => {
+  const intoItem = { destination: 'item', itemTitle: 'Flight to Munich' } as const;
+
+  it('says nothing when every file was saved', () => {
+    expect(shareOutcomeMessage({ saved: 3, failed: [], retryInto: intoItem })).toBeNull();
+  });
+
+  it('names what failed, how many were kept, and how to add it to the same item', () => {
+    expect(
+      shareOutcomeMessage({ saved: 2, failed: ['boarding-pass-3.pdf'], retryInto: intoItem }),
+    ).toEqual({
+      title: 'Saved 2 of 3 files',
+      body:
+        'Not saved: boarding-pass-3.pdf. To add it, share it again from the other app and ' +
+        'choose Save as “An item” and pick “Flight to Munich”.',
+    });
+  });
+
+  it('points a partial share to trip documents back there', () => {
+    const message = shareOutcomeMessage({
+      saved: 1,
+      failed: ['a.pdf', 'b.pdf'],
+      retryInto: { destination: 'trip-documents' },
+    });
+    expect(message?.title).toBe('Saved 1 of 3 files');
+    expect(message?.body).toBe(
+      'Not saved: a.pdf, b.pdf. To add them, share them again from the other app and ' +
+        'choose Save as “Trip documents”.',
+    );
+  });
+
+  it('counts files the other app gave no name', () => {
+    const message = shareOutcomeMessage({
+      saved: 1,
+      failed: [null, 'x.pdf', null],
+      retryInto: intoItem,
+    });
+    expect(message?.body).toMatch(/^Not saved: x.pdf, 2 files with no name./);
+  });
+
+  it('says plainly when nothing at all was saved', () => {
+    expect(shareOutcomeMessage({ saved: 0, failed: ['only.pdf'], retryInto: intoItem })).toEqual({
+      title: 'The file was not saved',
+      body: 'Could not copy in: only.pdf. Nothing was saved. Share it again from the other app.',
+    });
+    expect(shareOutcomeMessage({ saved: 0, failed: ['a', 'b'], retryInto: intoItem })?.title).toBe(
+      'No file was saved',
+    );
   });
 });

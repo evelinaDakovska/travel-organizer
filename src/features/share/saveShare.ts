@@ -2,14 +2,19 @@ import type { Href } from 'expo-router';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { noteInputSchema } from '../../domain/note';
-import { linkResourceInput, linkFormSchema, type ResourceOwner } from '../../domain/resource';
-import type { SharedContent } from '../../domain/share';
+import {
+  linkFormSchema,
+  linkResourceInput,
+  type ResourceInput,
+  type ResourceOwner,
+} from '../../domain/resource';
+import { shareOutcomeMessage, type ShareOutcome, type SharedContent } from '../../domain/share';
 import type { Trip } from '../../domain/trip';
 import { tripItemInputSchema, type Priority, type TripItemKind } from '../../domain/tripItem';
+import { deleteStoredFile } from '../../files/storage';
 import { createNote } from '../../repositories/notes';
-import { createResource } from '../../repositories/resources';
-import { createTripItem } from '../../repositories/tripItems';
-import { attachFile } from '../resources/attach';
+import { saveSharedRows, type ShareRowsTarget } from '../../repositories/share';
+import { importAsInput } from '../resources/attach';
 
 export type ShareTarget =
   | {
@@ -19,76 +24,98 @@ export type ShareTarget =
       priority: Priority | null;
       title: string;
     }
-  | { to: 'item'; itemId: string }
+  | { to: 'item'; itemId: string; itemTitle: string }
   | { to: 'trip-documents' }
   | { to: 'note'; title: string };
 
 /**
- * Writes the share where it was sent and says where to go to see it. Files are copied into the
- * sandbox before any row points at them — `attachFile` owns that order.
+ * Where to go once saved, or null when nothing was; and what to tell the user first, or null when
+ * everything went in.
+ */
+export type ShareResult = {
+  href: Href | null;
+  message: { title: string; body: string } | null;
+};
+
+/**
+ * Writes the share where it was sent (R5, D27). Files are copied in one by one and a file that
+ * cannot be read does not cost the others; then the item (if new) and every row are written in one
+ * transaction. If that write fails, the copies are deleted and it throws: nothing was saved. If no
+ * file could be copied, nothing is written at all.
  */
 export async function saveShare(
   db: SQLiteDatabase,
   trip: Trip,
   content: SharedContent,
   target: ShareTarget,
-): Promise<Href> {
+): Promise<ShareResult> {
   if (target.to === 'note') {
     if (content.kind !== 'text') throw new Error('Only text becomes a note');
-    const input = noteInputSchema.parse({
-      title: target.title,
-      body: content.text,
-    });
+    const input = noteInputSchema.parse({ title: target.title, body: content.text });
     const noteId = await createNote(db, trip.id, input);
-    return { pathname: '/note/[noteId]', params: { noteId } };
+    return { href: { pathname: '/note/[noteId]', params: { noteId } }, message: null };
   }
+  if (content.kind === 'text') throw new Error('Text is saved as a note, not attached');
+
+  const retryInto: ShareOutcome['retryInto'] =
+    target.to === 'trip-documents'
+      ? { destination: 'trip-documents' }
+      : { destination: 'item', itemTitle: target.to === 'item' ? target.itemTitle : target.title };
+
+  const resources: ResourceInput[] = [];
+  const failed: (string | null)[] = [];
+  if (content.kind === 'files') {
+    for (const file of content.files) {
+      try {
+        const source = { fileName: file.fileName, mimeType: file.mimeType };
+        resources.push(await importAsInput(file.uri, source, 'Shared file'));
+      } catch (error) {
+        console.warn('Copying a shared file failed', error);
+        failed.push(file.fileName);
+      }
+    }
+    if (resources.length === 0) {
+      return { href: null, message: shareOutcomeMessage({ saved: 0, failed, retryInto }) };
+    }
+  } else {
+    const link = linkFormSchema.parse({ url: content.url, label: content.title ?? undefined });
+    resources.push(linkResourceInput(link));
+  }
+
+  const rowsTarget: ShareRowsTarget =
+    target.to === 'new-item'
+      ? {
+          to: 'new-item',
+          tripId: trip.id,
+          input: tripItemInputSchema(trip.defaultTz).parse({
+            kind: target.kind,
+            status: target.status,
+            priority: target.status === 'idea' ? target.priority : null,
+            title: target.title,
+          }),
+        }
+      : {
+          to: 'existing',
+          owner:
+            target.to === 'item'
+              ? { scope: 'item', id: target.itemId }
+              : { scope: 'trip', id: trip.id },
+        };
 
   let owner: ResourceOwner;
-  let href: Href;
-  if (target.to === 'new-item') {
-    const input = tripItemInputSchema(trip.defaultTz).parse({
-      kind: target.kind,
-      status: target.status,
-      priority: target.status === 'idea' ? target.priority : null,
-      title: target.title,
-    });
-    const itemId = await createTripItem(db, trip.id, input);
-    owner = { scope: 'item', id: itemId };
-    href = { pathname: '/item/[itemId]', params: { itemId } };
-  } else if (target.to === 'item') {
-    owner = { scope: 'item', id: target.itemId };
-    href = { pathname: '/item/[itemId]', params: { itemId: target.itemId } };
-  } else {
-    owner = { scope: 'trip', id: trip.id };
-    href = { pathname: '/trip/[tripId]', params: { tripId: trip.id } };
-  }
-
-  await attachContent(db, owner, content);
-  return href;
-}
-
-async function attachContent(db: SQLiteDatabase, owner: ResourceOwner, content: SharedContent) {
-  switch (content.kind) {
-    case 'files':
-      for (const file of content.files) {
-        await attachFile(
-          db,
-          owner,
-          file.uri,
-          { fileName: file.fileName, mimeType: file.mimeType },
-          'Shared file',
-        );
-      }
-      return;
-    case 'link': {
-      const link = linkFormSchema.parse({
-        url: content.url,
-        label: content.title ?? undefined,
-      });
-      await createResource(db, owner, linkResourceInput(link));
-      return;
+  try {
+    owner = await saveSharedRows(db, rowsTarget, resources);
+  } catch (error) {
+    // No row points at these copies; delete them now rather than wait for the start-up sweep.
+    for (const resource of resources) {
+      if (resource.kind === 'file') deleteStoredFile(resource.storedPath);
     }
-    case 'text':
-      throw new Error('Text is saved as a note, not attached');
+    throw error;
   }
+
+  const href: Href =
+    owner.scope === 'item'
+      ? { pathname: '/item/[itemId]', params: { itemId: owner.id } }
+      : { pathname: '/trip/[tripId]', params: { tripId: trip.id } };
+  return { href, message: shareOutcomeMessage({ saved: resources.length, failed, retryInto }) };
 }

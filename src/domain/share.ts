@@ -168,3 +168,47 @@ export function noteTitleFor(text: string): string {
       ?.trim() ?? 'Shared text';
   return first.length > 60 ? `${first.slice(0, 57)}…` : first;
 }
+
+/** What a share of files came to: how many were kept, and which could not be copied in. */
+export type ShareOutcome = {
+  saved: number;
+  /** Each failed file's name, or null when the other app gave none. */
+  failed: readonly (string | null)[];
+  /** Where a second share should go to add the missing ones, by the words on this screen. */
+  retryInto: { destination: 'item'; itemTitle: string } | { destination: 'trip-documents' };
+};
+
+/**
+ * The alert after a share where some files could not be copied in (R5, D27): the files that worked
+ * are kept, and this says exactly which did not and how to add them without a second item. Null
+ * when every file was saved — nothing to say.
+ */
+export function shareOutcomeMessage(outcome: ShareOutcome): { title: string; body: string } | null {
+  const { saved, failed, retryInto } = outcome;
+  if (failed.length === 0) return null;
+
+  const total = saved + failed.length;
+  const named = failed.filter((name): name is string => name !== null);
+  const unnamed = failed.length - named.length;
+  if (unnamed > 0) {
+    named.push(unnamed === 1 ? 'one file with no name' : `${unnamed} files with no name`);
+  }
+  const list = named.join(', ');
+  const them = failed.length === 1 ? 'it' : 'them';
+
+  if (saved === 0) {
+    return {
+      title: total === 1 ? 'The file was not saved' : 'No file was saved',
+      body: `Could not copy in: ${list}. Nothing was saved. Share it again from the other app.`,
+    };
+  }
+
+  const where =
+    retryInto.destination === 'item'
+      ? `choose Save as “An item” and pick “${retryInto.itemTitle}”`
+      : 'choose Save as “Trip documents”';
+  return {
+    title: `Saved ${saved} of ${total} files`,
+    body: `Not saved: ${list}. To add ${them}, share ${them} again from the other app and ${where}.`,
+  };
+}

@@ -450,7 +450,7 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
   transaction), update (never touches `paid_by`/`split`), delete, `countReceipts`.
 - **attach.ts** reorganised around three pickers (`file`, `photo`, `camera`); `pickAndImport`
   copies files in without a row, for a new expense's pending receipts (**Decision 4**).
-  `attachFile`, used by sharing from other apps, keeps its behaviour. The CAMERA permission was
+  Sharing from other apps now copies with `importAsInput` and writes in one transaction (R5). The CAMERA permission was
   already in the merged manifest (from expo-image-picker) — **no native change**.
 - **Screens:** the Expenses tab `app/trip/[tripId]/(tabs)/expenses.tsx` (trip total card, then
   Spending | Bookings); `app/expense/new.tsx` and `app/expense/[expenseId].tsx`; components in

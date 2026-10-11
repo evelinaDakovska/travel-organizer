@@ -538,7 +538,13 @@ them:
 
 - `attach(db, owner, kind)` picks, copies each file in and writes its row at once, one file at a
   time so one unreadable file does not cost the others. Items, trip documents and an existing
-  expense's receipts use it. `attachFile` is the same for one file and serves the share sheet.
+  expense's receipts use it.
+- `importAsInput` copies **one** file in without a row. The share sheet uses it (R5, D27):
+  `saveShare` copies each shared file, collecting the names of those that fail, then writes the
+  new item (if any) and every row in **one** transaction (`saveSharedRows`,
+  `src/repositories/share.ts`). If that write fails, the copies are deleted at once; if no file
+  copied, nothing is written. `shareOutcomeMessage` (`domain/share.ts`) is the alert for a partial
+  share: what was saved, what was not, and which item to share into again.
 - `pickAndImport(kind)` copies files in **without a row**, for a new expense whose id does not
   exist yet. The form holds the `ResourceInput`s and `createExpense` writes them with the expense
   in one transaction.

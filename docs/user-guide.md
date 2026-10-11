@@ -197,6 +197,11 @@ In the other app, **Share** → **Travel Organizer**. The app opens **Save to a 
 **Trip**, then **Save as** *An item* (choose **Which item**), *Trip documents* or a *New item*,
 then **Save**. Shared links and text work too.
 
+If some of several files cannot be read, the ones that could are kept, and the app says so before
+anything else: *Saved 2 of 3 files. Not saved: boarding-pass-3.pdf.* To add the missing one,
+share it again and choose **An item** → the item it names — sharing to *New item* again would make
+a second item. If none could be read, or saving fails, nothing is saved at all.
+
 **Gmail** cannot share a whole email. To keep a booking email:
 open it → **⋮** → **Print** → **Save as PDF** → share that PDF to the app.
 

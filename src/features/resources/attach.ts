@@ -116,7 +116,7 @@ async function attachEach(
  * The copy lands before the row is written. If the insert fails, the file is an orphan the next
  * sweep collects — never a row pointing at nothing.
  */
-export async function attachFile(
+async function attachFile(
   db: SQLiteDatabase,
   owner: ResourceOwner,
   sourceUri: string,
@@ -148,7 +148,11 @@ export async function pickAndImport(
   return { inputs, failed };
 }
 
-async function importAsInput(
+/**
+ * Copies one file into the app and describes it, writing no row — for a caller that writes the rows
+ * itself, together (sharing, R5). Deleting the copy if those rows are never written is its job.
+ */
+export async function importAsInput(
   sourceUri: string,
   source: { fileName: string | null; mimeType: string | null },
   fallbackLabel: string,
