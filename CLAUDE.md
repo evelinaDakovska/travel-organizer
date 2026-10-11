@@ -63,9 +63,10 @@ on a personal Windows machine, see `docs/windows-handoff.md`), **U1–U8** (the 
 real use, 2026-10-10) and **N1–N4** (features approved before that). Both are in `docs/status.md`.
 
 **C, V and S are all done, and the app is in daily use** on the owner's phone as a signed release
-build, **holding a real trip**. **Current work: N5a** (expenses) — start at `docs/session-handoff.md`
-§11, which says exactly where the last session stopped. N5a brings the first schema migration
-(002, additive only); anything touching stored data follows the data-safety routine in that file.
+build, **holding a real trip**. **N5a (expenses) is done and on the phone as 0.3.0** — start at
+`docs/session-handoff.md` §11, which says exactly where the last session stopped and what is next.
+Migration 002 (additive) is shipped; anything touching stored data follows the data-safety routine
+in that file.
 **Plan first:** for non-trivial work, a step-by-step plan the owner approves before any code.
 
 **How to be asked to work:**

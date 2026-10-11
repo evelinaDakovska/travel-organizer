@@ -118,10 +118,28 @@ shown to the owner and approved (2026-10-11). Written: `docs/user-guide.md` (Mar
 owner's choice), `technical-reference.md` (§3 migration 002 and receipts, §5 attaching, §12
 format 2, §13 Expenses), `decision-log.md` (D25).
 
-## Step 10 — The phone ⬜
+## Step 10 — The phone ✅ (2026-10-11)
 
-Fresh Drive backup → connect → `adb install -r` (never uninstall) → check trips, files,
-reminders → add one expense with a camera receipt → USB debugging off, Auto Blocker on.
+The safety net: the owner's export from 18:50 the same day (format 1, the data the rehearsal ran
+on). `adb -s R5GL22FE9QY install -r --user 0` 0.3.0 over 0.2.0: versionCode 2 → 4,
+`firstInstallTime` unchanged (2026-09-18), so the data stayed in place. First start (migration 002)
+clean: no fatal error, no JS or SQLite error in logcat.
+
+Manual test on the phone, screens read as filtered text (no screenshots outside the app):
+
+| Check | Result |
+|---|---|
+| Trips | ✅ Both, as before |
+| Lapland timeline | ✅ **Identical** to the 0.2.0 baseline from the owner's backup |
+| Lapland Now | ✅ As in the rehearsal: no Expenses card, all 5 trip documents |
+| Notes, Milan timeline and Now, a flight's detail page (reminder *Off*) | ✅ Identical |
+| Expenses → Bookings | ✅ Same total and 6 items as 0.2.0's card, to the cent |
+| A train ticket | ✅ Opens in the PDF viewer |
+| Alarms / notification permission | ✅ 8 → 8; still granted |
+| A test expense with a **file** receipt (an invented PDF pushed for the test) | ✅ Saved, total right, receipt opens; deleted again (*Its receipt goes too*), the test PDF removed from Downloads, and after a restart the backup counts the owner's **9 files** again |
+| A **camera** receipt | ⬜ Left to the owner, since the camera would photograph their surroundings (tested on the emulator) |
+
+Afterwards, for the owner: USB debugging off, Auto Blocker on.
 
 ---
 

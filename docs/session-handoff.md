@@ -491,7 +491,13 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 - **Step 5 done: the documentation.** `docs/user-guide.md` (new, outline approved by the owner),
   `technical-reference.md` (migration 002, receipts, the attach pipeline, backup format 2, §13
   Expenses), `decision-log.md` (D25, N5's decisions as answered; D20 amended).
-- **Next: §11.5 step 7, the phone** — the owner's call. The APK is ready.
+- **Step 7 done: 0.3.0 is on the phone** (installed with `install -r`, data kept, manual test
+  passed; `docs/n5-plan.md` step 10). N5a is ticked. Left to the owner: a camera receipt, the
+  Lapland flight zones, USB debugging off and Auto Blocker on.
+- **Open with the owner:** how to fix the zones (they edit four times, or Claude does it on the
+  connected phone), and the plan to avoid it in future (a zone suggested from a leg's city).
+- The owner's far-future idea, **shared trips**, is written up in `docs/ideas.md`.
+- **Next after that: N5b** (splitting, plan first from `docs/expenses-spec.md`), or N1–N4.
 - **The emulator holds the owner's real data** (0.3.0 release, plus two test expenses and one
   shared test PDF), and `real-backup.zip` sits in its Downloads. Wipe it when it is no longer
   needed (`adb uninstall`, remove the zip).
