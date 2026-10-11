@@ -391,6 +391,20 @@ Files to the **closed** app cold-started into *Save to a trip* and landed in Tri
 `adb -s R5GL22FE9QY install -r --user 0` the APK; the open *Final phone QA* checks go in the same
 session.
 
+
+---
+
+## F — feedback from a senior frontend developer (the owner's husband) · 2026-10-11, not planned yet
+
+Written down as given; each needs a plan and the owner's decisions first (plan-first rule).
+
+| | Feedback | ✓ |
+|---|---|---|
+| **F1** | Tell kinds apart at a glance (task, activity, stay, travel…) — an icon, or a border — without reading, and without a rainbow of colours. Research first | ⬜ |
+| **F2** | The **+** button shows a different icon when it does something else (e.g. adds an expense on the Expenses tab) | ⬜ |
+| **F3** | Now: *This trip* at the top; *Open tasks* gets a way to see the completed ones | ⬜ |
+| **F4** | Detail pages hide fields that are empty | ⬜ |
+
 ---
 
 ## U — the owner's list after real use · 2026-10-10
