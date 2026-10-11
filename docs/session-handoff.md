@@ -477,8 +477,13 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 - **Gap D done, plus a regression pass** against 0.2.0: no regression. Two bugs fixed on the way:
   camera receipts were labelled with a UUID (`8ee84d8`), and currency fields snapped back to EUR
   when cleared, an old bug (`05e0c29`). Details at the end of `docs/n5-plan.md`.
-- **Next: §11.5 step 4** — ask the owner how to do Gap B. Note: the emulator's share sheet *does*
-  list Drive; it lacks a Google account, not the target.
+- **Gap B done** (owner chose: copy the export out of the dev build's cache into Downloads, import
+  it). Restore and replace both correct, Gap A's wording seen on a device. The owner's **real**
+  phone backup (format 1) was checked for structure only: 0.3.0 parses it, and migration 002 run
+  on its 31 rows leaves every one identical. Details at the end of `docs/n5-plan.md`.
+- **Next: §11.5 step 5 — the documentation. Show the owner a plan first.** Then steps 6–8.
+- The owner's real backup sits in `C:\Users\Acer\Downloads`. The laptop is not a safe store
+  (CLAUDE.md §9); the owner was reminded the copy in Drive is the one that counts.
 - **The emulator now runs the dev build** (release 0.3.0 was uninstalled there, sample data
   only): the sample backup plus one *Groceries 7.20 EUR* expense with a PDF receipt. Good for
   Gap D. For the final rehearsal, reinstall 0.2.0 as §11.3 describes.

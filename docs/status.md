@@ -9,7 +9,8 @@ Verified against the repo on 2026-10-11, on Windows: **496 tests passing, typech
 > 0.1.0 with the data kept. **N5a (Expenses tab, no splitting) is built and rehearsed as 0.3.0.**
 > The owner answered the six decisions on 2026-10-11 (D4 changed, then built); Gaps A and C are
 > done; Gap D and a regression pass found no regression (two bugs fixed on the way). Left
-> before the phone: Gap B (restore with expenses), the docs, a rebuild and a fresh rehearsal — see `docs/n5-plan.md` and `docs/session-handoff.md` §11.
+> before the phone: the docs, a rebuild and a fresh rehearsal (Gap B done; the owner's real backup
+> passes migration 002 untouched) — see `docs/n5-plan.md` and `docs/session-handoff.md` §11.
 
 ---
 
@@ -201,7 +202,7 @@ seconds" and are cheap.
 | **N2** | Checklists inside notes | ⬜ |
 | **N3** | Start a trip from a previous one | ⬜ |
 | **N4** | Search across all trips | ⬜ |
-| **N5a** | Expenses tab without splitting — migration 002, receipts, backup format 2. Built as 0.3.0, rehearsed; decisions answered, Gaps A, C and D done, regression pass clean; **Gap B, docs and the phone still to do**: [`n5-plan.md`](n5-plan.md) | 🟡 |
+| **N5a** | Expenses tab without splitting — migration 002, receipts, backup format 2. Built as 0.3.0, rehearsed; decisions answered, Gaps A–D done, regression pass clean, real backup checked; **docs, final rehearsal and the phone still to do**: [`n5-plan.md`](n5-plan.md) | 🟡 |
 | **N5b** | Splitting: paid by, split between (equal or amounts), settle up, record payment. Spec: [`expenses-spec.md`](expenses-spec.md) | ⬜ |
 
 **N1 — All documents.** Every file and link in a trip — attached to the trip *and* to its items — in

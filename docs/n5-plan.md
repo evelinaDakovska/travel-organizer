@@ -44,7 +44,7 @@ receipts out — done and tested.
 | **Tests** | Restore into an empty app is byte-for-byte; a format-1 backup imports; a new test **fails if any table is ever left out of the backup** (it caught exactly this during the work). |
 | **Status** | ✅ `92b2161`. On the emulator: export after adding an expense with a receipt counted the receipt (29 files). |
 | 🔎 **Gap A** | The import confirmation ("Adds 2 trips, 41 items, 4 notes and 28 saved files") does not mention expenses. ✅ **Done, `d69afa1`** — see the follow-up below. |
-| 🔎 **Gap B** | Restoring a backup *with expenses* was tested in code, not on the emulator (the emulator cannot save the exported zip anywhere). |
+| 🔎 **Gap B** | Restoring a backup *with expenses* was tested in code, not on the emulator (the emulator cannot save the exported zip anywhere). ✅ **Done on the emulator, 2026-10-11** — see *Gap B* below. |
 
 ## Step 4 — The rules (pure functions, `src/domain/spending.ts`)
 
@@ -274,3 +274,36 @@ opens with 12.50 CHF; an emptied currency now shows *Pick a currency* under an *
   there opens the dev menu. Turn it off in the dev menu (*Tools button*).
 - `adb input text` and chained `keyevent`s go through Gboard's composing text and can mislead.
   For anything about typing, tap the on-screen keys.
+
+---
+
+## Gap B: restoring a backup with expenses (2026-10-11)
+
+**How (owner chose option 1):** export in the app on the dev build → copy the zip out of the app's
+cache (`run-as … cat cache/<zip>`) → push it to the emulator's Downloads → restore it through
+*Import a backup*, the same document picker a Drive file goes through. No code change, no account.
+
+The backup: format 2, 2 trips, 30 files; Lapland with 24 items, 2 notes, **2 expenses** (EUR 4.50
+food with a camera receipt; HUF 3000 transport) and 18 files.
+
+| Step | Result |
+|---|---|
+| Delete Lapland in the app | ✅ Warning: *24 items, 2 expenses and 18 saved files*. Gone; the next start's sweep removed exactly 18 files (30 → 12). |
+| Import, **Keep mine** | ✅ Dialog: *Adds 1 trip, 24 items, 2 notes, 2 expenses and 18 saved files. 1 trip already here is left as it is.*, as predicted from the zip. **Gap A seen on a device.** |
+| After the import | ✅ `media/` holds exactly the backup's 30 files. Lapland's Expenses tab: EUR 1684.50 (1680.00 + 4.50) and HUF 3000.00, both rows. The receipt is back, labelled *Photo*, and opens. Trip documents: still only the 2 documents. |
+| Import again, **Use the backup's** (replace) | ✅ Dialog: *Adds 2 trips, 42 items, 4 notes, 2 expenses and 30 saved files. Any of these trips already on this phone is replaced…* After: still **2** expenses (not 4), **1** receipt (not 2), 30 files. |
+
+### The owner's real backup, checked against 0.3.0
+
+The owner exported from the phone (0.2.0) to the laptop's Downloads and offered it. It was read
+**for structure only**: nothing personal printed, nothing loaded into the emulator. A temporary
+jest test (deleted, never committed) ran it through 0.3.0's code:
+
+| Check | Result |
+|---|---|
+| Format | 1 (0.2.0): 2 trips, 13 items, 3 notes, 13 attachments, 9 files listed, **all 9 in the zip** |
+| 0.3.0 parses it | ✅ A fresh phone would show *Adds 2 trips, 13 items, 3 notes and 9 saved files.* |
+| **Migration 002 on the real rows** | ✅ Loaded into a version-1 database, upgraded with the app's own batch: `user_version` 2, **all 31 rows identical** before and after (`resources.expense_id` NULL everywhere), `integrity_check` ok, no foreign-key problems. |
+
+So the change that will run on the phone has been run on the phone's own data, and the backup
+the owner holds restores in 0.3.0.
