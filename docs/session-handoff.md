@@ -393,13 +393,12 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ### 11.00 Latest (2026-10-11, evening) — read this first
 
-- **N6 is in progress** in another session (a journey's zone from its city; step 1 is `6a09622`,
-  the rest uncommitted). N6 is not yet in `status.md`.
+- **N6 is done** as 0.3.1 (built, rehearsed, not on the phone); it ships with R1–R7 as 0.4.0.
 - **An independent review was checked against the code** and turned into a plan:
-  **`docs/review-plan.md`, steps R0–R11**, tracked in `status.md` → *R*. Work on it starts when N6
-  is finished. **First, get the owner's answers to the eight decisions** at the end of that file.
-- R0 changes N6 itself: on an **existing** item the city's zone must be suggested, not written on
-  Save (review-plan §3, conflict 1).
+  **`docs/review-plan.md`, steps R0–R11**, tracked in `status.md` → *R*. **All eight decisions are
+  answered** (review-plan §7, decision-log D27). Four differ from the recommendations: N6 kept as
+  built (R0 dropped), 15 minutes after an event ends, dated ideas in *Maybe today*, and sharing
+  keeps what worked and says what failed. **Start at R1.**
 
 ### 11.1 What happened, in order
 

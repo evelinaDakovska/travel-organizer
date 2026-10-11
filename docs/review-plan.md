@@ -4,8 +4,8 @@ An independent review of the app (ChatGPT, product and technical, at commit `813
 against the code on 2026-10-11, at `6a09622` plus the uncommitted N6 work. This file is the plan
 that came out of it: what was confirmed, what needs a decision, and the steps, in order.
 
-**Status: written, not started. The decisions at the end are recommendations awaiting the
-owner's answer.** Work starts after N6 is finished (another session is on it). Each step is ticked
+**Status: decided, not started.** The owner answered all eight decisions on 2026-10-11 (§7;
+rationale in `decision-log.md` D27). N6 is done (0.3.1, not yet on the phone). Each step is ticked
 in `docs/status.md` → *R — after the review*.
 
 The objective, in the review's words: *"I am travelling, slightly late, possibly cold or stressed,
@@ -39,13 +39,12 @@ rehearsals. No rewrite, no new stack, no ORM, no backend.
 
 ## 3. Two conflicts with our own rules
 
-**1 — N6 and "do not silently infer zones from place names".** The uncommitted `ItemForm` effect
-also runs when an *existing* item is opened: it sets the city's zone with `shouldDirty`, and the
-hint under the time says so. Edit a flight's price, press Save, and its zone changes too. For a
-**new** entry, filling the zone from the city is visible (the chip, the hint, *Use Helsinki time*)
-and is what the owner asked for. For an **existing** item, recommended: **suggest only** — the
-hint and a button, nothing written until tapped — which is what `ZoneNotice` on detail already
-does. This is step R0.
+**1 — N6 and "do not silently infer zones from place names".** The `ItemForm` effect also runs
+when an *existing* item is opened: it sets the city's zone with `shouldDirty`, and the hint under
+the time says so; edit a flight's price, press Save, and its zone changes too. Step R0 proposed
+*suggest only* for existing items. **Resolved — the owner keeps N6 as built** (N6 decision B,
+`decision-log.md` D26): the fill is visible in the form, says so under the time, can be undone
+with one tap, and nothing is written until Save. R0 is dropped.
 
 **2 — "Restore into a clean installation" on the phone.** That means uninstalling, which the
 data-safety rule forbids. A clean-install restore of a format-2 backup is an **emulator** check
@@ -67,42 +66,44 @@ tested in node, then the screen.
 
 ### Priority 1 — retrieval and correctness while travelling
 
-#### R0 — Finish N6, suggest-only on existing items
+#### R0 — dropped
 
-- **Change:** the `ItemForm` effect fills a zone only on a **new** item (or for a city typed in
-  this editing session); on opening an existing item it does nothing, and the hint under the time
-  offers *Use Munich time* as a button. `JourneyFields` creates only new items, so it is unchanged.
-- **Files:** `src/features/items/ItemForm.tsx`, `src/ui/components/MomentField.tsx`.
-- **Docs:** add N6 to `status.md` (it is not there yet).
-- **Tests:** `zoneHints.test.ts` as is; the "new vs existing" rule as a small pure function if it
-  needs one.
-- **Emulator:** open a Lapland leg saved without a zone, change only its price, Save — the zone
-  is unchanged; the detail notice still offers the fix. A new leg Munich → Helsinki fills both ends.
-- **Data:** none written without a tap.
+The owner keeps N6 as built (§3, conflict 1).
 
 #### R1 — Now: *Happening now*
 
 - **Change:** a new pure `nowSections(items, now)` in `src/domain/itinerary.ts` returning
-  `{ happening, today, upNext }`. `upNext` itself is left alone; Now switches to `nowSections`.
-  A *Happening now* section above *Up next*, each card with its attachments as today.
-- **Rules (decisions 2–5):** confirmed, timed, not a task, not a stay; `start <= now < end`;
-  no end → for 60 minutes after the start; nothing after the end; an overnight journey is happening
-  between departure and arrival, and its *Arrives* entry is not repeated in Up next; overlapping
-  events all show, by start; cancelled never.
-- **Tests:** before the start, exactly at it, during, exactly at the end, after; no end (inside
-  and past the 60 minutes); cancelled; overnight transport (and no duplicate *Arrives*); two
-  overlapping activities; a multi-day stay (not happening, its check-out still in Up next); a
-  task and an idea (never).
-- **Emulator:** the Husky tour case from the review with the clock set during it.
+  `{ happening, today, maybeToday, upNext }`. `upNext` itself is left alone; Now switches to
+  `nowSections`. A *Happening now* section above *Up next*, each card with its attachments as today.
+- **Rules (decisions 2–5):**
+  - Confirmed, has a time of day, not a task, not a stay. Cancelled never.
+  - With an end: from `start` until **15 minutes after `end`**; in those 15 minutes the card reads
+    *Ended 11:15*.
+  - With no end: for **60 minutes** after the start.
+  - An overnight journey is happening between departure and arrival (plus the 15 minutes); the
+    card shows *Arrives 06:40 · Rovaniemi*, and its *Arrives* entry is **not** repeated in Up next.
+  - Overlapping events all show, by start.
+  - A stay is never a Happening card: during it, its *Check out* entry is in Up next as today.
+- **Tests:** before the start, exactly at it, during, exactly at the end, inside the 15 minutes,
+  exactly 15 minutes after, later; no end (inside and past the 60 minutes); cancelled; overnight
+  transport (and no duplicate *Arrives*); two overlapping activities; a multi-day stay (not
+  happening, its check-out still in Up next); a task and an idea (never).
+- **Emulator:** the Husky tour case from the review with the clock set during it, and just after.
 
-#### R2 — Now: *Today, no fixed time*
+#### R2 — Now: *Today, no fixed time* and *Maybe today*
 
-- **Change:** the `today` part of `nowSections`, shown between *Happening now* and *Up next*.
-- **Rules (decision 6):** confirmed, date-only, not a task, not an idea; "today" is the date in
-  **the item's own zone**; a multi-day date-only item shows on every day of its range. Before its
-  day it stays in Up next as now.
+- **Change:** the `today` and `maybeToday` parts of `nowSections`, shown between *Happening now*
+  and *Up next*, as two separate groups.
+- **Rules (decision 6):**
+  - "Today" is the date in **the item's own zone** (its start zone), never a midnight instant.
+  - *Today, no fixed time:* confirmed, date-only, not a task. A multi-day date-only item shows on
+    every day of its range. Before its day it stays in Up next as now.
+  - *Maybe today:* **ideas** dated today, date-only, same day rule. Kept apart from the confirmed
+    group so a maybe never reads as a plan.
+  - Tasks never: *Open tasks* already lists them.
 - **Tests:** morning, noon and 23:59 on the day; the next day; the device in another zone than
-  the item; item zone ≠ trip zone; multi-day; cancelled; a dated idea and a dated task (excluded).
+  the item; item zone ≠ trip zone; multi-day; cancelled; a dated idea (in *Maybe today*, not the
+  confirmed group); a dated task (in neither).
 
 #### R3 — Zones on item detail and in the journey form
 
@@ -130,22 +131,34 @@ tested in node, then the screen.
 
 ### Priority 2 — faster access and predictable imports
 
-#### R5 — Share-to-app saves all or nothing (decision 7, option A)
+#### R5 — Share-to-app keeps what worked and says what failed (decision 7, option B)
 
-- **Change:** copy every shared file in first (`importAsInput`, as expense receipts do), then
-  create the item (if new) and all its resource rows in **one** `withTransactionAsync`, as
-  `createExpense` does. On any failure, delete the copies at once; the start-up sweep stays the
-  fallback. The same for a share to an existing item or to trip documents. `createTripItem` opens no
-  transaction of its own (checked), so it can run inside one.
-- **Wording:** the error becomes *"Nothing was saved. Share it again."* — now true, and sharing
-  again cannot duplicate.
+- **Change:**
+  1. Copy each shared file in (`importAsInput`, as expense receipts do), **collecting** which
+     succeeded and which failed, by name, instead of stopping at the first failure.
+  2. If **none** succeeded: nothing is written — no new item. *"Nothing was saved. Share it
+     again."*
+  3. Otherwise create the item (if new) and the rows for the files that copied in **one**
+     `withTransactionAsync`, as `createExpense` does. `createTripItem` opens no transaction of its
+     own (checked), so it can run inside one. If that write fails, delete the copies at once and
+     say *Nothing was saved*; the start-up sweep stays the fallback.
+  4. Partial success opens the item and says so explicitly, before anything else — an alert, not
+     a passing toast: *"Saved 2 of 3 files. Not saved: boarding-pass-3.pdf. Share it again and
+     choose **Add to an existing item** → Flight to Munich."*
+- **Retrying without a duplicate:** the share screen already offers *an existing item* as a
+  destination; the message names it. No new retry machinery.
+- **The same rules** for a share to an existing item or to trip documents (there the item exists,
+  so only the file count matters).
 - **File ownership:** copies without rows exist only for the length of the save; if the app dies
   mid-way they are orphans the sweep collects. Not atomic across the filesystem, and the docs will
   not claim it is.
-- **Tests:** SQL in node — one file, several, a failing row write rolls everything back
-  (no item, no resources). The copy-then-cleanup order as a pure plan if it can be one.
+- **Pure part:** the message from `{ saved, failed names, target }`, tested — every case's text
+  says exactly what was saved.
+- **Tests:** SQL in node — one file, several, a failing row write rolls back the item and its
+  rows together. Messages: all saved, 2 of 3, 0 of 3, a link.
 - **Release build on the emulator** (the dev client cannot be cold-started by a share): one PDF,
-  three images, a link; app open and closed.
+  three images, a link; app open and closed. A failing file is hard to produce for real; a
+  temporary `__DEV__` switch failing the third copy, removed before the commit.
 
 #### R6 — *Open ticket*
 
@@ -209,7 +222,7 @@ tested in node, then the screen.
 
 ## 6. Release and the phone
 
-R0–R7 can ship together as **0.4.0** (R8–R11 too, if ready). The usual routine
+N6 (0.3.1, built and rehearsed, waiting) and R1–R7 ship together as **0.4.0** (R8–R11 too, if ready). The usual routine
 (`session-handoff.md` §9):
 
 1. The owner makes a **fresh Drive backup**.
@@ -232,17 +245,17 @@ Unit tests, emulator checks and phone checks prove different things; each step's
 
 ---
 
-## 7. Decisions — awaiting the owner
+## 7. Decisions — answered by the owner, 2026-10-11
 
-Recommended answer in bold.
+Rationale in `decision-log.md` D27.
 
-| # | Question | Recommended |
-|---|---|---|
-| 1 | N6 on an existing item | **Suggest only; fill automatically only on new entries** |
-| 2 | What goes in *Happening now* | **Confirmed, timed, not tasks, not stays** (a stay's *Check out* is already in Up next) |
-| 3 | A timed event with no end stays happening for | **60 minutes** (alternative: until the next event starts) |
-| 4 | Grace after an event ends | **None** — the Timeline still has it |
-| 5 | Overnight transport | **Happening between departure and arrival; *Arrives* not repeated in Up next** |
-| 6 | "Today" for date-only entries | **The item's own zone; no tasks, no ideas; multi-day on each day** |
-| 7 | Share-to-app failure policy | **Option A — all or nothing** |
-| 8 | Cancelled with refund not specified | **Not counted, but shown as "not counted"** (alternative: count it as spent) |
+| # | Question | Answer | vs recommendation |
+|---|---|---|---|
+| 1 | N6 on an existing item | **Keep N6 as built** — fill on opening, visible, written only on Save (D26). R0 dropped | changed |
+| 2 | What goes in *Happening now* | **Confirmed, timed, not tasks, not stays** | as recommended |
+| 3 | A timed event with no end stays happening for | **60 minutes** | as recommended |
+| 4 | Grace after an event ends | **15 minutes**, the card reading *Ended 11:15* | changed (was none) |
+| 5 | Overnight transport | **Happening between departure and arrival; *Arrives* not repeated in Up next** | as recommended |
+| 6 | "Today" for date-only entries | **The item's own zone; confirmed plans, plus dated ideas in a separate *Maybe today*; no tasks; multi-day on each day** | changed (ideas added) |
+| 7 | Share-to-app failure policy | **Option B — keep what worked, say explicitly what failed and how to retry** | changed (was A) |
+| 8 | Cancelled with refund not specified | **Not counted, but shown as "not counted"** | as recommended |

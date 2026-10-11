@@ -457,3 +457,43 @@ deliberate, which is worse than the original problem.
 
 **Not automatic booking parsing** (CLAUDE.md §7): it reads only text the user typed into a field
 labelled From or To, and shows what it did.
+
+---
+
+## D27 — After the review: what Now shows, partial shares, unknown refunds
+
+An independent review (2026-10-11) found that Now drops an event the moment it starts and a
+date-only plan at midnight, that a share could be saved in part with no clear message, and that a
+cancellation with refundability not set silently counts as zero. The plan is
+`docs/review-plan.md`; these are the owner's answers to its decisions.
+
+**Now has sections, not one list.** *Happening now*, *Today, no fixed time*, *Maybe today*, then
+*Up next* — one pure `nowSections`, with `upNext` left as it was. The scenario is "slightly late
+and need the ticket": a list of only what is still to come hides exactly the thing you are late
+for.
+
+- *Happening now* holds confirmed, timed items that are not tasks or stays. **15 minutes after an
+  event's end** it still shows, read as *Ended 11:15*: the address of where you just were is
+  still wanted. With **no end, 60 minutes** after the start — long enough for arriving late, short
+  enough not to linger. An overnight journey is happening from departure to arrival and its
+  *Arrives* entry is not repeated. **Stays are excluded**: a hotel card for five days would push
+  everything else down, and during a stay its *Check out* is already in Up next.
+- "Today" for a date-only item is **the date in the item's own zone**. A technical midnight sort
+  key must not decide what is visible. Confirmed plans and **dated ideas** both show, in separate
+  groups, so a maybe never reads as a plan. Tasks stay in *Open tasks*.
+
+**A share keeps what worked** (the review's option B, chosen over all-or-nothing). A file that
+copied in is not thrown away because another failed; instead the app says, explicitly and
+before anything else, how many were saved, which were not, and to share again into the existing
+item — so a retry adds to it rather than creating a second one. If nothing copied, nothing is
+written. The item and its rows are still written in one transaction.
+
+**Unknown refunds stay out of the total, but are shown.** Totals mean the expected cost of the
+trip, and U6's rule is kept; what changes is that a cancellation with refundability not set is
+named as *not counted* instead of disappearing.
+
+**N6 kept as built (D26).** The review asked not to infer zones silently; the owner judged the
+fill visible enough — it says so under the time, undoes in one tap, and writes only on Save.
+
+**Rejected:** changing `upNext` itself (Up next keeps meaning "still to come"); a refund
+lifecycle; a stored "primary attachment" (R6 uses `subtype='ticket'`, no migration).
