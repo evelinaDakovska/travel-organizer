@@ -41,6 +41,8 @@ function applyImport(db: Database.Database, plan: ImportPlan) {
     for (const trip of plan.write.trips) run(insertRow('trips'), trip);
     for (const item of plan.write.tripItems) run(insertRow('trip_items'), item);
     for (const note of plan.write.tripNotes) run(insertRow('trip_notes'), note);
+    for (const expense of plan.write.expenses) run(insertRow('expenses'), expense);
+    for (const payment of plan.write.payments) run(insertRow('payments'), payment);
     for (const resource of plan.write.resources) run(insertRow('resources'), resource);
     const settingSql = plan.mode === 'replace' ? REPLACE_SETTING : MERGE_SETTING;
     for (const setting of plan.write.settings) run(settingSql, setting);
@@ -52,6 +54,8 @@ function readAll(db: Database.Database): ExportTables {
     trips: db.prepare(selectAll('trips')).all() as ExportTables['trips'],
     tripItems: db.prepare(selectAll('trip_items')).all() as ExportTables['tripItems'],
     tripNotes: db.prepare(selectAll('trip_notes')).all() as ExportTables['tripNotes'],
+    expenses: db.prepare(selectAll('expenses')).all() as ExportTables['expenses'],
+    payments: db.prepare(selectAll('payments')).all() as ExportTables['payments'],
     resources: db.prepare(selectAll('resources')).all() as ExportTables['resources'],
     settings: db.prepare(selectAll('settings')).all() as ExportTables['settings'],
   };
@@ -112,6 +116,24 @@ function seed(db: Database.Database) {
      VALUES ('r2', 't1', 'link', 'maps', 'Maps', 'https://maps.example', 0, ?)`,
   ).run(now);
 
+  db.prepare(
+    `INSERT INTO expenses (id, trip_id, category, label, amount, currency, spent_on, notes,
+                           paid_by, split, created_at, updated_at)
+     VALUES ('e1', 't1', 'groceries', 'Esselunga', 2345, 'EUR', '2026-09-20', 'Water, fruit',
+             'Evelina', '{"mode":"equal","people":["Evelina","A"]}', ?, ?)`,
+  ).run(now, now);
+
+  db.prepare(
+    `INSERT INTO resources (id, trip_id, expense_id, kind, subtype, label, stored_path,
+                            sort_order, created_at)
+     VALUES ('r4', 't1', 'e1', 'file', 'generic', 'Receipt', 'media/r4.jpg', 1, ?)`,
+  ).run(now);
+
+  db.prepare(
+    `INSERT INTO payments (id, trip_id, from_name, to_name, amount, currency, created_at)
+     VALUES ('p1', 't1', 'A', 'Evelina', 1172, 'EUR', ?)`,
+  ).run(now);
+
   db.prepare(`INSERT INTO settings (key, value) VALUES ('defaultTravellers', '["Evelina"]')`).run();
 }
 
@@ -127,7 +149,7 @@ function restoreInto(target: Database.Database, source: Database.Database, mode:
   const existing = (target.prepare(`SELECT id FROM trips`).all() as { id: string }[]).map(
     (r) => r.id,
   );
-  const plan = planImport(parsed.document, existing, mode, ['media/r1.pdf']);
+  const plan = planImport(parsed.document, existing, mode, ['media/r1.pdf', 'media/r4.jpg']);
   applyImport(target, plan);
   return plan;
 }
@@ -169,6 +191,59 @@ describe('the backup round trip', () => {
       );
       expect([...columns].sort()).toEqual(actual.sort());
     }
+  });
+
+  it('backs up every table the schema has, so a new one cannot be forgotten', () => {
+    const tables = (
+      fresh()
+        .prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`)
+        .all() as { name: string }[]
+    ).map((t) => t.name);
+    expect(Object.keys(EXPORT_COLUMNS).sort()).toEqual(tables.sort());
+  });
+
+  it('restores expenses with their receipts and payments', () => {
+    const source = fresh();
+    seed(source);
+    const target = fresh();
+
+    restoreInto(target, source, 'merge');
+
+    expect(target.prepare(`SELECT id, label, amount FROM expenses`).all()).toEqual([
+      { id: 'e1', label: 'Esselunga', amount: 2345 },
+    ]);
+    expect(target.prepare(`SELECT id, expense_id FROM resources WHERE id = 'r4'`).get()).toEqual({
+      id: 'r4',
+      expense_id: 'e1',
+    });
+    expect(target.prepare(`SELECT COUNT(*) AS n FROM payments`).get()).toEqual({ n: 1 });
+  });
+
+  it('still imports a backup made before expenses existed (format 1, app 0.2.0)', () => {
+    const source = fresh();
+    seed(source);
+    for (const table of ['payments', 'resources WHERE expense_id IS NOT NULL', 'expenses']) {
+      source.prepare(`DELETE FROM ${table}`).run();
+    }
+    const current = JSON.parse(JSON.stringify(documentFrom(source)));
+    const { expenses: _expenses, payments: _payments, ...oldTables } = current.tables;
+    const formatOne = {
+      ...current,
+      formatVersion: 1,
+      tables: {
+        ...oldTables,
+        resources: oldTables.resources.map(
+          ({ expense_id: _expenseId, ...rest }: Record<string, unknown>) => rest,
+        ),
+      },
+    };
+
+    const parsed = parseExportDocument(formatOne);
+    if (!parsed.ok) throw new Error(parsed.reason);
+    const target = fresh();
+    applyImport(target, planImport(parsed.document, [], 'merge', ['media/r1.pdf']));
+
+    expect(readAll(target)).toEqual(readAll(source));
   });
 
   it('survives being restored twice, leaving one copy rather than two', () => {

@@ -297,7 +297,11 @@ export const EXPORT_COLUMNS = {
   trip_notes: ['id', 'trip_id', 'title', 'body', 'pinned', 'sort_order',
                'created_at', 'updated_at'],
   resources: ['id', 'trip_id', 'trip_item_id', 'kind', 'subtype', 'label', 'url',
-              'stored_path', 'file_name', 'mime_type', 'size_bytes', 'sort_order', 'created_at'],
+              'stored_path', 'file_name', 'mime_type', 'size_bytes', 'sort_order', 'created_at',
+              'expense_id'],
+  expenses: ['id', 'trip_id', 'category', 'label', 'amount', 'currency', 'spent_on', 'notes',
+             'paid_by', 'split', 'created_at', 'updated_at'],
+  payments: ['id', 'trip_id', 'from_name', 'to_name', 'amount', 'currency', 'created_at'],
   settings: ['key', 'value'],
 } as const satisfies Record<string, readonly string[]>;
 

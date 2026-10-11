@@ -87,13 +87,41 @@ const resource = (
   size_bytes: null,
   sort_order: 0,
   created_at: now,
+  expense_id: null,
   ...extra,
+});
+
+const expense = (id: string, tripId: string) => ({
+  id,
+  trip_id: tripId,
+  category: 'food',
+  label: null,
+  amount: 1250,
+  currency: 'EUR',
+  spent_on: '2026-09-20',
+  notes: null,
+  paid_by: null,
+  split: null,
+  created_at: now,
+  updated_at: now,
+});
+
+const payment = (id: string, tripId: string) => ({
+  id,
+  trip_id: tripId,
+  from_name: 'Ana',
+  to_name: 'Evelina',
+  amount: 500,
+  currency: 'EUR',
+  created_at: now,
 });
 
 const tables = (): ExportTables => ({
   trips: [trip('t1'), trip('t2')],
   tripItems: [item('i1', 't1'), item('i2', 't2')],
   tripNotes: [note('n1', 't1')],
+  expenses: [expense('e1', 't1'), expense('e2', 't2')],
+  payments: [payment('p1', 't1')],
   resources: [
     resource('r1', { trip_item_id: 'i1' }),
     resource('r2', { trip_id: 't1' }),
@@ -178,6 +206,12 @@ describe('filterTablesForTrip', () => {
     expect(scoped.resources.map((r) => r.id).sort()).toEqual(['link', 'r1', 'r2']);
   });
 
+  it('keeps only that trip expenses and payments', () => {
+    const one = filterTablesForTrip(tables(), 't1');
+    expect(one.expenses.map((e) => e.id)).toEqual(['e1']);
+    expect(one.payments.map((p) => p.id)).toEqual(['p1']);
+  });
+
   it('leaves settings out, which belong to the app rather than a trip', () => {
     expect(filterTablesForTrip(tables(), 't1').settings).toEqual([]);
   });
@@ -233,6 +267,13 @@ describe('planImport', () => {
     const plan = planImport(document(), ['t1'], 'merge', ['media/r3.pdf']);
 
     expect(plan.missingFiles).toEqual([]);
+  });
+
+  it('carries expenses and payments with their trip, and drops them with it', () => {
+    const doc = buildExportDocument(tables(), { exportedAt: now });
+    const plan = planImport(doc, ['t1'], 'merge');
+    expect(plan.write.expenses.map((e) => e.id)).toEqual(['e2']);
+    expect(plan.write.payments).toEqual([]);
   });
 
   it('always carries settings, which are not owned by any trip', () => {

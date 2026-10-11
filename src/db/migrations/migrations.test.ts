@@ -44,7 +44,15 @@ describe('migrations', () => {
       .all()
       .map((r: any) => r.name)
       .sort();
-    expect(tables).toEqual(['resources', 'settings', 'trip_items', 'trip_notes', 'trips']);
+    expect(tables).toEqual([
+      'expenses',
+      'payments',
+      'resources',
+      'settings',
+      'trip_items',
+      'trip_notes',
+      'trips',
+    ]);
     db.close();
   });
 

@@ -32,12 +32,15 @@ const fileResource = (id: string, tripId: string) => ({
   size_bytes: 4,
   sort_order: 0,
   created_at: '2026-09-15T00:00:00.000Z',
+  expense_id: null,
 });
 
 const tables: ExportTables = {
   trips: [trip('milan'), trip('lapland')],
   tripItems: [],
   tripNotes: [],
+  expenses: [],
+  payments: [],
   resources: [fileResource('hotel', 'milan'), fileResource('train', 'lapland')],
   settings: [{ key: 'default_currency', value: 'EUR' }],
 };

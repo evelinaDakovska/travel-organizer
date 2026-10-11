@@ -7,7 +7,8 @@ import { z } from 'zod';
 
 import { isStoredPath, missingFiles } from './resource';
 
-export const EXPORT_FORMAT_VERSION = 1;
+/** 2 added expenses, payments and `resources.expense_id` (N5). A format-1 backup still imports. */
+export const EXPORT_FORMAT_VERSION = 2;
 export const EXPORT_APP = 'travel-organizer';
 
 const nullableString = z.string().nullable();
@@ -84,6 +85,33 @@ const resourceRowSchema = z.object({
   size_bytes: nullableNumber,
   sort_order: z.number(),
   created_at: z.string(),
+  // Absent from a format-1 backup, which predates receipts.
+  expense_id: nullableString.default(null),
+});
+
+const expenseRowSchema = z.object({
+  id: z.string().min(1),
+  trip_id: z.string().min(1),
+  category: z.string(),
+  label: nullableString,
+  amount: z.number(),
+  currency: z.string(),
+  spent_on: z.string(),
+  notes: nullableString,
+  paid_by: nullableString,
+  split: nullableString,
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+const paymentRowSchema = z.object({
+  id: z.string().min(1),
+  trip_id: z.string().min(1),
+  from_name: z.string(),
+  to_name: z.string(),
+  amount: z.number(),
+  currency: z.string(),
+  created_at: z.string(),
 });
 
 const settingRowSchema = z.object({ key: z.string(), value: z.string() });
@@ -93,11 +121,15 @@ export type TripItemExportRow = z.infer<typeof tripItemRowSchema>;
 export type NoteExportRow = z.infer<typeof noteRowSchema>;
 export type ResourceExportRow = z.infer<typeof resourceRowSchema>;
 export type SettingExportRow = z.infer<typeof settingRowSchema>;
+export type ExpenseExportRow = z.infer<typeof expenseRowSchema>;
+export type PaymentExportRow = z.infer<typeof paymentRowSchema>;
 
 export type ExportTables = {
   trips: TripExportRow[];
   tripItems: TripItemExportRow[];
   tripNotes: NoteExportRow[];
+  expenses: ExpenseExportRow[];
+  payments: PaymentExportRow[];
   resources: ResourceExportRow[];
   settings: SettingExportRow[];
 };
@@ -123,6 +155,9 @@ export const exportDocumentSchema = z.object({
     trips: z.array(tripRowSchema),
     tripItems: z.array(tripItemRowSchema),
     tripNotes: z.array(noteRowSchema),
+    // Absent from a format-1 backup.
+    expenses: z.array(expenseRowSchema).default([]),
+    payments: z.array(paymentRowSchema).default([]),
     resources: z.array(resourceRowSchema),
     settings: z.array(settingRowSchema),
   }),
@@ -135,6 +170,8 @@ export const EXPORT_TABLE_ORDER = [
   'trips',
   'tripItems',
   'tripNotes',
+  'expenses',
+  'payments',
   'resources',
   'settings',
 ] as const satisfies readonly (keyof ExportTables)[];
@@ -207,6 +244,8 @@ export function filterTablesForTrip(tables: ExportTables, tripId: string): Expor
     trips: tables.trips.filter((trip) => trip.id === tripId),
     tripItems: tables.tripItems.filter((item) => item.trip_id === tripId),
     tripNotes: tables.tripNotes.filter((note) => note.trip_id === tripId),
+    expenses: tables.expenses.filter((expense) => expense.trip_id === tripId),
+    payments: tables.payments.filter((payment) => payment.trip_id === tripId),
     resources: tables.resources.filter(
       (resource) =>
         resource.trip_id === tripId ||
@@ -265,6 +304,8 @@ export function planImport(
       trips,
       tripItems,
       tripNotes: document.tables.tripNotes.filter((note) => keptTripIds.has(note.trip_id)),
+      expenses: document.tables.expenses.filter((expense) => keptTripIds.has(expense.trip_id)),
+      payments: document.tables.payments.filter((payment) => keptTripIds.has(payment.trip_id)),
       resources,
       settings: document.tables.settings,
     },

@@ -8,9 +8,11 @@ import {
   selectAll,
 } from '../db/queries';
 import type {
+  ExpenseExportRow,
   ExportTables,
   ImportPlan,
   NoteExportRow,
+  PaymentExportRow,
   ResourceExportRow,
   SettingExportRow,
   TripExportRow,
@@ -18,14 +20,16 @@ import type {
 } from '../domain/export';
 
 export async function readAllTables(db: SQLiteDatabase): Promise<ExportTables> {
-  const [trips, tripItems, tripNotes, resources, settings] = await Promise.all([
+  const [trips, tripItems, tripNotes, expenses, payments, resources, settings] = await Promise.all([
     db.getAllAsync<TripExportRow>(selectAll('trips')),
     db.getAllAsync<TripItemExportRow>(selectAll('trip_items')),
     db.getAllAsync<NoteExportRow>(selectAll('trip_notes')),
+    db.getAllAsync<ExpenseExportRow>(selectAll('expenses')),
+    db.getAllAsync<PaymentExportRow>(selectAll('payments')),
     db.getAllAsync<ResourceExportRow>(selectAll('resources')),
     db.getAllAsync<SettingExportRow>(selectAll('settings')),
   ]);
-  return { trips, tripItems, tripNotes, resources, settings };
+  return { trips, tripItems, tripNotes, expenses, payments, resources, settings };
 }
 
 export async function listTripIds(db: SQLiteDatabase): Promise<string[]> {
@@ -59,6 +63,13 @@ export async function applyImport(db: SQLiteDatabase, plan: ImportPlan): Promise
     for (const trip of write.trips) await db.runAsync(insertRow('trips'), bindRow(trip));
     for (const item of write.tripItems) await db.runAsync(insertRow('trip_items'), bindRow(item));
     for (const note of write.tripNotes) await db.runAsync(insertRow('trip_notes'), bindRow(note));
+    // Before resources: a receipt names its expense.
+    for (const expense of write.expenses) {
+      await db.runAsync(insertRow('expenses'), bindRow(expense));
+    }
+    for (const payment of write.payments) {
+      await db.runAsync(insertRow('payments'), bindRow(payment));
+    }
     for (const resource of write.resources) {
       await db.runAsync(insertRow('resources'), bindRow(resource));
     }

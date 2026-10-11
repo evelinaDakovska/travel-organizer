@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { LATEST_VERSION, MIGRATIONS } from './migrations';
+import { LATEST_VERSION, migrationBatch, MIGRATIONS } from './migrations';
 
 export const DATABASE_NAME = 'travel-organizer.db';
 
@@ -19,9 +19,7 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
   for (const migration of MIGRATIONS) {
     if (migration.version <= current) continue;
     await db.withExclusiveTransactionAsync(async (tx) => {
-      await tx.execAsync(migration.sql);
+      await tx.execAsync(migrationBatch(migration));
     });
-    // Not parameterisable; the value is ours, never user input.
-    await db.execAsync(`PRAGMA user_version = ${migration.version};`);
   }
 }
