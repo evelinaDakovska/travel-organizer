@@ -3,7 +3,7 @@
 **The** status board. `CLAUDE.md` and `plan.md` link here rather than repeat it, so there is one
 place to update and nothing can drift.
 
-Verified against the repo on 2026-10-11, on Windows: **496 tests passing, typecheck clean.** S2–S8 verified on the Android 17 emulator, then the app end to end **on the Galaxy S26 Ultra** with the release build.
+Verified against the repo on 2026-10-12, on Windows: **571 tests passing, typecheck clean.** S2–S8 verified on the Android 17 emulator, then the app end to end **on the Galaxy S26 Ultra** with the release build.
 
 > **The app is in use on the owner's phone** — release build **0.3.0**, installed 2026-10-11 over
 > 0.2.0 with `install -r`, data kept (first-install date unchanged). **N5a (Expenses tab, no

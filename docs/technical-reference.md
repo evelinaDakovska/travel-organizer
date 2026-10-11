@@ -1054,7 +1054,9 @@ Spec and the rest of N5 (splitting): `docs/expenses-spec.md`. Plan and audit: `d
 currency), then a switch — tapped, not swiped — between **Spending** (`CategoryBreakdown` from
 `spendingTotals`, then `expensesByDay`, newest day first) and **Bookings** (`expenseGroups`: paid
 and to pay, in trip order). A row shows a paperclip when `COUNT_RECEIPTS_FOR_TRIP` has receipts for
-it.
+it. A row opens the expense's detail page (`app/expense/[expenseId]/index.tsx`: amount, date,
+receipts, Delete); **Edit** there opens the form (`[expenseId]/edit.tsx`), F5. A cancelled booking
+with refundability not set is listed under *Refund not specified* (`refundNotSaid`, R10).
 
 **Currencies are never converted or summed across** (CLAUDE.md §7): every total is a list, one
 entry per currency.

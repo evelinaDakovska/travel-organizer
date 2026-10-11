@@ -266,6 +266,8 @@ wrong.
 - Text styles come from `type.*` (Caprasimo headings, Figtree body). Android picks a face by font
   family, so never set `fontWeight` on these.
 - Icons by meaning — `<Icon name="back" />` — so the icon set can be swapped in `Icon.tsx` alone.
+  An item's icon comes from `ITEM_ICONS` there, typed against every kind and subkind (a new one
+  without an icon does not compile), drawn by `KindTile`: shape tells kinds apart, not colour (D28).
 
 ### Testing
 Three tiers, detailed in `docs/technical-reference.md` §10:

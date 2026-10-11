@@ -116,7 +116,7 @@ Verify the toolchain any time with:
 
 ```powershell
 npx expo-doctor      # should report all checks passing
-npm test             # 366 tests
+npm test             # ~570 tests (the count grows; status.md has it)
 npx tsc --noEmit     # must be clean
 ```
 
@@ -211,7 +211,7 @@ finish the first unticked task, commit, then tick it there.
 - **The app is in use** on the owner's Galaxy S26 Ultra: release build 0.1.0, signed with the private
   key (see *Release build* below). It passed an end-to-end QA on the phone, including sharing from
   Gmail, Chrome, Maps and Photos
-- **366 tests passing**, typecheck clean
+- **366 tests passing** at the time (now ~570), typecheck clean
 - **Open:** confirming the expo-notifications patch (reminders lost under memory pressure) on the
   phone, and a reminder after a long idle period — both listed in `docs/status.md`
 

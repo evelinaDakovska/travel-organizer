@@ -497,3 +497,35 @@ fill visible enough — it says so under the time, undoes in one tap, and writes
 
 **Rejected:** changing `upNext` itself (Up next keeps meaning "still to come"); a refund
 lifecycle; a stored "primary attachment" (R6 uses `subtype='ticket'`, no migration).
+
+---
+
+## D28 — After showing the app: icons, a + that says what, the trip on top
+
+A senior frontend developer saw the app on 2026-10-11 (plan: `docs/feedback-plan.md`).
+
+**Kinds are told apart by icon, not colour.** One icon per item — the subkind's (a plane, a train,
+a museum) or the kind's — in the same soft accent tile on every card. A colour per kind would be a
+rainbow of ten on one screen, would have to be learned, and fails WCAG 1.4.1 on its own. The map
+is typed against every kind and subkind, so none can be missing.
+
+**The + shows what it adds**: a receipt on Expenses, a notebook on Notes (which now adds a note,
+not a trip item), each with a small + so it still reads as "add". The duplicate *New note* button
+went: one primary action per screen.
+
+**The trip stays on top of Now** in a band outside the list — destination, dates, *Day 2 of 5*,
+the zone, who is going — at the owner's request, knowing it pushes *Happening now* down by two
+lines. Done tasks are behind *Show done*, folded by default.
+
+**Empty is not shown** on detail pages: no *When* without a date, no help box in an empty *Tickets
+& links* (its add buttons stay — they are how you attach). *Reminder: Off* stays: it is a choice.
+
+**An expense has a detail page**, with Edit at the top and **Delete on the detail page**, as on an
+item — on the form, deleting would have gone back to a page whose expense was gone.
+
+**Picture attachments show themselves** in the list's circle, decoded at that size.
+
+**Rejected:** a coloured border or colour per kind; an extended + with a text label (wider than
+the tab bar leaves room for, and the icon plus the screen reader label say it); hiding *Reminder:
+Off*.
+

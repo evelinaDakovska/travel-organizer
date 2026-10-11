@@ -14,7 +14,7 @@ single source of truth for schema, time, files, queries). Read in this order:
 5. `docs/decision-log.md` — why, and what was rejected (D1–D24)
 6. `docs/windows-handoff.md` — machine setup, release build, Windows specifics
 
-Last verified: **2026-10-11** (second session), N5a built (not yet on the phone), **496 tests**,
+Last verified: **2026-10-12**, N6 + R1–R11 + F1–F6 built (0.5.0, see `docs/status.md`), **571 tests**,
 typecheck clean.
 
 > **Starting fresh? Jump to §11 first** — it is the exact point the last session stopped, what is
@@ -204,7 +204,7 @@ Moving the repo to `C:\dev` is what fixed the first Windows build.
 
 ```bash
 npm install                 # postinstall applies the patches
-npm test                    # 496 tests, ~3s
+npm test                    # 571 tests, ~3s
 npx tsc --noEmit            # must be clean
 npx expo prebuild --platform android      # after any app.json or native change
 # EXPO_NO_GIT_STATUS=1 when the tree is dirty, or prebuild stops on a prompt

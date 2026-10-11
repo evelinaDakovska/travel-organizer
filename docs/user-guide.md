@@ -42,7 +42,7 @@ On **Trips**, tap **New trip** (top right).
 **Trips** lists *Upcoming* and *Past* trips. While a trip is under way, the app opens straight into
 it.
 
-### Add what is booked
+### Add what is booked or planned
 
 Inside a trip, tap the round **+** at the bottom right (on Now, Timeline or Places). It opens
 **Add to trip**. The button shows what it adds: a plain **+** for an item, a receipt on Expenses
@@ -60,7 +60,7 @@ you pick (*Flight*, *Museum*…), or the kind (*Travel*, *Stay*…) when there i
      ticket). It shows on the Timeline and Now.
    - **Idea**: saved to Places until you decide on it (see [Places](#5-places-and-notes)).
    - **Cancelled**: kept for its documents, hidden from the Timeline.
-4. **When**: *Starts* and, for anything that lasts, *Ends*. A day is enough; add a time if you
+4. **When**: *Starts* and, for anything that lasts, *Ends* (*Departs* and *Arrives* for travel). A day is enough; add a time if you
    know it. A new item opens on the trip's first day.
 5. **Where**: *Place* and *Address*. Place names you have used before are suggested.
 6. **Booking**: **Confirmation** code, **Price** and **Currency**, **Paid** (*Not paid yet* /
@@ -238,8 +238,8 @@ shown in, and who is travelling. Below it:
   day are not shown here; during a stay its *Check out* is in Up next.
 - **Today, no fixed time**: plans for today with only a date, such as *Santa Claus Village*, all
   day long — in the place's own time zone. **Maybe today** lists ideas dated today, apart.
-- **Up next**: what happens next, with the time and route, and **Open attachments** to reach the
-  tickets in one tap. It follows the items, not the trip's dates, so a flight the day before the
+- **Up next**: what happens next, with the time and route, and a button to open its ticket in one
+  tap (see *Mark the ticket as Ticket*). It follows the items, not the trip's dates, so a flight the day before the
   trip shows up too. Tasks are not here; they are under Open tasks.
 - **Open tasks**: tick them off (**+ Add** adds one). **Show done** lists the ones already ticked;
   tap a circle there to un-tick it.
@@ -334,7 +334,7 @@ one forint taxi shows two totals, one per currency.
 
 ### Places
 
-Things you might do, not booked yet: a café someone recommended, a viewpoint, a museum. Add them
+Things you might do, not decided yet: a café someone recommended, a viewpoint, a museum. Add them
 with **Status: Idea** and **How much do you want it** (*Must*, *Want*, *Maybe*).
 
 **Places** lists **Ideas**, sorted by how much you want them, and then **In your itinerary**:
