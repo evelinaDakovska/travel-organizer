@@ -11,9 +11,9 @@ Verified against the repo on 2026-10-12, on Windows: **571 tests passing, typech
 > owner's real data, documented (`docs/user-guide.md`), and checked on the phone. Open: the owner
 > tries a **camera** receipt on the phone (tested on the emulator), and the **time zones** on the
 > Lapland flights (see `docs/n5-plan.md`, *What the real data showed*). N6 (a journey's zone from
-> its city) and **R1–R11** (the review, `docs/review-plan.md`) are done and rehearsed as **0.4.0, not
-> yet on the phone** — next is installing it (see *0.4.0* under R). Then the owner's new feedback
-> (2026-10-11), then N5b or N1–N4.
+> its city), **R1–R11** (the review) and **F1–F6** (feedback after showing the app) are done,
+> tested end to end on the emulator and rehearsed as **0.5.0 — not yet on the phone**: next is
+> installing it (see *0.5.0* under F). Then N5b or N1–N4.
 
 ---
 
@@ -449,6 +449,46 @@ detail, Trip documents, the open sheets.
 
 **F6, how it was verified:** on the emulator: a PNG attached to *Arktikum museum* with + File
 showed its picture in the circle beside *Image · 7 KB*; the map link beside it kept *MAP*.
+
+**End-to-end pass on the emulator, 2026-10-11/12** (owner's request, after F1–F6). Dev build for
+most of it, then the **release** build for the pickers and offline. Done through the UI, each step
+read back from the screen:
+- **Trips:** created *Vienna E2E* (Austria, 11–13 Oct picked as a range, Vienna zone, two travellers,
+  notes) → opened straight into Now: band *Day 1 of 3 · Vienna time · Evelina, Tester*, *Trip
+  notes* at the bottom. Milan: band *Ended*; *Delete trip* named *18 items and 12 saved files*,
+  then gone from Home.
+- **Items:** an activity 22:00–23:50 with place, address, code, price → *Happening now · Until
+  23:50*; edited to *Paid*. A journey Vienna → Munich → Sofia with a connection: Munich kept Vienna
+  time (same clock), Sofia's arrival switched to *Sofia time* with its hint (N6); detail *Departs …
+  Vienna time / Arrives … Sofia time* (R3), *Rest of this journey*. A date-only stay over three days
+  → *Today, no fixed time · Until Tue 13 Oct*. An undated task from *Open tasks → Add* (no *When*,
+  F4). A café idea with *Must* from Places → *Add to itinerary* on 12 Oct → confirmed, morning
+  reminder. Cancel → *Restore* offered → Delete.
+- **Attachments:** a link; a PDF renamed and marked *Ticket* → *Open Belvedere ticket* above *Open
+  belvedere.at* (R6); *Also attach to an item* onto the café; the café deleted → the ticket still
+  opened from the Belvedere. A camera photo and a gallery photo as receipts (release build), with
+  their thumbnails (F6); a receipt opened in airplane mode.
+- **Search** by confirmation code and by a note's body; a miss says so. **Notes:** + adds a note
+  (F2), pinned, found, deleted; open search results updated live.
+- **Expenses:** two added, totals bookings + spending per currency, Bookings view (*Paid*), detail →
+  Edit → amount changed → back on detail → Delete (F5).
+- **Backup:** *Export everything* opened the share sheet with the zip; *Import* with *Keep mine* of a
+  backup already on the phone said *nothing will change*. **Timeline** opened on today with *Today*.
+
+**Found and fixed:** a connection's date picker opened on the trip's first day when *With
+connections* created both legs at once (`legDefaultDate`, `1d7fe84`).
+
+**Found, not an app bug:** on the **dev client** both image pickers fail with *Attempting to launch
+an unregistered ActivityResultLauncher* — the dev launcher replaces the activity the picker
+registered with. The same steps on the **release** build open the camera (first permission grant
+included) and the gallery. Test pickers on a release build.
+
+**0.5.0 = N6 + R1–R11 + F1–F6, rehearsed as the phone will get it (2026-10-12).** versionCode 7,
+release key `63:8D:C6:86…52:35:E7`, kept as `travel-organizer-0.5.0.apk`. Fresh 0.3.0 → sample
+backup → an expense with a PDF receipt (EUR 2930.00) → snapshot → `install -r` 0.5.0 → first
+install time unchanged, no crash, both trips' timelines, trip documents and expense totals identical
+apart from the ticket buttons' labels and the trip band (both intended), alarms 28 before and after.
+**Not yet on the phone** (0.4.0 never was; 0.5.0 replaces it).
 
 ---
 

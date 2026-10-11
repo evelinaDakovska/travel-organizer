@@ -287,6 +287,10 @@ Hard-won details:
 - **Making a read fail on purpose** (R4) or a shared file fail to copy (R5): a temporary
   `__DEV__`-only switch, driven by time windows rather than edited at runtime (see above), and
   removed before the commit — grep for it.
+- **Image pickers on the dev client** (camera and gallery) fail with *Attempting to launch an
+  unregistered ActivityResultLauncher*: the dev launcher replaces the activity expo-image-picker
+  registered its launchers with. Not an app bug — the release build opens both. Test pickers on a
+  release build.
 - Useful probes: `adb shell dumpsys alarm | grep -A3 <pkg>` (look for `window=0
   exactAllowReason=policy_permission`), `adb shell dumpsys notification --noredact`,
   `adb shell cmd connectivity airplane-mode enable|disable`,
@@ -378,14 +382,23 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ## 11. Where the last session stopped (2026-10-11) — read this first
 
-### 11.00 Latest (2026-10-11, evening) — read this first
+### 11.00 Latest (2026-10-12) — read this first
 
-- **N6 is done** as 0.3.1 (built, rehearsed, not on the phone); it ships with R1–R7 as 0.4.0.
-- **An independent review was checked against the code** and turned into a plan:
-  **`docs/review-plan.md`, steps R0–R11**, tracked in `status.md` → *R*. **All eight decisions are
-  answered** (review-plan §7, decision-log D27). Four differ from the recommendations: N6 kept as
-  built (R0 dropped), 15 minutes after an event ends, dated ideas in *Maybe today*, and sharing
-  keeps what worked and says what failed. **Start at R1.**
+- **Built and committed:** N6, **R1–R11** (`docs/review-plan.md`, decisions D27) and **F1–F6**
+  (`docs/feedback-plan.md`, decisions D28). Each has its *what was built / how it was verified*
+  note in `docs/status.md`.
+- **End-to-end pass done on the emulator** (status.md, under F): one bug found and fixed
+  (`legDefaultDate`); the image pickers fail **only on the dev client** (§7).
+- **0.5.0 is built and rehearsed** over 0.3.0 with sample data and an expense receipt: everything
+  kept. APK: `%USERPROFILE%\.travel-organizer\travel-organizer-0.5.0.apk`. **0.4.0 was never
+  installed; the phone still has 0.3.0.**
+- **Next: the phone.** The owner makes a fresh Drive backup, connects the phone (Auto Blocker off,
+  USB debugging on), then `adb -s R5GL22FE9QY install -r --user 0 <apk>` — never uninstall. Launch,
+  check no crash, the owner checks their trip; then the open *Final phone QA* items (a reminder
+  while locked, the memory-pressure fix, the time-zone change, the Lapland legs' zones — N6's notice
+  now offers the fix on each flight). USB debugging off, Auto Blocker on afterwards.
+- **The emulator** holds release 0.5.0 with the sample trips (from the rehearsal). For dev work,
+  uninstall it and `npx expo run:android` again.
 
 ### 11.1 What happened, in order
 
