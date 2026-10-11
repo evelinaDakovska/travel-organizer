@@ -1,12 +1,13 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import type { ResourceInput } from '../../src/domain/resource';
 import { nextCurrency } from '../../src/domain/spending';
 import { deviceToday } from '../../src/domain/trip';
 import { ExpenseForm } from '../../src/features/expenses/ExpenseForm';
+import { deleteStoredFile } from '../../src/files/storage';
 import { PendingReceipts } from '../../src/features/expenses/PendingReceipts';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
 import { createExpense, EXPENSE_TABLES, listExpenses } from '../../src/repositories/expenses';
@@ -20,6 +21,21 @@ export default function NewExpense() {
   const router = useRouter();
   const { tripId } = useLocalSearchParams<{ tripId?: string }>();
   const [receipts, setReceipts] = useState<ResourceInput[]>([]);
+
+  // Closing without saving deletes the receipts copied in for this form. Not once a save has
+  // started: rows may already point at those files, so anything left is the start-up sweep's.
+  const pending = useRef(receipts);
+  pending.current = receipts;
+  const saveStarted = useRef(false);
+  useEffect(
+    () => () => {
+      if (saveStarted.current) return;
+      for (const receipt of pending.current) {
+        if (receipt.kind === 'file') deleteStoredFile(receipt.storedPath);
+      }
+    },
+    [],
+  );
 
   // Only to start in the currency used last on this trip.
   const { data: expenses } = useLiveQuery(
@@ -51,7 +67,14 @@ export default function NewExpense() {
           }}
           receipts={<PendingReceipts receipts={receipts} onChange={setReceipts} />}
           onSubmit={async (input) => {
-            await createExpense(db, tripId, input, receipts);
+            saveStarted.current = true;
+            try {
+              await createExpense(db, tripId, input, receipts);
+            } catch (error) {
+              // Rolled back: no row points at the copies, so closing may delete them again.
+              saveStarted.current = false;
+              throw error;
+            }
             router.back();
           }}
         />

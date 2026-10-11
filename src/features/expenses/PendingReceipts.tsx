@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { ResourceInput } from '../../domain/resource';
+import { deleteStoredFile } from '../../files/storage';
 import { Button } from '../../ui/components/Button';
 import { Icon } from '../../ui/components/Icon';
 import { SectionLabel } from '../../ui/components/SectionLabel';
@@ -22,8 +23,8 @@ const BUTTONS: { kind: PickerKind; label: string }[] = [
 
 /**
  * Receipts for an expense not saved yet: the files are copied in as they are picked and saved
- * with the expense. One removed here, or left behind by a form never saved, is an orphan the next
- * start-up sweep collects.
+ * with the expense. One removed here is deleted at once; a form closed without saving deletes the
+ * rest (`app/expense/new.tsx`).
  */
 export function PendingReceipts({ receipts, onChange }: Props) {
   const c = useColors();
@@ -53,7 +54,10 @@ export function PendingReceipts({ receipts, onChange }: Props) {
             {receipt.label}
           </Text>
           <Pressable
-            onPress={() => onChange(receipts.filter((_, i) => i !== index))}
+            onPress={() => {
+              onChange(receipts.filter((_, i) => i !== index));
+              if (receipt.kind === 'file') deleteStoredFile(receipt.storedPath);
+            }}
             hitSlop={12}
             accessibilityRole="button"
             accessibilityLabel={`Remove ${receipt.label}`}>

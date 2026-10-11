@@ -59,6 +59,20 @@ export function writeStoredFile(storedPath: string, bytes: Uint8Array): void {
 }
 
 /**
+ * Removes a copy no row will ever point at — a receipt dropped from a form that was not saved.
+ * Never for a file a row references. Best effort: the start-up sweep collects whatever this misses.
+ */
+export function deleteStoredFile(storedPath: string): void {
+  if (!isStoredPath(storedPath)) return;
+  try {
+    const file = new File(absoluteUriFor(storedPath));
+    if (file.exists) file.delete();
+  } catch (error) {
+    console.warn('Could not delete an unsaved copy', error);
+  }
+}
+
+/**
  * Copies the picked file into the sandbox under a name derived from `id`.
  * Await it: the copy is asynchronous, and the row must not be written before the file lands.
  */
