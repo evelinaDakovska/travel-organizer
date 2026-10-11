@@ -116,7 +116,7 @@ function LegCard({ title, leg, onChange, onRemove, defaultTz, defaultDate, probl
         />
       </Field>
 
-      <Field label="Arrives" hint="Optional. Set its zone if it lands somewhere else">
+      <Field label="Arrives" hint="Optional. Each end is in the local time where it happens. Check both zones">
         <MomentField
           value={leg.arrives}
           onChange={(arrives) => change({ ...leg, arrives })}

@@ -100,6 +100,14 @@ export function ItemForm({
 
   const kind = watch('kind');
   const status = watch('status');
+  const subkind = watch('subkind');
+  // A journey's ends read as what they are; a car is collected, not boarded.
+  const [startLabel, endLabel] =
+    kind !== 'transport'
+      ? ['Starts', 'Ends']
+      : subkind === 'car'
+        ? ['Pick up', 'Drop off']
+        : ['Departs', 'Arrives'];
   const start = watch('start');
   const end = watch('end');
   const details = watch('details') as Record<string, unknown> | undefined;
@@ -350,7 +358,7 @@ export function ItemForm({
             control={control}
             name="start"
             render={({ field }) => (
-              <Field label="Starts" error={errors.start?.message}>
+              <Field label={startLabel} error={errors.start?.message}>
                 <MomentField
                   value={field.value}
                   onChange={(next) => {
@@ -374,9 +382,13 @@ export function ItemForm({
             name="end"
             render={({ field }) => (
               <Field
-                label="Ends"
+                label={endLabel}
                 error={errors.end?.message}
-                hint="A stay or a journey that finishes on another day gets its own timeline entry">
+                hint={
+                  kind === 'transport'
+                    ? 'Each end is in the local time where it happens. Check both zones'
+                    : 'A stay that finishes on another day gets its own timeline entry'
+                }>
                 <MomentField
                   value={field.value}
                   onChange={field.onChange}

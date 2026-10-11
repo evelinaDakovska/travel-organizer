@@ -151,6 +151,14 @@ export function withZone(formatted: string, zoneOverride: string | null): string
   return zoneOverride ? `${formatted} · ${timezoneLabel(zoneOverride)}` : formatted;
 }
 
+/**
+ * One end of a journey: always with its zone, whether the item sets it or follows the trip, because
+ * the time is local to that end — "13:50 · Helsinki time". A date alone has no clock to qualify.
+ */
+export function withJourneyZone(formatted: string, moment: { tz: string; precision: string }): string {
+  return moment.precision === 'time' ? `${formatted} · ${timezoneLabel(moment.tz)} time` : formatted;
+}
+
 const searchable = (text: string) => text.toLowerCase().replace(/_/g, ' ');
 
 /** By zone id, country or city. A query matching only a country lists every zone it spans. */

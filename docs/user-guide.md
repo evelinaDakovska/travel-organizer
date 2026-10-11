@@ -131,7 +131,10 @@ shows the same fill, and **Save** fixes it too.
 
 On Now and the detail page, a time in another zone carries a label such as *09:20 · Sofia*; a
 time with no label is in the trip's zone, as the trip card says: *Times shown in Helsinki time
-unless an item says otherwise.*
+unless an item says otherwise.* A **journey's** detail page names the zone at **both** ends
+always, even one that follows the trip: *Departs … 09:20 · Sofia time*, *Arrives … 12:15 ·
+Helsinki time*. In its form the ends are called *Departs* and *Arrives* (*Pick up* and *Drop off*
+for a car).
 
 ### Reminders
 
@@ -359,7 +362,8 @@ At home, on wifi, a day or two before:
 
 1. **Every booking is in**, confirmed, with its date and time.
 2. **Time zones**: open each flight's detail page. No ⚠ notice under *When* means its times are
-   read in the right clock; a time in another zone shows its label (*08:15 · Berlin*).
+   read in the right clock. Both ends name their zone (*Departs … 08:15 · Berlin time*): check
+   each is where that end really is.
 3. **Tickets attached**: open each one once.
 4. **Airplane mode test**: switch it on, open the trip, open every ticket, switch it off.
 5. **Reminders** on where you want them; notifications allowed.

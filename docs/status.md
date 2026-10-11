@@ -257,7 +257,7 @@ change or a native change; R5 changes how shared files are copied.
 | ~~R0~~ | ~~Finish N6 as suggest-only on existing items~~ — **dropped**: the owner keeps N6 decision B (D26) | — |
 | **R1** | Now: *Happening now* — an event stays while it is on, 15 min after its end, 60 min if it has none (`nowSections`) | ✅ |
 | **R2** | Now: *Today, no fixed time* and *Maybe today* (ideas) — date-only entries through their day, in the item's zone | ✅ |
-| **R3** | Transport zones named on both ends on item detail; the journey form's hint | ⬜ |
+| **R3** | Transport zones named on both ends on item detail; the journey form's hint | ✅ |
 | **R4** | Loading, failed, missing, empty and stale told apart on every screen, with Retry | ⬜ |
 | **R5** | Share-to-app keeps what worked and says exactly what failed and how to retry | ⬜ |
 | **R6** | *Open ticket* from `subtype='ticket'`, other documents behind it | ⬜ |
@@ -282,6 +282,18 @@ repeated in Up next; 16:10 — *Ended 16:00*; 16:16 — gone; 20 Nov 23:00 — t
 22 Nov 00:05 — *Santa Claus Village* under *Today, no fixed time*; 22:00 — the Northern lights
 hunt *Ends Mon 23 Nov · 01:00* above Santa Claus Village. *Maybe today* is covered by tests only
 (the sample has no dated idea).
+
+**R3, what was built:** `withJourneyZone` (`src/domain/timezones.ts`): on a transport item's detail
+page both ends always name their zone, inherited or set — *Departs Friday, 20 November · 09:20 ·
+Sofia time* / *Arrives … 12:15 · Helsinki time*. The item form calls a journey's ends *Departs* /
+*Arrives* (*Pick up* / *Drop off* for a car) with the hint *Each end is in the local time where it
+happens. Check both zones*; the leg form's hint says the same. No stored data changes.
+
+**R3, how it was verified:** 3 new tests. On the emulator: *Flight to Helsinki* (Sofia set on the
+item, Helsinki from the trip) reads both zones on detail and in Edit; with the device switched to
+Asia/Tokyo the times and zones are unchanged. Found on the way: moving the emulator clock with
+`cmd alarm set-time` and then reloading the JS leaves the dev client on a white screen; set the
+clock back before any reload.
 
 ---
 

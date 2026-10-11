@@ -8,6 +8,7 @@ import {
   timezoneCountry,
   timezoneLabel,
   timezoneMatch,
+  withJourneyZone,
   withZone,
 } from './timezones';
 
@@ -101,5 +102,23 @@ describe('withZone', () => {
 
   it('leaves a moment that follows the trip as it is', () => {
     expect(withZone('Sunday, 20 September · 14:00', null)).toBe('Sunday, 20 September · 14:00');
+  });
+});
+
+describe('withJourneyZone', () => {
+  it('names the zone an end follows from the trip, not only one it sets', () => {
+    const inherited = { local: '2026-11-22T13:50', tz: 'Europe/Helsinki', precision: 'time' };
+    expect(withJourneyZone('Sun 22 Nov · 13:50', inherited)).toBe('Sun 22 Nov · 13:50 · Helsinki time');
+  });
+
+  it('names each end by its own zone', () => {
+    const arrival = { local: '2026-11-22T16:10', tz: 'Europe/Berlin', precision: 'time' };
+    expect(withJourneyZone('16:10', arrival)).toBe('16:10 · Berlin time');
+  });
+
+  it('leaves a date alone: no clock, nothing to qualify', () => {
+    expect(withJourneyZone('Sun 22 Nov', { tz: 'Europe/Helsinki', precision: 'date' })).toBe(
+      'Sun 22 Nov',
+    );
   });
 });
