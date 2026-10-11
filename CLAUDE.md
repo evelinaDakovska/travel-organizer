@@ -10,6 +10,7 @@ what is still open, and the conventions to follow.
 | `docs/status.md` | **Status board** — milestones, C, S and N tasks, open questions. The one place status lives |
 | `docs/technical-reference.md` | **Single source of truth** for schema, time model, file storage, queries |
 | `docs/plan.md` | Step-by-step implementation plan and current position |
+| `docs/review-plan.md` | **Next work:** R0–R11 from the independent review, and the decisions it needs |
 | `docs/decision-log.md` | *Why* things were decided. Rationale only — no authoritative detail |
 | `docs/windows-handoff.md` | **Continuing on Windows** — read this instead of `dev-setup.md` there |
 | `docs/dev-setup.md` | Machine setup for the macOS machine it was started on |
@@ -65,6 +66,7 @@ real use, 2026-10-10) and **N1–N4** (features approved before that). Both are 
 **C, V and S are all done, and the app is in daily use** on the owner's phone as a signed release
 build, **holding a real trip**. **N5a (expenses) is done and on the phone as 0.3.0** — start at
 `docs/session-handoff.md` §11, which says exactly where the last session stopped and what is next.
+**Next after N6: R0–R11** in `docs/review-plan.md` — the owner answers its decisions first.
 Migration 002 (additive) is shipped; anything touching stored data follows the data-safety routine
 in that file.
 **Plan first:** for non-trivial work, a step-by-step plan the owner approves before any code.

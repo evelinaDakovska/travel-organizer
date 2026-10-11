@@ -10,7 +10,9 @@ Verified against the repo on 2026-10-11, on Windows: **496 tests passing, typech
 > splitting) is done**: decisions answered, gaps closed, regression pass clean, rehearsed on the
 > owner's real data, documented (`docs/user-guide.md`), and checked on the phone. Open: the owner
 > tries a **camera** receipt on the phone (tested on the emulator), and the **time zones** on the
-> Lapland flights (see `docs/n5-plan.md`, *What the real data showed*). Next: N5b, or N1–N4.
+> Lapland flights (see `docs/n5-plan.md`, *What the real data showed*). In progress: N6 (a
+> journey's zone from its city). **Next: R0–R11** (`docs/review-plan.md`, decisions first), then
+> N5b or N1–N4.
 
 ---
 
@@ -238,6 +240,30 @@ lives.
   labels to what is searched. The per-trip queries gain a version without `trip_id`, tested in node
   like `SEARCH_TRIP_ITEMS`.
 - Cancelled items stay findable, the same as in per-trip search.
+
+---
+
+## R — after the review · planned 2026-10-11, not started
+
+An independent product and technical review (at `813a0f7`), checked against the code. The plan,
+the verdict on each finding, and **eight decisions awaiting the owner** are in
+[`review-plan.md`](review-plan.md). Starts after N6. No step needs a migration, a backup-format
+change or a native change; R5 changes how shared files are copied.
+
+| | Step | ✓ |
+|---|---|---|
+| **R0** | Finish N6: on an existing item the city's zone is suggested, never written without a tap | ⬜ |
+| **R1** | Now: *Happening now* — an event stays while it is on (`nowSections`) | ⬜ |
+| **R2** | Now: *Today, no fixed time* — date-only entries through their day | ⬜ |
+| **R3** | Transport zones named on both ends on item detail; the journey form's hint | ⬜ |
+| **R4** | Loading, failed, missing, empty and stale told apart on every screen, with Retry | ⬜ |
+| **R5** | Share-to-app saves all or nothing; copies cleaned up on failure | ⬜ |
+| **R6** | *Open ticket* from `subtype='ticket'`, other documents behind it | ⬜ |
+| **R7** | Timeline opens on today during the trip; a Today button | ⬜ |
+| **R8** | Wording: *planned* is not *booked* | ⬜ |
+| **R9** | Expense form: mark a booking Paid rather than adding it again | ⬜ |
+| **R10** | Cancelled with refund not specified: shown as not counted | ⬜ |
+| **R11** | Documentation reconciled with the code | ⬜ |
 
 ---
 

@@ -391,6 +391,16 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ## 11. Where the last session stopped (2026-10-11) — read this first
 
+### 11.00 Latest (2026-10-11, evening) — read this first
+
+- **N6 is in progress** in another session (a journey's zone from its city; step 1 is `6a09622`,
+  the rest uncommitted). N6 is not yet in `status.md`.
+- **An independent review was checked against the code** and turned into a plan:
+  **`docs/review-plan.md`, steps R0–R11**, tracked in `status.md` → *R*. Work on it starts when N6
+  is finished. **First, get the owner's answers to the eight decisions** at the end of that file.
+- R0 changes N6 itself: on an **existing** item the city's zone must be suggested, not written on
+  Save (review-plan §3, conflict 1).
+
 ### 11.1 What happened, in order
 
 1. **U8 done.** The owner exported a backup to Drive. Import was proven first: on the emulator a
