@@ -265,7 +265,7 @@ change or a native change; R5 changes how shared files are copied.
 | **R8** | Wording: *planned* is not *booked* | ✅ |
 | **R9** | Expense form: mark a booking Paid rather than adding it again | ✅ |
 | **R10** | Cancelled with refund not specified: shown as not counted | ✅ |
-| **R11** | Documentation reconciled with the code | ⬜ |
+| **R11** | Documentation reconciled with the code | ✅ |
 
 **R1 + R2, what was built:** `nowSections` in `src/domain/itinerary.ts` (with `happeningNote`,
 `todayNote`, and `localDateIn` in `time.ts`); Now renders *Happening now*, *Today, no fixed
@@ -368,6 +368,16 @@ refundability not set — per currency, never across. The totals are unchanged (
 cost). Bookings shows a *Refund not specified* section with the amount, *not counted above*, and the
 items. **Verified** on the emulator: the sample *Husky safari* (EUR 290) cancelled — the trip total
 fell by 290 as before and the section listed it; restored afterwards.
+
+**R11, what was done:** every `src/…`/`app/…` path in the current docs checked against the tree
+(three stale ones fixed or marked as history); `expo-image` dropped from the dependency table; the
+"routes are thin" rule in `CLAUDE.md` and the technical reference rewritten to say what `app/`
+really holds (screens composing feature components; no SQL, no domain logic) rather than moving
+working screens; the file tree brought up to date; status removed from `CLAUDE.md` §3 and
+`session-handoff.md` §2, which had drifted (§2 still said 0.2.0 was on the phone), leaving
+pointers here; `nextEntries`, `minutesUntilEntry` and `entriesOnDay` deleted with their tests (no
+callers; `nowSections` covers what `nextEntries` was for); the emulator lessons of this session in
+`session-handoff.md` §7.
 
 ---
 
@@ -525,7 +535,8 @@ first** and compare with the latest Drive backup before anyone retypes it. The D
 was found by typing with `adb input`; on the phone's keyboard 0.1.0 may have kept the decimal point
 (a controlled input whose value does not change is not reset), so that claim is unproven there.
 
-**U9, what was built:** `expenseGroups` in `src/domain/expenses.ts` — the items behind the totals,
+**U9, what was built** (history — since then the module is `bookingCosts.ts` and the page was
+removed in N5a): `expenseGroups` in `src/domain/expenses.ts` — the items behind the totals,
 split into to pay and paid, in trip order. `app/trip/[tripId]/expenses.tsx` shows the totals card,
 then each item as an `ItemRow` that opens the item. The card on Now gets *See each expense*.
 **Verified** on the emulator with release 0.2.1 installed over 0.2.0: Lapland lists its five items

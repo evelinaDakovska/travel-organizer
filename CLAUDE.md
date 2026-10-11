@@ -61,14 +61,13 @@ Do not duplicate status anywhere else; update that one file.
 Work is tracked by **task ID**, not milestone: **C1–C5** (core — domain, schema, repositories,
 files, export; no device needed), **S1–S8** (surface — screens and anything needing a device, done
 on a personal Windows machine, see `docs/windows-handoff.md`), **U1–U8** (the owner's list after
-real use, 2026-10-10) and **N1–N4** (features approved before that). Both are in `docs/status.md`.
+real use, 2026-10-10), **N1–N6** (features) and **R1–R11** (after an independent review,
+`docs/review-plan.md`). All in `docs/status.md`.
 
-**C, V and S are all done, and the app is in daily use** on the owner's phone as a signed release
-build, **holding a real trip**. **N5a (expenses) is done and on the phone as 0.3.0** — start at
-`docs/session-handoff.md` §11, which says exactly where the last session stopped and what is next.
-**Next: R1–R11** in `docs/review-plan.md` — decisions answered, start at R1.
-Migration 002 (additive) is shipped; anything touching stored data follows the data-safety routine
-in that file.
+The app is in daily use on the owner's phone as a signed release build, **holding a real trip**.
+**What is done and what is next lives only in `docs/status.md`**; where the last session stopped is
+`docs/session-handoff.md` §11. Anything touching stored data follows the data-safety routine in
+that file.
 **Plan first:** for non-trivial work, a step-by-step plan the owner approves before any code.
 
 **How to be asked to work:**
@@ -226,7 +225,7 @@ currency conversion · embedded maps · automatic booking parsing.
 
 ### Folders
 ```
-app/              expo-router routes ONLY — thin, no logic
+app/              expo-router routes; a screen composes feature components. No SQL, no domain logic
 src/db/           client + migrations. SQL schema lives here
 src/domain/       PURE TS. No React, no SQLite, no Expo imports. All testable logic
 src/repositories/ SQL queries. SQL lives here and nowhere else

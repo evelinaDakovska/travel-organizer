@@ -1,9 +1,6 @@
 import {
   buildTimeline,
-  entriesOnDay,
   landingDay,
-  minutesUntilEntry,
-  nextEntries,
   timelineEntries,
   type TimelineItem,
 } from './timeline';
@@ -167,116 +164,6 @@ describe('what the timeline leaves out', () => {
     });
 
     expect(keys([task])).toEqual(['task']);
-  });
-});
-
-describe('nextEntries', () => {
-  const now = new Date('2026-09-19T10:00:00.000Z');
-
-  it('returns the next two, which is what the Now card shows', () => {
-    const items = [
-      item({ id: 'duomo', start: at('2026-09-19T14:00') }),
-      item({ id: 'dinner', kind: 'food', start: at('2026-09-19T19:30') }),
-      item({ id: 'late', start: at('2026-09-19T22:00') }),
-    ];
-
-    expect(nextEntries(items, now).map((e) => e.key)).toEqual(['duomo', 'dinner']);
-  });
-
-  it('ignores what has already happened', () => {
-    const items = [
-      item({ id: 'flight', kind: 'transport', start: at('2026-09-19T06:10') }),
-      item({ id: 'duomo', start: at('2026-09-19T14:00') }),
-    ];
-
-    expect(nextEntries(items, now).map((e) => e.key)).toEqual(['duomo']);
-  });
-
-  it('includes an item dated before the trip, such as a flight check-in', () => {
-    const checkIn = item({
-      id: 'checkin',
-      kind: 'task',
-      title: 'Online check-in',
-      start: at('2026-09-19T12:00'),
-    });
-    const duomo = item({ id: 'duomo', start: at('2026-09-20T14:00') });
-
-    expect(nextEntries([duomo, checkIn], now).map((e) => e.key)).toEqual(['checkin', 'duomo']);
-  });
-
-  it('excludes cancelled items', () => {
-    const items = [
-      item({ id: 'cancelled', status: 'cancelled', start: at('2026-09-19T14:00') }),
-      item({ id: 'duomo', start: at('2026-09-19T16:00') }),
-    ];
-
-    expect(nextEntries(items, now).map((e) => e.key)).toEqual(['duomo']);
-  });
-
-  it('excludes a completed task but keeps an outstanding one', () => {
-    const done = item({
-      id: 'done',
-      kind: 'task',
-      start: at('2026-09-19T14:00'),
-      completedAt: '2026-09-19T09:00:00.000Z',
-    });
-    const todo = item({ id: 'todo', kind: 'task', start: at('2026-09-19T16:00') });
-
-    expect(nextEntries([done, todo], now).map((e) => e.key)).toEqual(['todo']);
-  });
-
-  it('surfaces a check-out, which is a real next thing to do', () => {
-    const hotel = item({
-      id: 'hotel',
-      kind: 'stay',
-      start: at('2026-09-17T15:00'),
-      end: at('2026-09-19T11:00'),
-    });
-
-    // 08:00 in Rome, with check-out at 11:00 still ahead.
-    const morning = new Date('2026-09-19T06:00:00.000Z');
-    expect(nextEntries([hotel], morning).map((e) => e.key)).toEqual(['hotel:end']);
-  });
-
-  it('returns nothing when the trip is over, so there is no Now card', () => {
-    const past = item({ id: 'past', start: at('2026-09-18T09:00') });
-
-    expect(nextEntries([past], now)).toEqual([]);
-  });
-
-  it('returns nothing when every item is undated', () => {
-    expect(nextEntries([item({ id: 'idea', status: 'idea' })], now)).toEqual([]);
-  });
-
-  it('honours an explicit limit', () => {
-    const items = [
-      item({ id: 'a', start: at('2026-09-19T14:00') }),
-      item({ id: 'b', start: at('2026-09-19T15:00') }),
-    ];
-
-    expect(nextEntries(items, now, 1).map((e) => e.key)).toEqual(['a']);
-  });
-});
-
-describe('helpers', () => {
-  it('counts whole minutes to an entry and goes negative once it has passed', () => {
-    const now = new Date('2026-09-19T10:28:00.000Z');
-    const duomo = item({ id: 'duomo', start: at('2026-09-19T14:00') });
-    const [entry] = timelineEntries([duomo]);
-
-    // 14:00 Rome is 12:00Z, so 1h 32m away.
-    expect(minutesUntilEntry(entry, now)).toBe(92);
-    expect(minutesUntilEntry(entry, new Date('2026-09-19T13:00:00.000Z'))).toBe(-60);
-  });
-
-  it('returns one day of entries, and nothing for a day with none', () => {
-    const timeline = buildTimeline([
-      item({ id: 'a', start: at('2026-09-19T09:00') }),
-      item({ id: 'b', start: at('2026-09-21T09:00') }),
-    ]);
-
-    expect(entriesOnDay(timeline, '2026-09-19').map((e) => e.key)).toEqual(['a']);
-    expect(entriesOnDay(timeline, '2026-09-20')).toEqual([]);
   });
 });
 

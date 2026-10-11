@@ -51,37 +51,13 @@ collaboration, weather, currency conversion, embedded maps, automatic booking pa
 
 ## 2. Where things stand
 
-Every planned C, V, S and U task is done. The app is **in real use** with a real trip on it.
+**Status lives in `docs/status.md` only** — the version on the phone, what is done, what is next.
+It used to be repeated here and drifted (this section still said 0.2.0 was on the phone after
+0.3.0 was). §11 below says where the last session stopped.
 
-| Version | Where | What |
-|---|---|---|
-| 0.1.0 | was on the phone until 2026-10-11 | S1–S8 |
-| **0.2.0** | **on the phone now** (installed 2026-10-11 over 0.1.0, data kept) | U1–U7 + the live-query fix |
-| 0.2.1 | built, **never installed** on the phone | U9 (tappable Expenses card) — superseded |
-| **0.3.0** | built, rehearsed on the emulator, **waiting for the owner's yes** | **N5a: Expenses tab, no splitting** — and the **first schema migration** |
-
-The APKs are kept in `%USERPROFILE%\.travel-organizer\` (`travel-organizer-<version>.apk`).
-0.3.0 there is the code at `0452d3e` — **rebuild before installing** if any code changes (§11).
-
-**N1–N4** (approved 2026-09-18, not started) are still in `docs/status.md`. **N5** (expenses and
-splitting, Splitwise-like) is split: **N5a** — expenses without splitting — is built; **N5b** —
-paid by / split between / settle up — is specified in `docs/expenses-spec.md` and comes after.
-
-**Still open on the phone** from September: the expo-notifications memory-pressure patch observed
-firing, and a reminder after a long idle period (`docs/status.md` → *Final phone QA*).
-
----|---|---|
-| **N1** | All of a trip's documents in one list | Entry point: header icon or a link on Now — **not** a fifth tab (D20) |
-| **N2** | Checklists inside notes | Whether ticked lines sink to the bottom |
-| **N3** | Start a trip from a previous one | Exactly what is copied |
-| **N4** | Search across all trips | — |
-
-Suggested order N1, N2, N4, N3. Each has scope, hooks into existing code, and open decisions
-written out in `docs/status.md` → *N — next features*.
-
-**Still open on the phone** (the owner chose to stop testing notifications that evening):
-the expo-notifications memory-pressure patch observed firing, and a reminder after a long idle
-period. Both in `docs/status.md` → *Final phone QA*.
+Stable facts: the APKs are kept in `%USERPROFILE%\.travel-organizer\`
+(`travel-organizer-<version>.apk`); rebuild before installing if any code changed since. The
+phone checks still open are in `docs/status.md` → *Final phone QA*.
 
 ---
 
@@ -300,6 +276,17 @@ Hard-won details:
   stop the Gradle daemons (`android/gradlew --stop`) and restart Metro.
 - **Emulator hanging at boot** with *OpenGL Core Profile not supported*: start it with
   `emulator -avd Pixel_10_Pro -gpu swiftshader_indirect`.
+- **Moving the emulator's clock** (to test Now or the Timeline during a trip): the image refuses
+  `date` and `adb root`, but `adb shell settings put global auto_time 0` then
+  `adb shell cmd alarm set-time <epoch ms>` works. Send the app to the background and back
+  (`monkey -p <pkg> 1`) to pick up the new time. **Do not reload the JS while the clock is moved** —
+  the dev client sat on a white screen until the clock was set back (`auto_time 1`). Cold-start
+  with the real clock, then move it.
+- **Fast Refresh after editing a module everything imports** (`useLiveQuery`) re-mounted the
+  database provider and showed *database is locked*. Development only; a cold start clears it.
+- **Making a read fail on purpose** (R4) or a shared file fail to copy (R5): a temporary
+  `__DEV__`-only switch, driven by time windows rather than edited at runtime (see above), and
+  removed before the commit — grep for it.
 - Useful probes: `adb shell dumpsys alarm | grep -A3 <pkg>` (look for `window=0
   exactAllowReason=policy_permission`), `adb shell dumpsys notification --noredact`,
   `adb shell cmd connectivity airplane-mode enable|disable`,
@@ -444,8 +431,8 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
   `expense`. `SELECT_RESOURCES_FOR_TRIP` excludes receipts; `INSERT_RECEIPT` takes the trip id from
   the expense; the GC sweep keeps receipt files via `SELECT_ALL_STORED_PATHS`.
 - **Domain** `src/domain/spending.ts`: categories, `expenseInputSchema`, `expenseTitle`,
-  `nextCurrency`, `expensesByDay`, `spendingTotals`, `tripTotals`. (`src/domain/expenses.ts` is
-  the older *booking costs* module — the rename to `bookingCosts.ts` is **Gap C**.)
+  `nextCurrency`, `expensesByDay`, `spendingTotals`, `tripTotals`. (The older *booking costs*
+  module, once `src/domain/expenses.ts`, is `bookingCosts.ts` since Gap C.)
 - **Repositories** `src/repositories/expenses.ts`: list, get, create (with receipts, one
   transaction), update (never touches `paid_by`/`split`), delete, `countReceipts`.
 - **attach.ts** reorganised around three pickers (`file`, `photo`, `camera`); `pickAndImport`

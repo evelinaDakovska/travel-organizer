@@ -95,36 +95,6 @@ export function buildTimeline<T extends TimelineItem>(items: readonly T[]): Time
 }
 
 /**
- * What the Now card shows. Deliberately not scoped to the trip's date range: a flight
- * check-in the day before the trip is exactly what you need to be reminded of.
- */
-export function nextEntries<T extends TimelineItem>(
-  items: readonly T[],
-  now: Date = new Date(),
-  limit = 2,
-): TimelineEntry<T>[] {
-  const cutoff = now.toISOString();
-
-  return timelineEntries(items)
-    .filter((entry) => entry.instant >= cutoff)
-    .filter((entry) => !(entry.item.kind === 'task' && entry.item.completedAt !== null))
-    .slice(0, limit);
-}
-
-/** Whole minutes until an entry, reusing its instant. Negative once it has passed. */
-export function minutesUntilEntry(entry: TimelineEntry, now: Date = new Date()): number {
-  return Math.round((Date.parse(entry.instant) - now.getTime()) / 60_000);
-}
-
-/** The entries for one local day, for the Overview's TODAY section. */
-export function entriesOnDay<T extends TimelineItem>(
-  days: readonly TimelineDay<T>[],
-  day: string,
-): TimelineEntry<T>[] {
-  return days.find((d) => d.day === day)?.entries ?? [];
-}
-
-/**
  * Where the Timeline opens (R7): during the trip, the first day with entries from today on — or
  * null to start at the top, before or after the trip, or when nothing is left from today. `today`
  * is the device's date: this is only where the list starts, and every earlier day stays above it.

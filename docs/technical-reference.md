@@ -122,8 +122,8 @@ on your last morning, "Check out 11:00" is genuinely the next thing you have to 
 | Group by local day, order by instant | `buildTimeline` |
 | Multi-day splits into two entries | `timelineEntries` |
 | Date-only sorts above a real `00:00` | `compareEntries` |
-| Cancelled excluded; completed tasks excluded from Now only | `timelineEntries` / `nextEntries` |
-| Not scoped to the trip's dates — a check-in the day before counts | `nextEntries` |
+| Cancelled excluded; tasks on Now only under Open tasks | `timelineEntries` / `nowSections` |
+| Not scoped to the trip's dates — a flight the day before counts | `nowSections` |
 
 ### Search escapes the user's wildcards
 
@@ -794,7 +794,6 @@ unlike the gate.
 | `expo-crypto` | `randomUUID()` |
 | `date-fns` + `@date-fns/tz` | Time math (pending §4 spike) |
 | `expo-share-intent` v8+ | Android share sheet |
-| `expo-image` | Cover images |
 | `better-sqlite3` (dev) | Run SQL/migration tests in Node |
 
 ### Excluded, deliberately
@@ -814,7 +813,8 @@ unlike the gate.
 ## 9. Folder structure
 
 ```
-app/                       expo-router routes ONLY — thin, no logic
+app/                       expo-router routes: each screen composes its feature components;
+                           pure logic stays in src/domain, SQL in src/repositories
   _layout.tsx              SQLiteProvider, theme, notification handler
   index.tsx                Trips home — Upcoming + Past, a Backup button, launch into an active trip
   backup.tsx               export everything as one zip, and import one back
@@ -822,7 +822,8 @@ app/                       expo-router routes ONLY — thin, no logic
   trip/[tripId]/
     (tabs)/_layout.tsx     bottom tabs: Now · Timeline · Places · Expenses · Notes (D20, D25);
                            the + adds an expense on Expenses, an item everywhere else
-    (tabs)/index.tsx       Now (default) — up next, open tasks, trip info, trip documents
+    (tabs)/index.tsx       Now (default) — happening now, today, up next, open tasks, trip
+                           info, trip documents (nowSections, R1–R2)
     (tabs)/timeline.tsx
     (tabs)/places.tsx
     (tabs)/expenses.tsx    trip total, then Spending | Bookings (§13)
@@ -834,7 +835,7 @@ app/                       expo-router routes ONLY — thin, no logic
   item/new.tsx             ?tripId=&kind=
   item/[itemId]/index.tsx     detail, with the status actions (decision log D21)
   item/[itemId]/edit.tsx
-  item/[itemId]/schedule.tsx  move an idea onto the timeline
+  item/[itemId]/schedule.tsx  Add to itinerary: date an idea and confirm it
   note/new.tsx             ?tripId=
   note/[noteId].tsx        edit, pin, delete
   resource/[resourceId].tsx   rename, retype, remove an attachment
@@ -847,10 +848,15 @@ src/
     client.ts              open + pragmas
     migrations/001-initial.ts, 002-expenses.ts, index.ts
     queries.ts             every SQL string
+    testing/asyncDatabase.ts   expo-sqlite's async API over better-sqlite3, for tests only
   domain/                  PURE TS — no React, no SQLite, no Expo
     trip.ts  tripItem.ts  resource.ts  note.ts
     time.ts                wall-clock <-> instant, precision, formatting
-    timeline.ts            day grouping, next-item derivation
+    timeline.ts            day grouping, where the Timeline opens (landingDay)
+    itinerary.ts           Now's sections (nowSections), open tasks, entry labels
+    journey.ts             a journey's legs entered together (U7)
+    zoneHints.ts           a journey end's zone read off its city (N6)
+    places.ts  search.ts  format.ts  status.ts  timezones.ts  calendar.ts
     reminders.ts           when each item reminds, and the reconcile plan
     share.ts               share-sheet payloads: parse, classify, suggest a trip
     spending.ts            expenses (N5): categories, form schema, by day, totals
@@ -858,6 +864,7 @@ src/
     export.ts  archive.ts  backup document and zip (§12)
   repositories/            SQL lives here and nowhere else
     trips.ts  tripItems.ts  resources.ts  notes.ts  settings.ts  expenses.ts  backup.ts
+    share.ts               a share's item and rows in one transaction (R5)
   files/
     storage.ts             import, path resolution, delete an unsaved copy, GC sweep
     backupFiles.ts         export / import the zip
@@ -865,14 +872,16 @@ src/
     reminders.ts           permission, channel, reconcile the scheduled set with the database
     useReminders.ts        sync on launch and on change; open the item a reminder is about
   hooks/
-    useLiveQuery.ts
+    useLiveQuery.ts        re-read on change; state tied to its inputs
+    queryView.ts           loading / failed / missing / empty / ready, stale (R4)
+    useNow.ts              the clock, also refreshed on returning to the app
   ui/
     theme/palette.ts       raw colour ramps — the only hex values in the app
     theme/roles.ts         semantic colour roles per scheme, contrast-tested
     tokens.ts              useColors(), fonts, type scale, spacing, radius, elevation
     components/            Card, Tag, StatusTag, SectionLabel, Button, Field, Icon, MoneyInputs, …
   features/
-    items/  resources/  trips/  timeline/  places/  notes/  share/  expenses/
+    items/  resources/  trips/  timeline/  notes/  share/  expenses/
 ```
 
 **`src/domain/` imports nothing native.** If a domain module needs an Expo import, the design is
