@@ -41,12 +41,22 @@ type CurrencyInputProps = {
   invalid: boolean;
 };
 
-/** Three capital letters, as typed. */
+/**
+ * Three capital letters, as typed. The text is kept here rather than read back from the form:
+ * react-hook-form shows a field's default while its value is undefined, so clearing 'EUR' to type
+ * 'CHF' put 'EUR' straight back and the keyboard then typed onto it.
+ */
 export function CurrencyInput({ value, onChange, onBlur, invalid }: CurrencyInputProps) {
+  const [text, setText] = useState(value ?? '');
+
   return (
     <Input
-      value={value ?? ''}
-      onChangeText={(text) => onChange(text.toUpperCase().slice(0, 3) || undefined)}
+      value={text}
+      onChangeText={(next) => {
+        const currency = next.toUpperCase().slice(0, 3);
+        setText(currency);
+        onChange(currency || undefined);
+      }}
       onBlur={onBlur}
       autoCapitalize="characters"
       maxLength={3}
