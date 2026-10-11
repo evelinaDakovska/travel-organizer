@@ -11,9 +11,9 @@ Verified against the repo on 2026-10-11, on Windows: **496 tests passing, typech
 > owner's real data, documented (`docs/user-guide.md`), and checked on the phone. Open: the owner
 > tries a **camera** receipt on the phone (tested on the emulator), and the **time zones** on the
 > Lapland flights (see `docs/n5-plan.md`, *What the real data showed*). N6 (a journey's zone from
-> its city) is built and rehearsed as **0.3.1, not yet on the phone**: the owner chose to ship it
-> together with the next changes. **Next: R1–R11** (`docs/review-plan.md`, all decisions answered),
-> then N5b or N1–N4.
+> its city) and **R1–R11** (the review, `docs/review-plan.md`) are done and rehearsed as **0.4.0, not
+> yet on the phone** — next is installing it (see *0.4.0* under R). Then the owner's new feedback
+> (2026-10-11), then N5b or N1–N4.
 
 ---
 
@@ -245,7 +245,7 @@ lives.
 
 ---
 
-## R — after the review · planned and decided 2026-10-11, not started
+## R — after the review · done 2026-10-11, in 0.4.0 (not yet on the phone)
 
 An independent product and technical review (at `813a0f7`), checked against the code. The plan,
 the verdict on each finding, and the owner’s **eight decisions (answered, D27)** are in
@@ -378,6 +378,18 @@ working screens; the file tree brought up to date; status removed from `CLAUDE.m
 pointers here; `nextEntries`, `minutesUntilEntry` and `entriesOnDay` deleted with their tests (no
 callers; `nowSections` covers what `nextEntries` was for); the emulator lessons of this session in
 `session-handoff.md` §7.
+
+**0.4.0 = N6 + R1–R11, rehearsed on the emulator as the phone will get it (2026-10-11).** Release
+build, versionCode 6, signed with the release key (SHA-256 `63:8D:C6:86…52:35:E7`), kept as
+`%USERPROFILE%.travel-organizer	ravel-organizer-0.4.0.apk`. Fresh **0.3.0** (the APK on the phone)
+→ sample backup → one expense with a PDF receipt (Lapland total EUR 2930.00) → both timelines, trip
+documents, expense totals and alarms (28) recorded → **0.4.0 installed with `install -r`**. Result:
+first-install time unchanged, no crash, everything identical except the open buttons, which now
+name the ticket (R6, as intended); alarms 28; a ticket opened in airplane mode; a PDF shared from
+Files to the **closed** app cold-started into *Save to a trip* and landed in Trip documents.
+**Not yet on the phone.** Next: the owner makes a fresh Drive backup, connects the phone, and
+`adb -s R5GL22FE9QY install -r --user 0` the APK; the open *Final phone QA* checks go in the same
+session.
 
 ---
 
