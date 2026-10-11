@@ -1,9 +1,10 @@
 import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
+  doneTasks,
   happeningNote,
   nowSections,
   openTasks,
@@ -17,7 +18,7 @@ import { EntryCard } from '../../../../src/features/timeline/EntryCard';
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { TaskRow } from '../../../../src/features/trips/TaskRow';
 import { useTripId } from '../../../../src/features/trips/TripContext';
-import { TripSummary } from '../../../../src/features/trips/TripSummary';
+import { TripBand } from '../../../../src/features/trips/TripBand';
 import { queryView } from '../../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../../src/hooks/useLiveQuery';
 import { useNow } from '../../../../src/hooks/useNow';
@@ -74,6 +75,9 @@ export default function NowScreen() {
 
   const sections = useMemo(() => nowSections(items ?? [], now), [items, now]);
   const tasks = useMemo(() => openTasks(items ?? []), [items]);
+  const done = useMemo(() => doneTasks(items ?? []), [items]);
+  // Done tasks are one tap away, folded by default and not remembered (F3).
+  const [showDone, setShowDone] = useState(false);
   const byItem = useMemo(() => groupResourcesByItem(attachments ?? []), [attachments]);
 
   const tripView = queryView(tripQuery);
@@ -107,6 +111,9 @@ export default function NowScreen() {
           </View>
         }
       />
+
+      {/* Outside the list: the trip stays in view while it scrolls (F3). */}
+      <TripBand trip={trip} now={now} />
 
       <ScrollView contentContainerStyle={styles.content}>
         <StaleNotice queries={[tripQuery, itemsQuery, attachmentsQuery, documentsQuery]} />
@@ -162,13 +169,33 @@ export default function NowScreen() {
               />
             ))
           ) : (
-            <Text style={[type.body, { color: c.textMuted }]}>Nothing left to do.</Text>
+            <Text style={[type.body, { color: c.textMuted }]}>
+              {done.length > 0 ? 'All done.' : 'Nothing left to do.'}
+            </Text>
           )}
-        </View>
-
-        <View style={styles.section}>
-          <SectionLabel>This trip</SectionLabel>
-          <TripSummary trip={trip} />
+          {!itemsFailed && done.length > 0 ? (
+            <Pressable
+              onPress={() => setShowDone((shown) => !shown)}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: showDone }}
+              style={({ pressed }) => [styles.showDone, { opacity: pressed ? opacity.pressed : 1 }]}>
+              <Text style={[type.bodyStrong, { color: c.accentText }]}>
+                {showDone ? 'Hide done' : `Show done (${done.length})`}
+              </Text>
+              <Icon name={showDone ? 'expand' : 'forward'} size={16} color={c.accentText} />
+            </Pressable>
+          ) : null}
+          {showDone
+            ? done.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  onToggle={() => setTaskCompleted(db, task.id, false)}
+                  onPress={() => router.push(`/item/${task.id}`)}
+                />
+              ))
+            : null}
         </View>
 
         {queryView(documentsQuery) === 'failed' ? (
@@ -184,6 +211,14 @@ export default function NowScreen() {
             emptyText="Insurance, passport scans, visas — anything that belongs to the whole trip."
           />
         )}
+
+        {/* The rest of the old This trip card; dates and the rest are in the band above. */}
+        {trip.notes ? (
+          <View style={styles.section}>
+            <SectionLabel>Trip notes</SectionLabel>
+            <Text style={[type.body, { color: c.text }]}>{trip.notes}</Text>
+          </View>
+        ) : null}
       </ScrollView>
     </Screen>
   );
@@ -230,5 +265,6 @@ const styles = StyleSheet.create({
   section: { gap: spacing.md },
   sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   addTask: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  showDone: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, alignSelf: 'flex-start' },
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

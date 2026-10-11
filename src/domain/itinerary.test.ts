@@ -1,4 +1,5 @@
 import {
+  doneTasks,
   ENDED_GRACE_MINUTES,
   entryRoleLabel,
   happeningNote,
@@ -355,5 +356,18 @@ describe('todayNote', () => {
   it('says until when on every day but the last', () => {
     expect(todayNote(pass, new Date('2026-11-21T12:00:00+02:00'))).toMatch(/^Until .*23/);
     expect(todayNote(pass, new Date('2026-11-23T12:00:00+02:00'))).toBeNull();
+  });
+});
+
+describe('doneTasks', () => {
+  it('lists completed tasks, most recently ticked first, never open or cancelled ones', () => {
+    const items = [
+      item({ id: 'old', kind: 'task', completedAt: '2026-11-01T10:00:00.000Z' }),
+      item({ id: 'open', kind: 'task' }),
+      item({ id: 'new', kind: 'task', completedAt: '2026-11-03T10:00:00.000Z' }),
+      item({ id: 'gone', kind: 'task', status: 'cancelled', completedAt: '2026-11-04T10:00:00.000Z' }),
+      item({ id: 'tour', completedAt: '2026-11-05T10:00:00.000Z' }),
+    ];
+    expect(doneTasks(items).map((task) => task.id)).toEqual(['new', 'old']);
   });
 });

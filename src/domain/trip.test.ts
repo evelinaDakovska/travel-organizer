@@ -5,6 +5,8 @@ import {
   parseTripRow,
   tripDurationDays,
   tripInputSchema,
+  tripPhase,
+  tripPhaseLabel,
   type TripRow,
 } from './trip';
 
@@ -142,5 +144,33 @@ describe('defaultItemDate', () => {
 
   it('opens on the first day of a trip that is over', () => {
     expect(defaultItemDate(trip, new Date(2026, 10, 2, 12))).toBe('2026-10-19');
+  });
+});
+
+describe('tripPhase', () => {
+  const trip = { startDate: '2026-11-20', endDate: '2026-11-24' };
+  const on = (day: number, hour = 12) => new Date(2026, 10, day, hour, 0);
+  const label = (now: Date) => tripPhaseLabel(tripPhase(trip, now));
+
+  it('counts down before the trip, with tomorrow by name', () => {
+    expect(tripPhase(trip, new Date(2026, 9, 12, 9, 0))).toEqual({ phase: 'before', daysToGo: 39 });
+    expect(label(on(18))).toBe('In 2 days');
+    expect(label(on(19, 23))).toBe('Tomorrow');
+  });
+
+  it('counts the days during the trip, first and last included', () => {
+    expect(label(on(20, 0))).toBe('Day 1 of 5');
+    expect(label(on(22))).toBe('Day 3 of 5');
+    expect(label(on(24, 23))).toBe('Day 5 of 5');
+  });
+
+  it('has ended from the day after', () => {
+    expect(label(on(25, 0))).toBe('Ended');
+  });
+
+  it('crosses a month end without miscounting', () => {
+    expect(tripPhase({ startDate: '2026-10-30', endDate: '2026-11-02' }, new Date(2026, 10, 1, 8))).toEqual(
+      { phase: 'during', day: 3, of: 4 },
+    );
   });
 });

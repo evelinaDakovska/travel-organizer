@@ -151,6 +151,14 @@ export function openTasks<T extends TimelineItem>(items: readonly T[]): T[] {
     });
 }
 
+/** Tasks already done, the most recently ticked first — behind *Show done* on Now (F3). */
+export function doneTasks<T extends TimelineItem>(items: readonly T[]): T[] {
+  return items
+    .filter((item) => item.kind === 'task' && item.completedAt !== null)
+    .filter((item) => item.status !== 'cancelled')
+    .sort((a, b) => b.completedAt!.localeCompare(a.completedAt!) || a.title.localeCompare(b.title));
+}
+
 /** Confirmed items with no date yet, which a day-by-day timeline has nowhere to put. */
 export function undatedConfirmed<T extends TimelineItem>(items: readonly T[]): T[] {
   return items

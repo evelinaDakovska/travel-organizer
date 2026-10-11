@@ -88,6 +88,37 @@ export function tripDurationDays(trip: Pick<Trip, 'startDate' | 'endDate'>): num
   return Math.round((end - start) / 86_400_000) + 1;
 }
 
+/** Where today falls against the trip (F3), on the device's date like `isTripActive`. */
+export type TripPhase =
+  | { phase: 'before'; daysToGo: number }
+  | { phase: 'during'; day: number; of: number }
+  | { phase: 'after' };
+
+const daysBetween = (from: string, to: string) =>
+  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+
+export function tripPhase(
+  trip: Pick<Trip, 'startDate' | 'endDate'>,
+  now: Date = new Date(),
+): TripPhase {
+  const today = deviceToday(now);
+  if (today < trip.startDate) return { phase: 'before', daysToGo: daysBetween(today, trip.startDate) };
+  if (today > trip.endDate) return { phase: 'after' };
+  return { phase: 'during', day: daysBetween(trip.startDate, today) + 1, of: tripDurationDays(trip) };
+}
+
+/** 'In 39 days', 'Tomorrow', 'Day 2 of 5', 'Ended' — the band on top of Now. */
+export function tripPhaseLabel(phase: TripPhase): string {
+  switch (phase.phase) {
+    case 'before':
+      return phase.daysToGo === 1 ? 'Tomorrow' : `In ${phase.daysToGo} days`;
+    case 'during':
+      return `Day ${phase.day} of ${phase.of}`;
+    case 'after':
+      return 'Ended';
+  }
+}
+
 /**
  * Upcoming keeps trips that have not finished, soonest first; past is most recent first.
  * The boundary uses the device's local date — while travelling the device zone is the trip zone.

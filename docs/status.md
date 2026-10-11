@@ -402,7 +402,7 @@ Planned in [`feedback-plan.md`](feedback-plan.md) (owner: go). Ships as 0.5.0 wi
 |---|---|---|
 | **F1** | Tell kinds apart at a glance (task, activity, stay, travel…) — an icon, or a border — without reading, and without a rainbow of colours. Research first | ✅ |
 | **F2** | The **+** button shows a different icon when it does something else (e.g. adds an expense on the Expenses tab) | ✅ |
-| **F3** | Now: *This trip* at the top; *Open tasks* gets a way to see the completed ones | ⬜ |
+| **F3** | Now: *This trip* at the top; *Open tasks* gets a way to see the completed ones | ✅ |
 | **F4** | Detail pages hide fields that are empty | ✅ |
 | **F5** | An expense opens a detail page, with Edit, not the form directly | ⬜ |
 | **F6** | An image attachment shows a small round thumbnail of itself, not *IMG* | ⬜ |
@@ -417,6 +417,17 @@ Planned in [`feedback-plan.md`](feedback-plan.md) (owner: go). Ships as 0.5.0 wi
   Notes' opening *New note*.
 - **F4:** item detail shows no *When* without a date, and an empty *Tickets & links* is its heading
   and add buttons only (`ResourceList`'s `emptyText` is optional). Seen on a task and an idea.
+
+**F3, what was built:** `TripBand` sits under Now's header, outside the list, on `surfaceSunken`:
+*Finland · 20–24 Nov 2026*, then *In 40 days / Day 2 of 5 / Ended · Helsinki time · the travellers*
+(`tripPhase`, `tripPhaseLabel` in `trip.ts`, 5 tests across month ends). The old *This trip* card
+and `TripSummary` are gone; the trip's own notes, if any, show at the bottom as *Trip notes*. Under
+*Open tasks*, **Show done (n)** unfolds the done ones (`doneTasks`, tested; newest first), struck
+through, and their circle un-ticks them; with every task done the list says *All done.*
+
+**F3, how it was verified:** on the emulator: the band read *Finland · 20–24 Nov 2026 / In 40 days ·
+Helsinki time · Evelina, Sample Friend* and stayed while the list scrolled; a task ticked → *Show
+done (1)* → shown struck through → un-ticked from there → back in Open tasks.
 
 ---
 
