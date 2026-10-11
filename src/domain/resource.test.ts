@@ -288,6 +288,14 @@ describe('labels for a new attachment', () => {
     expect(defaultFileLabel(null, 'Photo')).toBe('Photo');
     expect(defaultFileLabel('  .pdf', 'Document')).toBe('Document');
     expect(defaultFileLabel('37.png', 'Photo')).toBe('Photo');
+    // The camera's capture, as seen on the emulator.
+    expect(defaultFileLabel('30450f8b-0772-4a29-be64-1602357dcbb0.jpg', 'Photo')).toBe('Photo');
+  });
+
+  it('keeps a real name that merely contains an id', () => {
+    expect(defaultFileLabel('ticket-30450f8b-0772-4a29-be64-1602357dcbb0.pdf', 'Document')).toBe(
+      'ticket-30450f8b-0772-4a29-be64-1602357dcbb0',
+    );
   });
 
   it('stays within what the schema accepts', () => {

@@ -225,9 +225,12 @@ export function defaultFileLabel(fileName: string | null | undefined, fallback: 
     .replace(/_+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  // The photo picker reports media-store ids ('37.png'), which mean nothing to a person.
-  return (/^\d*$/.test(base) ? fallback : base).slice(0, 120);
+  // The photo picker reports media-store ids ('37.png') and the camera a generated UUID, neither
+  // of which means anything to a person.
+  return (/^\d*$/.test(base) || UUID.test(base) ? fallback : base).slice(0, 120);
 }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const HAS_SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 
