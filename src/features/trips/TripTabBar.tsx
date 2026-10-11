@@ -11,6 +11,7 @@ const TABS: Record<string, { label: string; icon: IconName }> = {
   index: { label: 'Now', icon: 'now' },
   timeline: { label: 'Timeline', icon: 'timeline' },
   places: { label: 'Places', icon: 'places' },
+  expenses: { label: 'Expenses', icon: 'wallet' },
   notes: { label: 'Notes', icon: 'notes' },
 };
 

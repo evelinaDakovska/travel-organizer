@@ -1,4 +1,6 @@
 import {
+  BedDouble,
+  Bus,
   CalendarDays,
   Check,
   ChevronLeft,
@@ -10,11 +12,16 @@ import {
   Link,
   MapPin,
   NotebookText,
+  Paperclip,
   Plus,
   Search,
+  Shapes,
   Share2,
+  ShoppingBag,
+  ShoppingBasket,
   Sun,
   Ticket,
+  Utensils,
   Wallet,
   X,
   type LucideIcon,
@@ -45,6 +52,15 @@ const ICONS = {
   wallet: Wallet,
   backup: DatabaseBackup,
   share: Share2,
+  receipt: Paperclip,
+  // Expense categories (N5).
+  food: Utensils,
+  groceries: ShoppingBasket,
+  transport: Bus,
+  activities: Ticket,
+  shopping: ShoppingBag,
+  accommodation: BedDouble,
+  other: Shapes,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

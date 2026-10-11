@@ -1,4 +1,4 @@
-import { Tabs, useLocalSearchParams, useRouter } from 'expo-router';
+import { Tabs, useLocalSearchParams, useRouter, useSegments } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -12,6 +12,8 @@ export default function TripTabsLayout() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  // On Expenses, + adds an expense; everywhere else, something to the trip.
+  const onExpenses = useSegments().at(-1) === 'expenses';
 
   return (
     <TripIdProvider tripId={tripId}>
@@ -22,14 +24,17 @@ export default function TripTabsLayout() {
           <Tabs.Screen name="index" />
           <Tabs.Screen name="timeline" />
           <Tabs.Screen name="places" />
+          <Tabs.Screen name="expenses" />
           <Tabs.Screen name="notes" />
         </Tabs>
 
         {/* Outside the bar, not inside it: Android does not deliver touches outside a parent's bounds. */}
         <Pressable
-          onPress={() => router.push({ pathname: '/item/new', params: { tripId } })}
+          onPress={() =>
+            router.push({ pathname: onExpenses ? '/expense/new' : '/item/new', params: { tripId } })
+          }
           accessibilityRole="button"
-          accessibilityLabel="Add to trip"
+          accessibilityLabel={onExpenses ? 'Add an expense' : 'Add to trip'}
           style={({ pressed }) => [
             styles.add,
             elevation.md,

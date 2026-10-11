@@ -5,7 +5,6 @@ import { Controller, useForm, type Control } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { refundableOf, withRefundable } from '../../domain/expenses';
-import { amountText, parseAmount } from '../../domain/format';
 import {
   firstReturnLeg,
   isMultiLeg,
@@ -47,6 +46,7 @@ import { FormScroll } from '../../ui/components/FormScroll';
 import { ChoiceField } from '../../ui/components/ChoiceField';
 import { Field, Input } from '../../ui/components/Field';
 import { MomentField } from '../../ui/components/MomentField';
+import { AmountInput, CurrencyInput } from '../../ui/components/MoneyInputs';
 import { SectionLabel } from '../../ui/components/SectionLabel';
 import { JourneyFields } from './JourneyFields';
 import { opacity, radius, spacing, type, useColors } from '../../ui/tokens';
@@ -457,7 +457,7 @@ export function ItemForm({
             name="priceAmount"
             render={({ field }) => (
               <Field label="Price" error={errors.priceAmount?.message} hint="Optional">
-                <PriceInput
+                <AmountInput
                   value={field.value}
                   onChange={field.onChange}
                   onBlur={field.onBlur}
@@ -473,15 +473,10 @@ export function ItemForm({
             name="priceCurrency"
             render={({ field }) => (
               <Field label="Currency" error={errors.priceCurrency?.message}>
-                <Input
-                  value={field.value ?? ''}
-                  onChangeText={(text) =>
-                    field.onChange(text.toUpperCase().slice(0, 3) || undefined)
-                  }
+                <CurrencyInput
+                  value={field.value}
+                  onChange={field.onChange}
                   onBlur={field.onBlur}
-                  autoCapitalize="characters"
-                  maxLength={3}
-                  placeholder="EUR"
                   invalid={!!errors.priceCurrency}
                 />
               </Field>
@@ -678,35 +673,6 @@ function routeOf(leg: Leg): Record<string, string> {
     if (value) route[key] = value;
   }
   return route;
-}
-
-type PriceInputProps = {
-  value: number | undefined;
-  onChange: (minorUnits: number | undefined) => void;
-  onBlur: () => void;
-  invalid: boolean;
-};
-
-/**
- * Keeps the text as typed. Rendering it back from the stored minor units dropped the decimal
- * point the moment it was typed — '12.50' became 1250.00 — so the number only flows outwards.
- */
-function PriceInput({ value, onChange, onBlur, invalid }: PriceInputProps) {
-  const [text, setText] = useState(() => amountText(value));
-
-  return (
-    <Input
-      value={text}
-      onChangeText={(next) => {
-        setText(next);
-        onChange(parseAmount(next));
-      }}
-      onBlur={onBlur}
-      keyboardType="decimal-pad"
-      placeholder="25.00"
-      invalid={invalid}
-    />
-  );
 }
 
 const styles = StyleSheet.create({

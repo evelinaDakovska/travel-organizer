@@ -2,6 +2,7 @@ import { randomUUID } from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import {
+  COUNT_RECEIPTS_FOR_TRIP,
   DELETE_EXPENSE,
   INSERT_EXPENSE,
   SELECT_EXPENSE,
@@ -12,7 +13,6 @@ import type { ResourceInput } from '../domain/resource';
 import { parseExpenseRow, type Expense, type ExpenseInput, type ExpenseRow } from '../domain/spending';
 import { createResource } from './resources';
 
-/** A receipt's row lives in `resources`, so lists of receipts refresh on that table too. */
 export const EXPENSE_TABLES = ['expenses'] as const;
 
 export async function listExpenses(db: SQLiteDatabase, tripId: string): Promise<Expense[]> {
@@ -24,6 +24,20 @@ export async function getExpense(db: SQLiteDatabase, id: string): Promise<Expens
   const row = await db.getFirstAsync<ExpenseRow>(SELECT_EXPENSE, { $id: id });
   return row ? parseExpenseRow(row) : null;
 }
+
+/** Receipts per expense id; an expense with none is absent. */
+export async function countReceipts(
+  db: SQLiteDatabase,
+  tripId: string,
+): Promise<Map<string, number>> {
+  const rows = await db.getAllAsync<{ expense_id: string; n: number }>(COUNT_RECEIPTS_FOR_TRIP, {
+    $tripId: tripId,
+  });
+  return new Map(rows.map((row) => [row.expense_id, row.n]));
+}
+
+/** The receipt counts join both tables. */
+export const RECEIPT_COUNT_TABLES = ['expenses', 'resources'] as const;
 
 const bindings = (input: ExpenseInput) => ({
   $category: input.category,

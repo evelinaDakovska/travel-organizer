@@ -21,8 +21,8 @@ type Props = {
   resource: Resource;
   onSave: (values: ResourceEdit) => Promise<void>;
   onDelete: () => void;
-  /** Show the same file or link on an item as well. */
-  onAttachToItem: () => void;
+  /** Show the same file or link on an item as well. Not offered for a receipt. */
+  onAttachToItem?: () => void;
 };
 
 export function ResourceEditForm({ resource, onSave, onDelete, onAttachToItem }: Props) {
@@ -84,7 +84,9 @@ export function ResourceEditForm({ resource, onSave, onDelete, onAttachToItem }:
           await onSave(values);
         })}
       />
-      <Button label="Also attach to an item" variant="secondary" onPress={onAttachToItem} />
+      {onAttachToItem ? (
+        <Button label="Also attach to an item" variant="secondary" onPress={onAttachToItem} />
+      ) : null}
       <Button label="Remove attachment" variant="danger" onPress={onDelete} />
     </FormScroll>
   );

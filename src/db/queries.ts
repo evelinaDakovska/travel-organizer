@@ -387,3 +387,11 @@ UPDATE expenses
 export const DELETE_EXPENSE = `
 DELETE FROM expenses WHERE id = $id
 `;
+
+/** How many receipts each of a trip's expenses has, for the paperclip on its row. */
+export const COUNT_RECEIPTS_FOR_TRIP = `
+SELECT r.expense_id, COUNT(*) AS n
+  FROM resources r JOIN expenses e ON e.id = r.expense_id
+ WHERE e.trip_id = $tripId
+ GROUP BY r.expense_id
+`;

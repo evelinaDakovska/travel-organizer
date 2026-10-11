@@ -84,8 +84,14 @@ export default function EditResource() {
           router.back();
         }}
         onDelete={() => void confirmDelete()}
-        onAttachToItem={() =>
-          router.push({ pathname: '/resource/attach-to', params: { resourceId: resource.id } })
+        onAttachToItem={
+          resource.owner.scope === 'expense'
+            ? undefined
+            : () =>
+                router.push({
+                  pathname: '/resource/attach-to',
+                  params: { resourceId: resource.id },
+                })
         }
       />
     </Screen>

@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 
 import { MIGRATIONS } from './migrations';
 import {
+  COUNT_RECEIPTS_FOR_TRIP,
   COUNT_TRIP_CONTENTS,
   DELETE_EXPENSE,
   INSERT_EXPENSE,
@@ -188,6 +189,24 @@ describe('receipts', () => {
     addReceipt('rc1', 'e1');
 
     expect(db.prepare(SELECT_ALL_STORED_PATHS).all()).toEqual([{ stored_path: 'media/rc1.jpg' }]);
+  });
+
+  it('are counted per expense, for the trip asked about only', () => {
+    const { db, addExpense, addReceipt } = setup();
+    addExpense('e1');
+    addExpense('e2');
+    addReceipt('rc1', 'e1');
+    addReceipt('rc2', 'e1');
+    db.prepare(
+      `INSERT INTO trips (id, name, start_date, end_date, default_tz, created_at, updated_at)
+       VALUES ('t2', 'Other', '2026-12-01', '2026-12-02', 'Europe/Sofia', ?, ?)`,
+    ).run(now, now);
+    addExpense('e3', { tripId: 't2' });
+    addReceipt('rc3', 'e3');
+
+    expect(db.prepare(COUNT_RECEIPTS_FOR_TRIP).all({ tripId: 't1' })).toEqual([
+      { expense_id: 'e1', n: 2 },
+    ]);
   });
 
   it('go with their expense, so the sweep can collect the file', () => {
