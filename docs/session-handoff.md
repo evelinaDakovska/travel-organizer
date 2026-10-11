@@ -481,7 +481,18 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
   it). Restore and replace both correct, Gap A's wording seen on a device. The owner's **real**
   phone backup (format 1) was checked for structure only: 0.3.0 parses it, and migration 002 run
   on its 31 rows leaves every one identical. Details at the end of `docs/n5-plan.md`.
-- **Next: §11.5 step 5 — the documentation. Show the owner a plan first.** Then steps 6–8.
+- **Step 6 done: the final rehearsal ran on the owner's real backup** (allowed for testing only;
+  kept out of the repo, in the scratchpad and on the emulator). The 0.3.0 APK in
+  `%USERPROFILE%\.travel-organizer` is the final build (`05e0c29`). Everything identical after the
+  update; sharing from Files works on the release build. Details at the end of `docs/n5-plan.md`.
+- **Found in the real data:** no item has its own zone, so legs from or to Germany on the Lapland
+  trip are an hour out in countdown/Up next (the screen shows the times as typed). Told the owner;
+  they can set the zones on the phone.
+- **Next: §11.5 step 5 — the documentation.** The user guide is Markdown, `docs/user-guide.md`
+  (owner's choice). Show the outline and get a yes before writing. Then step 7, the phone.
+- **The emulator holds the owner's real data** (0.3.0 release, plus two test expenses and one
+  shared test PDF), and `real-backup.zip` sits in its Downloads. Wipe it when it is no longer
+  needed (`adb uninstall`, remove the zip).
 - The owner's real backup sits in `C:\Users\Acer\Downloads`. The laptop is not a safe store
   (CLAUDE.md §9); the owner was reminded the copy in Drive is the one that counts.
 - **The emulator now runs the dev build** (release 0.3.0 was uninstalled there, sample data

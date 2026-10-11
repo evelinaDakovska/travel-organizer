@@ -129,7 +129,7 @@ reminders → add one expense with a camera receipt → USB debugging off, Auto 
 2. ~~Gap A (import message names expenses) and Gap C (rename) — small, each with tests.~~ ✅ Done.
 3. ~~Gap D (camera) and editing/deleting an expense — tap through on the emulator.~~ ✅ Done, with a regression pass.
 4. Step 9 (documentation), after its plan is agreed.
-5. A fresh rehearsal on the final build.
+5. ~~A fresh rehearsal on the final build.~~ ✅ Done with the owner's real backup, see below.
 
 ---
 
@@ -307,3 +307,50 @@ jest test (deleted, never committed) ran it through 0.3.0's code:
 
 So the change that will run on the phone has been run on the phone's own data, and the backup
 the owner holds restores in 0.3.0.
+
+---
+
+## The final update rehearsal, on the owner's real data (2026-10-11)
+
+The owner allowed their real backup to be used **for testing only**: to see the data's structure
+and how it behaves in the app. It stays out of the repo; this section records results, not
+bookings.
+
+**Build:** 0.3.0 (versionCode 4) rebuilt from `05e0c29` with every fix of the day. Checked before
+use: today's code is in the JS bundle, `:expo-notifications:compileReleaseKotlin` ran, and the
+certificate is the release key (`63:8D:C6:86…52:35:E7`). Kept as
+`%USERPROFILE%\.travel-organizer\travel-organizer-0.3.0.apk`; the earlier 0.3.0 build is renamed
+`…-0.3.0-0452d3e.apk`.
+
+**Recipe:** emulator in Europe/Sofia (as the phone) → **fresh 0.2.0** from the kept APK → restore
+the owner's backup (format 1: 2 trips, 13 items, 3 notes, 9 files) → record → `adb install -r
+--user 0` **0.3.0** → compare.
+
+| Check | Result |
+|---|---|
+| Installed as an update | ✅ `firstInstallTime` unchanged, `versionName` 0.3.0 |
+| First start (migration 002 runs) | ✅ No crash, no JS error in logcat |
+| Lapland timeline, Lapland notes, Milan timeline, Milan Now, a flight's detail page | ✅ **Identical** line for line |
+| Lapland Now | ✅ Identical except the Expenses card, which moved to the tab as intended. All 5 trip documents still listed. |
+| Reminders | ✅ The switched-off reminder still reads *Off*; alarms 8 → 8 |
+| The new tab's Bookings view | ✅ Same total and item count as 0.2.0's Expenses card, to the cent; every price as stored |
+| Backup | ✅ *2 trips and 9 saved files*, same as before |
+| A train ticket in **airplane mode** | ✅ Opens in the PDF viewer |
+| Using the tab as the owner will | ✅ A taxi with a **camera** receipt (permission asked, receipt labelled *Photo*) and groceries with no label (titled *Groceries*); spending and trip total add up |
+| **Sharing a PDF in from the Files app**, app stopped (release only) | ✅ Cold start, no crash; *Save to a trip* shows the file; attached to a flight; the flight's price and reminder unchanged |
+| Export afterwards | ✅ *11 saved files* = 9 + receipt + shared file |
+
+### What the real data showed (not caused by N5a)
+
+- **No item carries its own time zone**, so every time is read in the trip's zone. That's exact
+  for places sharing the trip's offset, but **an hour out** for legs departing from or landing in a
+  zone that differs: in this trip, two departures and two arrivals in Germany. **The screen still
+  shows the times as typed;** the countdown, *Up next* and any reminder are an hour early for
+  those legs. The owner can fix it on the phone by setting the zone on those moments. A possible
+  product follow-up, not decided: a hint on a journey whose ends have no zone.
+- The train's tickets are attached twice, on the train and as trip documents, as **separate
+  copies**. Harmless; *Also attach to an item* shares one copy.
+- Usage pattern worth designing for: everything is booked (confirmed) and dated, prices sit on
+  the first leg of a multi-leg journey, and most reminders are switched off.
+
+**What is left:** the documentation (plan first), then the phone (§11.5 step 7).
