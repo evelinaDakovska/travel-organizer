@@ -75,6 +75,31 @@ export function tripExpenses(items: readonly Priced[]): CurrencyTotal[] {
   );
 }
 
+/**
+ * Cancelled bookings with a price whose refundability was never set (R10, D27). The totals still
+ * leave them out — they mean expected cost, and U6 assumes the money comes back — but they are
+ * named, so an unknown is never silently zero. Amounts per currency, largest first.
+ */
+export function refundNotSaid<T extends Priced>(
+  items: readonly T[],
+): { items: T[]; byCurrency: { currency: string; amount: number }[] } {
+  const unknown = items.filter(
+    (item) =>
+      item.status === 'cancelled' &&
+      item.priceAmount !== null &&
+      item.priceCurrency !== null &&
+      refundableOf(item.details) === null,
+  );
+  const sums = new Map<string, number>();
+  for (const item of unknown) {
+    sums.set(item.priceCurrency!, (sums.get(item.priceCurrency!) ?? 0) + item.priceAmount!);
+  }
+  const byCurrency = [...sums.entries()]
+    .map(([currency, amount]) => ({ currency, amount }))
+    .sort((x, y) => y.amount - x.amount || x.currency.localeCompare(y.currency));
+  return { items: unknown, byCurrency };
+}
+
 export type ExpenseGroups<T> = { toPay: T[]; paid: T[] };
 
 /**

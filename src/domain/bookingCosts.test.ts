@@ -2,6 +2,7 @@ import {
   countsAsSpent,
   expenseGroups,
   refundableOf,
+  refundNotSaid,
   tripExpenses,
   withRefundable,
 } from './bookingCosts';
@@ -92,5 +93,39 @@ describe('expenseGroups', () => {
     const items = [priced({}), priced({ isPaid: true }), priced({ status: 'idea' })];
     const { toPay, paid } = expenseGroups(items);
     expect(toPay.length + paid.length).toBe(tripExpenses(items)[0].items);
+  });
+});
+
+describe('refundNotSaid', () => {
+  it('names a cancelled booking whose refund was never set, which the totals leave out', () => {
+    const unknown = priced({ status: 'cancelled', priceAmount: 18000 });
+    expect(countsAsSpent(unknown)).toBe(false);
+    expect(refundNotSaid([unknown])).toEqual({
+      items: [unknown],
+      byCurrency: [{ currency: 'EUR', amount: 18000 }],
+    });
+  });
+
+  it('leaves out cancellations that say refundable or not, and anything not cancelled', () => {
+    const items = [
+      priced({ status: 'cancelled', details: { refundable: true } }),
+      priced({ status: 'cancelled', details: { refundable: false } }),
+      priced({ status: 'confirmed' }),
+      priced({ status: 'idea' }),
+      priced({ status: 'cancelled', priceAmount: null, priceCurrency: null }),
+    ];
+    expect(refundNotSaid(items)).toEqual({ items: [], byCurrency: [] });
+  });
+
+  it('adds up per currency, never across currencies, largest first', () => {
+    const { byCurrency } = refundNotSaid([
+      priced({ status: 'cancelled', priceAmount: 5000 }),
+      priced({ status: 'cancelled', priceAmount: 7000, priceCurrency: 'HUF' }),
+      priced({ status: 'cancelled', priceAmount: 4000 }),
+    ]);
+    expect(byCurrency).toEqual([
+      { currency: 'EUR', amount: 9000 },
+      { currency: 'HUF', amount: 7000 },
+    ]);
   });
 });

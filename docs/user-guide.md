@@ -308,6 +308,10 @@ The prices on the trip's items: what is **Paid** and what is still **To pay**, i
 counts confirmed items, plus cancelled ones marked *Not refundable* (money you will not get back).
 Ideas are not counted.
 
+A cancelled booking you never marked either way is **not counted** — the total is what the trip is
+expected to cost — but it is **listed** under **Refund not specified**: *EUR 290.00 cancelled,
+refund not specified — not counted above.* Open it and say *Refundable* or *Not refundable*.
+
 ### Currencies
 
 Amounts in different currencies are **never converted or added together**. A trip in euros with

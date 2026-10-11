@@ -264,7 +264,7 @@ change or a native change; R5 changes how shared files are copied.
 | **R7** | Timeline opens on today during the trip; a Today button | ✅ |
 | **R8** | Wording: *planned* is not *booked* | ✅ |
 | **R9** | Expense form: mark a booking Paid rather than adding it again | ✅ |
-| **R10** | Cancelled with refund not specified: shown as not counted | ⬜ |
+| **R10** | Cancelled with refund not specified: shown as not counted | ✅ |
 | **R11** | Documentation reconciled with the code | ⬜ |
 
 **R1 + R2, what was built:** `nowSections` in `src/domain/itinerary.ts` (with `happeningNote`,
@@ -362,6 +362,12 @@ No new status or field. Seen on the emulator: Places and an idea's *Add to itine
 **R9:** one line under the amount in the expense form — *Paying for something already booked? Mark
 that booking Paid instead — adding it here too counts it twice.* — and the same rule in the user
 guide. No reconciliation. Seen on the emulator in *New expense*.
+
+**R10, what was built:** `refundNotSaid` (`src/domain/bookingCosts.ts`, 3 tests): cancelled, priced,
+refundability not set — per currency, never across. The totals are unchanged (U6's rule: expected
+cost). Bookings shows a *Refund not specified* section with the amount, *not counted above*, and the
+items. **Verified** on the emulator: the sample *Husky safari* (EUR 290) cancelled — the trip total
+fell by 290 as before and the section listed it; restored afterwards.
 
 ---
 
