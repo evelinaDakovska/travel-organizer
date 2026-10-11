@@ -14,7 +14,8 @@ single source of truth for schema, time, files, queries). Read in this order:
 5. `docs/decision-log.md` — why, and what was rejected (D1–D24)
 6. `docs/windows-handoff.md` — machine setup, release build, Windows specifics
 
-Last verified: **2026-10-11**, N5a built (not yet on the phone), **494 tests**, typecheck clean.
+Last verified: **2026-10-11** (second session), N5a built (not yet on the phone), **495 tests**,
+typecheck clean.
 
 > **Starting fresh? Jump to §11 first** — it is the exact point the last session stopped, what is
 > waiting on the owner, and the next steps in order.
@@ -227,7 +228,7 @@ Moving the repo to `C:\dev` is what fixed the first Windows build.
 
 ```bash
 npm install                 # postinstall applies the patches
-npm test                    # 494 tests, ~3s
+npm test                    # 495 tests, ~3s
 npx tsc --noEmit            # must be clean
 npx expo prebuild --platform android      # after any app.json or native change
 # EXPO_NO_GIT_STATUS=1 when the tree is dirty, or prebuild stops on a prompt
@@ -458,7 +459,23 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
   → trip total EUR 1692.50 (bookings 1680 + spending 12.50), the category bar, the paperclip on
   the row; the receipt is **not** under Trip documents; export now "29 saved files".
 
-### 11.4 Waiting on the owner — ask these first
+### 11.0 Update from the second session (2026-10-11) — read this before 11.4 and 11.5
+
+- **Decisions 1–6 answered:** yes to 1, 2, 3, 5 and 6. **D4 changed:** a new expense's unsaved
+  receipt copies are now deleted at once (on × and when the form closes unsaved); the sweep stays
+  the fallback. `02f76d4`.
+- **Gap A done** (`d69afa1`) and **Gap C done** (`0aac413`, `domain/expenses.ts` is now
+  `bookingCosts.ts`). All pushed.
+- The plan for these, and a step-by-step review of how it went, is at the end of
+  `docs/n5-plan.md` (*Follow-up*).
+- **Next: §11.5 step 3 (Gap D)**, then step 4 (ask the owner how to do Gap B), and so on.
+- **The emulator now runs the dev build** (release 0.3.0 was uninstalled there, sample data
+  only): the sample backup plus one *Groceries 7.20 EUR* expense with a PDF receipt. Good for
+  Gap D. For the final rehearsal, reinstall 0.2.0 as §11.3 describes.
+- **Work in `C:dev	ravel-organizer`.** `C:UsersAcerDesktopepos	ravel-organizer` is
+  a second clone with no `node_modules`. A session may open there; don't build or test in it.
+
+### 11.4 Waiting on the owner — ask these first ✅ answered (see 11.0)
 
 From `docs/n5-plan.md` (the owner has the list; get a yes/no on each):
 
@@ -473,8 +490,8 @@ From `docs/n5-plan.md` (the owner has the list; get a yes/no on each):
 
 ### 11.5 Next steps, in order (each needs the owner's yes where marked)
 
-1. Decisions 1–6 above.
-2. **Gap A** — the import confirmation should name expenses (`summariseImportPlan` in
+1. ~~Decisions 1–6 above.~~ ✅
+2. ✅ *(done, see 11.0)* **Gap A** — the import confirmation should name expenses (`summariseImportPlan` in
    `src/domain/archive.ts`, with a test). **Gap C** — rename `domain/expenses.ts` →
    `bookingCosts.ts`. Small; plan them in two lines and do them.
 3. **Gap D** — tap through on the emulator: the camera (permission prompt, a photo, the
