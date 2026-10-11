@@ -149,6 +149,43 @@ describe('summariseImportPlan', () => {
     );
   });
 
+  it('names expenses when the backup has some, receipts counted as saved files', () => {
+    const expense = (id: string, tripId: string) => ({
+      id,
+      trip_id: tripId,
+      category: 'food',
+      label: null,
+      amount: 1250,
+      currency: 'EUR',
+      spent_on: '2026-09-20',
+      notes: null,
+      paid_by: null,
+      split: null,
+      created_at: '2026-09-15T00:00:00.000Z',
+      updated_at: '2026-09-15T00:00:00.000Z',
+    });
+    const withExpenses = buildExportDocument(
+      {
+        ...tables,
+        expenses: [expense('e1', 'milan'), expense('e2', 'milan'), expense('e3', 'lapland')],
+        resources: [...tables.resources, { ...fileResource('receipt', 'milan'), expense_id: 'e1' }],
+      },
+      { exportedAt: '2026-09-15T10:00:00.000Z' },
+    );
+    expect(
+      summariseImportPlan(
+        planImport(withExpenses, [], 'merge', [...available, 'media/receipt.pdf']),
+      ),
+    ).toBe('Adds 2 trips, 0 items, 0 notes, 3 expenses and 3 saved files.');
+    expect(
+      summariseImportPlan(
+        planImport(withExpenses, ['lapland'], 'merge', [...available, 'media/receipt.pdf']),
+      ),
+    ).toBe(
+      'Adds 1 trip, 0 items, 0 notes, 2 expenses and 2 saved files. 1 trip already here is left as it is.',
+    );
+  });
+
   it('warns about files the archive does not contain', () => {
     expect(summariseImportPlan(planImport(document, [], 'merge', ['media/hotel.pdf']))).toBe(
       'Adds 2 trips, 0 items, 0 notes and 1 saved file. 1 file is missing from the backup and will show as missing.',

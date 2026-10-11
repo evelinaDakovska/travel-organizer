@@ -82,10 +82,14 @@ export function summariseImportPlan(plan: ImportPlan): string {
   );
   const files = stored.size - missingFiles.length;
 
-  const sentences = [
-    `Adds ${plural(write.trips.length, 'trip')}, ${plural(write.tripItems.length, 'item')}, ` +
-      `${plural(write.tripNotes.length, 'note')} and ${plural(files, 'saved file')}.`,
+  // Expenses only when there are some, so a backup from before them reads as it always did.
+  const parts = [
+    plural(write.trips.length, 'trip'),
+    plural(write.tripItems.length, 'item'),
+    plural(write.tripNotes.length, 'note'),
+    ...(write.expenses.length > 0 ? [plural(write.expenses.length, 'expense')] : []),
   ];
+  const sentences = [`Adds ${parts.join(', ')} and ${plural(files, 'saved file')}.`];
 
   if (mode === 'replace') {
     sentences.push("Any of these trips already on this phone is replaced by the backup's copy.");
