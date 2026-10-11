@@ -1,11 +1,12 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { countOf, listPhrase } from '../../../src/domain/format';
 import { TripForm } from '../../../src/features/trips/TripForm';
+import { queryView } from '../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import {
   countTripContents,
@@ -15,24 +16,25 @@ import {
   updateTrip,
 } from '../../../src/repositories/trips';
 import { Button } from '../../../src/ui/components/Button';
+import { QueryScreen } from '../../../src/ui/components/QueryStates';
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
-import { spacing, type, useColors } from '../../../src/ui/tokens';
+import { spacing } from '../../../src/ui/tokens';
 
 export default function EditTrip() {
-  const c = useColors();
   const db = useSQLiteContext();
   const router = useRouter();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   // The screen draws under the navigation bar, so the pinned button must clear it itself.
   const insets = useSafeAreaInsets();
 
-  const { data: trip, loading } = useLiveQuery(
+  const tripQuery = useLiveQuery(
     useCallback((database) => getTrip(database, tripId), [tripId]),
     TRIP_TABLES,
     [tripId],
   );
 
+  const trip = tripQuery.data;
   /** Names the blast radius — these files may be the only copies. */
   const confirmDelete = useCallback(async () => {
     const { items, files, expenses } = await countTripContents(db, tripId);
@@ -61,25 +63,16 @@ export default function EditTrip() {
     );
   }, [db, tripId, trip?.name, router]);
 
-  if (loading) {
+  const tripView = queryView(tripQuery);
+  if (tripView !== 'ready' || !trip) {
     return (
-      <Screen>
-        <ScreenHeader title="Edit trip" />
-        <View style={styles.centre}>
-          <ActivityIndicator color={c.accent} />
-        </View>
-      </Screen>
-    );
-  }
-
-  if (!trip) {
-    return (
-      <Screen>
-        <ScreenHeader title="Edit trip" />
-        <View style={styles.centre}>
-          <Text style={[type.body, { color: c.textMuted }]}>This trip no longer exists.</Text>
-        </View>
-      </Screen>
+      <QueryScreen
+        title="Edit trip"
+        view={tripView}
+        missingText="This trip no longer exists."
+        what="this trip"
+        onRetry={tripQuery.refetch}
+      />
     );
   }
 
@@ -111,6 +104,5 @@ export default function EditTrip() {
 }
 
 const styles = StyleSheet.create({
-  centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   danger: { padding: spacing.xl, paddingTop: 0 },
 });

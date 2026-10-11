@@ -4,10 +4,12 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { useTripId } from '../../../../src/features/trips/TripContext';
+import { queryView } from '../../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../../src/hooks/useLiveQuery';
 import { listNotes, NOTE_TABLES } from '../../../../src/repositories/notes';
 import { getTrip, TRIP_TABLES } from '../../../../src/repositories/trips';
 import { Button } from '../../../../src/ui/components/Button';
+import { LoadFailed, StaleNotice } from '../../../../src/ui/components/QueryStates';
 import { Card } from '../../../../src/ui/components/Card';
 import { Screen } from '../../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../../src/ui/components/ScreenHeader';
@@ -24,17 +26,20 @@ export default function NotesScreen() {
     TRIP_TABLES,
     [tripId],
   );
-  const { data: notes, loading } = useLiveQuery(
+  const notesQuery = useLiveQuery(
     useCallback((database) => listNotes(database, tripId), [tripId]),
     NOTE_TABLES,
     [tripId],
   );
 
+  const notes = notesQuery.data;
+  const notesView = queryView(notesQuery);
+
   return (
     <Screen>
       <ScreenHeader title="Notes" subtitle={trip?.name} action={<SearchButton tripId={tripId} />} />
 
-      {loading ? (
+      {notesView === 'loading' ? (
         <View style={styles.centre}>
           <ActivityIndicator color={c.accent} />
         </View>
@@ -47,7 +52,10 @@ export default function NotesScreen() {
             onPress={() => router.push({ pathname: '/note/new', params: { tripId } })}
           />
 
-          {notes && notes.length > 0 ? (
+          <StaleNotice queries={[notesQuery]} />
+          {notesView === 'failed' ? (
+            <LoadFailed what="the notes" onRetry={notesQuery.refetch} />
+          ) : notes && notes.length > 0 ? (
             notes.map((note) => (
               <Card
                 key={note.id}

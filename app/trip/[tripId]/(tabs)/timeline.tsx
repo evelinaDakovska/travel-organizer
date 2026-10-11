@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { formatDateRange, formatShortDate } from '../../../../src/domain/format';
 import { undatedConfirmed } from '../../../../src/domain/itinerary';
@@ -9,6 +9,7 @@ import { buildTimeline } from '../../../../src/domain/timeline';
 import { EntryCard } from '../../../../src/features/timeline/EntryCard';
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { useTripId } from '../../../../src/features/trips/TripContext';
+import { queryView } from '../../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../../src/hooks/useLiveQuery';
 import {
   ITEM_RESOURCE_TABLES,
@@ -17,6 +18,7 @@ import {
 import { listTripItems, TRIP_ITEM_TABLES } from '../../../../src/repositories/tripItems';
 import { getTrip, TRIP_TABLES } from '../../../../src/repositories/trips';
 import { ItemRow } from '../../../../src/ui/components/ItemRow';
+import { LoadFailed, QueryScreen, StaleNotice } from '../../../../src/ui/components/QueryStates';
 import { Screen } from '../../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../../../../src/ui/components/SectionLabel';
@@ -27,41 +29,44 @@ export default function TimelineScreen() {
   const router = useRouter();
   const tripId = useTripId();
 
-  const { data: trip, loading } = useLiveQuery(
+  const tripQuery = useLiveQuery(
     useCallback((database) => getTrip(database, tripId), [tripId]),
     TRIP_TABLES,
     [tripId],
   );
-  const { data: items, error: itemsError } = useLiveQuery(
+  const itemsQuery = useLiveQuery(
     useCallback((database) => listTripItems(database, tripId), [tripId]),
     TRIP_ITEM_TABLES,
     [tripId],
   );
-  const { data: attachments } = useLiveQuery(
+  const attachmentsQuery = useLiveQuery(
     useCallback((database) => listItemResourcesForTrip(database, tripId), [tripId]),
     ITEM_RESOURCE_TABLES,
     [tripId],
   );
+
+  const trip = tripQuery.data;
+  const items = itemsQuery.data;
+  const attachments = attachmentsQuery.data;
 
   // Cancelled items never reach the timeline; dated ideas stay on their day (decision log D22).
   const days = useMemo(() => buildTimeline(items ?? []), [items]);
   const undated = useMemo(() => undatedConfirmed(items ?? []), [items]);
   const byItem = useMemo(() => groupResourcesByItem(attachments ?? []), [attachments]);
 
-  if (loading || !trip) {
+  const tripView = queryView(tripQuery);
+  if (tripView !== 'ready' || !trip) {
     return (
-      <Screen>
-        <ScreenHeader title="Timeline" />
-        <View style={styles.centre}>
-          {loading ? (
-            <ActivityIndicator color={c.accent} />
-          ) : (
-            <Text style={[type.body, { color: c.textMuted }]}>This trip no longer exists.</Text>
-          )}
-        </View>
-      </Screen>
+      <QueryScreen
+        title="Timeline"
+        view={tripView}
+        missingText="This trip no longer exists."
+        what="this trip"
+        onRetry={tripQuery.refetch}
+      />
     );
   }
+  const itemsFailed = queryView(itemsQuery) === 'failed';
 
   const open = (itemId: string) => router.push(`/item/${itemId}`);
 
@@ -74,13 +79,16 @@ export default function TimelineScreen() {
       />
 
       <ScrollView contentContainerStyle={styles.content}>
-        {days.length === 0 && undated.length === 0 ? (
+        <StaleNotice queries={[tripQuery, itemsQuery, attachmentsQuery]} />
+        {/* A read that failed is not an empty trip, and must not say it is. */}
+        {itemsFailed ? <LoadFailed what="the timeline" onRetry={itemsQuery.refetch} /> : null}
+        {queryView(attachmentsQuery) === 'failed' ? (
+          <LoadFailed what="the attachments" onRetry={attachmentsQuery.refetch} />
+        ) : null}
+        {!itemsFailed && items && days.length === 0 && undated.length === 0 ? (
           <View style={[styles.well, { backgroundColor: c.surfaceSunken }]}>
             <Text style={[type.body, { color: c.textMuted }]}>
-              {/* A read that failed is not an empty trip, and must not say it is. */}
-              {items === undefined && itemsError
-                ? 'Could not load the timeline just now. It tries again by itself.'
-                : 'Nothing on the timeline yet. Anything with a date appears here, day by day.'}
+              Nothing on the timeline yet. Anything with a date appears here, day by day.
             </Text>
           </View>
         ) : null}

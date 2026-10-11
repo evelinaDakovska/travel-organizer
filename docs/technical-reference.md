@@ -346,6 +346,22 @@ It defaults to `false`. Without it `addDatabaseChangeListener` never fires, so `
 never refreshes and screens show stale data — with **no error and no warning**. Verified on device
 in M2, where a newly created trip did not appear on Home.
 
+### What a read's state means on screen (R4)
+
+`useLiveQuery` returns `{ data, error, loading, refetch }`. A failed read keeps the data it had and
+retries after 300 ms, 1 s and 3 s; after that the error stands until a watched table changes or
+`refetch` is called. Its state is valid **only for the inputs it was read for**: when `deps`
+change (another trip, another item) it reads as loading from that very render, never showing the
+previous record as this one's.
+
+Screens read it through `queryView` (`src/hooks/queryView.ts`, tested): `loading`, `failed`
+(first read failed), `missing` (read worked, record gone — the **only** state that may say *no
+longer exists*), `empty` (a list with nothing in it — the only one that may say *nothing here*),
+`ready`; and `isStale` (a refresh failed, earlier data shown). `src/ui/components/QueryStates.tsx`
+draws them: `QueryScreen` for a screen's main record, `LoadFailed` in place of a list,
+`StaleNotice` above a screen's content. Edit forms are filled once from their record, so they use
+the gate only, not the stale notice. Search keeps the last results while the next search runs.
+
 ### Migrations
 
 Hand-written, append-only, numbered: `src/db/migrations/001-initial.ts`, `002-….ts`.

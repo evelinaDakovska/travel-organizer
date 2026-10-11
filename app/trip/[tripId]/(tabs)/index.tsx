@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
   happeningNote,
@@ -18,6 +18,7 @@ import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { TaskRow } from '../../../../src/features/trips/TaskRow';
 import { useTripId } from '../../../../src/features/trips/TripContext';
 import { TripSummary } from '../../../../src/features/trips/TripSummary';
+import { queryView } from '../../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../../src/hooks/useLiveQuery';
 import { useNow } from '../../../../src/hooks/useNow';
 import {
@@ -33,6 +34,7 @@ import {
 } from '../../../../src/repositories/tripItems';
 import { getTrip, TRIP_TABLES } from '../../../../src/repositories/trips';
 import { Icon } from '../../../../src/ui/components/Icon';
+import { LoadFailed, QueryScreen, StaleNotice } from '../../../../src/ui/components/QueryStates';
 import { Screen } from '../../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../../../../src/ui/components/SectionLabel';
@@ -45,52 +47,48 @@ export default function NowScreen() {
   const now = useNow();
   const tripId = useTripId();
 
-  const { data: trip, loading } = useLiveQuery(
+  const tripQuery = useLiveQuery(
     useCallback((database) => getTrip(database, tripId), [tripId]),
     TRIP_TABLES,
     [tripId],
   );
-  const { data: items } = useLiveQuery(
+  const itemsQuery = useLiveQuery(
     useCallback((database) => listTripItems(database, tripId), [tripId]),
     TRIP_ITEM_TABLES,
     [tripId],
   );
-  const { data: attachments } = useLiveQuery(
+  const attachmentsQuery = useLiveQuery(
     useCallback((database) => listItemResourcesForTrip(database, tripId), [tripId]),
     ITEM_RESOURCE_TABLES,
     [tripId],
   );
-  const { data: documents } = useLiveQuery(
+  const documentsQuery = useLiveQuery(
     useCallback((database) => listResources(database, { scope: 'trip', id: tripId }), [tripId]),
     RESOURCE_TABLES,
     [tripId],
   );
+  const trip = tripQuery.data;
+  const items = itemsQuery.data;
+  const attachments = attachmentsQuery.data;
+  const documents = documentsQuery.data;
 
   const sections = useMemo(() => nowSections(items ?? [], now), [items, now]);
   const tasks = useMemo(() => openTasks(items ?? []), [items]);
   const byItem = useMemo(() => groupResourcesByItem(attachments ?? []), [attachments]);
 
-  if (loading) {
+  const tripView = queryView(tripQuery);
+  if (tripView !== 'ready' || !trip) {
     return (
-      <Screen>
-        <ScreenHeader title="Now" />
-        <View style={styles.centre}>
-          <ActivityIndicator color={c.accent} />
-        </View>
-      </Screen>
+      <QueryScreen
+        title="Now"
+        view={tripView}
+        missingText="This trip no longer exists."
+        what="this trip"
+        onRetry={tripQuery.refetch}
+      />
     );
   }
-
-  if (!trip) {
-    return (
-      <Screen>
-        <ScreenHeader title="Now" />
-        <View style={styles.centre}>
-          <Text style={[type.body, { color: c.textMuted }]}>This trip no longer exists.</Text>
-        </View>
-      </Screen>
-    );
-  }
+  const itemsFailed = queryView(itemsQuery) === 'failed';
 
   return (
     <Screen>
@@ -111,6 +109,13 @@ export default function NowScreen() {
       />
 
       <ScrollView contentContainerStyle={styles.content}>
+        <StaleNotice queries={[tripQuery, itemsQuery, attachmentsQuery, documentsQuery]} />
+        {itemsFailed ? <LoadFailed what="this trip's plans" onRetry={itemsQuery.refetch} /> : null}
+        {/* Without them every Open button would silently vanish, as if nothing were attached. */}
+        {queryView(attachmentsQuery) === 'failed' ? (
+          <LoadFailed what="the attachments" onRetry={attachmentsQuery.refetch} />
+        ) : null}
+
         {/* The thing you are late for first, then today's plans without a time, then what is next. */}
         <NowSection
           label="Happening now"
@@ -147,7 +152,7 @@ export default function NowScreen() {
               <Text style={[type.bodyStrong, { color: c.accentText }]}>Add</Text>
             </Pressable>
           </View>
-          {tasks.length > 0 ? (
+          {itemsFailed ? null : tasks.length > 0 ? (
             tasks.map((task) => (
               <TaskRow
                 key={task.id}
@@ -166,12 +171,19 @@ export default function NowScreen() {
           <TripSummary trip={trip} />
         </View>
 
-        <ResourceList
-          owner={{ scope: 'trip', id: trip.id }}
-          resources={documents ?? []}
-          title="Trip documents"
-          emptyText="Insurance, passport scans, visas — anything that belongs to the whole trip."
-        />
+        {queryView(documentsQuery) === 'failed' ? (
+          <View style={styles.section}>
+            <SectionLabel>Trip documents</SectionLabel>
+            <LoadFailed what="the trip documents" onRetry={documentsQuery.refetch} />
+          </View>
+        ) : (
+          <ResourceList
+            owner={{ scope: 'trip', id: trip.id }}
+            resources={documents ?? []}
+            title="Trip documents"
+            emptyText="Insurance, passport scans, visas — anything that belongs to the whole trip."
+          />
+        )}
       </ScrollView>
     </Screen>
   );

@@ -8,6 +8,7 @@ import { SpendingView } from '../../../../src/features/expenses/SpendingView';
 import { TripTotalCard } from '../../../../src/features/expenses/TripTotalCard';
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { useTripId } from '../../../../src/features/trips/TripContext';
+import { queryView } from '../../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../../src/hooks/useLiveQuery';
 import {
   countReceipts,
@@ -18,6 +19,7 @@ import {
 import { listTripItems, TRIP_ITEM_TABLES } from '../../../../src/repositories/tripItems';
 import { getTrip, TRIP_TABLES } from '../../../../src/repositories/trips';
 import { ChoiceField } from '../../../../src/ui/components/ChoiceField';
+import { LoadFailed, StaleNotice } from '../../../../src/ui/components/QueryStates';
 import { Screen } from '../../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../../src/ui/components/ScreenHeader';
 import { spacing, useColors } from '../../../../src/ui/tokens';
@@ -37,21 +39,31 @@ export default function ExpensesScreen() {
     TRIP_TABLES,
     [tripId],
   );
-  const { data: expenses } = useLiveQuery(
+  const expensesQuery = useLiveQuery(
     useCallback((database) => listExpenses(database, tripId), [tripId]),
     EXPENSE_TABLES,
     [tripId],
   );
-  const { data: receipts } = useLiveQuery(
+  const receiptsQuery = useLiveQuery(
     useCallback((database) => countReceipts(database, tripId), [tripId]),
     RECEIPT_COUNT_TABLES,
     [tripId],
   );
-  const { data: items } = useLiveQuery(
+  const itemsQuery = useLiveQuery(
     useCallback((database) => listTripItems(database, tripId), [tripId]),
     TRIP_ITEM_TABLES,
     [tripId],
   );
+
+  const expenses = expensesQuery.data;
+  const receipts = receiptsQuery.data;
+  const items = itemsQuery.data;
+  // A total from one of the two would be wrong, not partial: both or nothing.
+  const failed = queryView(expensesQuery) === 'failed' || queryView(itemsQuery) === 'failed';
+  const retry = () => {
+    expensesQuery.refetch();
+    itemsQuery.refetch();
+  };
 
   const spending = useMemo(() => spendingTotals(expenses ?? []), [expenses]);
   const bookings = useMemo(() => tripExpenses(items ?? []), [items]);
@@ -67,6 +79,7 @@ export default function ExpensesScreen() {
 
       {expenses && items ? (
         <ScrollView contentContainerStyle={styles.content}>
+          <StaleNotice queries={[expensesQuery, receiptsQuery, itemsQuery]} />
           {totals.length > 0 ? <TripTotalCard totals={totals} /> : null}
 
           <ChoiceField
@@ -84,7 +97,11 @@ export default function ExpensesScreen() {
         </ScrollView>
       ) : (
         <View style={styles.centre}>
-          <ActivityIndicator color={c.accent} />
+          {failed ? (
+            <LoadFailed what="the expenses" onRetry={retry} />
+          ) : (
+            <ActivityIndicator color={c.accent} />
+          )}
         </View>
       )}
     </Screen>

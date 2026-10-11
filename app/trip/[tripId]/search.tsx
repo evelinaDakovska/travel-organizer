@@ -1,7 +1,8 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { queryView } from '../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import { NOTE_TABLES } from '../../../src/repositories/notes';
 import { searchTrip, TRIP_ITEM_TABLES } from '../../../src/repositories/tripItems';
@@ -9,6 +10,7 @@ import { Card } from '../../../src/ui/components/Card';
 import { Input } from '../../../src/ui/components/Field';
 import { ItemRow } from '../../../src/ui/components/ItemRow';
 import { Screen } from '../../../src/ui/components/Screen';
+import { LoadFailed } from '../../../src/ui/components/QueryStates';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../../../src/ui/components/SectionLabel';
 import { spacing, type, useColors } from '../../../src/ui/tokens';
@@ -21,11 +23,17 @@ export default function TripSearch() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const [query, setQuery] = useState('');
 
-  const { data: results } = useLiveQuery(
+  const searchQuery = useLiveQuery(
     useCallback((database) => searchTrip(database, tripId, query), [tripId, query]),
     SEARCH_TABLES,
     [tripId, query],
   );
+
+  // While the next search runs, keep the last results rather than blanking on every keystroke.
+  const lastResults = useRef(searchQuery.data);
+  if (searchQuery.data) lastResults.current = searchQuery.data;
+  const view = queryView(searchQuery);
+  const results = view === 'loading' ? lastResults.current : searchQuery.data;
 
   const blank = query.trim() === '';
   const nothing = !blank && results && results.items.length + results.notes.length === 0;
@@ -52,6 +60,10 @@ export default function TripSearch() {
             Find a booking reference, a place, or something you wrote in a note. Cancelled items
             are included.
           </Text>
+        ) : null}
+
+        {!blank && view === 'failed' ? (
+          <LoadFailed what="the results" onRetry={searchQuery.refetch} />
         ) : null}
 
         {nothing ? (

@@ -1,40 +1,39 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert } from 'react-native';
 
 import { NoteForm } from '../../src/features/notes/NoteForm';
+import { queryView } from '../../src/hooks/queryView';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
 import { deleteNote, getNote, NOTE_TABLES, updateNote } from '../../src/repositories/notes';
 import { Button } from '../../src/ui/components/Button';
+import { QueryScreen } from '../../src/ui/components/QueryStates';
 import { Screen } from '../../src/ui/components/Screen';
 import { ScreenHeader } from '../../src/ui/components/ScreenHeader';
-import { type, useColors } from '../../src/ui/tokens';
 
 export default function EditNote() {
-  const c = useColors();
   const db = useSQLiteContext();
   const router = useRouter();
   const { noteId } = useLocalSearchParams<{ noteId: string }>();
 
-  const { data: note, loading } = useLiveQuery(
+  const noteQuery = useLiveQuery(
     useCallback((database) => getNote(database, noteId), [noteId]),
     NOTE_TABLES,
     [noteId],
   );
 
-  if (loading || !note) {
+  const note = noteQuery.data;
+  const noteView = queryView(noteQuery);
+  if (noteView !== 'ready' || !note) {
     return (
-      <Screen>
-        <ScreenHeader title="Note" />
-        <View style={styles.centre}>
-          {loading ? (
-            <ActivityIndicator color={c.accent} />
-          ) : (
-            <Text style={[type.body, { color: c.textMuted }]}>This note no longer exists.</Text>
-          )}
-        </View>
-      </Screen>
+      <QueryScreen
+        title="Note"
+        view={noteView}
+        missingText="This note no longer exists."
+        what="this note"
+        onRetry={noteQuery.refetch}
+      />
     );
   }
 
@@ -68,6 +67,3 @@ export default function EditNote() {
   );
 }
 
-const styles = StyleSheet.create({
-  centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-});

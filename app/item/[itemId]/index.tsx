@@ -2,7 +2,7 @@ import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { refundableOf } from '../../../src/domain/bookingCosts';
 import { formatMoment, formatMoney } from '../../../src/domain/format';
@@ -23,6 +23,7 @@ import { zoneMismatches } from '../../../src/domain/zoneHints';
 import { ZoneNotice } from '../../../src/features/items/ZoneNotice';
 import { OpenResource } from '../../../src/features/resources/OpenResource';
 import { ResourceList } from '../../../src/features/resources/ResourceList';
+import { queryView } from '../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import {
   countItemOwnFiles,
@@ -39,6 +40,7 @@ import {
 } from '../../../src/repositories/tripItems';
 import { Button } from '../../../src/ui/components/Button';
 import { ItemRow } from '../../../src/ui/components/ItemRow';
+import { LoadFailed, QueryScreen, StaleNotice } from '../../../src/ui/components/QueryStates';
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../../../src/ui/components/SectionLabel';
@@ -52,17 +54,20 @@ export default function ItemDetail() {
   const router = useRouter();
   const { itemId } = useLocalSearchParams<{ itemId: string }>();
 
-  const { data: item, loading } = useLiveQuery(
+  const itemQuery = useLiveQuery(
     useCallback((database) => getTripItem(database, itemId), [itemId]),
     TRIP_ITEM_TABLES,
     [itemId],
   );
 
-  const { data: resources } = useLiveQuery(
+  const resourcesQuery = useLiveQuery(
     useCallback((database) => listResources(database, { scope: 'item', id: itemId }), [itemId]),
     RESOURCE_TABLES,
     [itemId],
   );
+
+  const item = itemQuery.data;
+  const resources = resourcesQuery.data;
 
   // The other legs of a journey entered together (U7); empty for everything else.
   const tripId = item?.tripId;
@@ -79,25 +84,16 @@ export default function ItemDetail() {
     [item, tripItems],
   );
 
-  if (loading) {
+  const itemView = queryView(itemQuery);
+  if (itemView !== 'ready' || !item) {
     return (
-      <Screen>
-        <ScreenHeader title="Details" />
-        <View style={styles.centre}>
-          <ActivityIndicator color={c.accent} />
-        </View>
-      </Screen>
-    );
-  }
-
-  if (!item) {
-    return (
-      <Screen>
-        <ScreenHeader title="Details" />
-        <View style={styles.centre}>
-          <Text style={[type.body, { color: c.textMuted }]}>This item no longer exists.</Text>
-        </View>
-      </Screen>
+      <QueryScreen
+        title="Details"
+        view={itemView}
+        missingText="This item no longer exists."
+        what="this item"
+        onRetry={itemQuery.refetch}
+      />
     );
   }
 
@@ -139,6 +135,7 @@ export default function ItemDetail() {
       />
 
       <ScrollView contentContainerStyle={styles.content}>
+        <StaleNotice queries={[itemQuery, resourcesQuery]} />
         <View style={styles.heading}>
           <View style={styles.tags}>
             <StatusTag status={item.status} />
@@ -209,12 +206,20 @@ export default function ItemDetail() {
           </View>
         ) : null}
 
-        <ResourceList
-          owner={{ scope: 'item', id: item.id }}
-          resources={resources ?? []}
-          title="Tickets & links"
-          emptyText="Attach the boarding pass, the booking confirmation, or a link to manage it."
-        />
+        {/* A failed read is not "nothing attached" — least of all where the ticket should be. */}
+        {queryView(resourcesQuery) === 'failed' ? (
+          <View style={styles.facts}>
+            <SectionLabel>Tickets & links</SectionLabel>
+            <LoadFailed what="the tickets and links" onRetry={resourcesQuery.refetch} />
+          </View>
+        ) : (
+          <ResourceList
+            owner={{ scope: 'item', id: item.id }}
+            resources={resources ?? []}
+            title="Tickets & links"
+            emptyText="Attach the boarding pass, the booking confirmation, or a link to manage it."
+          />
+        )}
 
         <View style={styles.actions}>
           {actions.promote ? (

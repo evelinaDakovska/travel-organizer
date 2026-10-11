@@ -5,6 +5,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { bookedPlaces } from '../../../../src/domain/places';
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { useTripId } from '../../../../src/features/trips/TripContext';
+import { queryView } from '../../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../../src/hooks/useLiveQuery';
 import {
   listPlaces,
@@ -12,6 +13,7 @@ import {
   TRIP_ITEM_TABLES,
 } from '../../../../src/repositories/tripItems';
 import { ItemRow } from '../../../../src/ui/components/ItemRow';
+import { LoadFailed, StaleNotice } from '../../../../src/ui/components/QueryStates';
 import { Screen } from '../../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../../../../src/ui/components/SectionLabel';
@@ -26,17 +28,20 @@ export default function PlacesScreen() {
   const router = useRouter();
   const tripId = useTripId();
 
-  const { data: places, loading } = useLiveQuery(
+  const placesQuery = useLiveQuery(
     useCallback((database) => listPlaces(database, tripId), [tripId]),
     TRIP_ITEM_TABLES,
     [tripId],
   );
-  const { data: items } = useLiveQuery(
+  const itemsQuery = useLiveQuery(
     useCallback((database) => listTripItems(database, tripId), [tripId]),
     TRIP_ITEM_TABLES,
     [tripId],
   );
+  const places = placesQuery.data;
+  const items = itemsQuery.data;
   const booked = useMemo(() => bookedPlaces(items ?? []), [items]);
+  const placesView = queryView(placesQuery);
 
   return (
     <Screen>
@@ -46,15 +51,18 @@ export default function PlacesScreen() {
         action={<SearchButton tripId={tripId} />}
       />
 
-      {loading ? (
+      {placesView === 'loading' ? (
         <View style={styles.centre}>
           <ActivityIndicator color={c.accent} />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
+          <StaleNotice queries={[placesQuery, itemsQuery]} />
           <View style={styles.section}>
             <SectionLabel>Ideas</SectionLabel>
-            {places && places.length > 0 ? (
+            {placesView === 'failed' ? (
+              <LoadFailed what="the ideas" onRetry={placesQuery.refetch} />
+            ) : places && places.length > 0 ? (
               places.map((place) => (
                 <ItemRow
                   key={place.id}
@@ -72,6 +80,9 @@ export default function PlacesScreen() {
             )}
           </View>
 
+          {queryView(itemsQuery) === 'failed' ? (
+            <LoadFailed what="where your bookings are" onRetry={itemsQuery.refetch} />
+          ) : null}
           {booked.length > 0 ? (
             <View style={styles.section}>
               <SectionLabel>Booked</SectionLabel>

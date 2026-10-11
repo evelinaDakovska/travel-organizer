@@ -258,7 +258,7 @@ change or a native change; R5 changes how shared files are copied.
 | **R1** | Now: *Happening now* — an event stays while it is on, 15 min after its end, 60 min if it has none (`nowSections`) | ✅ |
 | **R2** | Now: *Today, no fixed time* and *Maybe today* (ideas) — date-only entries through their day, in the item's zone | ✅ |
 | **R3** | Transport zones named on both ends on item detail; the journey form's hint | ✅ |
-| **R4** | Loading, failed, missing, empty and stale told apart on every screen, with Retry | ⬜ |
+| **R4** | Loading, failed, missing, empty and stale told apart on every screen, with Retry | ✅ |
 | **R5** | Share-to-app keeps what worked and says exactly what failed and how to retry | ⬜ |
 | **R6** | *Open ticket* from `subtype='ticket'`, other documents behind it | ⬜ |
 | **R7** | Timeline opens on today during the trip; a Today button | ⬜ |
@@ -294,6 +294,26 @@ item, Helsinki from the trip) reads both zones on detail and in Edit; with the d
 Asia/Tokyo the times and zones are unchanged. Found on the way: moving the emulator clock with
 `cmd alarm set-time` and then reloading the JS leaves the dev client on a white screen; set the
 clock back before any reload.
+
+**R4, what was built:** `queryView` and `isStale` (`src/hooks/queryView.ts`, 8 tests) and three
+small components in `QueryStates.tsx`, used on Home, Now, Timeline, Places, Notes, Expenses, item /
+note / attachment / expense detail, edit item, edit trip, new item, *Move to Timeline*, *Attach to
+an item*, search and the share screen. Beyond the review's list: Expenses spun forever after a
+failed read; Home replaced the whole trip list with the error text when a refresh failed, and a
+first failure there could have led to *No trips yet — Restore from a backup*; item detail would have
+said *nothing attached* where the ticket is; an expense's delete warning would have counted no
+receipts. And a real bug in `useLiveQuery`: on new inputs it kept the previous record with
+`loading: false` until the new read landed — now it reads as loading from that render.
+
+**R4, how it was verified:** on the emulator with a temporary development-only switch (removed
+before the commit) failing `trip_items` reads in time windows: Now, Timeline, Places and Expenses
+each said *Could not load …* with *Try again*, never empty; a 2-second failure recovered by the
+automatic retry; a task ticked while reads failed gave *Could not refresh. Showing what was loaded
+before.* over the earlier data, and *Try again* afterwards cleared it and showed the task done; item
+detail opened during a failure said *Could not load this item*, and *Try again* opened it. The
+*missing* state is unchanged and covered by tests. Found on the way: editing a module everything
+imports while the dev client runs can leave Fast Refresh with *database is locked*; a cold restart
+clears it (development only).
 
 ---
 

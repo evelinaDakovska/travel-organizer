@@ -1,9 +1,10 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert } from 'react-native';
 
 import { ResourceEditForm } from '../../src/features/resources/ResourceEditForm';
+import { queryView } from '../../src/hooks/queryView';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
 import {
   countOtherFileReferences,
@@ -12,41 +13,32 @@ import {
   renameResource,
   RESOURCE_TABLES,
 } from '../../src/repositories/resources';
+import { QueryScreen } from '../../src/ui/components/QueryStates';
 import { Screen } from '../../src/ui/components/Screen';
 import { ScreenHeader } from '../../src/ui/components/ScreenHeader';
-import { type, useColors } from '../../src/ui/tokens';
 
 export default function EditResource() {
-  const c = useColors();
   const db = useSQLiteContext();
   const router = useRouter();
   const { resourceId } = useLocalSearchParams<{ resourceId: string }>();
 
-  const { data: resource, loading } = useLiveQuery(
+  const resourceQuery = useLiveQuery(
     useCallback((database) => getResource(database, resourceId), [resourceId]),
     RESOURCE_TABLES,
     [resourceId],
   );
 
-  if (loading) {
+  const resource = resourceQuery.data;
+  const resourceView = queryView(resourceQuery);
+  if (resourceView !== 'ready' || !resource) {
     return (
-      <Screen>
-        <ScreenHeader title="Attachment" />
-        <View style={styles.centre}>
-          <ActivityIndicator color={c.accent} />
-        </View>
-      </Screen>
-    );
-  }
-
-  if (!resource) {
-    return (
-      <Screen>
-        <ScreenHeader title="Attachment" />
-        <View style={styles.centre}>
-          <Text style={[type.body, { color: c.textMuted }]}>This attachment no longer exists.</Text>
-        </View>
-      </Screen>
+      <QueryScreen
+        title="Attachment"
+        view={resourceView}
+        missingText="This attachment no longer exists."
+        what="this attachment"
+        onRetry={resourceQuery.refetch}
+      />
     );
   }
 
@@ -98,6 +90,3 @@ export default function EditResource() {
   );
 }
 
-const styles = StyleSheet.create({
-  centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-});

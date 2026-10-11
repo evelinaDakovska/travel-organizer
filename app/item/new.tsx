@@ -1,11 +1,11 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { defaultItemDate } from '../../src/domain/trip';
 import { DEFAULT_CURRENCY, TRIP_ITEM_KINDS, type TripItemKind } from '../../src/domain/tripItem';
 import { ItemForm } from '../../src/features/items/ItemForm';
+import { queryView } from '../../src/hooks/queryView';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
 import {
   createTripItem,
@@ -14,18 +14,17 @@ import {
   TRIP_ITEM_TABLES,
 } from '../../src/repositories/tripItems';
 import { getTrip, TRIP_TABLES } from '../../src/repositories/trips';
+import { QueryScreen } from '../../src/ui/components/QueryStates';
 import { Screen } from '../../src/ui/components/Screen';
 import { ScreenHeader } from '../../src/ui/components/ScreenHeader';
-import { type, useColors } from '../../src/ui/tokens';
 import { askForRemindersIfDue } from '../../src/notifications/reminders';
 
 export default function NewItem() {
-  const c = useColors();
   const db = useSQLiteContext();
   const router = useRouter();
   const { tripId, kind } = useLocalSearchParams<{ tripId: string; kind?: string }>();
 
-  const { data: trip, loading } = useLiveQuery(
+  const tripQuery = useLiveQuery(
     useCallback((database) => getTrip(database, tripId), [tripId]),
     TRIP_TABLES,
     [tripId],
@@ -36,25 +35,17 @@ export default function NewItem() {
     [tripId],
   );
 
-  if (loading) {
+  const trip = tripQuery.data;
+  const tripView = queryView(tripQuery);
+  if (tripView !== 'ready' || !trip) {
     return (
-      <Screen>
-        <ScreenHeader title="New item" />
-        <View style={styles.centre}>
-          <ActivityIndicator color={c.accent} />
-        </View>
-      </Screen>
-    );
-  }
-
-  if (!trip) {
-    return (
-      <Screen>
-        <ScreenHeader title="New item" />
-        <View style={styles.centre}>
-          <Text style={[type.body, { color: c.textMuted }]}>This trip no longer exists.</Text>
-        </View>
-      </Screen>
+      <QueryScreen
+        title="New item"
+        view={tripView}
+        missingText="This trip no longer exists."
+        what="this trip"
+        onRetry={tripQuery.refetch}
+      />
     );
   }
 
@@ -96,6 +87,3 @@ function asKind(value: string | undefined): TripItemKind {
   return TRIP_ITEM_KINDS.includes(value as TripItemKind) ? (value as TripItemKind) : 'activity';
 }
 
-const styles = StyleSheet.create({
-  centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-});

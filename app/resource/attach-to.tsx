@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 're
 
 import { timelineEntries } from '../../src/domain/timeline';
 import type { TripItem } from '../../src/domain/tripItem';
+import { queryView } from '../../src/hooks/queryView';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
 import {
   attachResourceToItem,
@@ -15,6 +16,7 @@ import {
 } from '../../src/repositories/resources';
 import { listTripItems } from '../../src/repositories/tripItems';
 import { ItemRow } from '../../src/ui/components/ItemRow';
+import { LoadFailed } from '../../src/ui/components/QueryStates';
 import { Screen } from '../../src/ui/components/Screen';
 import { ScreenHeader } from '../../src/ui/components/ScreenHeader';
 import { spacing, type, useColors } from '../../src/ui/tokens';
@@ -31,7 +33,7 @@ export default function AttachTo() {
   const router = useRouter();
   const { resourceId } = useLocalSearchParams<{ resourceId: string }>();
 
-  const { data, loading } = useLiveQuery(
+  const choicesQuery = useLiveQuery(
     useCallback(
       async (database): Promise<Choices | null> => {
         const [resource, tripId] = await Promise.all([
@@ -51,6 +53,8 @@ export default function AttachTo() {
     [resourceId],
   );
 
+  const data = choicesQuery.data;
+  const view = queryView(choicesQuery);
   const ordered = useMemo(() => (data ? inTimelineOrder(data.items) : []), [data]);
 
   const attach = async (item: TripItem) => {
@@ -66,9 +70,13 @@ export default function AttachTo() {
   return (
     <Screen>
       <ScreenHeader title="Attach to an item" subtitle={data?.label} />
-      {loading ? (
+      {view === 'loading' ? (
         <View style={styles.centre}>
           <ActivityIndicator color={c.accent} />
+        </View>
+      ) : view === 'failed' ? (
+        <View style={styles.centre}>
+          <LoadFailed what="this attachment's trip" onRetry={choicesQuery.refetch} />
         </View>
       ) : !data ? (
         <View style={styles.centre}>

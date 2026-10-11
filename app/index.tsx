@@ -4,10 +4,12 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import { singleActiveTrip } from '../src/domain/itinerary';
 import { groupTrips } from '../src/domain/trip';
+import { queryView } from '../src/hooks/queryView';
 import { useLiveQuery } from '../src/hooks/useLiveQuery';
 import { listTrips, TRIP_TABLES } from '../src/repositories/trips';
 import { Button } from '../src/ui/components/Button';
 import { Icon } from '../src/ui/components/Icon';
+import { LoadFailed, StaleNotice } from '../src/ui/components/QueryStates';
 import { Screen } from '../src/ui/components/Screen';
 import { SectionLabel } from '../src/ui/components/SectionLabel';
 import { TripCard } from '../src/ui/components/TripCard';
@@ -22,10 +24,11 @@ let openedActiveTrip = false;
 export default function Home() {
   const c = useColors();
   const router = useRouter();
-  const { data: trips, error, loading } = useLiveQuery(listTrips, TRIP_TABLES);
+  const tripsQuery = useLiveQuery(listTrips, TRIP_TABLES);
+  const trips = tripsQuery.data;
+  const view = queryView(tripsQuery);
 
   const grouped = useMemo(() => groupTrips(trips ?? []), [trips]);
-  const isEmpty = !loading && (trips?.length ?? 0) === 0;
 
   useEffect(() => {
     if (openedActiveTrip || !trips) return;
@@ -67,16 +70,16 @@ export default function Home() {
         </View>
       </View>
 
-      {loading ? (
+      {view === 'loading' ? (
         <View style={styles.centre}>
           <ActivityIndicator color={c.accent} />
         </View>
-      ) : error ? (
+      ) : view === 'failed' ? (
+        // Never "No trips yet" — that offers a restore over data that is only unreadable for now.
         <View style={styles.centre}>
-          <Text style={[type.bodyStrong, { color: c.danger }]}>Could not load trips</Text>
-          <Text style={[type.caption, styles.centred, { color: c.textMuted }]}>{error.message}</Text>
+          <LoadFailed what="your trips" onRetry={tripsQuery.refetch} />
         </View>
-      ) : isEmpty ? (
+      ) : view === 'empty' ? (
         <View style={styles.centre}>
           <Text style={[type.title, styles.centred, { color: c.text }]}>No trips yet</Text>
           <Text style={[type.body, styles.centred, styles.emptyBody, { color: c.textMuted }]}>
@@ -89,6 +92,7 @@ export default function Home() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
+          <StaleNotice queries={[tripsQuery]} />
           {grouped.upcoming.length > 0 && (
             <View style={styles.section}>
               <SectionLabel>Upcoming</SectionLabel>

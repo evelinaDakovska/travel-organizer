@@ -1,11 +1,12 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert } from 'react-native';
 
 import { expenseFormValues, expenseTitle } from '../../src/domain/spending';
 import { ExpenseForm } from '../../src/features/expenses/ExpenseForm';
 import { ResourceList } from '../../src/features/resources/ResourceList';
+import { queryView } from '../../src/hooks/queryView';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
 import {
   deleteExpense,
@@ -15,22 +16,21 @@ import {
 } from '../../src/repositories/expenses';
 import { listResources, RESOURCE_TABLES } from '../../src/repositories/resources';
 import { Button } from '../../src/ui/components/Button';
+import { LoadFailed, QueryScreen } from '../../src/ui/components/QueryStates';
 import { Screen } from '../../src/ui/components/Screen';
 import { ScreenHeader } from '../../src/ui/components/ScreenHeader';
-import { type, useColors } from '../../src/ui/tokens';
 
 export default function EditExpense() {
-  const c = useColors();
   const db = useSQLiteContext();
   const router = useRouter();
   const { expenseId } = useLocalSearchParams<{ expenseId: string }>();
 
-  const { data: expense, loading } = useLiveQuery(
+  const expenseQuery = useLiveQuery(
     useCallback((database) => getExpense(database, expenseId), [expenseId]),
     EXPENSE_TABLES,
     [expenseId],
   );
-  const { data: receipts } = useLiveQuery(
+  const receiptsQuery = useLiveQuery(
     useCallback(
       (database) => listResources(database, { scope: 'expense', id: expenseId }),
       [expenseId],
@@ -39,18 +39,18 @@ export default function EditExpense() {
     [expenseId],
   );
 
-  if (loading || !expense) {
+  const expense = expenseQuery.data;
+  const receipts = receiptsQuery.data;
+  const expenseView = queryView(expenseQuery);
+  if (expenseView !== 'ready' || !expense) {
     return (
-      <Screen>
-        <ScreenHeader title="Expense" />
-        <View style={styles.centre}>
-          {loading ? (
-            <ActivityIndicator color={c.accent} />
-          ) : (
-            <Text style={[type.body, { color: c.textMuted }]}>This expense no longer exists.</Text>
-          )}
-        </View>
-      </Screen>
+      <QueryScreen
+        title="Expense"
+        view={expenseView}
+        missingText="This expense no longer exists."
+        what="this expense"
+        onRetry={expenseQuery.refetch}
+      />
     );
   }
 
@@ -58,9 +58,12 @@ export default function EditExpense() {
   const confirmDelete = () =>
     Alert.alert(
       `Delete ${expenseTitle(expense)}?`,
-      receiptCount > 0
-        ? `Its ${receiptCount === 1 ? 'receipt goes' : `${receiptCount} receipts go`} too. This cannot be undone.`
-        : 'This cannot be undone.',
+      // Receipts that could not be read are not none: say they go, without a count.
+      receipts === undefined
+        ? 'Any receipts go too. This cannot be undone.'
+        : receiptCount > 0
+          ? `Its ${receiptCount === 1 ? 'receipt goes' : `${receiptCount} receipts go`} too. This cannot be undone.`
+          : 'This cannot be undone.',
       [
         { text: 'Keep it', style: 'cancel' },
         {
@@ -82,12 +85,16 @@ export default function EditExpense() {
         submitLabel="Save changes"
         defaultValues={expenseFormValues(expense)}
         receipts={
+          queryView(receiptsQuery) === 'failed' ? (
+            <LoadFailed what="the receipts" onRetry={receiptsQuery.refetch} />
+          ) : (
           <ResourceList
             owner={{ scope: 'expense', id: expense.id }}
             resources={receipts ?? []}
             title="Receipts"
             emptyText="No receipt yet. Add a photo of it, or the file."
           />
+          )
         }
         onSubmit={async (input) => {
           await updateExpense(db, expense.id, input);
@@ -99,6 +106,3 @@ export default function EditExpense() {
   );
 }
 
-const styles = StyleSheet.create({
-  centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-});

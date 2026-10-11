@@ -24,6 +24,7 @@ import {
   type TripItemKind,
 } from '../src/domain/tripItem';
 import { saveShare } from '../src/features/share/saveShare';
+import { queryView } from '../src/hooks/queryView';
 import { useLiveQuery } from '../src/hooks/useLiveQuery';
 import { listTripItems, TRIP_ITEM_TABLES } from '../src/repositories/tripItems';
 import { listTrips, TRIP_TABLES } from '../src/repositories/trips';
@@ -31,6 +32,7 @@ import { Button } from '../src/ui/components/Button';
 import { Card } from '../src/ui/components/Card';
 import { ChoiceField } from '../src/ui/components/ChoiceField';
 import { Field, Input } from '../src/ui/components/Field';
+import { LoadFailed } from '../src/ui/components/QueryStates';
 import { Screen } from '../src/ui/components/Screen';
 import { ScreenHeader } from '../src/ui/components/ScreenHeader';
 import { StatusTag } from '../src/ui/components/StatusTag';
@@ -72,7 +74,8 @@ function ShareForm({ content }: { content: SharedContent }) {
   const db = useSQLiteContext();
   const router = useRouter();
 
-  const { data: trips } = useLiveQuery(listTrips, TRIP_TABLES);
+  const tripsQuery = useLiveQuery(listTrips, TRIP_TABLES);
+  const trips = tripsQuery.data;
   const [pickedTripId, setPickedTripId] = useState<string | null>(null);
   const trip = trips?.find((t) => t.id === pickedTripId) ?? (trips ? suggestTrip(trips) : null);
 
@@ -98,6 +101,17 @@ function ShareForm({ content }: { content: SharedContent }) {
     TRIP_ITEM_TABLES,
     [tripId],
   );
+
+  if (queryView(tripsQuery) === 'failed') {
+    return (
+      <Screen>
+        <ScreenHeader title="Save to a trip" leading="close" />
+        <View style={styles.centre}>
+          <LoadFailed what="your trips" onRetry={tripsQuery.refetch} />
+        </View>
+      </Screen>
+    );
+  }
 
   if (trips && trips.length === 0) {
     return (

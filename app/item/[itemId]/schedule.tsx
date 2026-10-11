@@ -1,10 +1,11 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text } from 'react-native';
 
 import { defaultItemDate, type Trip } from '../../../src/domain/trip';
 import type { TripItem } from '../../../src/domain/tripItem';
+import { queryView } from '../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import {
   getTripItem,
@@ -15,6 +16,7 @@ import { getTrip, TRIP_TABLES } from '../../../src/repositories/trips';
 import { Button } from '../../../src/ui/components/Button';
 import { Field } from '../../../src/ui/components/Field';
 import { MomentField, type MomentValue } from '../../../src/ui/components/MomentField';
+import { QueryScreen } from '../../../src/ui/components/QueryStates';
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
 import { spacing, type, useColors } from '../../../src/ui/tokens';
@@ -22,35 +24,51 @@ import { askForRemindersIfDue } from '../../../src/notifications/reminders';
 
 /** Moving an idea onto the timeline: give it a day, and it becomes confirmed. */
 export default function ScheduleItem() {
-  const c = useColors();
   const { itemId } = useLocalSearchParams<{ itemId: string }>();
 
-  const { data: item, loading } = useLiveQuery(
+  const itemQuery = useLiveQuery(
     useCallback((database) => getTripItem(database, itemId), [itemId]),
     TRIP_ITEM_TABLES,
     [itemId],
   );
+  const item = itemQuery.data;
   const tripId = item?.tripId;
-  const { data: trip } = useLiveQuery(
+  const tripQuery = useLiveQuery(
     useCallback(async (database) => (tripId ? getTrip(database, tripId) : null), [tripId]),
     TRIP_TABLES,
     [tripId],
   );
 
+  const itemView = queryView(itemQuery);
+  if (itemView !== 'ready' || !item) {
+    return (
+      <QueryScreen
+        title="Move to Timeline"
+        view={itemView}
+        missingText="This item no longer exists."
+        what="this item"
+        onRetry={itemQuery.refetch}
+      />
+    );
+  }
+  const trip = tripQuery.data;
+  const tripView = queryView(tripQuery);
+  if (tripView !== 'ready' || !trip) {
+    return (
+      <QueryScreen
+        title="Move to Timeline"
+        view={tripView}
+        missingText="This trip no longer exists."
+        what="this trip"
+        onRetry={tripQuery.refetch}
+      />
+    );
+  }
+
   return (
     <Screen>
       <ScreenHeader title="Move to Timeline" leading="close" />
-      {loading || (item && !trip) ? (
-        <View style={styles.centre}>
-          <ActivityIndicator color={c.accent} />
-        </View>
-      ) : item && trip ? (
-        <ScheduleForm item={item} trip={trip} />
-      ) : (
-        <View style={styles.centre}>
-          <Text style={[type.body, { color: c.textMuted }]}>This item no longer exists.</Text>
-        </View>
-      )}
+      <ScheduleForm item={item} trip={trip} />
     </Screen>
   );
 }
@@ -101,5 +119,4 @@ function ScheduleForm({ item, trip }: { item: TripItem; trip: Trip }) {
 
 const styles = StyleSheet.create({
   content: { padding: spacing.xl, gap: spacing.xl, paddingBottom: spacing.xxxl },
-  centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });
