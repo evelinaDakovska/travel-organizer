@@ -509,8 +509,8 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 - The owner's far-future idea, **shared trips**, is written up in `docs/ideas.md`.
 - **N6 built (0.3.1), not yet on the phone:** a journey's zone filled from its city with a hint, a
   tappable zone chip, old flights flagged with a one-tap fix (D26, `docs/n6-plan.md`). Rehearsed
-  as an update over 0.3.0 on the owner's real data. **Next: install 0.3.1 on the phone** (`install -r`)
-  when the owner connects it, then a short check: the four flights (the owner may have fixed them by
+  as an update over 0.3.0 on the owner's real data. **It goes to the phone with the next changes** (owner's
+  call, 2026-10-11), not on its own. When installing: `install -r`, then a short check: the four flights (the owner may have fixed them by
   hand already, so the notices may be gone) and a zone chip in Edit.
 - The emulator now holds the owner's real data on release 0.3.1 (one flight fixed by the test).
 - **Next after that: N5b** (splitting, plan first from `docs/expenses-spec.md`), or N1–N4.

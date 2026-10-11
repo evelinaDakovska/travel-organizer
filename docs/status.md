@@ -10,8 +10,9 @@ Verified against the repo on 2026-10-11, on Windows: **496 tests passing, typech
 > splitting) is done**: decisions answered, gaps closed, regression pass clean, rehearsed on the
 > owner's real data, documented (`docs/user-guide.md`), and checked on the phone. Open: the owner
 > tries a **camera** receipt on the phone (tested on the emulator), and the **time zones** on the
-> Lapland flights (see `docs/n5-plan.md`, *What the real data showed*). In progress: N6 (a
-> journey's zone from its city). **Next: R0–R11** (`docs/review-plan.md`, decisions first), then
+> Lapland flights (see `docs/n5-plan.md`, *What the real data showed*). N6 (a journey's zone from
+> its city) is built and rehearsed as **0.3.1, not yet on the phone**: the owner chose to ship it
+> together with the next changes. **Next: R0–R11** (`docs/review-plan.md`, decisions first), then
 > N5b or N1–N4.
 
 ---
@@ -206,7 +207,7 @@ seconds" and are cheap.
 | **N4** | Search across all trips | ⬜ |
 | **N5a** | Expenses tab without splitting — migration 002, receipts, backup format 2. Built as 0.3.0, rehearsed; decisions answered, Gaps A–D done, regression pass clean, rehearsed on the owner's real data, documented; **on the phone since 2026-10-11** (0.3.0): [`n5-plan.md`](n5-plan.md) | ✅ |
 | **N5b** | Splitting: paid by, split between (equal or amounts), settle up, record payment. Spec: [`expenses-spec.md`](expenses-spec.md) | ⬜ |
-| **N6** | A journey's time zone from its city: filled with a hint, a tappable zone chip, old flights flagged with a one-tap fix (D26). 0.3.1. Plan and audit: [`n6-plan.md`](n6-plan.md) | 🟡 |
+| **N6** | A journey's time zone from its city: filled with a hint, a tappable zone chip, old flights flagged with a one-tap fix (D26). Built and rehearsed as 0.3.1; goes to the phone with the next changes. Plan and audit: [`n6-plan.md`](n6-plan.md). Note: review step R0 proposes changing decision B (fill on opening an existing item), owner to decide | ✅ |
 
 **N1 — All documents.** Every file and link in a trip — attached to the trip *and* to its items — in
 one list, each row showing which item it belongs to, and opening in one tap. For when you know you
