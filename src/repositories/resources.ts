@@ -5,11 +5,13 @@ import {
   COPY_RESOURCE_TO_ITEM,
   COUNT_ITEM_OWN_FILES,
   COUNT_OTHER_FILE_REFERENCES,
+  INSERT_RECEIPT,
   INSERT_RESOURCE,
   SELECT_ALL_STORED_PATHS,
   SELECT_ITEM_RESOURCES_FOR_TRIP,
   SELECT_ITEMS_SHARING_RESOURCE,
   SELECT_RESOURCE,
+  SELECT_RESOURCES_FOR_EXPENSE,
   SELECT_RESOURCES_FOR_ITEM,
   SELECT_RESOURCES_FOR_TRIP,
   SELECT_RESOURCE_TRIP_ID,
@@ -33,10 +35,15 @@ export async function listResources(
   db: SQLiteDatabase,
   owner: ResourceOwner,
 ): Promise<Resource[]> {
-  const sql = owner.scope === 'item' ? SELECT_RESOURCES_FOR_ITEM : SELECT_RESOURCES_FOR_TRIP;
-  const rows = await db.getAllAsync<ResourceRow>(sql, { $id: owner.id });
+  const rows = await db.getAllAsync<ResourceRow>(LIST_BY_SCOPE[owner.scope], { $id: owner.id });
   return rows.map(parseResourceRow);
 }
+
+const LIST_BY_SCOPE: Record<ResourceOwner['scope'], string> = {
+  trip: SELECT_RESOURCES_FOR_TRIP,
+  item: SELECT_RESOURCES_FOR_ITEM,
+  expense: SELECT_RESOURCES_FOR_EXPENSE,
+};
 
 export async function getResource(db: SQLiteDatabase, id: string): Promise<Resource | null> {
   const row = await db.getFirstAsync<ResourceRow>(SELECT_RESOURCE, { $id: id });
@@ -61,11 +68,8 @@ export async function createResource(
 ): Promise<string> {
   const id = randomUUID();
   const isFile = input.kind === 'file';
-
-  await db.runAsync(INSERT_RESOURCE, {
+  const values = {
     $id: id,
-    $tripId: owner.scope === 'trip' ? owner.id : null,
-    $tripItemId: owner.scope === 'item' ? owner.id : null,
     $kind: input.kind,
     $subtype: input.subtype,
     $label: input.label,
@@ -75,6 +79,18 @@ export async function createResource(
     $mimeType: isFile ? (input.mimeType ?? null) : null,
     $sizeBytes: isFile ? (input.sizeBytes ?? null) : null,
     $now: new Date().toISOString(),
+  };
+
+  if (owner.scope === 'expense') {
+    const { changes } = await db.runAsync(INSERT_RECEIPT, { ...values, $expenseId: owner.id });
+    if (changes !== 1) throw new Error(`No expense ${owner.id} to attach a receipt to`);
+    return id;
+  }
+
+  await db.runAsync(INSERT_RESOURCE, {
+    ...values,
+    $tripId: owner.scope === 'trip' ? owner.id : null,
+    $tripItemId: owner.scope === 'item' ? owner.id : null,
   });
   return id;
 }

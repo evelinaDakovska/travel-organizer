@@ -13,7 +13,8 @@ SELECT
   (SELECT COUNT(DISTINCT r.stored_path) FROM resources r
      WHERE r.kind = 'file'
        AND (r.trip_id = $id
-            OR r.trip_item_id IN (SELECT id FROM trip_items WHERE trip_id = $id))) AS files
+            OR r.trip_item_id IN (SELECT id FROM trip_items WHERE trip_id = $id))) AS files,
+  (SELECT COUNT(*) FROM expenses WHERE trip_id = $id) AS expenses
 `;
 
 /** Items carry the trip's default zone so an unqualified moment can be resolved on parse. */
@@ -106,8 +107,13 @@ export const SELECT_RESOURCES_FOR_ITEM = `
 SELECT * FROM resources WHERE trip_item_id = $id ORDER BY sort_order, created_at
 `;
 
+/** Trip documents. A receipt is filed under its trip too, but belongs to its expense. */
 export const SELECT_RESOURCES_FOR_TRIP = `
-SELECT * FROM resources WHERE trip_id = $id ORDER BY sort_order, created_at
+SELECT * FROM resources WHERE trip_id = $id AND expense_id IS NULL ORDER BY sort_order, created_at
+`;
+
+export const SELECT_RESOURCES_FOR_EXPENSE = `
+SELECT * FROM resources WHERE expense_id = $id ORDER BY sort_order, created_at
 `;
 
 export const SELECT_RESOURCE = `
@@ -132,6 +138,22 @@ VALUES
    COALESCE((SELECT MAX(sort_order) + 1 FROM resources
               WHERE trip_id IS $tripId AND trip_item_id IS $tripItemId), 0),
    $now)
+`;
+
+/**
+ * A receipt: filed under the expense's trip, which the table's one-owner CHECK requires, and
+ * naming the expense. Inserts nothing when the expense does not exist — the caller checks.
+ */
+export const INSERT_RECEIPT = `
+INSERT INTO resources
+  (id, trip_id, expense_id, kind, subtype, label,
+   url, stored_path, file_name, mime_type, size_bytes, sort_order, created_at)
+SELECT $id, e.trip_id, e.id, $kind, $subtype, $label,
+       $url, $storedPath, $fileName, $mimeType, $sizeBytes,
+       COALESCE((SELECT MAX(sort_order) + 1 FROM resources WHERE expense_id = e.id), 0),
+       $now
+  FROM expenses e
+ WHERE e.id = $expenseId
 `;
 
 export const UPDATE_RESOURCE_LABEL = `
@@ -336,3 +358,32 @@ INSERT INTO settings (key, value) VALUES ($key, $value)
  * INSERT OR REPLACE instead would cascade the children away *after* they were written.
  */
 export const DELETE_TRIP_FOR_REPLACE = `DELETE FROM trips WHERE id = $id`;
+
+/** Spending (N5). Newest day first, then the latest entered — the order the list shows. */
+export const SELECT_EXPENSES_FOR_TRIP = `
+SELECT * FROM expenses WHERE trip_id = $tripId ORDER BY spent_on DESC, created_at DESC
+`;
+
+export const SELECT_EXPENSE = `
+SELECT * FROM expenses WHERE id = $id
+`;
+
+export const INSERT_EXPENSE = `
+INSERT INTO expenses
+  (id, trip_id, category, label, amount, currency, spent_on, notes, created_at, updated_at)
+VALUES
+  ($id, $tripId, $category, $label, $amount, $currency, $spentOn, $notes, $now, $now)
+`;
+
+/** Leaves paid_by and split alone: nothing on the form sets them yet. */
+export const UPDATE_EXPENSE = `
+UPDATE expenses
+   SET category = $category, label = $label, amount = $amount, currency = $currency,
+       spent_on = $spentOn, notes = $notes, updated_at = $now
+ WHERE id = $id
+`;
+
+/** Its receipt rows cascade; their files go in the next sweep. */
+export const DELETE_EXPENSE = `
+DELETE FROM expenses WHERE id = $id
+`;

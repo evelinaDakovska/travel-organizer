@@ -21,7 +21,8 @@ export const RESOURCE_SUBTYPES = [
 export type ResourceSubtype = (typeof RESOURCE_SUBTYPES)[number];
 
 /** A resource hangs off exactly one owner, which the schema enforces with a XOR check. */
-export type ResourceOwner = { scope: 'trip' | 'item'; id: string };
+/** `expense`: a receipt (N5). Its row also carries the trip id, which the table requires. */
+export type ResourceOwner = { scope: 'trip' | 'item' | 'expense'; id: string };
 
 type ResourceBase = {
   id: string;
@@ -178,6 +179,7 @@ export type ResourceRow = {
   size_bytes: number | null;
   sort_order: number;
   created_at: string;
+  expense_id: string | null;
 };
 
 export function parseResourceRow(row: ResourceRow): Resource {
@@ -203,6 +205,7 @@ export function parseResourceRow(row: ResourceRow): Resource {
 }
 
 function ownerOf(row: ResourceRow): ResourceOwner {
+  if (row.expense_id !== null) return { scope: 'expense', id: row.expense_id };
   return row.trip_item_id !== null
     ? { scope: 'item', id: row.trip_item_id }
     : { scope: 'trip', id: row.trip_id ?? '' };
@@ -210,7 +213,7 @@ function ownerOf(row: ResourceRow): ResourceOwner {
 
 /** Route params arrive as strings from anywhere, so the owner is rebuilt, never trusted. */
 export function parseOwnerParams(scope: unknown, id: unknown): ResourceOwner | null {
-  if (scope !== 'trip' && scope !== 'item') return null;
+  if (scope !== 'trip' && scope !== 'item' && scope !== 'expense') return null;
   if (typeof id !== 'string' || id.trim() === '') return null;
   return { scope, id };
 }

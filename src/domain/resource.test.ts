@@ -227,6 +227,7 @@ describe('parseResourceRow', () => {
     size_bytes: 12345,
     sort_order: 0,
     created_at: '2026-09-11T00:00:00.000Z',
+    expense_id: null,
   };
 
   it('reads the owner off whichever id is set', () => {
@@ -235,6 +236,12 @@ describe('parseResourceRow', () => {
       scope: 'trip',
       id: 't1',
     });
+  });
+
+  it('reads a receipt as belonging to its expense, not to the trip it is also filed under', () => {
+    expect(
+      parseResourceRow({ ...row, trip_id: 't1', trip_item_id: null, expense_id: 'e1' }).owner,
+    ).toEqual({ scope: 'expense', id: 'e1' });
   });
 
   it('narrows a file row to its file fields', () => {
@@ -258,6 +265,7 @@ describe('owner route params', () => {
   it('rebuilds an owner from params it can trust', () => {
     expect(parseOwnerParams('item', 'i1')).toEqual({ scope: 'item', id: 'i1' });
     expect(parseOwnerParams('trip', 't1')).toEqual({ scope: 'trip', id: 't1' });
+    expect(parseOwnerParams('expense', 'e1')).toEqual({ scope: 'expense', id: 'e1' });
   });
 
   it('refuses anything else, since a route param can come from any link', () => {

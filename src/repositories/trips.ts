@@ -82,14 +82,14 @@ export async function deleteTrip(db: SQLiteDatabase, id: string): Promise<void> 
   await db.runAsync(`DELETE FROM trips WHERE id = ?`, id);
 }
 
+type TripContents = { items: number; files: number; expenses: number };
+
 export async function countTripContents(
   db: SQLiteDatabase,
   id: string,
-): Promise<{ items: number; files: number }> {
-  const row = await db.getFirstAsync<{ items: number; files: number }>(COUNT_TRIP_CONTENTS, {
-    $id: id,
-  });
-  return { items: row?.items ?? 0, files: row?.files ?? 0 };
+): Promise<TripContents> {
+  const row = await db.getFirstAsync<TripContents>(COUNT_TRIP_CONTENTS, { $id: id });
+  return { items: row?.items ?? 0, files: row?.files ?? 0, expenses: row?.expenses ?? 0 };
 }
 
 function serialiseTravellers(names: string[] | undefined): string | null {

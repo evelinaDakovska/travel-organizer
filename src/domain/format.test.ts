@@ -1,5 +1,6 @@
 import {
   amountText,
+  countOf,
   formatDateRange,
   formatDayHeading,
   formatDuration,
@@ -9,6 +10,7 @@ import {
   formatRelative,
   formatShortDate,
   formatShortMoment,
+  listPhrase,
   parseAmount,
 } from './format';
 
@@ -137,5 +139,22 @@ describe('amountText', () => {
     expect(amountText(2500)).toBe('25');
     expect(amountText(5)).toBe('0.05');
     expect(amountText(undefined)).toBe('');
+  });
+});
+
+describe('countOf', () => {
+  it('adds an s to anything but one', () => {
+    expect(countOf(0, 'file')).toBe('0 files');
+    expect(countOf(1, 'file')).toBe('1 file');
+    expect(countOf(3, 'expense')).toBe('3 expenses');
+  });
+});
+
+describe('listPhrase', () => {
+  it('reads like a sentence', () => {
+    expect(listPhrase([])).toBe('');
+    expect(listPhrase(['2 items'])).toBe('2 items');
+    expect(listPhrase(['2 items', '1 file'])).toBe('2 items and 1 file');
+    expect(listPhrase(['2 items', '3 expenses', '1 file'])).toBe('2 items, 3 expenses and 1 file');
   });
 });

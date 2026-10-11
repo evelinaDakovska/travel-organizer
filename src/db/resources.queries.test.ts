@@ -312,7 +312,11 @@ describe('one attachment on the trip and on an item (U4)', () => {
 
   it('counts a shared file once for the trip, and both rows go with the trip', () => {
     const { db } = shared();
-    expect(db.prepare(COUNT_TRIP_CONTENTS).get({ id: 't1' })).toEqual({ items: 1 + 1, files: 1 });
+    expect(db.prepare(COUNT_TRIP_CONTENTS).get({ id: 't1' })).toEqual({
+      items: 1 + 1,
+      files: 1,
+      expenses: 0,
+    });
 
     db.prepare('DELETE FROM trips WHERE id = ?').run('t1');
     expect(db.prepare('SELECT COUNT(*) AS n FROM resources').get()).toEqual({ n: 0 });

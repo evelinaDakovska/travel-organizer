@@ -114,3 +114,14 @@ export function amountText(minorUnits: number | undefined): string {
   const cents = Math.abs(minorUnits % 100);
   return cents === 0 ? String(whole) : `${whole}.${String(cents).padStart(2, '0')}`;
 }
+
+/** '1 file', '3 files'. Regular plurals only — every word the app counts takes an s. */
+export function countOf(count: number, word: string): string {
+  return `${count} ${word}${count === 1 ? '' : 's'}`;
+}
+
+/** 'a', 'a and b', 'a, b and c'. Empty when there is nothing to list. */
+export function listPhrase(parts: readonly string[]): string {
+  if (parts.length <= 1) return parts[0] ?? '';
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+}

@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { countOf, listPhrase } from '../../../src/domain/format';
 import { TripForm } from '../../../src/features/trips/TripForm';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import {
@@ -34,13 +35,14 @@ export default function EditTrip() {
 
   /** Names the blast radius — these files may be the only copies. */
   const confirmDelete = useCallback(async () => {
-    const { items, files } = await countTripContents(db, tripId);
-    const detail = [
-      items > 0 ? `${items} item${items === 1 ? '' : 's'}` : null,
-      files > 0 ? `${files} saved file${files === 1 ? '' : 's'}` : null,
-    ]
-      .filter(Boolean)
-      .join(' and ');
+    const { items, files, expenses } = await countTripContents(db, tripId);
+    const detail = listPhrase(
+      [
+        items > 0 ? countOf(items, 'item') : null,
+        expenses > 0 ? countOf(expenses, 'expense') : null,
+        files > 0 ? countOf(files, 'saved file') : null,
+      ].filter((part) => part !== null),
+    );
 
     Alert.alert(
       `Delete ${trip?.name ?? 'this trip'}?`,

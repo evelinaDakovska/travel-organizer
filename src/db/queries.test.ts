@@ -43,8 +43,14 @@ function seed() {
   return { db, trip, item, fileOnItem, linkOnItem, fileOnTrip };
 }
 
-const count = (db: Database.Database, id: string) =>
-  db.prepare(COUNT_TRIP_CONTENTS).get({ id }) as { items: number; files: number };
+/** Items and files; expenses are counted in expenses.queries.test.ts. */
+const count = (db: Database.Database, id: string) => {
+  const { items, files } = db.prepare(COUNT_TRIP_CONTENTS).get({ id }) as {
+    items: number;
+    files: number;
+  };
+  return { items, files };
+};
 
 describe('COUNT_TRIP_CONTENTS', () => {
   it('is zero for an empty trip', () => {
