@@ -420,6 +420,28 @@ The cost is that the cached instants derived from the old default go stale, so `
 `recomputeTripInstants` whenever `default_tz` actually changes. It rewrites `*_utc` only for rows
 with a NULL `*_tz`; a row stating its own zone is untouched. The wall-clock text never changes.
 
+### A journey's zone, read off its city (N6, 0.3.1)
+
+A NULL zone follows the trip, which is right for most items and wrong for a journey end in a city on
+another clock: a departure from Munich on a Helsinki trip, entered as 08:15 with no zone, sorted
+and counted down as 08:15 Helsinki — an hour early — while the screen still showed 08:15. Found in
+the owner's real data. `src/domain/zoneHints.ts`, pure and tested:
+
+| Function | Rule |
+|---|---|
+| `zoneForPlace` | Exact, case-insensitive, trimmed match of the zone search's places (`TIMEZONE_PLACES`) plus each zone's own city. A place listed under several zones maps to null |
+| `differentClock` | Resolve the same wall-clock time in both zones; different instants = different clocks. On the day, so summer time counts |
+| `zoneSuggestion` / `withSuggestedZone` / `withLegZones` | Fill a time's zone from its end's city when the time has none, has a time of day, and the city's clock differs from the trip's |
+| `zoneHint` | Explain a zone that equals the city's and differs from the trip's: the line under the time |
+| `zoneMismatches` | Times saved without a zone whose city keeps another clock: the detail-page notice. A time stating its own zone is never flagged |
+| `withMomentZone` | The item with one end's zone set, validated by `tripItemInputSchema`, so a change putting the end before the start is refused |
+
+Only `transport` items (From/To in `details`) and journey legs. Undo (*Use Helsinki time*) **pins**
+the trip's zone rather than clearing it, or the city would refill it; *Use the trip's timezone* in
+the picker does the same only when the city would refill, and clears otherwise. The form fill is
+one pure step per change — `withLegZones` in `JourneyFields`, one effect in `ItemForm` — because a
+fill per field would let two ends filled in the same render overwrite each other.
+
 ### Known limitation
 
 If the IANA database changes an offset (a country abolishing DST), cached `*_utc` values go stale.

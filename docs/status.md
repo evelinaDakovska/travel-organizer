@@ -206,6 +206,7 @@ seconds" and are cheap.
 | **N4** | Search across all trips | ⬜ |
 | **N5a** | Expenses tab without splitting — migration 002, receipts, backup format 2. Built as 0.3.0, rehearsed; decisions answered, Gaps A–D done, regression pass clean, rehearsed on the owner's real data, documented; **on the phone since 2026-10-11** (0.3.0): [`n5-plan.md`](n5-plan.md) | ✅ |
 | **N5b** | Splitting: paid by, split between (equal or amounts), settle up, record payment. Spec: [`expenses-spec.md`](expenses-spec.md) | ⬜ |
+| **N6** | A journey's time zone from its city: filled with a hint, a tappable zone chip, old flights flagged with a one-tap fix (D26). 0.3.1. Plan and audit: [`n6-plan.md`](n6-plan.md) | 🟡 |
 
 **N1 — All documents.** Every file and link in a trip — attached to the trip *and* to its items — in
 one list, each row showing which item it belongs to, and opening in one tap. For when you know you

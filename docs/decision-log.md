@@ -435,3 +435,25 @@ enough.
 
 **Decision — bookings take part in the split** (N5b, from the spec). A hotel paid by one person is
 the biggest thing to settle; leaving it out would make the split wrong.
+
+---
+
+## D26 — A journey's zone is filled from its city, with a line saying so
+
+Found in the owner's real data (2026-10-11): no item had a zone of its own, so four flight times in
+Munich and Frankfurt were read in Helsinki time, an hour out, with nothing on screen to show it.
+
+**Decision:** when a leg's From or To is a city the zone search knows, and its clock differs from
+the trip's, the form **fills** that time's zone and says so under it (*Munich is on a different
+clock, so this time is in Berlin time.* · *Use Helsinki time*). The zone control became a visible
+chip. A flight saved without zones is **flagged** on its detail page with a one-tap fix. Opening it
+in Edit shows the fill; nothing is written until Save. Undo pins the trip's zone so the hint stays
+gone. Transport only. The owner chose the fill and the one-tap hint together, and the flag.
+
+**Rejected:** a hint that only asks (one more tap on every leg, and easy to skip); flagging only,
+with no fill (fixes the past, not the future); guessing from stays' and activities' free-text
+places (too unreliable to read a city from); fuzzy city matching. A wrong guess would look
+deliberate, which is worse than the original problem.
+
+**Not automatic booking parsing** (CLAUDE.md §7): it reads only text the user typed into a field
+labelled From or To, and shows what it did.

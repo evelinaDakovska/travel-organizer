@@ -4,7 +4,7 @@ Everything about one trip that is already decided, booked or saved, on your phon
 without internet. Not a planner: it holds what you have, so that on the road you can see what
 happens next and open the right ticket in seconds.
 
-Written for version **0.3.0**. The examples follow a winter trip to Lapland: flights from Sofia
+Written for version **0.3.1**. The examples follow a winter trip to Lapland: flights from Sofia
 with a change in Munich, a night train, a hire car, a hotel and a few tours.
 
 **Contents**
@@ -106,10 +106,28 @@ Lapland trip (Helsinki time):
 Without it, the Munich times are read as Helsinki time, an hour out. The screen still says
 *09:00*, but the countdown and the reminder are an hour early.
 
-**How:** under a date and time the form says **In Helsinki** (the trip's zone). Tap it, search
-*Munich* (cities and countries both work), pick it. The time now reads **Berlin**. **Use the
-trip's timezone** undoes it. In a journey, the arrival's hint says it: *Set its zone if it lands
-somewhere else.*
+**The app does it for you on journeys.** When you type a city in a leg's **From** or **To** and
+give that end a time, the app looks the city up. If it keeps a different clock from the trip's,
+that time's zone is set for you, and the line under it says so:
+
+> 🌐 **Berlin time** ⌄
+> *Munich is on a different clock, so this time is in Berlin time.* · **Use Helsinki time**
+
+Tap **Use Helsinki time** if you really mean the trip's clock; it stays that way. A city the app
+does not know (or a country with several zones, such as Australia) is left alone. A day without a
+time is left alone too.
+
+**By hand:** under every date and time there is a chip such as 🌐 **Helsinki time** ⌄. Tap it,
+search a city or country (*Munich* finds Berlin), pick it. **Use the trip's timezone** undoes it.
+
+**Items saved earlier:** a flight whose time is read in the wrong clock says so on its detail page,
+under *When*:
+
+> ⚠ *Departs Munich, but this time is read in Helsinki time. Munich is an hour behind.* ·
+> **Use Berlin time**
+
+One tap fixes it: the time you typed stays, only its zone changes. Opening the item in **Edit**
+shows the same fill, and **Save** fixes it too.
 
 On Now and the detail page, a time in another zone carries a label such as *09:20 · Sofia*; a
 time with no label is in the trip's zone, as the trip card says: *Times shown in Helsinki time
@@ -334,9 +352,8 @@ everything, so make a backup first if it ever comes to that.
 At home, on wifi, a day or two before:
 
 1. **Every booking is in**, confirmed, with its date and time.
-2. **Time zones**: every departure or arrival in a city on a different clock from the trip's main
-   zone has its own zone (section 1). Look at your flights' detail pages: a time in another zone
-   shows its label.
+2. **Time zones**: open each flight's detail page. No ⚠ notice under *When* means its times are
+   read in the right clock; a time in another zone shows its label (*08:15 · Berlin*).
 3. **Tickets attached**: open each one once.
 4. **Airplane mode test**: switch it on, open the trip, open every ticket, switch it off.
 5. **Reminders** on where you want them; notifications allowed.
