@@ -68,8 +68,8 @@ type Props = {
 const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
 const STATUS_HINTS = {
-  idea: 'Saved to Places until you book it',
-  confirmed: 'Booked — it shows on the Timeline',
+  idea: 'Saved to Places until you decide on it',
+  confirmed: 'In your itinerary — it shows on the Timeline',
   cancelled: 'Kept for its documents, hidden from the Timeline',
 } as const;
 

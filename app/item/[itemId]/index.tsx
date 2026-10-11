@@ -224,7 +224,7 @@ export default function ItemDetail() {
         <View style={styles.actions}>
           {actions.promote ? (
             <Button
-              label="Move to Timeline"
+              label="Add to itinerary"
               onPress={() => router.push(`/item/${item.id}/schedule`)}
             />
           ) : null}

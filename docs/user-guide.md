@@ -51,8 +51,9 @@ opens **Add to trip**.
    **Type** (flight, train, car, hotel, museum, tour…) that picks the icon.
 2. **Title**: what you will look for later, e.g. *Santa Claus Express*.
 3. **Status**:
-   - **Confirmed**: booked. It shows on the Timeline and Now.
-   - **Idea**: saved to Places until you book it (see [Places](#5-places-and-notes)).
+   - **Confirmed**: in your itinerary — booked, or simply decided (a walk, a visit with no
+     ticket). It shows on the Timeline and Now.
+   - **Idea**: saved to Places until you decide on it (see [Places](#5-places-and-notes)).
    - **Cancelled**: kept for its documents, hidden from the Timeline.
 4. **When**: *Starts* and, for anything that lasts, *Ends*. A day is enough; add a time if you
    know it. A new item opens on the trip's first day.
@@ -319,9 +320,10 @@ one forint taxi shows two totals, one per currency.
 Things you might do, not booked yet: a café someone recommended, a viewpoint, a museum. Add them
 with **Status: Idea** and **How much do you want it** (*Must*, *Want*, *Maybe*).
 
-**Places** lists **Ideas**, sorted by how much you want them, and then **Booked**: confirmed items
-that have an address, so the whole map of the trip is in one list. When you book an idea, open it
-and tap **Move to Timeline**: give it a date (a day is enough) and it becomes a confirmed item.
+**Places** lists **Ideas**, sorted by how much you want them, and then **In your itinerary**:
+confirmed items that have an address, so the whole map of the trip is in one list. When you decide
+on an idea, open it and tap **Add to itinerary**: give it a date (a day is enough) and it becomes
+a confirmed item.
 Nothing is copied; it is the same item.
 
 ### Notes

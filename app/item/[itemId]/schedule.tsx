@@ -43,7 +43,7 @@ export default function ScheduleItem() {
   if (itemView !== 'ready' || !item) {
     return (
       <QueryScreen
-        title="Move to Timeline"
+        title="Add to itinerary"
         view={itemView}
         missingText="This item no longer exists."
         what="this item"
@@ -56,7 +56,7 @@ export default function ScheduleItem() {
   if (tripView !== 'ready' || !trip) {
     return (
       <QueryScreen
-        title="Move to Timeline"
+        title="Add to itinerary"
         view={tripView}
         missingText="This trip no longer exists."
         what="this trip"
@@ -67,7 +67,7 @@ export default function ScheduleItem() {
 
   return (
     <Screen>
-      <ScreenHeader title="Move to Timeline" leading="close" />
+      <ScreenHeader title="Add to itinerary" leading="close" />
       <ScheduleForm item={item} trip={trip} />
     </Screen>
   );
@@ -112,7 +112,7 @@ function ScheduleForm({ item, trip }: { item: TripItem; trip: Trip }) {
         />
       </Field>
 
-      <Button label="Move to Timeline" disabled={!moment} busy={busy} onPress={() => void move()} />
+      <Button label="Add to itinerary" disabled={!moment} busy={busy} onPress={() => void move()} />
     </ScrollView>
   );
 }

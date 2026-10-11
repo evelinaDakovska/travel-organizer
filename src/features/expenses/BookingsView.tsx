@@ -20,7 +20,7 @@ export function BookingsView({ items, totals }: Props) {
   if (totals.length === 0) {
     return (
       <Text style={[type.body, { color: c.textMuted }]}>
-        Nothing booked here has a price yet. A booking's price is on its own page, under Edit.
+        Nothing confirmed here has a price yet. A booking's price is on its own page, under Edit.
       </Text>
     );
   }

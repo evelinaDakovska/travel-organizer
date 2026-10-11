@@ -230,8 +230,8 @@ function ShareForm({ content }: { content: SharedContent }) {
               label="Status"
               hint={
                 status === 'idea'
-                  ? 'Saved to Places until you book it'
-                  : 'Booked — add its date from the item'
+                  ? 'Saved to Places until you decide on it'
+                  : 'In your itinerary — add its date from the item'
               }>
               <ChoiceField
                 value={status}

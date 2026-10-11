@@ -262,7 +262,7 @@ change or a native change; R5 changes how shared files are copied.
 | **R5** | Share-to-app keeps what worked and says exactly what failed and how to retry | ✅ |
 | **R6** | *Open ticket* from `subtype='ticket'`, other documents behind it | ✅ |
 | **R7** | Timeline opens on today during the trip; a Today button | ✅ |
-| **R8** | Wording: *planned* is not *booked* | ⬜ |
+| **R8** | Wording: *planned* is not *booked* | ✅ |
 | **R9** | Expense form: mark a booking Paid rather than adding it again | ⬜ |
 | **R10** | Cancelled with refund not specified: shown as not counted | ⬜ |
 | **R11** | Documentation reconciled with the code | ⬜ |
@@ -351,6 +351,13 @@ strip of days to jump between was left for later, as planned.
 Nov · Today*; scrolled up to 18 Nov, a task ticked on Now, back on the Timeline — still on 18 Nov;
 an item opened and closed — still there; **Today** scrolled back to 22 Nov. With the real clock
 (11 Oct, before the trip): no Today button, the list starts at 18 Nov.
+
+**R8, what was built:** wording only. *Confirmed* is "in your itinerary" — booked or simply
+decided: the status hints in the item form and the share screen, Places (*In your itinerary*
+heading, its subtitle and empty text), *Add to itinerary* instead of *Move to Timeline* on item
+detail and its screen, one line in Bookings, and the user guide. *Booking* stays where it means a
+reservation: the item form's section with the confirmation code and price, Expenses' *Bookings*.
+No new status or field. Seen on the emulator: Places and an idea's *Add to itinerary*.
 
 ---
 

@@ -20,7 +20,7 @@ import { SectionLabel } from '../../../../src/ui/components/SectionLabel';
 import { radius, spacing, type, useColors } from '../../../../src/ui/tokens';
 
 /**
- * Ideas, most wanted first — opening one offers Move to Timeline. Below them, the booked items
+ * Ideas, most wanted first — opening one offers Add to itinerary. Below them, the confirmed items
  * that say where they are, so every address in the trip is in one list (U5).
  */
 export default function PlacesScreen() {
@@ -47,7 +47,7 @@ export default function PlacesScreen() {
     <Screen>
       <ScreenHeader
         title="Places"
-        subtitle="Ideas, and where your bookings are"
+        subtitle="Ideas, and where your plans are"
         action={<SearchButton tripId={tripId} />}
       />
 
@@ -74,18 +74,18 @@ export default function PlacesScreen() {
               <View style={[styles.well, { backgroundColor: c.surfaceSunken }]}>
                 <Text style={[type.body, { color: c.textMuted }]}>
                   No ideas saved yet. Add somewhere you might go — a café someone recommended, a
-                  viewpoint — and move it onto the timeline once it is booked.
+                  viewpoint — and add it to your itinerary once you decide to go.
                 </Text>
               </View>
             )}
           </View>
 
           {queryView(itemsQuery) === 'failed' ? (
-            <LoadFailed what="where your bookings are" onRetry={itemsQuery.refetch} />
+            <LoadFailed what="where your plans are" onRetry={itemsQuery.refetch} />
           ) : null}
           {booked.length > 0 ? (
             <View style={styles.section}>
-              <SectionLabel>Booked</SectionLabel>
+              <SectionLabel>In your itinerary</SectionLabel>
               {booked.map((item) => (
                 <ItemRow key={item.id} item={item} onPress={() => router.push(`/item/${item.id}`)} />
               ))}
