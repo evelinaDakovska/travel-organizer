@@ -14,7 +14,10 @@ single source of truth for schema, time, files, queries). Read in this order:
 5. `docs/decision-log.md` — why, and what was rejected (D1–D24)
 6. `docs/windows-handoff.md` — machine setup, release build, Windows specifics
 
-Last verified: **2026-10-10**, after U1–U7, **445 tests**, typecheck clean.
+Last verified: **2026-10-11**, N5a built (not yet on the phone), **494 tests**, typecheck clean.
+
+> **Starting fresh? Jump to §11 first** — it is the exact point the last session stopped, what is
+> waiting on the owner, and the next steps in order.
 
 ---
 
@@ -47,23 +50,26 @@ collaboration, weather, currency conversion, embedded maps, automatic booking pa
 
 ## 2. Where things stand
 
-Every planned task is done: **C1–C5** (core), **V1** (visual foundation), **S1–S8** (surface).
-Milestones **M0–M8** complete; **M9** complete apart from two reminder checks on the phone.
+Every planned C, V, S and U task is done. The app is **in real use** with a real trip on it.
 
-The app is **in real use**: release build 0.1.0, signed with the owner's private key, installed on
-the Galaxy on 2026-09-18, and QA'd end to end there. It needs neither this laptop nor Metro.
-**It now holds a real trip** — nothing may risk that data (see `docs/status.md` → *U*).
-
-**U1–U7 are built (2026-10-10)** from the owner's list after real use; **U8** — installing 0.2.0
-on the phone — waits for the owner, with the steps written out in `docs/status.md`. None of the U
-work needed a migration: new per-item facts live in `details` (`reminder`, `refundable`,
-`journeyId`).
-
-**After that: N1–N4** in `docs/status.md` — four features approved on 2026-09-18 after the owner asked
-what Notion does well, not started:
-
-| | Feature | First decision to make |
+| Version | Where | What |
 |---|---|---|
+| 0.1.0 | was on the phone until 2026-10-11 | S1–S8 |
+| **0.2.0** | **on the phone now** (installed 2026-10-11 over 0.1.0, data kept) | U1–U7 + the live-query fix |
+| 0.2.1 | built, **never installed** on the phone | U9 (tappable Expenses card) — superseded |
+| **0.3.0** | built, rehearsed on the emulator, **waiting for the owner's yes** | **N5a: Expenses tab, no splitting** — and the **first schema migration** |
+
+The APKs are kept in `%USERPROFILE%\.travel-organizer\` (`travel-organizer-<version>.apk`).
+0.3.0 there is the code at `0452d3e` — **rebuild before installing** if any code changes (§11).
+
+**N1–N4** (approved 2026-09-18, not started) are still in `docs/status.md`. **N5** (expenses and
+splitting, Splitwise-like) is split: **N5a** — expenses without splitting — is built; **N5b** —
+paid by / split between / settle up — is specified in `docs/expenses-spec.md` and comes after.
+
+**Still open on the phone** from September: the expo-notifications memory-pressure patch observed
+firing, and a reminder after a long idle period (`docs/status.md` → *Final phone QA*).
+
+---|---|---|
 | **N1** | All of a trip's documents in one list | Entry point: header icon or a link on Now — **not** a fifth tab (D20) |
 | **N2** | Checklists inside notes | Whether ticked lines sink to the bottom |
 | **N3** | Start a trip from a previous one | Exactly what is copied |
@@ -221,7 +227,7 @@ Moving the repo to `C:\dev` is what fixed the first Windows build.
 
 ```bash
 npm install                 # postinstall applies the patches
-npm test                    # 366 tests, ~2s
+npm test                    # 494 tests, ~3s
 npx tsc --noEmit            # must be clean
 npx expo prebuild --platform android      # after any app.json or native change
 # EXPO_NO_GIT_STATUS=1 when the tree is dirty, or prebuild stops on a prompt
@@ -343,7 +349,18 @@ prefers direct technical discussion — no explaining basic React.
   compacted context; the conversation does not.
 - Commits: a real subject line, a body that says what changed and *why*, and the attribution lines
   the session's system reminder specifies.
-- Two memory files record the above: `feedback_task_loop` and `feedback_real_device_qa`.
+- **Plan first (owner's rule, 2026-10-11).** For anything non-trivial, write a detailed
+  step-by-step plan — steps, files, data changes, tests per step, every decision it implies — show
+  it, get a yes, then build against it. N5a skipped this and had to be audited afterwards
+  (`docs/n5-plan.md`); the owner asked that it never happen again.
+- **Data safety above everything.** The owner's words: *"its very very important not to delete or
+  lose anything of the already added data"*. Anything that touches stored data gets: tests on
+  data shaped like theirs, an update rehearsal on the emulator from the exact version on the phone,
+  a fresh Drive backup by the owner first, and `adb install -r` — **never uninstall**.
+- **Be careful with claims.** Twice this session a claim was too strong (a "verified" that was not
+  yet, and a price bug "on your phone" that was only reproduced with `adb input`). Say what was
+  actually checked, where.
+- Memory files: `feedback_task_loop`, `feedback_real_device_qa`, `feedback_plan_first`.
 
 A privacy constraint from the project's origin still matters: the repo is on a **personal** GitHub
 account with a repo-local personal git identity. Keep it that way, and keep secrets (keystore,
@@ -353,10 +370,152 @@ passwords, real bookings) out of the repo.
 
 ## 10. If you are starting N1 tomorrow
 
+Not before N5a is on the phone and the documentation is written (§11). Then:
+
 1. Read `docs/status.md` → *N — next features* for the scope and the open decision.
-2. `npm test` and `npx tsc --noEmit` to confirm a clean baseline (366 tests at the time of writing).
-3. Put the decision to the owner (entry point for the documents list), with a recommendation.
+2. `npm test` and `npx tsc --noEmit` to confirm a clean baseline.
+3. **Write the step-by-step plan** and put it, with the decision (entry point for the documents
+   list) and a recommendation, to the owner.
 4. Build the pure part first in `src/domain/` with tests, then the screen, then run it on the
    emulator with `node scripts/sample-backup.mjs` data.
 5. Commit, push, tick it in `docs/status.md`.
-6. When the owner next connects the phone, install the release build (§6) and look at it there.
+
+---
+
+## 11. Where the last session stopped (2026-10-11) — read this first
+
+### 11.1 What happened, in order
+
+1. **U8 done.** The owner exported a backup to Drive. Import was proven first: on the emulator a
+   fresh 0.2.0 restored the sample backup with both timelines identical; on the phone, *Import* with
+   **Keep mine** on the real Drive zip read it whole and changed nothing. Then 0.2.0 was installed
+   over 0.1.0 (`adb install -r --user 0`), launched, no crash.
+2. **A wrong price on the phone.** The owner saw *Flight to Munich* at **EUR 92326.00**, entered as
+   993.26. Not explained: `formatMoney` and every price display are unchanged since M2, no
+   migration ran, only *Edit → Save* writes a price, and the owner did not edit it after the
+   update. They fixed it by hand and think it may have been their own typing. **Recorded in
+   `docs/status.md` as one to watch: if a price is ever wrong again, compare with the latest Drive
+   backup before anyone retypes it.** Also: the U1 "×100" price bug was only reproduced with
+   `adb input text`; on a real keyboard 0.1.0 may have been fine — that claim is unproven.
+3. **U9 (0.2.1):** the Expenses card on Now opened a list page. Built, never installed — then
+   superseded by N5a, which removed it again.
+4. **N5 specified** with the owner (`docs/expenses-spec.md`), after researching Splitwise, Tricount,
+   Splid and the usual settle-up method (greedy, at most people − 1 payments). Decisions: Expenses
+   is a **tab**; inside it **Spending · Bookings** (and **Settle up** with N5b), switched by
+   tapping, not swiping; **bookings take part in the split**; **unequal split = an amount per
+   person only**, behind a toggle; **currencies settled separately, never converted**; the
+   category list as written; renaming a traveller need not follow through. The owner's own trip
+   is family and does not split.
+5. **N5a built** (expenses without splitting) — the owner asked for it **before** their trip, on
+   condition of no risk to the data. Commits `92b2161` (migration, backup), `63d0edb` (rules, queries), `b5fe911` (screens),
+   `0452d3e` (the after-the-fact plan, version 0.3.0).
+6. **The plan-first lesson.** The owner pointed out that N5a was built without a step-by-step plan.
+   `docs/n5-plan.md` is that plan written afterwards, each step audited against the build,
+   followed by a fresh review of all 47 changed files.
+
+### 11.2 N5a, what exists
+
+- **Migration 002** (`src/db/migrations/002-expenses.ts`): tables `expenses` and `payments`, and
+  `resources.expense_id`. Purely additive. Includes N5b's `paid_by`, `split` and `payments` so the
+  phone needs one migration only (**Decision 1, awaiting the owner**).
+- **The migration runner** now writes `PRAGMA user_version` in the same transaction as the
+  migration (`migrationBatch` in `src/db/migrations/index.ts`). Before, a kill between the two
+  would re-run the migration and fail on `CREATE TABLE` (**Decision 3**).
+- **Backup format 2**: `expenses` and `payments` exported/restored; format 1 (0.2.0) still imports
+  (defaults in the Zod schema); a test fails if any table is missing from `EXPORT_COLUMNS`.
+- **Receipts** are `resources` rows with `trip_id` = the expense's trip **and** `expense_id`
+  (keeps the one-owner CHECK, no table rebuild — **Decision 2**). `ResourceOwner` has a third scope,
+  `expense`. `SELECT_RESOURCES_FOR_TRIP` excludes receipts; `INSERT_RECEIPT` takes the trip id from
+  the expense; the GC sweep keeps receipt files via `SELECT_ALL_STORED_PATHS`.
+- **Domain** `src/domain/spending.ts`: categories, `expenseInputSchema`, `expenseTitle`,
+  `nextCurrency`, `expensesByDay`, `spendingTotals`, `tripTotals`. (`src/domain/expenses.ts` is
+  the older *booking costs* module — the rename to `bookingCosts.ts` is **Gap C**.)
+- **Repositories** `src/repositories/expenses.ts`: list, get, create (with receipts, one
+  transaction), update (never touches `paid_by`/`split`), delete, `countReceipts`.
+- **attach.ts** reorganised around three pickers (`file`, `photo`, `camera`); `pickAndImport`
+  copies files in without a row, for a new expense's pending receipts (**Decision 4**).
+  `attachFile`, used by sharing from other apps, keeps its behaviour. The CAMERA permission was
+  already in the merged manifest (from expo-image-picker) — **no native change**.
+- **Screens:** the Expenses tab `app/trip/[tripId]/(tabs)/expenses.tsx` (trip total card, then
+  Spending | Bookings); `app/expense/new.tsx` and `app/expense/[expenseId].tsx`; components in
+  `src/features/expenses/`; `AmountInput`/`CurrencyInput` moved to `src/ui/components/MoneyInputs.tsx`
+  and shared with the item form; the + button adds an expense on the Expenses tab
+  (`useSegments`); the card left Now; the U9 page is deleted; category icons in `Icon.tsx`.
+- Version **0.3.0**, versionCode **4** (`app.json` and `android/app/build.gradle` — `android/` is
+  gitignored, so bump both by hand after prebuild).
+
+### 11.3 How it was verified
+
+- **494 tests**, typecheck clean.
+- **The update rehearsal** on the emulator, exactly as it will go on the phone: fresh 0.2.0 (the
+  APK from `%USERPROFILE%\.travel-organizer`) → sample backup → *Flight home* reminder set to *No
+  reminder* → captured both timelines, alarms (26), trip documents, export summary → **0.3.0
+  installed with `install -r`**. Result: first-install time unchanged, no crash, both timelines
+  identical (the new tab's label appears in the dump — filter `^Expenses$`), reminder still *Off*,
+  alarms 26, both trip documents listed, a PDF opened in airplane mode, export "2 trips and 28
+  saved files".
+- **The tab on the emulator:** added *K-Market*, Groceries, 12.50 EUR with a PDF receipt via + File
+  → trip total EUR 1692.50 (bookings 1680 + spending 12.50), the category bar, the paperclip on
+  the row; the receipt is **not** under Trip documents; export now "29 saved files".
+
+### 11.4 Waiting on the owner — ask these first
+
+From `docs/n5-plan.md` (the owner has the list; get a yes/no on each):
+
+1. Splitting's columns and `payments` already in migration 002. *Recommended: yes.*
+2. Receipts as attachments naming their expense. *Recommended: yes.*
+3. Keep the migration-runner fix. *Recommended: yes.*
+4. Pending receipts on a new expense are copied in at once; a closed form's copies are swept at
+   the next start.
+5. The U9 tappable card removed again.
+6. Small screen choices: the trip total card; a label-less expense titled by its category; the
+   delete warning counts receipts; receipts do not offer *Also attach to an item*.
+
+### 11.5 Next steps, in order (each needs the owner's yes where marked)
+
+1. Decisions 1–6 above.
+2. **Gap A** — the import confirmation should name expenses (`summariseImportPlan` in
+   `src/domain/archive.ts`, with a test). **Gap C** — rename `domain/expenses.ts` →
+   `bookingCosts.ts`. Small; plan them in two lines and do them.
+3. **Gap D** — tap through on the emulator: the camera (permission prompt, a photo, the
+   *Open Settings* path when denied), **editing** an expense, **deleting** one with receipts,
+   removing a pending receipt.
+4. **Gap B** — restoring a backup *with expenses* on a device. The emulator's share sheet has no
+   "save to Files" target and no Google account; options: sign the emulator into a test Google
+   account and use Drive, or add a debug-only path. Ask the owner which.
+5. **Documentation** — the owner asked for both, detailed, covering old and new:
+   - a **user guide** (every screen and feature, how to back up and restore, what to do before a
+     trip), and
+   - the **technical docs** brought up to date (`technical-reference.md`: schema incl. migration
+     002, backup format 2, receipts, the attach pipeline, the Expenses tab; `decision-log.md`: N5's
+     decisions).
+   **Show the owner a plan for the docs before writing them.**
+6. Rebuild the release APK, **repeat the update rehearsal** on the final build (§11.3 recipe).
+7. **The phone:** the owner makes a fresh Drive backup → connects (Auto Blocker off, USB debugging
+   on, "Transfer files") → `adb -s R5GL22FE9QY install -r --user 0 <apk>` → launch, check no crash
+   → owner checks trips, files, reminders, adds one expense with a camera receipt → USB debugging
+   off, Auto Blocker on. Tick U/N5a in `docs/status.md`.
+8. Then **N5b** (splitting), plan first, from `docs/expenses-spec.md`.
+
+### 11.6 Also offered, still unanswered
+
+- **Gmail:** a *Find in Gmail* button that copies the booking code and opens Gmail (Gmail cannot
+  share a whole email and no app can open one specific email). Needs `expo-clipboard` (a new
+  native dependency). The reliable path today: Gmail → ⋮ → *Print* → *Save as PDF* → attach.
+
+### 11.7 Practicalities for the next session
+
+- The phone's serial is **R5GL22FE9QY** (SM-S948B). The emulator is `emulator-5554`
+  (`Pixel_10_Pro`, 1280×2856). It currently has **0.3.0 with the sample data plus one test
+  expense** — reinstall from 0.2.0 for any new rehearsal.
+- The scratchpad helper scripts do not survive the session. Recreate them (§7): `ui.js` parses a
+  uiautomator dump into `text @ x,y` / `[content-desc] @ x,y`; `tap.sh` taps by exact text and
+  **refuses y > 2700** on this emulator (the nav bar); `timeline.sh` dumps the open timeline 45
+  times with **slow** swipes (`input swipe 640 2100 640 1300 1200` — fast ones skip rows),
+  filtering the tab labels (**add `Expenses` to that filter now**), de-duplicated with
+  `awk '!seen[$0]++'`.
+- Editing files: several files are **CRLF**. Edit them with the Edit tool, or with a node script
+  that normalises to LF, replaces, and restores CRLF. Avoid shell heredocs containing backticks
+  or `${}` — they broke twice.
+- Counting alarms: `adb shell dumpsys alarm | grep -c <package>` — compare before/after with the
+  same command; the absolute number means little.

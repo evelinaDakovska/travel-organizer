@@ -3,11 +3,12 @@
 **The** status board. `CLAUDE.md` and `plan.md` link here rather than repeat it, so there is one
 place to update and nothing can drift.
 
-Verified against the repo on 2026-10-10, on Windows: **445 tests passing, typecheck clean.** S2–S8 verified on the Android 17 emulator, then the app end to end **on the Galaxy S26 Ultra** with the release build.
+Verified against the repo on 2026-10-11, on Windows: **494 tests passing, typecheck clean.** S2–S8 verified on the Android 17 emulator, then the app end to end **on the Galaxy S26 Ultra** with the release build.
 
-> **The app is in use on the owner's phone** — release build 0.1.0, installed 2026-09-18. What is
-> left is in *Final phone QA* below: the reminder checks the owner chose to leave for later, and
-> tidying the phone after testing. **Next features: N1–N4** below, approved but not started.
+> **The app is in use on the owner's phone** — release build **0.2.0**, installed 2026-10-11 over
+> 0.1.0 with the data kept. **N5a (Expenses tab, no splitting) is built as 0.3.0 and rehearsed, but
+> waits for the owner's yes on six decisions** — see `docs/n5-plan.md` and
+> `docs/session-handoff.md` §11 for exactly where to pick up.
 
 ---
 
@@ -199,7 +200,8 @@ seconds" and are cheap.
 | **N2** | Checklists inside notes | ⬜ |
 | **N3** | Start a trip from a previous one | ⬜ |
 | **N4** | Search across all trips | ⬜ |
-| **N5** | Expenses tab and splitting, like Splitwise — **after the owner's trip** (first migration). Spec: [`expenses-spec.md`](expenses-spec.md) | ⬜ |
+| **N5a** | Expenses tab without splitting — migration 002, receipts, backup format 2. Built as 0.3.0, rehearsed; **decisions, gaps, docs and the phone still to do**: [`n5-plan.md`](n5-plan.md) | 🟡 |
+| **N5b** | Splitting: paid by, split between (equal or amounts), settle up, record payment. Spec: [`expenses-spec.md`](expenses-spec.md) | ⬜ |
 
 **N1 — All documents.** Every file and link in a trip — attached to the trip *and* to its items — in
 one list, each row showing which item it belongs to, and opening in one tap. For when you know you
