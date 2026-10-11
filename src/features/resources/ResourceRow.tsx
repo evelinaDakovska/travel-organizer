@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { resourceBadge, resourceMeta, type Resource } from '../../domain/resource';
-import { storedFileExists } from '../../files/storage';
+import { absoluteUriFor, storedFileExists } from '../../files/storage';
 import { Icon } from '../../ui/components/Icon';
 import { opacity, radius, spacing, type, useColors } from '../../ui/tokens';
 
@@ -10,6 +11,13 @@ type Props = { resource: Resource; onPress: () => void; onEdit?: () => void };
 export function ResourceRow({ resource, onPress, onEdit }: Props) {
   const c = useColors();
   const missing = resource.kind === 'file' && !storedFileExists(resource.storedPath);
+  const badge = resourceBadge(resource);
+  // A picture shows itself (F6); one that cannot be decoded falls back to its badge.
+  const [unreadable, setUnreadable] = useState(false);
+  const thumbnail =
+    resource.kind === 'file' && badge === 'IMG' && !missing && !unreadable
+      ? absoluteUriFor(resource.storedPath)
+      : null;
 
   return (
     <Pressable
@@ -19,11 +27,21 @@ export function ResourceRow({ resource, onPress, onEdit }: Props) {
         styles.row,
         { backgroundColor: c.surface, opacity: pressed ? opacity.pressed : 1 },
       ]}>
-      <View style={[styles.badge, { backgroundColor: missing ? c.dangerSoft : c.accent2Soft }]}>
-        <Text style={[type.overline, { color: missing ? c.danger : c.accent2Text }]}>
-          {resourceBadge(resource)}
-        </Text>
-      </View>
+      {thumbnail ? (
+        <Image
+          source={{ uri: thumbnail }}
+          // Decoded at the size shown, not the photo's: a 12 MP image would cost ~48 MB otherwise.
+          resizeMethod="resize"
+          resizeMode="cover"
+          onError={() => setUnreadable(true)}
+          style={[styles.badge, { backgroundColor: c.accent2Soft }]}
+          accessibilityIgnoresInvertColors
+        />
+      ) : (
+        <View style={[styles.badge, { backgroundColor: missing ? c.dangerSoft : c.accent2Soft }]}>
+          <Text style={[type.overline, { color: missing ? c.danger : c.accent2Text }]}>{badge}</Text>
+        </View>
+      )}
 
       <View style={styles.body}>
         <Text style={[type.bodyStrong, { color: c.text }]} numberOfLines={1}>

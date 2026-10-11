@@ -185,7 +185,8 @@ On an item's detail page, **Tickets & links**:
 - **+ Link**: a web address, e.g. the hotel's *manage booking* page. It opens in the browser.
 
 The file is **copied into the app**, so it opens without internet and keeps working even if you
-delete the original. Tap an attachment to open it; tap its pencil to **rename** it, say what it
+delete the original. A photo shows a small round picture of itself in the list; a PDF says *PDF*,
+a link *LINK* or *MAP*. Tap an attachment to open it; tap its pencil to **rename** it, say what it
 is (*Document*, *Ticket*, *Confirmation*), or **Remove attachment**.
 
 **Mark the ticket as *Ticket*.** Then the item's main button opens it straight away — *Open

@@ -405,7 +405,7 @@ Planned in [`feedback-plan.md`](feedback-plan.md) (owner: go). Ships as 0.5.0 wi
 | **F3** | Now: *This trip* at the top; *Open tasks* gets a way to see the completed ones | ✅ |
 | **F4** | Detail pages hide fields that are empty | ✅ |
 | **F5** | An expense opens a detail page, with Edit, not the form directly | ✅ |
-| **F6** | An image attachment shows a small round thumbnail of itself, not *IMG* | ⬜ |
+| **F6** | An image attachment shows a small round thumbnail of itself, not *IMG* | ✅ |
 
 **F1, F2, F4, what was built and seen on the emulator (dev build, sample data):**
 - **F1:** `ITEM_ICONS` in `Icon.tsx`, typed against every kind and subkind (a missing icon fails the
@@ -440,6 +440,15 @@ would have returned to a detail page whose expense was gone. `Fact` moved out of
 **F5, how it was verified:** on the emulator: an expense added (Transport, EUR 450) → tapped →
 detail → Edit → amount 32 → *Save changes* → back on the detail page reading EUR 32.00 → *Delete
 expense* → back on the list, total EUR 1680.00 again.
+
+**F6, what was built:** `ResourceRow` shows an image file as a round thumbnail of itself in the
+44 px circle the badge used, with React Native's `Image` (`resizeMethod="resize"`: decoded at the
+size shown, not the photo's). A missing file keeps its red badge; a file that cannot be decoded falls
+back to *IMG*. PDFs and links keep their badges. Everywhere attachments are listed: item and expense
+detail, Trip documents, the open sheets.
+
+**F6, how it was verified:** on the emulator: a PNG attached to *Arktikum museum* with + File
+showed its picture in the circle beside *Image · 7 KB*; the map link beside it kept *MAP*.
 
 ---
 
