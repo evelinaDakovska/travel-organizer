@@ -400,12 +400,23 @@ Planned in [`feedback-plan.md`](feedback-plan.md) (owner: go). Ships as 0.5.0 wi
 
 | | Feedback | ✓ |
 |---|---|---|
-| **F1** | Tell kinds apart at a glance (task, activity, stay, travel…) — an icon, or a border — without reading, and without a rainbow of colours. Research first | ⬜ |
-| **F2** | The **+** button shows a different icon when it does something else (e.g. adds an expense on the Expenses tab) | ⬜ |
+| **F1** | Tell kinds apart at a glance (task, activity, stay, travel…) — an icon, or a border — without reading, and without a rainbow of colours. Research first | ✅ |
+| **F2** | The **+** button shows a different icon when it does something else (e.g. adds an expense on the Expenses tab) | ✅ |
 | **F3** | Now: *This trip* at the top; *Open tasks* gets a way to see the completed ones | ⬜ |
-| **F4** | Detail pages hide fields that are empty | ⬜ |
+| **F4** | Detail pages hide fields that are empty | ✅ |
 | **F5** | An expense opens a detail page, with Edit, not the form directly | ⬜ |
 | **F6** | An image attachment shows a small round thumbnail of itself, not *IMG* | ⬜ |
+
+**F1, F2, F4, what was built and seen on the emulator (dev build, sample data):**
+- **F1:** `ITEM_ICONS` in `Icon.tsx`, typed against every kind and subkind (a missing icon fails the
+  typecheck); `itemIconKey` (tested) picks the subkind's or the kind's; `KindTile` draws it in the
+  soft accent tile (first tried `surfaceSunken`: too faint on a card, changed after a screenshot),
+  on `EntryCard`, `ItemRow` and item detail. Seen: a plane and a train on Now and the Timeline.
+- **F2:** `addActionFor` (tested): a receipt with a small + on Expenses, a notebook with a small +
+  on Notes, which now adds a **note**; the duplicate *New note* button is gone. Seen: both buttons,
+  Notes' opening *New note*.
+- **F4:** item detail shows no *When* without a date, and an empty *Tickets & links* is its heading
+  and add buttons only (`ResourceList`'s `emptyText` is optional). Seen on a task and an idea.
 
 ---
 
