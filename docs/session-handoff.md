@@ -11,10 +11,10 @@ single source of truth for schema, time, files, queries). Read in this order:
 2. `docs/status.md` — what is done, what is next, the open questions
 3. this file — how the work actually goes, and the traps
 4. `docs/technical-reference.md` — when you touch schema, time, files, queries, native
-5. `docs/decision-log.md` — why, and what was rejected (D1–D24)
+5. `docs/decision-log.md` — why, and what was rejected (D1–D28)
 6. `docs/windows-handoff.md` — machine setup, release build, Windows specifics
 
-Last verified: **2026-10-12**, N6 + R1–R11 + F1–F6 built (0.5.0, see `docs/status.md`), **571 tests**,
+Last verified: **2026-10-12**, N6 + R1–R11 + F1–F6 built (0.5.0, see `docs/status.md`), **575 tests**,
 typecheck clean.
 
 > **Starting fresh? Jump to §11 first** — it is the exact point the last session stopped, what is
@@ -204,7 +204,7 @@ Moving the repo to `C:\dev` is what fixed the first Windows build.
 
 ```bash
 npm install                 # postinstall applies the patches
-npm test                    # 571 tests, ~3s
+npm test                    # 575 tests, ~3s
 npx tsc --noEmit            # must be clean
 npx expo prebuild --platform android      # after any app.json or native change
 # EXPO_NO_GIT_STATUS=1 when the tree is dirty, or prebuild stops on a prompt
@@ -380,7 +380,7 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ---
 
-## 11. Where the last session stopped (2026-10-11) — read this first
+## 11. Where the last session stopped (2026-10-12) — read this first
 
 ### 11.00 Latest (2026-10-12) — read this first
 
@@ -397,8 +397,14 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
   check no crash, the owner checks their trip; then the open *Final phone QA* items (a reminder
   while locked, the memory-pressure fix, the time-zone change, the Lapland legs' zones — N6's notice
   now offers the fix on each flight). USB debugging off, Auto Blocker on afterwards.
-- **The emulator** holds release 0.5.0 with the sample trips (from the rehearsal). For dev work,
-  uninstall it and `npx expo run:android` again.
+- **Paused here on purpose (2026-10-12):** the owner chose to update the phone later. Nothing is
+  running — the emulator, Metro, Gradle daemons and the adb server were all stopped; the working
+  tree is clean and pushed (575 tests, typecheck clean). The next session starts at *Next: the
+  phone* above; nothing needs rebuilding — the APK is already built and rehearsed.
+- **The emulator** (`Pixel_10_Pro`, shut down) holds release 0.5.0 with the sample trips (from the
+  rehearsal). For dev work, uninstall it and `npx expo run:android` again; start Metro with
+  `npx expo start --dev-client` and open the dev client via `localhost` if it shows a white screen
+  (§7).
 
 ### 11.1 What happened, in order
 
