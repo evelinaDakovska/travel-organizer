@@ -510,6 +510,16 @@ given EUR 180 not paid → *To pay* on Now and on its detail page; the longest t
 ideas have no pill, *In your itinerary* shows *Paid*. Journey inheritance is covered by tests only
 (the sample data has no journey).
 
+**0.5.1 = N6 + R1–R11 + F1–F7, rehearsed as the phone will get it (2026-10-12).** versionCode 8,
+release key `63:8D:C6:86…52:35:E7` (checked with `apksigner`, same as 0.3.0), kept as
+`travel-organizer-0.5.1.apk`. Fresh **0.3.0** → sample backup → a Groceries expense with a PDF
+receipt (Lapland EUR 2930.00) → snapshot → `install -r` 0.5.1. Result: first-install time
+unchanged, no crash, alarms 28 before and after; both timelines identical **line for line, in
+order**, once the intended additions are set aside (ticket button labels R6, *Paid* pills F7); Now
+differs only by the trip band (F3) and those same additions; expenses EUR 2930.00; export *2 trips
+and 29 saved files* before and after; a boarding pass opened in airplane mode. **Not yet on the
+phone** — 0.5.1 replaces 0.5.0, which never went on.
+
 ---
 
 ## U — the owner's list after real use · 2026-10-10

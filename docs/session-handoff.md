@@ -384,6 +384,11 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ### 11.00 Latest (2026-10-12) — read this first
 
+- **Later the same day: F7 built and 0.5.1 rehearsed.** Paid or not, as a pill on every confirmed
+  item (`docs/paid-plan.md`, D29). **0.5.1** (`travel-organizer-0.5.1.apk`) replaces 0.5.0 for the
+  phone; rehearsed over 0.3.0 with everything kept (status.md, *0.5.1* under F). **Use the 0.5.1
+  APK** in *Next: the phone* below. The emulator holds release 0.5.1 with the sample data.
+
 - **Built and committed:** N6, **R1–R11** (`docs/review-plan.md`, decisions D27) and **F1–F6**
   (`docs/feedback-plan.md`, decisions D28). Each has its *what was built / how it was verified*
   note in `docs/status.md`.
