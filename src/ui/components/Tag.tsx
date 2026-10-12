@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { radius, spacing, type, useColors, type Colors } from '../tokens';
+import { Icon, type IconName } from './Icon';
 
 export type TagTone = 'accent' | 'accent2' | 'neutral' | 'outline' | 'danger';
 
@@ -19,12 +20,22 @@ function toneColors(c: Colors, tone: TagTone) {
   }
 }
 
-export function Tag({ label, tone = 'neutral' }: { label: string; tone?: TagTone }) {
+export function Tag({
+  label,
+  tone = 'neutral',
+  icon,
+}: {
+  label: string;
+  tone?: TagTone;
+  /** Drawn before the label, so the tag does not rest on its colour alone (WCAG 1.4.1). */
+  icon?: IconName;
+}) {
   const c = useColors();
   const { fill, text, border } = toneColors(c, tone);
 
   return (
     <View style={[styles.tag, { backgroundColor: fill, borderColor: border }]}>
+      {icon ? <Icon name={icon} size={12} color={text} strokeWidth={2.6} /> : null}
       <Text style={[type.tag, { color: text }]} numberOfLines={1}>
         {label}
       </Text>
@@ -35,6 +46,9 @@ export function Tag({ label, tone = 'neutral' }: { label: string; tone?: TagTone
 const styles = StyleSheet.create({
   tag: {
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     borderWidth: 1,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,

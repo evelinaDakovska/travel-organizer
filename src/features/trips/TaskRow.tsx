@@ -1,9 +1,11 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatShortMoment } from '../../domain/format';
+import { paymentStatus } from '../../domain/bookingCosts';
 import type { TripItem } from '../../domain/tripItem';
 import { Card } from '../../ui/components/Card';
 import { Icon } from '../../ui/components/Icon';
+import { PaymentTag } from '../../ui/components/PaymentTag';
 import { opacity, radius, spacing, type, useColors } from '../../ui/tokens';
 
 type Props = { task: TripItem; onToggle: () => void; onPress: () => void };
@@ -15,6 +17,8 @@ type Props = { task: TripItem; onToggle: () => void; onPress: () => void };
 export function TaskRow({ task, onToggle, onPress }: Props) {
   const c = useColors();
   const done = task.completedAt !== null;
+  // A task like "pay the deposit" with a price says whether it is paid (F7).
+  const payment = paymentStatus(task);
 
   return (
     <Card
@@ -45,6 +49,7 @@ export function TaskRow({ task, onToggle, onPress }: Props) {
           </Text>
         ) : null}
       </View>
+      <PaymentTag status={payment} />
     </Card>
   );
 }

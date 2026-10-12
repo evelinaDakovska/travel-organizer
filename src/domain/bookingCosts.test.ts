@@ -1,6 +1,8 @@
 import {
   countsAsSpent,
   expenseGroups,
+  paymentStatus,
+  paymentStatuses,
   refundableOf,
   refundNotSaid,
   tripExpenses,
@@ -127,5 +129,78 @@ describe('refundNotSaid', () => {
       { currency: 'EUR', amount: 9000 },
       { currency: 'HUF', amount: 7000 },
     ]);
+  });
+});
+
+describe('paymentStatus', () => {
+  it('says paid or to pay for a confirmed item', () => {
+    expect(paymentStatus(priced({ isPaid: true }))).toBe('paid');
+    expect(paymentStatus(priced({}))).toBe('toPay');
+  });
+
+  it('counts Paid without a price, and says nothing when neither is known', () => {
+    expect(paymentStatus(priced({ isPaid: true, priceAmount: null, priceCurrency: null }))).toBe(
+      'paid',
+    );
+    expect(paymentStatus(priced({ priceAmount: null, priceCurrency: null }))).toBeNull();
+  });
+
+  it('says nothing for ideas and cancellations', () => {
+    expect(paymentStatus(priced({ status: 'idea' }))).toBeNull();
+    expect(paymentStatus(priced({ status: 'cancelled', isPaid: true }))).toBeNull();
+  });
+});
+
+describe('paymentStatuses', () => {
+  const leg = (id: string, over: Partial<Priced> = {}, journeyId: string | null = 'j1') => ({
+    id,
+    ...priced({ priceAmount: null, priceCurrency: null, ...over }),
+    details: journeyId ? { journeyId } : null,
+  });
+
+  it('gives every leg of a journey the first leg’s state', () => {
+    const paid = paymentStatuses([
+      leg('a', { isPaid: true, priceAmount: 30000, priceCurrency: 'EUR' }),
+      leg('b'),
+      leg('c'),
+    ]);
+    expect([...paid.entries()]).toEqual([
+      ['a', 'paid'],
+      ['b', 'paid'],
+      ['c', 'paid'],
+    ]);
+
+    const owed = paymentStatuses([leg('a', { priceAmount: 30000, priceCurrency: 'EUR' }), leg('b')]);
+    expect(owed.get('b')).toBe('toPay');
+  });
+
+  it('keeps a leg’s own state, and lets To pay win when the legs disagree', () => {
+    const statuses = paymentStatuses([
+      leg('a', { isPaid: true }),
+      leg('b', { priceAmount: 5000, priceCurrency: 'EUR' }),
+      leg('c'),
+    ]);
+    expect(statuses.get('a')).toBe('paid');
+    expect(statuses.get('b')).toBe('toPay');
+    expect(statuses.get('c')).toBe('toPay');
+  });
+
+  it('takes nothing from a cancelled leg, and gives nothing to one', () => {
+    expect(
+      paymentStatuses([leg('a', { status: 'cancelled', isPaid: true }), leg('b')]).has('b'),
+    ).toBe(false);
+    expect(
+      paymentStatuses([leg('a', { isPaid: true }), leg('b', { status: 'cancelled' })]).has('b'),
+    ).toBe(false);
+  });
+
+  it('never mixes journeys, and leaves a lone item alone', () => {
+    const statuses = paymentStatuses([
+      leg('a', { isPaid: true }, 'j1'),
+      leg('b', {}, 'j2'),
+      leg('c', {}, null),
+    ]);
+    expect(statuses.has('b')).toBe(false);
+    expect(statuses.has('c')).toBe(false);
   });
 });

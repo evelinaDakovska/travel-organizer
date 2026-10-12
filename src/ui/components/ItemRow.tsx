@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { paymentStatus, type PaymentStatus } from '../../domain/bookingCosts';
 import { formatMoney, formatShortMoment } from '../../domain/format';
 import { timezoneLabel } from '../../domain/timezones';
 import {
@@ -12,12 +13,18 @@ import {
 import { opacity, spacing, type, useColors } from '../tokens';
 import { Card } from './Card';
 import { KindTile } from './KindTile';
+import { PaymentTag } from './PaymentTag';
 import { StatusTag } from './StatusTag';
 
-type Props = { item: TripItem; onPress: () => void };
+type Props = {
+  item: TripItem;
+  onPress: () => void;
+  /** Journey-aware when the screen has the trip's items (F7); the item's own state otherwise. */
+  payment?: PaymentStatus | null;
+};
 
 /** The design's item card: status and when on top, title, then where. */
-export function ItemRow({ item, onPress }: Props) {
+export function ItemRow({ item, onPress, payment = paymentStatus(item) }: Props) {
   const c = useColors();
   const where = routeLabel(transportDetails(item)) ?? item.locationName;
   const done = item.kind === 'task' && item.completedAt !== null;
@@ -29,7 +36,10 @@ export function ItemRow({ item, onPress }: Props) {
       accessibilityLabel={item.title}
       style={item.status === 'cancelled' && styles.dimmed}>
       <View style={styles.top}>
-        <StatusTag status={item.status} />
+        <View style={styles.tags}>
+          <StatusTag status={item.status} />
+          <PaymentTag status={payment} />
+        </View>
         <Text style={[type.caption, styles.when, { color: c.textMuted }]} numberOfLines={1}>
           {when(item)}
         </Text>
@@ -55,7 +65,7 @@ export function ItemRow({ item, onPress }: Props) {
           {done ? ' · done' : ''}
         </Text>
         {item.priceAmount !== null && item.priceCurrency ? (
-          <Text style={[type.caption, { color: item.isPaid ? c.textMuted : c.warning }]}>
+          <Text style={[type.caption, { color: c.textMuted }]}>
             {formatMoney(item.priceAmount, item.priceCurrency)}
           </Text>
         ) : null}
@@ -77,7 +87,15 @@ function when(item: TripItem): string {
 }
 
 const styles = StyleSheet.create({
-  top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
+  // Wraps rather than cutting the date short when the tags leave no room for it (F7).
+  top: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  tags: { flexDirection: 'row', gap: spacing.xs },
   when: { flexShrink: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   titleText: { flex: 1, gap: 2 },

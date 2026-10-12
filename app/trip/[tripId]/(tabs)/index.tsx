@@ -10,6 +10,7 @@ import {
   openTasks,
   todayNote,
 } from '../../../../src/domain/itinerary';
+import { paymentStatuses, type PaymentStatus } from '../../../../src/domain/bookingCosts';
 import type { TimelineEntry } from '../../../../src/domain/timeline';
 import type { TripItem } from '../../../../src/domain/tripItem';
 import { groupResourcesByItem, type Resource } from '../../../../src/domain/resource';
@@ -79,6 +80,7 @@ export default function NowScreen() {
   // Done tasks are one tap away, folded by default and not remembered (F3).
   const [showDone, setShowDone] = useState(false);
   const byItem = useMemo(() => groupResourcesByItem(attachments ?? []), [attachments]);
+  const payments = useMemo(() => paymentStatuses(items ?? []), [items]);
 
   const tripView = queryView(tripQuery);
   if (tripView !== 'ready' || !trip) {
@@ -128,21 +130,30 @@ export default function NowScreen() {
           label="Happening now"
           entries={sections.happening}
           byItem={byItem}
+          payments={payments}
           noteFor={(item) => happeningNote(item, now)}
         />
         <NowSection
           label="Today, no fixed time"
           entries={sections.today}
           byItem={byItem}
+          payments={payments}
           noteFor={(item) => todayNote(item, now)}
         />
         <NowSection
           label="Maybe today"
           entries={sections.maybeToday}
           byItem={byItem}
+          payments={payments}
           noteFor={(item) => todayNote(item, now)}
         />
-        <NowSection label="Up next" entries={sections.upNext} byItem={byItem} showDate />
+        <NowSection
+          label="Up next"
+          entries={sections.upNext}
+          byItem={byItem}
+          payments={payments}
+          showDate
+        />
 
         <View style={styles.section}>
           <View style={styles.sectionHead}>
@@ -229,12 +240,14 @@ function NowSection({
   label,
   entries,
   byItem,
+  payments,
   noteFor,
   showDate = false,
 }: {
   label: string;
   entries: readonly TimelineEntry<TripItem>[];
   byItem: ReadonlyMap<string, Resource[]>;
+  payments: ReadonlyMap<string, PaymentStatus>;
   noteFor?: (item: TripItem) => string | null;
   showDate?: boolean;
 }) {
@@ -251,6 +264,7 @@ function NowSection({
           resources={byItem.get(entry.item.id) ?? []}
           showDate={showDate}
           note={noteFor?.(entry.item)}
+          payment={payments.get(entry.item.id) ?? null}
           onPress={() => router.push(`/item/${entry.item.id}`)}
         />
       ))}

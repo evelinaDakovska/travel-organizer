@@ -113,3 +113,53 @@ export function expenseGroups<T extends Priced>(items: readonly T[]): ExpenseGro
   }
   return groups;
 }
+
+export type PaymentStatus = 'paid' | 'toPay';
+
+type Payable = Pick<TripItem, 'status' | 'priceAmount' | 'isPaid'>;
+
+/**
+ * Paid or not, for the pill on a card (F7, D29). Only a confirmed item owes anything: an idea's
+ * price is a budget, a cancellation's is a refund question. *Paid* counts without a price — the
+ * form offers it either way — but an item with neither is unknown, not *To pay*: every free item
+ * has `isPaid = false`.
+ */
+export function paymentStatus(item: Payable): PaymentStatus | null {
+  if (item.status !== 'confirmed') return null;
+  if (item.isPaid) return 'paid';
+  return item.priceAmount !== null ? 'toPay' : null;
+}
+
+/**
+ * `paymentStatus` for each item, by id, with a journey's legs filled in: U7 puts the price and
+ * *Paid* on the first leg only, so a leg with no state of its own takes its journey's. If the legs
+ * disagree, *To pay* wins — it is the one that needs doing. Display only; the totals never see it.
+ */
+export function paymentStatuses(
+  items: readonly (Payable & Pick<TripItem, 'id' | 'details'>)[],
+): Map<string, PaymentStatus> {
+  const statuses = new Map<string, PaymentStatus>();
+  const byJourney = new Map<string, PaymentStatus>();
+
+  for (const item of items) {
+    const status = paymentStatus(item);
+    if (status === null) continue;
+    statuses.set(item.id, status);
+    const journey = journeyOf(item);
+    if (journey && byJourney.get(journey) !== 'toPay') byJourney.set(journey, status);
+  }
+
+  for (const item of items) {
+    const journey = journeyOf(item);
+    const inherited = journey ? byJourney.get(journey) : undefined;
+    if (item.status === 'confirmed' && !statuses.has(item.id) && inherited) {
+      statuses.set(item.id, inherited);
+    }
+  }
+  return statuses;
+}
+
+function journeyOf(item: Pick<TripItem, 'details'>): string | null {
+  const id = item.details?.journeyId;
+  return typeof id === 'string' && id !== '' ? id : null;
+}

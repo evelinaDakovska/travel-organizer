@@ -3,7 +3,7 @@
 **The** status board. `CLAUDE.md` and `plan.md` link here rather than repeat it, so there is one
 place to update and nothing can drift.
 
-Verified against the repo on 2026-10-12, on Windows: **575 tests passing, typecheck clean.** S2–S8 verified on the Android 17 emulator, then the app end to end **on the Galaxy S26 Ultra** with the release build.
+Verified against the repo on 2026-10-12, on Windows: **582 tests passing, typecheck clean.** S2–S8 verified on the Android 17 emulator, then the app end to end **on the Galaxy S26 Ultra** with the release build.
 
 > **The app is in use on the owner's phone** — release build **0.3.0**, installed 2026-10-11 over
 > 0.2.0 with `install -r`, data kept (first-install date unchanged). **N5a (Expenses tab, no
@@ -12,8 +12,9 @@ Verified against the repo on 2026-10-12, on Windows: **575 tests passing, typech
 > tries a **camera** receipt on the phone (tested on the emulator), and the **time zones** on the
 > Lapland flights (see `docs/n5-plan.md`, *What the real data showed*). N6 (a journey's zone from
 > its city), **R1–R11** (the review) and **F1–F6** (feedback after showing the app) are done,
-> tested end to end on the emulator and rehearsed as **0.5.0 — not yet on the phone**: next is
-> installing it (see *0.5.0* under F). Then N5b or N1–N4.
+> tested end to end on the emulator and rehearsed as **0.5.0 — not yet on the phone**. **F7** (paid
+> or not, at a glance) followed the same day; everything ships together as **0.5.1** (see *0.5.1*
+> under F) — next is installing that. Then N5b or N1–N4.
 
 ---
 
@@ -406,6 +407,7 @@ Planned in [`feedback-plan.md`](feedback-plan.md) (owner: go). Ships as 0.5.0 wi
 | **F4** | Detail pages hide fields that are empty | ✅ |
 | **F5** | An expense opens a detail page, with Edit, not the form directly | ✅ |
 | **F6** | An image attachment shows a small round thumbnail of itself, not *IMG* | ✅ |
+| **F7** | Paid or not, at a glance on Now, the Timeline and elsewhere (owner, 2026-10-12). Plan: [`paid-plan.md`](paid-plan.md), D29 | ✅ |
 
 **F1, F2, F4, what was built and seen on the emulator (dev build, sample data):**
 - **F1:** `ITEM_ICONS` in `Icon.tsx`, typed against every kind and subkind (a missing icon fails the
@@ -489,6 +491,24 @@ backup → an expense with a PDF receipt (EUR 2930.00) → snapshot → `install
 install time unchanged, no crash, both trips' timelines, trip documents and expense totals identical
 apart from the ticket buttons' labels and the trip band (both intended), alarms 28 before and after.
 **Not yet on the phone** (0.4.0 never was; 0.5.0 replaces it).
+
+**F7, what was built** (plan and its review: `docs/paid-plan.md`; rule: D29): a second pill beside
+the status on confirmed items — **To pay** (danger tone, wallet) with a price and not paid, **Paid**
+(neutral, tick) when marked paid, with or without a price; nothing otherwise, and never on ideas or
+cancellations. `paymentStatus` / `paymentStatuses` in `bookingCosts.ts` (7 tests); a journey's
+unpriced legs take their journey's state, *To pay* winning a disagreement. `Tag` takes an icon;
+`PaymentTag` on `EntryCard` (Now, Timeline), `ItemRow` (Places, search, legs, Bookings, *No date
+yet*), `TaskRow` and the item detail header. The card's top row wraps rather than cut the time.
+ItemRow's price line lost its gold "unpaid" colour (the pill says it now). No schema, data, query or
+native change — `is_paid` exists since migration 001.
+
+**F7, how it was verified:** 582 tests, typecheck clean. On the emulator, release build over 0.5.0
+with the sample data: Now and the Timeline show *Paid* on the priced bookings (both ends of the
+sleeper, the cabin's check-in), nothing on *Santa Claus Village* (no price); *Flight to Helsinki*
+given EUR 180 not paid → *To pay* on Now and on its detail page; the longest top row (*Confirmed*,
+*To pay*, *Fri 20 Nov · 09:20 · Sofia*) fits on one line at 1280 px; light and dark mode; Places'
+ideas have no pill, *In your itinerary* shows *Paid*. Journey inheritance is covered by tests only
+(the sample data has no journey).
 
 ---
 

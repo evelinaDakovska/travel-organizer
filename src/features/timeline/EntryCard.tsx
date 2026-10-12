@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import type { PaymentStatus } from '../../domain/bookingCosts';
 import { formatShortMoment } from '../../domain/format';
 import { entryRoleLabel, entryZoneLabel } from '../../domain/itinerary';
 import type { Resource } from '../../domain/resource';
@@ -7,6 +8,7 @@ import type { TimelineEntry } from '../../domain/timeline';
 import { routeLabel, transportDetails, type TripItem } from '../../domain/tripItem';
 import { Card } from '../../ui/components/Card';
 import { KindTile } from '../../ui/components/KindTile';
+import { PaymentTag } from '../../ui/components/PaymentTag';
 import { StatusTag } from '../../ui/components/StatusTag';
 import { spacing, type, useColors } from '../../ui/tokens';
 import { OpenResource } from '../resources/OpenResource';
@@ -19,10 +21,12 @@ type Props = {
   showDate?: boolean;
   /** A line under the place, e.g. 'Until 11:15' on a Happening now card. */
   note?: string | null;
+  /** Paid or not (F7); the screen works it out over all the trip's items, journeys included. */
+  payment?: PaymentStatus | null;
 };
 
 /** One timeline entry: a whole item, or one end of a stay or journey that spans days. */
-export function EntryCard({ entry, resources, onPress, showDate = false, note }: Props) {
+export function EntryCard({ entry, resources, onPress, showDate = false, note, payment }: Props) {
   const c = useColors();
   const { item, moment } = entry;
 
@@ -40,7 +44,10 @@ export function EntryCard({ entry, resources, onPress, showDate = false, note }:
   return (
     <Card onPress={onPress} accessibilityLabel={item.title}>
       <View style={styles.top}>
-        <StatusTag status={item.status} />
+        <View style={styles.tags}>
+          <StatusTag status={item.status} />
+          <PaymentTag status={payment} />
+        </View>
         <Text style={[type.caption, styles.when, { color: c.textMuted }]} numberOfLines={1}>
           {when}
         </Text>
@@ -76,7 +83,15 @@ export function EntryCard({ entry, resources, onPress, showDate = false, note }:
 }
 
 const styles = StyleSheet.create({
-  top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
+  // Wraps rather than cutting the time short when the tags leave no room for it (F7).
+  top: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  tags: { flexDirection: 'row', gap: spacing.xs },
   when: { flexShrink: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   titleText: { flex: 1, gap: 2 },

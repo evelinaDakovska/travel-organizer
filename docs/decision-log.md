@@ -529,3 +529,27 @@ item — on the form, deleting would have gone back to a page whose expense was 
 the tab bar leaves room for, and the icon plus the screen reader label say it); hiding *Reminder:
 Off*.
 
+
+## D29 — Paid or not, at a glance (F7)
+
+The owner's idea, 2026-10-12 (plan: `docs/paid-plan.md`): tell what is paid from Now and the
+Timeline without opening anything. `is_paid` existed since migration 001; this is display only.
+
+**A second pill beside the status, on confirmed items only.** *To pay* (danger tone, a wallet)
+when there is a price and it is not paid; *Paid* (neutral, a tick) when marked paid, with or
+without a price. Nothing when neither is known — every free item has `is_paid = 0`, so "not
+paid" cannot mean "owed". Ideas (a price is a budget) and cancellations (a refund question) never
+show one. Text, icon and colour, so colour is never the only cue (WCAG 1.4.1, as D28).
+
+**The exception is the loud one.** Most bookings on a trip are paid; the one to act on — pay at
+the desk, pay the guide — is red. *Paid* is quiet grey.
+
+**A journey's legs share the first leg's state** (U7 puts price and *Paid* there only), on the
+screens that hold the trip's items: Now, Timeline, item detail. If legs disagree, *To pay* wins.
+Display only — the totals still count `countsAsSpent`, untouched.
+
+**The time is never cut for it:** the card's top row wraps instead.
+
+**Rejected:** the amount inside the pill (too wide beside the time; it is on the item and in
+Expenses); a *show only to pay* filter (Expenses → Bookings is that list); a coloured card border
+(colour alone, and a second visual language next to the pills).

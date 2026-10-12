@@ -4,7 +4,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { refundableOf } from '../../../src/domain/bookingCosts';
+import { paymentStatuses, refundableOf } from '../../../src/domain/bookingCosts';
 import { formatMoment, formatMoney } from '../../../src/domain/format';
 import { entryRoleLabel } from '../../../src/domain/itinerary';
 import { journeyLegs } from '../../../src/domain/journey';
@@ -42,6 +42,7 @@ import { Button } from '../../../src/ui/components/Button';
 import { Fact } from '../../../src/ui/components/Fact';
 import { ItemRow } from '../../../src/ui/components/ItemRow';
 import { KindTile } from '../../../src/ui/components/KindTile';
+import { PaymentTag } from '../../../src/ui/components/PaymentTag';
 import { LoadFailed, QueryScreen, StaleNotice } from '../../../src/ui/components/QueryStates';
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
@@ -85,6 +86,8 @@ export default function ItemDetail() {
     () => (item && tripItems ? journeyLegs(tripItems, item) : []),
     [item, tripItems],
   );
+  // Paid or not (F7), the journey's legs sharing the state of the one that holds the price.
+  const payments = useMemo(() => paymentStatuses(item ? [item, ...legs] : []), [item, legs]);
 
   const itemView = queryView(itemQuery);
   if (itemView !== 'ready' || !item) {
@@ -141,6 +144,7 @@ export default function ItemDetail() {
         <View style={styles.heading}>
           <View style={styles.tags}>
             <StatusTag status={item.status} />
+            <PaymentTag status={payments.get(item.id)} />
             {item.status === 'idea' && item.priority ? (
               <Tag label={capitalise(item.priority)} tone="neutral" />
             ) : null}
@@ -204,7 +208,12 @@ export default function ItemDetail() {
           <View style={styles.legs}>
             <SectionLabel>Rest of this journey</SectionLabel>
             {legs.map((leg) => (
-              <ItemRow key={leg.id} item={leg} onPress={() => router.push(`/item/${leg.id}`)} />
+              <ItemRow
+                key={leg.id}
+                item={leg}
+                payment={payments.get(leg.id) ?? null}
+                onPress={() => router.push(`/item/${leg.id}`)}
+              />
             ))}
           </View>
         ) : null}

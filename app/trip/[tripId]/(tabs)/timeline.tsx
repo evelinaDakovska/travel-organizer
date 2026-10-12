@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { paymentStatuses } from '../../../../src/domain/bookingCosts';
 import { formatDateRange, formatShortDate } from '../../../../src/domain/format';
 import { undatedConfirmed } from '../../../../src/domain/itinerary';
 import { groupResourcesByItem } from '../../../../src/domain/resource';
@@ -56,6 +57,8 @@ export default function TimelineScreen() {
   const days = useMemo(() => buildTimeline(items ?? []), [items]);
   const undated = useMemo(() => undatedConfirmed(items ?? []), [items]);
   const byItem = useMemo(() => groupResourcesByItem(attachments ?? []), [attachments]);
+  // Paid or not (F7), a journey's legs sharing the state of the one that holds the price.
+  const payments = useMemo(() => paymentStatuses(items ?? []), [items]);
 
   // During the trip the list opens on today (R7) — once, when that day is first laid out, never
   // again on a data update, so an edit while reading another day does not move the list.
@@ -143,6 +146,7 @@ export default function TimelineScreen() {
                 key={entry.key}
                 entry={entry}
                 resources={byItem.get(entry.item.id) ?? []}
+                payment={payments.get(entry.item.id) ?? null}
                 onPress={() => open(entry.item.id)}
               />
             ))}
@@ -153,7 +157,12 @@ export default function TimelineScreen() {
           <View style={styles.section}>
             <SectionLabel>No date yet</SectionLabel>
             {undated.map((item) => (
-              <ItemRow key={item.id} item={item} onPress={() => open(item.id)} />
+              <ItemRow
+                key={item.id}
+                item={item}
+                payment={payments.get(item.id) ?? null}
+                onPress={() => open(item.id)}
+              />
             ))}
           </View>
         ) : null}

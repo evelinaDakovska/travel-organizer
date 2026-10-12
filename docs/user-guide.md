@@ -65,6 +65,12 @@ you pick (*Flight*, *Museum*…), or the kind (*Travel*, *Stay*…) when there i
 5. **Where**: *Place* and *Address*. Place names you have used before are suggested.
 6. **Booking**: **Confirmation** code, **Price** and **Currency**, **Paid** (*Not paid yet* /
    *Paid*), **Refundable** (*Refundable* / *Not refundable*, optional).
+
+   A confirmed item then carries a second pill next to *Confirmed* on Now, the Timeline, Places
+   and its own page: **To pay** (red, with a wallet) when it has a price and is not paid, **Paid**
+   (grey, with a tick) when it is marked paid — with or without a price. An item with no price
+   that is not marked paid shows nothing: a free walk owes nothing. Ideas and cancelled items
+   never show it. The legs of a journey share the first leg's pill, since the price sits there.
 7. **Notes**: anything worth remembering.
 8. **Reminder**: see [Reminders](#reminders).
 
