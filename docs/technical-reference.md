@@ -861,7 +861,8 @@ src/
     reminders.ts           when each item reminds, and the reconcile plan
     share.ts               share-sheet payloads: parse, classify, suggest a trip
     spending.ts            expenses (N5): categories, form schema, by day, totals
-    bookingCosts.ts        booking costs from items (U6): what counts, paid / to pay
+    bookingCosts.ts        booking costs from items (U6): what counts, paid / to pay; the
+                           Paid / To pay pill per item, journey legs included (F7, D29)
     export.ts  archive.ts  backup document and zip (§12)
   repositories/            SQL lives here and nowhere else
     trips.ts  tripItems.ts  resources.ts  notes.ts  settings.ts  expenses.ts  backup.ts
@@ -880,7 +881,7 @@ src/
     theme/palette.ts       raw colour ramps — the only hex values in the app
     theme/roles.ts         semantic colour roles per scheme, contrast-tested
     tokens.ts              useColors(), fonts, type scale, spacing, radius, elevation
-    components/            Card, Tag, StatusTag, SectionLabel, Button, Field, Icon, MoneyInputs, …
+    components/            Card, Tag, StatusTag, PaymentTag, SectionLabel, Button, Field, Icon, MoneyInputs, …
   features/
     items/  resources/  trips/  timeline/  notes/  share/  expenses/
 ```

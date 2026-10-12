@@ -2,7 +2,7 @@
 
 Feedback from a senior frontend developer (the owner's husband) after seeing the app, 2026-10-11,
 plus two requests from the owner the same evening. Each item was checked against the code and the
-emulator first. **Status: done** — all six built, tested end to end on the emulator and rehearsed in 0.5.0. Each step is ticked in `docs/status.md` → *F*.
+emulator first. **Status: done** — all six built, tested end to end on the emulator and rehearsed in 0.5.0; on the phone in **0.5.1** since 2026-10-12. Each step is ticked in `docs/status.md` → *F*.
 
 Ships with N6 and R1–R11 as **0.5.0** (0.4.0 was rehearsed but never installed; the phone still has
 0.3.0, so 0.5.0 is rehearsed as an update over 0.3.0).

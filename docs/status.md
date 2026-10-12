@@ -5,16 +5,12 @@ place to update and nothing can drift.
 
 Verified against the repo on 2026-10-12, on Windows: **582 tests passing, typecheck clean.** S2–S8 verified on the Android 17 emulator, then the app end to end **on the Galaxy S26 Ultra** with the release build.
 
-> **The app is in use on the owner's phone** — release build **0.3.0**, installed 2026-10-11 over
-> 0.2.0 with `install -r`, data kept (first-install date unchanged). **N5a (Expenses tab, no
-> splitting) is done**: decisions answered, gaps closed, regression pass clean, rehearsed on the
-> owner's real data, documented (`docs/user-guide.md`), and checked on the phone. Open: the owner
-> tries a **camera** receipt on the phone (tested on the emulator), and the **time zones** on the
-> Lapland flights (see `docs/n5-plan.md`, *What the real data showed*). N6 (a journey's zone from
-> its city), **R1–R11** (the review) and **F1–F6** (feedback after showing the app) are done,
-> tested end to end on the emulator and rehearsed as **0.5.0 — not yet on the phone**. **F7** (paid
-> or not, at a glance) followed the same day; everything ships together as **0.5.1** (see *0.5.1*
-> under F) — next is installing that. Then N5b or N1–N4.
+> **The app is in use on the owner's phone** — release build **0.5.1**, installed 2026-10-12 over
+> 0.3.0 with `install -r`, data kept (first-install date 2026-09-18 unchanged, 10 reminders before
+> and after, no crash); the owner checked their trip and everything is fine. 0.5.1 carries N5a's
+> follow-ups, **N6** (a journey's zone from its city), **R1–R11** (the review), **F1–F6** (feedback
+> after showing the app) and **F7** (paid or not, at a glance). Still open on the phone: a
+> **camera** receipt, and the items under *Final phone QA*. **Next: N5b or N1–N4**, plan first.
 
 ---
 
@@ -208,7 +204,7 @@ seconds" and are cheap.
 | **N4** | Search across all trips | ⬜ |
 | **N5a** | Expenses tab without splitting — migration 002, receipts, backup format 2. Built as 0.3.0, rehearsed; decisions answered, Gaps A–D done, regression pass clean, rehearsed on the owner's real data, documented; **on the phone since 2026-10-11** (0.3.0): [`n5-plan.md`](n5-plan.md) | ✅ |
 | **N5b** | Splitting: paid by, split between (equal or amounts), settle up, record payment. Spec: [`expenses-spec.md`](expenses-spec.md) | ⬜ |
-| **N6** | A journey's time zone from its city: filled with a hint, a tappable zone chip, old flights flagged with a one-tap fix (D26). Built and rehearsed as 0.3.1; goes to the phone with the next changes. Plan and audit: [`n6-plan.md`](n6-plan.md). Review step R0 proposed changing decision B; the owner kept it (R0 dropped) | ✅ |
+| **N6** | A journey's time zone from its city: filled with a hint, a tappable zone chip, old flights flagged with a one-tap fix (D26). Built and rehearsed as 0.3.1; on the phone since 2026-10-12 (0.5.1). Plan and audit: [`n6-plan.md`](n6-plan.md). Review step R0 proposed changing decision B; the owner kept it (R0 dropped) | ✅ |
 
 **N1 — All documents.** Every file and link in a trip — attached to the trip *and* to its items — in
 one list, each row showing which item it belongs to, and opening in one tap. For when you know you
@@ -246,7 +242,7 @@ lives.
 
 ---
 
-## R — after the review · done 2026-10-11, in 0.4.0 (not yet on the phone)
+## R — after the review · done 2026-10-11; on the phone since 2026-10-12 (0.5.1)
 
 An independent product and technical review (at `813a0f7`), checked against the code. The plan,
 the verdict on each finding, and the owner’s **eight decisions (answered, D27)** are in
@@ -490,7 +486,7 @@ release key `63:8D:C6:86…52:35:E7`, kept as `travel-organizer-0.5.0.apk`. Fres
 backup → an expense with a PDF receipt (EUR 2930.00) → snapshot → `install -r` 0.5.0 → first
 install time unchanged, no crash, both trips' timelines, trip documents and expense totals identical
 apart from the ticket buttons' labels and the trip band (both intended), alarms 28 before and after.
-**Not yet on the phone** (0.4.0 never was; 0.5.0 replaces it).
+**Never installed** — 0.5.1 replaced it (0.4.0 never went on either).
 
 **F7, what was built** (plan and its review: `docs/paid-plan.md`; rule: D29): a second pill beside
 the status on confirmed items — **To pay** (danger tone, wallet) with a price and not paid, **Paid**
@@ -517,8 +513,13 @@ receipt (Lapland EUR 2930.00) → snapshot → `install -r` 0.5.1. Result: first
 unchanged, no crash, alarms 28 before and after; both timelines identical **line for line, in
 order**, once the intended additions are set aside (ticket button labels R6, *Paid* pills F7); Now
 differs only by the trip band (F3) and those same additions; expenses EUR 2930.00; export *2 trips
-and 29 saved files* before and after; a boarding pass opened in airplane mode. **Not yet on the
-phone** — 0.5.1 replaces 0.5.0, which never went on.
+and 29 saved files* before and after; a boarding pass opened in airplane mode.
+
+**0.5.1 on the phone — 2026-10-12.** The owner made a fresh Drive backup first, then
+`adb -s R5GL22FE9QY install -r --user 0 travel-organizer-0.5.1.apk` over 0.3.0 — no uninstall.
+`versionName=0.5.1`, first-install time 2026-09-18 unchanged, 10 alarms before and after; the app
+launched with no crash in logcat and Home listed the trips (checked by filtered UI dump only — no
+trip details read). The owner then checked their trip on the phone: everything fine.
 
 ---
 

@@ -2,7 +2,8 @@
 
 The owner's idea, 2026-10-12: *"be able to easily distinguish what is paid and what is not from
 the Now and Timeline etc views"*. The owner asked for research, a detailed plan, a review of the
-plan, then the build without waiting for a go. **Status: see `docs/status.md` → F7.**
+plan, then the build without waiting for a go. **Status: done** — built, tested, rehearsed, and on
+the owner's phone in 0.5.1 since 2026-10-12 (`docs/status.md` → F7).
 
 Ships with N6, R1–R11 and F1–F6 as **0.5.1** (0.5.0 was rehearsed but never installed; the phone
 still has 0.3.0, so 0.5.1 is rehearsed as an update over 0.3.0).

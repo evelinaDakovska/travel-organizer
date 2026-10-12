@@ -5,7 +5,7 @@ against the code on 2026-10-11, at `6a09622` plus the uncommitted N6 work. This 
 that came out of it: what was confirmed, what needs a decision, and the steps, in order.
 
 **Status: decided, not started.** The owner answered all eight decisions on 2026-10-11 (§7;
-rationale in `decision-log.md` D27). N6 is done (0.3.1, not yet on the phone). Each step is ticked
+rationale in `decision-log.md` D27). N6 is done (0.3.1; on the phone in 0.5.1 since 2026-10-12). Each step is ticked
 in `docs/status.md` → *R — after the review*.
 
 The objective, in the review's words: *"I am travelling, slightly late, possibly cold or stressed,

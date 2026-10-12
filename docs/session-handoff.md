@@ -384,10 +384,14 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ### 11.00 Latest (2026-10-12) — read this first
 
-- **Later the same day: F7 built and 0.5.1 rehearsed.** Paid or not, as a pill on every confirmed
-  item (`docs/paid-plan.md`, D29). **0.5.1** (`travel-organizer-0.5.1.apk`) replaces 0.5.0 for the
-  phone; rehearsed over 0.3.0 with everything kept (status.md, *0.5.1* under F). **Use the 0.5.1
-  APK** in *Next: the phone* below. The emulator holds release 0.5.1 with the sample data.
+- **0.5.1 is on the phone (2026-10-12)** — installed with `install -r` over 0.3.0 after a fresh Drive
+  backup; data kept, no crash, the owner checked their trip: fine. It carries N6, R1–R11, F1–F6 and
+  **F7** (paid or not, as a pill on every confirmed item — `docs/paid-plan.md`, D29). Details in
+  status.md, *0.5.1 on the phone* under F. The emulator (shut down) holds release 0.5.1 with the
+  sample data; nothing is running.
+- **Next:** N5b (splitting, from `docs/expenses-spec.md`) or N1–N4 — the owner picks; **plan
+  first**. Still open on the phone when wanted: a camera receipt and *Final phone QA* in status.md.
+- *History below — the bullets of the earlier 2026-10-12 session, before the install.*
 
 - **Built and committed:** N6, **R1–R11** (`docs/review-plan.md`, decisions D27) and **F1–F6**
   (`docs/feedback-plan.md`, decisions D28). Each has its *what was built / how it was verified*
@@ -404,7 +408,7 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
   now offers the fix on each flight). USB debugging off, Auto Blocker on afterwards.
 - **Paused here on purpose (2026-10-12):** the owner chose to update the phone later. Nothing is
   running — the emulator, Metro, Gradle daemons and the adb server were all stopped; the working
-  tree is clean and pushed (575 tests, typecheck clean). The next session starts at *Next: the
+  tree is clean and pushed (575 tests, typecheck clean). *(Since done: 0.5.1 is on the phone.)* The next session then started at *Next: the
   phone* above; nothing needs rebuilding — the APK is already built and rehearsed.
 - **The emulator** (`Pixel_10_Pro`, shut down) holds release 0.5.0 with the sample trips (from the
   rehearsal). For dev work, uninstall it and `npx expo run:android` again; start Metro with

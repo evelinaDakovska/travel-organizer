@@ -12,7 +12,7 @@ what is still open, and the conventions to follow.
 | `docs/plan.md` | Step-by-step implementation plan and current position |
 | `docs/review-plan.md` | R1–R11 from the independent review (done) |
 | `docs/feedback-plan.md` | F1–F6, feedback after showing the app (done; 0.5.0) |
-| `docs/paid-plan.md` | F7, paid or not at a glance (done; 0.5.1) |
+| `docs/paid-plan.md` | F7, paid or not at a glance (done; 0.5.1, on the phone) |
 | `docs/decision-log.md` | *Why* things were decided. Rationale only — no authoritative detail |
 | `docs/windows-handoff.md` | **Continuing on Windows** — read this instead of `dev-setup.md` there |
 | `docs/dev-setup.md` | Machine setup for the macOS machine it was started on |
