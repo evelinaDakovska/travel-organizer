@@ -110,11 +110,11 @@ export function MomentField({
         </Pressable>
         <View style={styles.grow} />
         {time ? (
-          <Pressable onPress={clearTime} hitSlop={8}>
+          <Pressable onPress={clearTime} hitSlop={8} accessibilityRole="button">
             <Text style={[type.caption, { color: c.textMuted }]}>Remove time</Text>
           </Pressable>
         ) : null}
-        <Pressable onPress={() => onChange(undefined)} hitSlop={8}>
+        <Pressable onPress={() => onChange(undefined)} hitSlop={8} accessibilityRole="button">
           <Text style={[type.caption, { color: c.danger }]}>Remove</Text>
         </Pressable>
       </View>
@@ -167,7 +167,8 @@ export function MomentField({
                     : { local: value.local },
                 )
               }
-              hitSlop={8}>
+              hitSlop={8}
+              accessibilityRole="button">
               <Text style={[type.caption, { color: c.textMuted }]}>
                 Use the trip&apos;s timezone
               </Text>

@@ -5,7 +5,9 @@ import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { formatShortDate } from '../../../src/domain/format';
 import { taskStart, templateSummary } from '../../../src/domain/templates';
+import { deviceToday } from '../../../src/domain/trip';
 import { queryView } from '../../../src/hooks/queryView';
+import { useBusy } from '../../../src/hooks/useBusy';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import {
   applyTemplate,
@@ -34,7 +36,7 @@ export default function UseTemplateScreen() {
   const router = useRouter();
   const { tripId, fresh } = useLocalSearchParams<{ tripId: string; fresh?: string }>();
   const [chosen, setChosen] = useState<Template | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, run] = useBusy();
 
   const tripQuery = useLiveQuery(
     useCallback((database) => getTrip(database, tripId), [tripId]),
@@ -59,31 +61,19 @@ export default function UseTemplateScreen() {
 
   const done = () => (fresh ? router.replace(`/trip/${trip.id}`) : router.back());
 
-  const apply = async (template: Template) => {
-    const uses = await templateUses(db, trip.id, template.id);
-    const go = async () => {
-      setBusy(true);
+  // One run from the tap to the end, the question included: a second tap adds nothing twice.
+  const apply = (template: Template) =>
+    run(async () => {
+      const uses = await templateUses(db, trip.id, template.id);
+      if (uses.length > 0 && !(await confirmAddAgain(template.name, uses[0]))) return;
       try {
         await applyTemplate(db, template.id, trip.id);
         done();
       } catch (error) {
         console.warn('Applying a template failed', error);
         Alert.alert('Could not add the template', 'Nothing was added. Try again.');
-      } finally {
-        setBusy(false);
       }
-    };
-    if (uses.length === 0) return go();
-    // Applying twice adds everything twice: say so, and let them decide (C5).
-    Alert.alert(
-      `“${template.name}” was added on ${formatShortDate(uses[0].slice(0, 10))}`,
-      'Adding it again adds its tasks, notes and lists a second time. Nothing is merged.',
-      [
-        { text: 'Not now', style: 'cancel' },
-        { text: 'Add again', onPress: () => void go() },
-      ],
-    );
-  };
+    });
 
   const templates = templatesQuery.data ?? [];
   const content = chosen?.content ?? null;
@@ -159,7 +149,8 @@ export default function UseTemplateScreen() {
         ) : (
           <View style={[styles.empty, { backgroundColor: c.surfaceSunken }]}>
             <Text style={[type.body, { color: c.textMuted }]}>
-              No templates yet. Save one from a trip you have prepared: its menu, Save as template.
+              No templates yet. Save one from a trip you have prepared: on its Overview, More,
+              then Save as template.
             </Text>
           </View>
         )}
@@ -167,6 +158,21 @@ export default function UseTemplateScreen() {
         {fresh ? <Button label="Skip — a blank trip" variant="secondary" onPress={done} /> : null}
       </ScrollView>
     </Screen>
+  );
+}
+
+/** Applying twice adds everything twice: say so, and let them decide (C5). */
+function confirmAddAgain(name: string, lastUse: string): Promise<boolean> {
+  return new Promise((resolve) =>
+    Alert.alert(
+      `“${name}” was added on ${formatShortDate(deviceToday(new Date(lastUse)))}`,
+      'Adding it again adds its tasks, notes and lists a second time. Nothing is merged.',
+      [
+        { text: 'Not now', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Add again', onPress: () => resolve(true) },
+      ],
+      { cancelable: true, onDismiss: () => resolve(false) },
+    ),
   );
 }
 

@@ -37,7 +37,6 @@ type Props = {
  */
 type DraftLine = { key: number; label: string; quantity: number; unitAmount: number | undefined };
 
-
 /**
  * Price & payment (B10, C3): a total, or a price per person — rates with how many people at each,
  * the total worked out as they are typed. Whatever is shown is what is saved: the breakdown goes in
@@ -183,6 +182,7 @@ export function PriceSection({
                   <Pressable
                     onPress={() => applyLines(lines.filter((_, i) => i !== index))}
                     accessibilityRole="button"
+                    accessibilityLabel={`Remove the rate ${line.label.trim() || index + 1}`}
                     style={styles.remove}>
                     <Text style={[type.label, { color: c.danger }]}>Remove</Text>
                   </Pressable>

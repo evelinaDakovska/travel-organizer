@@ -30,7 +30,11 @@ export function Sheet({ visible, title, onClose, children, closeLabel = 'Close' 
       statusBarTranslucent
       navigationBarTranslucent
       onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close">
+      <Pressable
+        style={styles.backdrop}
+        onPress={onClose}
+        accessibilityRole="button"
+        accessibilityLabel="Close">
         <View style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim, opacity: opacity.scrim }]} />
       </Pressable>
       <View

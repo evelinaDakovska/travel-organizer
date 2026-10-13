@@ -70,6 +70,8 @@ export function TimezoneField({ value, onChange, invalid = false }: Props) {
                   onChange(item);
                   setOpen(false);
                 }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: item === value }}
                 style={({ pressed }) => [styles.row, { opacity: pressed ? opacity.pressed : 1 }]}>
                 <View style={styles.rowText}>
                   <Text style={[type.body, { color: c.text }]}>{timezoneLabel(item)}</Text>
