@@ -153,32 +153,122 @@ the trip — trip-level and per item, tickets first — each row saying *On this
 ## 4. Part C — approved additions
 
 One additive **migration 003** for everything in C, so the phone migrates once; **backup format 3**,
-with formats 1 and 2 still importing. Each feature: domain + tests, SQL in node, screens, emulator.
-Detailed design is written here before each step is built.
+with formats 1 and 2 still importing. Nothing existing is rewritten: every new thing is a new table
+or a new key inside `details`. Order of work: the schema and the backup first (the part whose
+mistakes cost data), each tested in node; then the features one at a time, domain → repository →
+screens → emulator.
 
-**C1 · Packing and shopping lists** — reusable lists (app level, *Lists & templates*) and trip
-copies (Notes tab becomes *Notes & lists*). Copy = new ids, checks reset. Packed and bought are
-distinct. Progress *Packed 8 of 12*. No automatic expenses.
+### 4.1 Migration 003
 
-**C2 · Travellers and participants** — app-level traveller profiles (a name, nothing else
-required), trip membership, an optional participant subset per item. The existing
-`trips.travellers` text stays readable and is never merged across trips automatically.
+```sql
+travellers        (id, name, sort_order, created_at, updated_at)            -- app level
+trip_travellers   (trip_id → trips CASCADE, traveller_id → travellers RESTRICT, sort_order)
+item_participants (item_id → trip_items CASCADE, traveller_id → travellers RESTRICT)
+lists             (id, trip_id → trips CASCADE | NULL for a reusable list, kind packing|shopping,
+                   name, source_list_id, sort_order, created_at, updated_at)
+list_items        (id, list_id → lists CASCADE, label, quantity > 0 | NULL, unit, category, note,
+                   traveller_id → travellers SET NULL, done_at, sort_order, created_at, updated_at)
+templates         (id, name, content JSON, created_at, updated_at)          -- app level
+template_uses     (trip_id → trips CASCADE, template_id, applied_at)
+```
 
-**C3 · Price per person** — *Total* / *Per person* in the price section; per-person keeps rate
-lines (label × quantity × unit price) in `details.pricing`, Zod-validated, with the total
-computed by one domain function and written to `price_amount`. Existing prices stay *Total*.
+- **RESTRICT** on a traveller who is in a trip or on an item: a profile cannot be deleted while
+  anything uses it; the screen says where it is used. Deleting a trip never deletes a profile.
+- `source_list_id` and `template_uses.template_id` are **not** foreign keys: they are provenance
+  (which reusable list a copy came from, which template was applied), used only to warn before
+  adding the same thing twice. A per-trip backup leaves the reusable list out; a foreign key would
+  then refuse the import.
+- `done_at` (packed / bought) only ever set on a trip copy's items; a reusable list has no ticks.
 
-**C4 · Itinerary PDF** — `expo-print` (an Expo module: HTML → PDF on device, offline). A preview
-screen with section switches; names and booking references off unless chosen; never passports.
-HTML built by a pure domain function from the same selectors the screens use.
+### 4.2 Backup format 3
 
-**C5 · Trip templates** — *Use a template* when creating a trip, *Save as template* from a trip:
-tasks (dates as offsets from the start), notes and lists. Never bookings, prices, references or
-files.
+New tables in `backup.json`, all defaulting to `[]` so formats 1 and 2 still parse. Trip-owned
+rows (trip_travellers, item_participants, trip lists and their items, template_uses) follow their
+trip exactly as items do. App-level rows (travellers, reusable lists and their items, templates)
+behave like settings: *Keep mine* inserts only what is missing; *Use the backup's* also updates
+rows with the same id (an upsert — never a delete, so RESTRICT cannot bite). Insert order keeps
+every foreign key valid at every step: travellers → trips → trip_travellers → items →
+participants → notes → expenses → payments → resources → lists → list_items → templates →
+template_uses. A per-trip export carries the travellers that trip uses.
 
-**Deferred, with reasons (§5):** passports (needs an encryption and backup decision whose failure
-mode is losing the documents) and the in-app feedback form (needs a server; the app has none by
-design, and the review itself calls it future work).
+### 4.3 C1 · Packing and shopping lists
+
+- **Reusable lists** (app level) under *Lists & templates*, reached from *Your data* on Your trips.
+  Presets offered when there are none: *General packing*, *Winter layers*, *Child essentials*,
+  *Toiletries to buy*. Each item: label, optional quantity and unit, optional group, optional note.
+- **Trip copies**: the Notes tab becomes **Notes & lists** — *Notes · Packing · Shopping*. *Add a
+  list* copies a reusable one (new ids, ticks cleared, a warning if that list was copied into the
+  trip before) or starts an empty one. Items: add, rename, remove, move up/down, quantity, who it
+  is for (a traveller of the trip). Ticking packs or buys; *Packed 8 of 12* counts rows, not
+  quantities; ticked rows sink into a folded *Done* group with Undo.
+- **Bought is not packed.** A shopping item offers *Add to packing list*, which creates a packing
+  item (unticked); nothing happens by itself. Nothing in a list ever becomes an expense.
+- *Save as reusable list* from a trip copy creates a new reusable list; overwriting an existing one
+  is a separate, confirmed action.
+- **Overview** shows *Packing 8 of 12 · Shopping 3 of 5* rows when the trip has lists.
+
+### 4.4 C2 · Travellers and participants
+
+- **Profiles** under *Travellers* (from *Your data*): a name only. Add, rename, delete (refused while
+  used, with where).
+- **Trip → Travellers**: pick from profiles or add a new one; order kept. The trip form's free-text
+  *Travellers* field stays for trips that already have names in it; a trip shows those names until
+  each is turned into a profile by an explicit tap (*Use the existing "Evelina"* or *Create a
+  profile*). Nothing is ever merged across trips automatically.
+- **Item → Who's going** (only when the trip has travellers): tick a subset. None ticked means
+  *not specified* — never "everyone" silently. Detail shows *Evelina, Anna* in one line.
+- Links are by id, so a renamed profile reads the new name everywhere; prices are not linked to
+  profiles (C3), so renaming never changes an amount.
+
+### 4.5 C3 · Price per person
+
+- In *Price & payment*: **Total price** (as today) or **Per person**. Per person shows rate lines —
+  label (*Adult*, *Child*, optional), quantity, unit price — with *Add a rate*, and the total
+  computed live: *2 × EUR 90.00 + 1 × EUR 60.00 = EUR 240.00*.
+- Stored: `details.pricing = { mode: 'perPerson', lines: [{ label, quantity, unitAmount }] }`
+  (minor units, Zod-validated), and the computed total in `price_amount` — the one number every
+  cost calculation already reads. One domain function computes it; the form never writes a total
+  it did not compute. Quantity is a whole number ≥ 1 (a zero line is refused, not dropped); a unit
+  price ≥ 0. Switching back to *Total* keeps the total and drops the lines.
+- The first line's quantity starts at the number of participants ticked (else the trip's
+  travellers); later changes to who is going never change a saved price — the form says *Priced
+  for 2, 3 are going* and offers to recount.
+- Existing prices stay *Total*; nothing is reinterpreted. A journey's price stays on its first leg.
+
+### 4.6 C4 · Itinerary PDF
+
+- **Trip → Share itinerary as PDF** (Overview header menu): switches for what goes in — notes,
+  booking references, traveller names, tasks, packing & shopping lists, costs — names and
+  references **off** by default; passports do not exist yet, and nothing private is in it unless
+  switched on. *Create PDF* renders on the phone, offline (`expo-print`, the system's Chromium
+  print), saves it as `Lapland-itinerary-2026-10-13-0942.pdf` and opens the share sheet.
+- Content: cover (destination, dates, travellers if chosen, generated-at), day by day with local
+  times and zones (both ends of a journey), stays and transport summary, optional appendices.
+  Page numbers; a day or a journey is not split across pages where it fits on one.
+- The HTML is built by a pure, tested domain function (`itineraryHtml`) from the same selectors
+  the screens use; everything user-typed is escaped. Attachments are named, never linked: a
+  recipient cannot open the sender's files.
+
+### 4.7 C5 · Trip templates
+
+- A template is one validated JSON document: tasks (title, notes, day offset from the trip start or
+  none, time of day or none), notes (title, body, pinned) and lists (kind, name, items).
+- **Save as template** (trip's menu): choose which tasks, notes and lists; bookings, prices,
+  references and files are never in it, and the screen says so.
+- **Use a template**: on *New trip* (applied right after the trip is created) and from a trip's
+  menu, with a preview of what will be added and a warning if this template was applied to this
+  trip before. Applying copies with new ids; ticks and *done* reset; a task 2 days before the
+  start lands 2 days before the new start, in the new trip's zone; an undated task stays undated.
+- Templates live under *Lists & templates*; rename, delete. Deleting a template leaves trips alone.
+
+### 4.8 Not built, with reasons
+
+- **Passports** — needs an encryption-at-rest and key-recovery decision, and a backup decision
+  whose failure mode is losing the documents or leaking them. The review itself scopes it
+  separately, after profiles. Profiles (C2) are built so documents can hang off them later.
+- **In-app feedback** — needs a server endpoint; the app has none by design (CLAUDE.md §7) and the
+  review calls it future work.
+- **Estimated shopping prices** — optional in the review; left out so lists stay lists.
 
 ---
 
@@ -198,3 +288,13 @@ Listed for the owner to go through. Each says what was chosen and why.
 | FB-8 | The Timeline rail has an *All days* stop as well as each day | Reviewing the whole trip before it starts is still one tap; cheap, since it is the old view |
 | FB-9 | *Your base tonight*: the confirmed stay checked into on or before today and checked out after it; overlapping stays → the one begun last; undated stays never | The review asked for overlap and undated rules to be decided |
 | FB-10 | A new item starts *In my itinerary* (confirmed); only *Save a place* on Places starts an idea | The prototype's form defaults to the itinerary; ideas have their own entry point now. Before: everything but a task started as an idea |
+| FB-11 | Travellers are app-level profiles with a name only; a profile used by a trip or item cannot be deleted | The review: no required birth date or passport; RESTRICT means a deletion can never quietly empty a booking's participants |
+| FB-12 | Names already typed in a trip's Travellers field stay as they are, until turned into profiles one tap at a time | The review: keep old names readable and never merge across trips automatically |
+| FB-13 | Participants link to profiles by id; prices are not linked to profiles | A rename reads everywhere; no amount can change because a profile did |
+| FB-14 | Per-person rates live in `details.pricing`; the computed total goes in `price_amount`; a zero-quantity line is refused | No new column; every cost calculation keeps reading one number; nothing is dropped silently |
+| FB-15 | Reusable lists and trip copies share one table (`trip_id` NULL = reusable); ticks only on trip copies | Copy is a plain insert; a master can never be "packed" |
+| FB-16 | Templates are one validated JSON document each | Always read and applied whole; nothing queries inside one |
+| FB-17 | The Notes tab becomes *Notes & lists*, five tabs kept | The review: keep five tabs |
+| FB-18 | Itinerary PDF through `expo-print` (on the phone, offline); names and references off by default | The review: explicit choices for anything personal |
+| FB-19 | `source_list_id` and `template_uses.template_id` are provenance, not foreign keys | A per-trip backup leaves the reusable list out; a foreign key would refuse the import |
+| FB-20 | Changing the phone's text size could restart the app's database connection while the old one held a lock; opening now waits instead of failing | Found on the emulator during B |
