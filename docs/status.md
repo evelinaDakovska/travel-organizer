@@ -539,7 +539,16 @@ owner's request; the decisions (FB-1…) are listed there for the owner to go th
 | **A5** | A failed read never claims *missing* or *empty*; Now waits for its first read | ✅ |
 | **A6** | A zone filled from a city follows the city; *Munich time*, not Berlin | ✅ |
 | **A7** | Finished plans marked archived | ✅ |
-| **B1–B11** | The Fieldbook redesign — see the plan | ⬜ |
+| **B1–B2** | Tokens (cool neutral, one action blue, attention and success; Figtree only) and the shared primitives | ✅ |
+| **B3** | Timeline by day: a rail of every trip day, Before / After / No date, Add a plan on an empty day | ✅ |
+| **B4** | Item detail: both ends of a journey, the ticket first, Copy reference, More sheet | ✅ |
+| **B5** | Overview (was Now): before vs during the trip, one lead panel, Undo on a task | ✅ |
+| **B6** | Your trips: the next trip as a cover with its route; Backup & restore as a row | ✅ |
+| **B7** | Places: Saved / In itinerary, grouped by priority | ✅ |
+| **B8** | Expenses: one total, Bookings / Spending without repeating it | ✅ |
+| **B9** | Notes: title and a two-line preview, pinned first | ✅ |
+| **B10** | Add / edit: kind first, Type and Reminder as selects, folded optional sections, Save pinned | ✅ |
+| **B11** | Trip documents (N1): every document, tickets first, on this phone / link / missing | ✅ |
 | **C1–C5** | Lists, travellers, price per person, itinerary PDF, templates — migration 003 | ⬜ |
 
 ---

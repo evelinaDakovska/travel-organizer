@@ -8,8 +8,8 @@ import { routePlace, zoneName } from '../../domain/zoneHints';
 import { Card } from '../../ui/components/Card';
 import { spacing, type, useColors } from '../../ui/tokens';
 
-/** At this font scale the two ends no longer fit side by side, so they stack (B4). */
-const STACK_AT_FONT_SCALE = 1.3;
+/** From this font scale the two ends no longer fit side by side, so they stack (B4). At 1.3 they still do. */
+const STACK_AT_FONT_SCALE = 1.5;
 
 /**
  * A journey's two ends side by side (B4): where, the local time there, the date and whose clock
