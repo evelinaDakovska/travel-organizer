@@ -1,4 +1,6 @@
 import {
+  availabilityLabel,
+  availabilityOf,
   defaultFileLabel,
   defaultLinkLabel,
   extensionFor,
@@ -21,9 +23,11 @@ import {
   subtypesFor,
   toAbsoluteUri,
   toStoredPath,
+  tripDocuments,
   viewerFileName,
   type FileResource,
   type LinkResource,
+  type ResourceOwner,
   type ResourceRow,
 } from './resource';
 
@@ -460,5 +464,62 @@ describe('openGroups', () => {
         ['Open Cabin details', ['c']],
       ],
     );
+  });
+});
+
+describe('availabilityOf (B11)', () => {
+  it('calls a file on the phone only when its bytes are there', () => {
+    expect(availabilityOf(file(), true)).toBe('onPhone');
+    expect(availabilityOf(file(), false)).toBe('missing');
+  });
+
+  it('says a link needs the internet, and a map link opens the maps app', () => {
+    expect(availabilityOf(link('https://booking.com'), true)).toBe('link');
+    expect(availabilityOf(link('geo:1,2', { subtype: 'maps' }), true)).toBe('mapLink');
+    expect(availabilityLabel('missing')).toMatch(/attach it again/);
+  });
+});
+
+describe('tripDocuments (B11)', () => {
+  const items = [{ id: 'flight' }, { id: 'hotel' }];
+  const at = (id: string, owner: ResourceOwner, over: Partial<FileResource> = {}) =>
+    file({ id, owner, ...over });
+
+  it('puts tickets first, the trip’s own before the items’', () => {
+    const trip = { scope: 'trip', id: 't' } as const;
+    const { tickets } = tripDocuments(
+      [at('insurance', trip), at('rail', trip, { subtype: 'ticket' })],
+      [at('pass', { scope: 'item', id: 'flight' }, { subtype: 'ticket' })],
+      items,
+    );
+    expect(tickets.map(({ resource, item }) => [resource.id, item?.id ?? null])).toEqual([
+      ['rail', null],
+      ['pass', 'flight'],
+    ]);
+  });
+
+  it('groups the rest by item, in the order the items come, and keeps the trip’s own apart', () => {
+    const documents = tripDocuments(
+      [at('insurance', { scope: 'trip', id: 't' })],
+      [
+        at('voucher', { scope: 'item', id: 'hotel' }),
+        at('booking', { scope: 'item', id: 'flight' }, { subtype: 'confirmation' }),
+      ],
+      items,
+    );
+    expect(documents.forTrip.map((resource) => resource.id)).toEqual(['insurance']);
+    const grouped = documents.byItem.map(({ item, resources }) => [
+      item.id,
+      resources.map((resource) => resource.id),
+    ]);
+    expect(grouped).toEqual([
+      ['flight', ['booking']],
+      ['hotel', ['voucher']],
+    ]);
+  });
+
+  it('never loses a document whose item is not in the list', () => {
+    const documents = tripDocuments([], [at('lost', { scope: 'item', id: 'gone' })], items);
+    expect(documents.forTrip.map((resource) => resource.id)).toEqual(['lost']);
   });
 });

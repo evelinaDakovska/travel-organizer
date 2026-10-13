@@ -1,8 +1,10 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useMemo } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { bookedPlaces } from '../../../../src/domain/places';
+import { bookedPlaces, byPriority } from '../../../../src/domain/places';
+import type { Priority } from '../../../../src/domain/tripItem';
+import { AddSheet } from '../../../../src/features/items/AddSheet';
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { useTripId } from '../../../../src/features/trips/TripContext';
 import { queryView } from '../../../../src/hooks/queryView';
@@ -12,21 +14,34 @@ import {
   listTripItems,
   TRIP_ITEM_TABLES,
 } from '../../../../src/repositories/tripItems';
+import { Button } from '../../../../src/ui/components/Button';
+import { HeaderAction } from '../../../../src/ui/components/HeaderAction';
 import { ItemRow } from '../../../../src/ui/components/ItemRow';
+import { Rows } from '../../../../src/ui/components/ListRow';
 import { LoadFailed, StaleNotice } from '../../../../src/ui/components/QueryStates';
 import { Screen } from '../../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../../../../src/ui/components/SectionLabel';
-import { radius, spacing, type, useColors } from '../../../../src/ui/tokens';
+import { Segments } from '../../../../src/ui/components/Segments';
+import { gutter, radius, spacing, type, useColors } from '../../../../src/ui/tokens';
+
+type PlacesView = 'saved' | 'itinerary';
+
+const VIEW_LABELS: Record<PlacesView, string> = { saved: 'Saved', itinerary: 'In itinerary' };
+
+const PRIORITY_LABELS: Record<Priority, string> = { must: 'Must', want: 'Want', maybe: 'Maybe' };
 
 /**
- * Ideas, most wanted first — opening one offers Add to itinerary. Below them, the confirmed items
- * that say where they are, so every address in the trip is in one list (U5).
+ * Places (B7): the ideas saved for this trip, most wanted first — opening one offers Add to
+ * itinerary — and, on the other side, every planned item that says where it is (U5). Two views of
+ * the same items; nothing here is a separate kind of thing.
  */
 export default function PlacesScreen() {
   const c = useColors();
   const router = useRouter();
   const tripId = useTripId();
+  const [view, setView] = useState<PlacesView>('saved');
+  const [adding, setAdding] = useState(false);
 
   const placesQuery = useLiveQuery(
     useCallback((database) => listPlaces(database, tripId), [tripId]),
@@ -38,68 +53,101 @@ export default function PlacesScreen() {
     TRIP_ITEM_TABLES,
     [tripId],
   );
-  const places = placesQuery.data;
-  const items = itemsQuery.data;
-  const booked = useMemo(() => bookedPlaces(items ?? []), [items]);
-  const placesView = queryView(placesQuery);
+  const groups = useMemo(() => byPriority(placesQuery.data ?? []), [placesQuery.data]);
+  const booked = useMemo(() => bookedPlaces(itemsQuery.data ?? []), [itemsQuery.data]);
+  const open = (itemId: string) => router.push(`/item/${itemId}`);
+
+  const shown = view === 'saved' ? placesQuery : itemsQuery;
+  const shownView = queryView(shown);
 
   return (
     <Screen>
       <ScreenHeader
         title="Places"
-        subtitle="Ideas, and where your plans are"
-        action={<SearchButton tripId={tripId} />}
-      />
-
-      {placesView === 'loading' ? (
-        <View style={styles.centre}>
-          <ActivityIndicator color={c.accent} />
-        </View>
-      ) : (
-        <ScrollView contentContainerStyle={styles.content}>
-          <StaleNotice queries={[placesQuery, itemsQuery]} />
-          <View style={styles.section}>
-            <SectionLabel>Ideas</SectionLabel>
-            {placesView === 'failed' ? (
-              <LoadFailed what="the ideas" onRetry={placesQuery.refetch} />
-            ) : places && places.length > 0 ? (
-              places.map((place) => (
-                <ItemRow
-                  key={place.id}
-                  item={place}
-                  onPress={() => router.push(`/item/${place.id}`)}
-                />
-              ))
-            ) : (
-              <View style={[styles.well, { backgroundColor: c.surfaceSunken }]}>
-                <Text style={[type.body, { color: c.textMuted }]}>
-                  No ideas saved yet. Add somewhere you might go — a café someone recommended, a
-                  viewpoint — and add it to your itinerary once you decide to go.
-                </Text>
-              </View>
-            )}
+        subtitle="Saved ideas, and where your plans are"
+        leading={false}
+        action={
+          <View style={styles.headerActions}>
+            <SearchButton tripId={tripId} />
+            <HeaderAction
+              icon="add"
+              label="Add"
+              accessibilityLabel="Save a place"
+              onPress={() => setAdding(true)}
+            />
           </View>
+        }
+      />
+      <View style={styles.segments}>
+        <Segments
+          value={view}
+          options={['saved', 'itinerary'] as const}
+          labelFor={(option) => VIEW_LABELS[option]}
+          onChange={setView}
+        />
+      </View>
 
-          {queryView(itemsQuery) === 'failed' ? (
-            <LoadFailed what="where your plans are" onRetry={itemsQuery.refetch} />
-          ) : null}
-          {booked.length > 0 ? (
-            <View style={styles.section}>
-              <SectionLabel>In your itinerary</SectionLabel>
-              {booked.map((item) => (
-                <ItemRow key={item.id} item={item} onPress={() => router.push(`/item/${item.id}`)} />
-              ))}
+      <ScrollView contentContainerStyle={styles.content}>
+        <StaleNotice queries={[placesQuery, itemsQuery]} />
+        {shownView === 'failed' ? (
+          <LoadFailed
+            what={view === 'saved' ? 'the saved places' : 'where your plans are'}
+            onRetry={shown.refetch}
+          />
+        ) : shownView === 'loading' ? (
+          <Text style={[type.body, { color: c.textMuted }]}>Loading…</Text>
+        ) : view === 'saved' ? (
+          groups.length > 0 ? (
+            groups.map(({ priority, items }) => (
+              <View key={priority ?? 'none'} style={styles.section}>
+                <SectionLabel>{priority ? PRIORITY_LABELS[priority] : 'No priority'}</SectionLabel>
+                <Rows>
+                  {items.map((place) => (
+                    <ItemRow
+                      key={place.id}
+                      item={place}
+                      headingSays
+                      onPress={() => open(place.id)}
+                    />
+                  ))}
+                </Rows>
+              </View>
+            ))
+          ) : (
+            <View style={[styles.empty, { backgroundColor: c.surfaceSunken }]}>
+              <Text style={[type.body, { color: c.textMuted }]}>
+                Nothing saved yet — a café someone recommended, a viewpoint.
+              </Text>
+              <Button label="Save a place" variant="secondary" onPress={() => setAdding(true)} />
             </View>
-          ) : null}
-        </ScrollView>
-      )}
+          )
+        ) : booked.length > 0 ? (
+          <Rows>
+            {booked.map((item) => (
+              <ItemRow key={item.id} item={item} onPress={() => open(item.id)} />
+            ))}
+          </Rows>
+        ) : (
+          <Text style={[type.body, { color: c.textMuted }]}>
+            Plans with a place or an address are listed here.
+          </Text>
+        )}
+      </ScrollView>
+
+      <AddSheet visible={adding} onClose={() => setAdding(false)} tripId={tripId} idea />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.xl, paddingBottom: 120 },
-  section: { gap: spacing.md },
-  well: { borderRadius: radius.lg, padding: spacing.lg },
-  centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
+  segments: { paddingHorizontal: gutter.normal },
+  content: {
+    paddingHorizontal: gutter.normal,
+    paddingTop: spacing.lg,
+    gap: spacing.xl,
+    paddingBottom: spacing.xxxl,
+  },
+  section: { gap: spacing.xs },
+  empty: { borderRadius: radius.lg, padding: spacing.lg, gap: spacing.md },
 });

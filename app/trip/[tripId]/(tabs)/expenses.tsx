@@ -1,11 +1,12 @@
+import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
-import { tripExpenses } from '../../../../src/domain/bookingCosts';
+import { refundNotSaid, tripExpenses } from '../../../../src/domain/bookingCosts';
 import { spendingTotals, tripTotals } from '../../../../src/domain/spending';
 import { BookingsView } from '../../../../src/features/expenses/BookingsView';
 import { SpendingView } from '../../../../src/features/expenses/SpendingView';
-import { TripTotalCard } from '../../../../src/features/expenses/TripTotalCard';
+import { TripTotal } from '../../../../src/features/expenses/TripTotal';
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { useTripId } from '../../../../src/features/trips/TripContext';
 import { queryView } from '../../../../src/hooks/queryView';
@@ -18,21 +19,26 @@ import {
 } from '../../../../src/repositories/expenses';
 import { listTripItems, TRIP_ITEM_TABLES } from '../../../../src/repositories/tripItems';
 import { getTrip, TRIP_TABLES } from '../../../../src/repositories/trips';
-import { ChoiceField } from '../../../../src/ui/components/ChoiceField';
+import { HeaderAction } from '../../../../src/ui/components/HeaderAction';
 import { LoadFailed, StaleNotice } from '../../../../src/ui/components/QueryStates';
 import { Screen } from '../../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../../src/ui/components/ScreenHeader';
-import { spacing, useColors } from '../../../../src/ui/tokens';
+import { Segments } from '../../../../src/ui/components/Segments';
+import { gutter, spacing, useColors } from '../../../../src/ui/tokens';
 
-type ExpenseView = 'spending' | 'bookings';
+type ExpenseView = 'bookings' | 'spending';
 
-const VIEW_LABELS: Record<ExpenseView, string> = { spending: 'Spending', bookings: 'Bookings' };
+const VIEW_LABELS: Record<ExpenseView, string> = { bookings: 'Bookings', spending: 'Spending' };
 
-/** What the trip costs: everything in one total, then spending and bookings one view at a time. */
+/**
+ * What the trip costs (B8): one expected total, then bookings or spending, one view at a time.
+ * Nothing is converted: every amount stays in its own currency.
+ */
 export default function ExpensesScreen() {
   const c = useColors();
+  const router = useRouter();
   const tripId = useTripId();
-  const [view, setView] = useState<ExpenseView>('spending');
+  const [view, setView] = useState<ExpenseView>('bookings');
 
   const { data: trip } = useLiveQuery(
     useCallback((database) => getTrip(database, tripId), [tripId]),
@@ -68,29 +74,49 @@ export default function ExpensesScreen() {
   const spending = useMemo(() => spendingTotals(expenses ?? []), [expenses]);
   const bookings = useMemo(() => tripExpenses(items ?? []), [items]);
   const totals = useMemo(() => tripTotals(bookings, spending), [bookings, spending]);
+  const notCounted = useMemo(() => refundNotSaid(items ?? []).byCurrency, [items]);
+  const addExpense = () => router.push({ pathname: '/expense/new', params: { tripId } });
 
   return (
     <Screen>
       <ScreenHeader
         title="Expenses"
         subtitle={trip?.name}
-        action={<SearchButton tripId={tripId} />}
+        leading={false}
+        action={
+          <View style={styles.headerActions}>
+            <SearchButton tripId={tripId} />
+            <HeaderAction
+              icon="add"
+              label="Add"
+              accessibilityLabel="Add an expense"
+              onPress={addExpense}
+            />
+          </View>
+        }
       />
 
       {expenses && items ? (
         <ScrollView contentContainerStyle={styles.content}>
           <StaleNotice queries={[expensesQuery, receiptsQuery, itemsQuery]} />
-          {totals.length > 0 ? <TripTotalCard totals={totals} /> : null}
+          {totals.length > 0 || notCounted.length > 0 ? (
+            <TripTotal totals={totals} notCounted={notCounted} />
+          ) : null}
 
-          <ChoiceField
+          <Segments
             value={view}
-            options={['spending', 'bookings'] as const}
+            options={['bookings', 'spending'] as const}
             labelFor={(option) => VIEW_LABELS[option]}
-            onChange={(next) => next && setView(next)}
+            onChange={setView}
           />
 
           {view === 'spending' ? (
-            <SpendingView expenses={expenses} totals={spending} receipts={receipts ?? new Map()} />
+            <SpendingView
+              expenses={expenses}
+              totals={spending}
+              receipts={receipts ?? new Map()}
+              onAdd={addExpense}
+            />
           ) : (
             <BookingsView items={items} totals={bookings} />
           )}
@@ -109,6 +135,12 @@ export default function ExpensesScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.xl, paddingBottom: 120 },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
+  content: {
+    paddingHorizontal: gutter.normal,
+    paddingTop: spacing.sm,
+    gap: spacing.xl,
+    paddingBottom: spacing.xxxl,
+  },
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

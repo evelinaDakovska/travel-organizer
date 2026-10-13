@@ -107,3 +107,18 @@ export function landingDay(
   if (today < trip.startDate || today > trip.endDate) return null;
   return days.find((day) => day >= today) ?? null;
 }
+
+/**
+ * Every item once, dated ones as the timeline orders them, then the rest — undated and cancelled —
+ * by title. For lists of all a trip's items: where to attach a file, the trip's documents.
+ */
+export function itemsInTimelineOrder<T extends TimelineItem>(items: readonly T[]): T[] {
+  const dated = timelineEntries(items.filter((item) => item.status !== 'cancelled'))
+    .filter((entry) => entry.role !== 'end')
+    .map((entry) => entry.item);
+  const seen = new Set(dated.map((item) => item.id));
+  const rest = items
+    .filter((item) => !seen.has(item.id))
+    .sort((a, b) => a.title.localeCompare(b.title));
+  return [...dated, ...rest];
+}

@@ -4,11 +4,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Icon, type IconName } from '../../ui/components/Icon';
 import { spacing, type, useColors } from '../../ui/tokens';
 
-/** Height of the bar above the system inset. The add button floats this far up, plus a gap. */
-export const TAB_BAR_HEIGHT = 60;
+/** Height of the bar above the system inset. */
+const TAB_BAR_HEIGHT = 60;
 
 const TABS: Record<string, { label: string; icon: IconName }> = {
-  index: { label: 'Now', icon: 'now' },
+  index: { label: 'Overview', icon: 'now' },
   timeline: { label: 'Timeline', icon: 'timeline' },
   places: { label: 'Places', icon: 'places' },
   expenses: { label: 'Expenses', icon: 'wallet' },

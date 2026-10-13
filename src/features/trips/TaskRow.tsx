@@ -1,18 +1,18 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { formatShortMoment } from '../../domain/format';
 import { paymentStatus } from '../../domain/bookingCosts';
+import { formatShortMoment } from '../../domain/format';
 import type { TripItem } from '../../domain/tripItem';
-import { Card } from '../../ui/components/Card';
 import { Icon } from '../../ui/components/Icon';
+import { ListRow } from '../../ui/components/ListRow';
 import { PaymentTag } from '../../ui/components/PaymentTag';
-import { opacity, radius, spacing, type, useColors } from '../../ui/tokens';
+import { radius, touchTarget, useColors } from '../../ui/tokens';
 
 type Props = { task: TripItem; onToggle: () => void; onPress: () => void };
 
 /**
- * A task on Now: tap the circle to tick it (or, once done, to un-tick it), the row to open it. A done
- * task is shown only behind *Show done* (F3), struck through.
+ * A task as a row: the box ticks it (or, once done, un-ticks it), the row opens it. A done task is
+ * shown only behind *Show done* (F3), struck through.
  */
 export function TaskRow({ task, onToggle, onPress }: Props) {
   const c = useColors();
@@ -21,50 +21,49 @@ export function TaskRow({ task, onToggle, onPress }: Props) {
   const payment = paymentStatus(task);
 
   return (
-    <Card
+    <ListRow
+      title={task.title}
+      detail={task.start ? formatShortMoment(task.start.local, task.start.precision) : null}
+      struck={done}
+      dimmed={done}
       onPress={onPress}
       accessibilityLabel={task.title}
-      style={[styles.row, done && { opacity: opacity.dimmed }]}>
-      <Pressable
-        onPress={onToggle}
-        hitSlop={12}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: done }}
-        accessibilityLabel={done ? `Mark ${task.title} as not done` : `Mark ${task.title} as done`}
-        style={[
-          styles.check,
-          { borderColor: c.accent, backgroundColor: done ? c.accent : 'transparent' },
-        ]}>
-        {done ? <Icon name="check" size={14} color={c.onAccent} strokeWidth={3} /> : null}
-      </Pressable>
-      <View style={styles.body}>
-        <Text
-          style={[type.heading, styles.title, { color: c.text }, done && styles.struck]}
-          numberOfLines={2}>
-          {task.title}
-        </Text>
-        {task.start ? (
-          <Text style={[type.caption, { color: c.textMuted }]}>
-            {formatShortMoment(task.start.local, task.start.precision)}
-          </Text>
-        ) : null}
-      </View>
-      <PaymentTag status={payment} />
-    </Card>
+      footer={payment ? <PaymentTag status={payment} /> : null}
+      leading={
+        <Pressable
+          onPress={onToggle}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: done }}
+          accessibilityLabel={done ? `Mark ${task.title} as not done` : `Mark ${task.title} as done`}
+          style={styles.target}>
+          <View
+            style={[
+              styles.box,
+              { borderColor: c.accent, backgroundColor: done ? c.accent : 'transparent' },
+            ]}>
+            {done ? <Icon name="check" size={14} color={c.onAccent} strokeWidth={3} /> : null}
+          </View>
+        </Pressable>
+      }
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  check: {
+  // The box is small; the target around it is not.
+  target: {
+    width: touchTarget,
+    height: touchTarget,
+    marginLeft: -12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  box: {
     width: 22,
     height: 22,
-    borderRadius: radius.pill,
+    borderRadius: radius.sm,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  body: { flex: 1, gap: 2 },
-  title: { fontSize: 15, lineHeight: 20 },
-  struck: { textDecorationLine: 'line-through' },
 });

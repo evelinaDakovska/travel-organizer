@@ -89,7 +89,8 @@ export function TimelineRow({ entry, resources, onPress, showDate = false, note,
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.md },
-  when: { width: 56, paddingTop: 2, gap: 2 },
+  // Wide enough for 'Fri 20 Nov' on one line at the default font scale.
+  when: { width: 72, paddingTop: 2, gap: 2 },
   body: { flex: 1, gap: spacing.xs, borderLeftWidth: StyleSheet.hairlineWidth, paddingLeft: spacing.md },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   grow: { flex: 1 },

@@ -405,3 +405,70 @@ export function groupResourcesByItem(resources: readonly Resource[]): Map<string
   }
   return byItem;
 }
+
+/**
+ * Whether a document can be opened right now (B11). A file is on this phone only once its bytes
+ * have been checked, never because its row loaded; a link needs the internet; a map link opens the
+ * maps app, which may have the area offline.
+ */
+export type Availability = 'onPhone' | 'missing' | 'link' | 'mapLink';
+
+export function availabilityOf(resource: Resource, fileExists: boolean): Availability {
+  if (resource.kind === 'file') return fileExists ? 'onPhone' : 'missing';
+  return resource.subtype === 'maps' ? 'mapLink' : 'link';
+}
+
+const AVAILABILITY_LABELS: Record<Availability, string> = {
+  onPhone: 'On this phone',
+  missing: 'Missing from this phone — attach it again',
+  link: 'Link · needs internet',
+  mapLink: 'Opens in your maps app',
+};
+
+export function availabilityLabel(availability: Availability): string {
+  return AVAILABILITY_LABELS[availability];
+}
+
+export type TripDocuments<I> = {
+  /** Everything marked Ticket, the trip's own first: the thing to reach in seconds. */
+  tickets: { resource: Resource; item: I | null }[];
+  /** The trip's own documents that are not tickets: insurance, visas, the passport scan. */
+  forTrip: Resource[];
+  /** The rest, under the item they belong to, in the order the items are given. */
+  byItem: { item: I; resources: Resource[] }[];
+};
+
+/**
+ * Every document in a trip in one place (B11, N1), however it was attached. A file attached both
+ * to the trip and to an item (U4) is two rows and shows in both places, as it does elsewhere.
+ * An attachment whose item is not in `items` is still listed — under no item — so nothing can
+ * become unreachable here.
+ */
+export function tripDocuments<I extends { id: string }>(
+  tripResources: readonly Resource[],
+  itemResources: readonly Resource[],
+  items: readonly I[],
+): TripDocuments<I> {
+  const itemById = new Map(items.map((item) => [item.id, item]));
+  const itemOf = (resource: Resource) =>
+    resource.owner.scope === 'item' ? (itemById.get(resource.owner.id) ?? null) : null;
+
+  const tickets = [...tripResources, ...itemResources]
+    .filter((resource) => resource.subtype === 'ticket')
+    .map((resource) => ({ resource, item: itemOf(resource) }));
+
+  const others = itemResources.filter((resource) => resource.subtype !== 'ticket');
+  const orphans = others.filter((resource) => itemOf(resource) === null);
+  const byItem = items
+    .map((item) => ({
+      item,
+      resources: others.filter((resource) => resource.owner.id === item.id),
+    }))
+    .filter((group) => group.resources.length > 0);
+
+  return {
+    tickets,
+    forTrip: [...tripResources.filter((resource) => resource.subtype !== 'ticket'), ...orphans],
+    byItem,
+  };
+}

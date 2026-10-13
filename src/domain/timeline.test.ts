@@ -1,5 +1,6 @@
 import {
   buildTimeline,
+  itemsInTimelineOrder,
   landingDay,
   timelineEntries,
   type TimelineItem,
@@ -189,5 +190,26 @@ describe('landingDay', () => {
 
   it('starts at the top after the trip', () => {
     expect(landingDay(days, '2026-11-25', trip)).toBeNull();
+  });
+});
+
+describe('itemsInTimelineOrder', () => {
+  it('lists dated items in time order once, then undated and cancelled ones by title', () => {
+    const at = (local: string) => ({ local, tz: 'Europe/Rome', precision: 'time' as const });
+    const base = { kind: 'activity' as const, status: 'confirmed' as const, completedAt: null, end: null };
+    const ordered = itemsInTimelineOrder([
+      { ...base, id: 'b', title: 'Zoo', start: null },
+      { ...base, id: 'c', title: 'Dinner', start: at('2026-09-19T20:00') },
+      { ...base, id: 'd', title: 'Cancelled tour', status: 'cancelled', start: at('2026-09-19T09:00') },
+      {
+        ...base,
+        id: 'e',
+        title: 'Hotel',
+        kind: 'stay',
+        start: at('2026-09-19T15:00'),
+        end: at('2026-09-21T11:00'),
+      },
+    ]);
+    expect(ordered.map((item) => item.id)).toEqual(['e', 'c', 'd', 'b']);
   });
 });

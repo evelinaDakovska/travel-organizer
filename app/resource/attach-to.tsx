@@ -3,7 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { timelineEntries } from '../../src/domain/timeline';
+import { itemsInTimelineOrder } from '../../src/domain/timeline';
 import type { TripItem } from '../../src/domain/tripItem';
 import { queryView } from '../../src/hooks/queryView';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
@@ -56,7 +56,7 @@ export default function AttachTo() {
 
   const data = choicesQuery.data;
   const view = queryView(choicesQuery);
-  const ordered = useMemo(() => (data ? inTimelineOrder(data.items) : []), [data]);
+  const ordered = useMemo(() => (data ? itemsInTimelineOrder(data.items) : []), [data]);
 
   const attach = async (item: TripItem) => {
     try {
@@ -104,18 +104,6 @@ export default function AttachTo() {
       )}
     </Screen>
   );
-}
-
-/** Dated items as the timeline orders them, then the undated ones by title. */
-function inTimelineOrder(items: readonly TripItem[]): TripItem[] {
-  const dated = timelineEntries(items.filter((item) => item.status !== 'cancelled'))
-    .filter((entry) => entry.role !== 'end')
-    .map((entry) => entry.item);
-  const seen = new Set(dated.map((item) => item.id));
-  const rest = items
-    .filter((item) => !seen.has(item.id))
-    .sort((a, b) => a.title.localeCompare(b.title));
-  return [...dated, ...rest];
 }
 
 const styles = StyleSheet.create({

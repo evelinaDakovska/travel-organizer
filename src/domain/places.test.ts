@@ -1,4 +1,4 @@
-import { bookedPlaces, mapsUrl, suggestPlaces } from './places';
+import { bookedPlaces, byPriority, mapsUrl, suggestPlaces } from './places';
 import type { TripItem } from './tripItem';
 
 const nowhere = { locationName: null, address: null, latitude: null, longitude: null };
@@ -101,5 +101,25 @@ describe('bookedPlaces', () => {
       end: at('2026-10-22T11:00'),
     });
     expect(bookedPlaces([hotel]).map((i) => i.id)).toEqual(['hotel']);
+  });
+});
+
+describe('byPriority (B7)', () => {
+  it('groups Must, Want, Maybe, then none, keeping order and leaving out empty groups', () => {
+    const ideas = [
+      { id: 'a', priority: 'want' as const },
+      { id: 'b', priority: null },
+      { id: 'c', priority: 'must' as const },
+      { id: 'd', priority: 'want' as const },
+    ];
+    const grouped = byPriority(ideas).map(({ priority, items }) => [
+      priority,
+      items.map((idea) => idea.id),
+    ]);
+    expect(grouped).toEqual([
+      ['must', ['c']],
+      ['want', ['a', 'd']],
+      [null, ['b']],
+    ]);
   });
 });

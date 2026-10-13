@@ -4,7 +4,7 @@
  */
 
 import { timelineEntries } from './timeline';
-import type { TripItem } from './tripItem';
+import { PRIORITIES, type Priority, type TripItem } from './tripItem';
 
 type Located = Pick<TripItem, 'locationName' | 'address' | 'latitude' | 'longitude'>;
 
@@ -72,4 +72,19 @@ export function bookedPlaces<T extends TripItem>(items: readonly T[]): T[] {
     .filter((item) => !seen.has(item.id))
     .sort((a, b) => a.title.localeCompare(b.title));
   return [...dated, ...undated];
+}
+
+export type PriorityGroup<T> = { priority: Priority | null; items: T[] };
+
+/**
+ * Saved ideas grouped by how much they are wanted (B7): Must, Want, Maybe, then those with no
+ * priority. A view of the same items, not a status: empty groups are left out, order within a
+ * group is kept.
+ */
+export function byPriority<T extends Pick<TripItem, 'priority'>>(
+  ideas: readonly T[],
+): PriorityGroup<T>[] {
+  return [...PRIORITIES, null]
+    .map((priority) => ({ priority, items: ideas.filter((idea) => idea.priority === priority) }))
+    .filter((group) => group.items.length > 0);
 }

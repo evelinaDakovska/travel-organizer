@@ -22,20 +22,29 @@ type Props = {
   onPress?: () => void;
   /** Journey-aware when the screen has the trip's items (F7); the item's own state otherwise. */
   payment?: PaymentStatus | null;
+  /**
+   * In a list whose heading already says it — *Must* on Places, *Paid* on Expenses — the row
+   * leaves out *Idea*, its priority and its payment pill rather than repeat them.
+   */
+  headingSays?: boolean;
 };
 
 /**
  * An item as a row (B2): what it is, where, and when, with its price at the end. Status is only
  * named when it is not the usual one for a list — an idea, a cancellation; confirmed is implied.
  */
-export function ItemRow({ item, onPress, payment = paymentStatus(item) }: Props) {
+export function ItemRow({ item, onPress, payment = paymentStatus(item), headingSays = false }: Props) {
   const c = useColors();
   const where = routeLabel(transportDetails(item)) ?? item.locationName;
   const done = item.kind === 'task' && item.completedAt !== null;
   const kind = item.subkind ? subkindLabel(item.subkind) : kindLabel(item.kind);
-  const priority = item.status === 'idea' && item.priority ? capitalise(item.priority) : null;
+  const priority =
+    item.status === 'idea' && item.priority && !headingSays ? capitalise(item.priority) : null;
   const detail = [kind, priority, when(item), done ? 'done' : null].filter(Boolean).join(' · ');
-  const showStatus = item.status !== 'confirmed';
+  // A cancellation always says so: no heading implies it.
+  const showStatus =
+    item.status === 'cancelled' || (item.status === 'idea' && !headingSays);
+  const shownPayment = headingSays ? null : payment;
 
   return (
     <ListRow
@@ -51,10 +60,10 @@ export function ItemRow({ item, onPress, payment = paymentStatus(item) }: Props)
         ) : null
       }
       footer={
-        showStatus || payment ? (
+        showStatus || shownPayment ? (
           <View style={styles.tags}>
             {showStatus ? <StatusTag status={item.status} /> : null}
-            <PaymentTag status={payment} />
+            <PaymentTag status={shownPayment} />
           </View>
         ) : null
       }

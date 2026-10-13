@@ -195,3 +195,6 @@ Listed for the owner to go through. Each says what was chosen and why.
 | FB-5 | The floating add button is replaced by a labelled header action | The review: no add control over content |
 | FB-6 | One migration (003) for all of Part C | The phone migrates once, as with 002 |
 | FB-7 | Passports and in-app feedback deferred | See §4 |
+| FB-8 | The Timeline rail has an *All days* stop as well as each day | Reviewing the whole trip before it starts is still one tap; cheap, since it is the old view |
+| FB-9 | *Your base tonight*: the confirmed stay checked into on or before today and checked out after it; overlapping stays → the one begun last; undated stays never | The review asked for overlap and undated rules to be decided |
+| FB-10 | A new item starts *In my itinerary* (confirmed); only *Save a place* on Places starts an idea | The prototype's form defaults to the itinerary; ideas have their own entry point now. Before: everything but a task started as an idea |

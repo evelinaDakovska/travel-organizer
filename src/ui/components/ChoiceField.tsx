@@ -52,8 +52,9 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: {
     borderWidth: 1,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
   },
 });

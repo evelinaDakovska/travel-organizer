@@ -5,6 +5,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import type { Resource, ResourceOwner } from '../../domain/resource';
 import { Button } from '../../ui/components/Button';
+import { Rows } from '../../ui/components/ListRow';
 import { SectionLabel } from '../../ui/components/SectionLabel';
 import { radius, spacing, type, useColors } from '../../ui/tokens';
 import { attach, type PickerKind } from './attach';
@@ -62,7 +63,7 @@ export function ResourceList({ owner, resources, title, emptyText }: Props) {
       <SectionLabel>{title}</SectionLabel>
 
       {resources.length > 0 ? (
-        <View style={styles.list}>
+        <Rows>
           {resources.map((resource) => (
             <ResourceRow
               key={resource.id}
@@ -76,7 +77,7 @@ export function ResourceList({ owner, resources, title, emptyText }: Props) {
               }
             />
           ))}
-        </View>
+        </Rows>
       ) : emptyText ? (
         <View style={[styles.empty, { backgroundColor: c.surfaceSunken }]}>
           <Text style={[type.body, { color: c.textMuted }]}>{emptyText}</Text>
@@ -102,8 +103,7 @@ export function ResourceList({ owner, resources, title, emptyText }: Props) {
 }
 
 const styles = StyleSheet.create({
-  block: { gap: spacing.md },
-  list: { gap: spacing.sm },
+  block: { gap: spacing.sm },
   empty: { borderRadius: radius.lg, padding: spacing.lg },
   actions: { flexDirection: 'row', gap: spacing.sm },
   action: { flex: 1 },

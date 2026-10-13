@@ -23,11 +23,18 @@ import { askForRemindersIfDue } from '../../src/notifications/reminders';
 export default function NewItem() {
   const db = useSQLiteContext();
   const router = useRouter();
-  const params = useLocalSearchParams<{ tripId: string; kind?: string; date?: string }>();
+  const params = useLocalSearchParams<{
+    tripId: string;
+    kind?: string;
+    date?: string;
+    idea?: string;
+  }>();
   const { tripId } = params;
   const kind = asKind(params.kind);
-  // From a day on the Timeline (B3): a plan for that day, already on the itinerary.
+  // From a day on the Timeline (B3): a plan for that day.
   const date = params.date && isValidLocal(params.date, 'date') ? params.date : undefined;
+  // From Places (B7) a saved idea; from anywhere else a plan in the itinerary (FB-10).
+  const idea = params.idea === '1' && kind !== 'task';
 
   const tripQuery = useLiveQuery(
     useCallback((database) => getTrip(database, tripId), [tripId]),
@@ -66,7 +73,7 @@ export default function NewItem() {
           kind,
           // A to-do is not an idea to book later; as one it would also land on Places.
           subkind: null,
-          status: kind === 'task' || date ? 'confirmed' : 'idea',
+          status: idea ? 'idea' : 'confirmed',
           start: date ? { local: date } : undefined,
           priority: null,
           title: '',

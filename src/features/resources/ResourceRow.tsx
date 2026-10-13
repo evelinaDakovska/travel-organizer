@@ -1,16 +1,36 @@
 import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { resourceBadge, resourceMeta, type Resource } from '../../domain/resource';
+import {
+  availabilityLabel,
+  availabilityOf,
+  resourceBadge,
+  resourceMeta,
+  type Resource,
+} from '../../domain/resource';
 import { absoluteUriFor, storedFileExists } from '../../files/storage';
 import { Icon } from '../../ui/components/Icon';
-import { opacity, radius, spacing, type, useColors } from '../../ui/tokens';
+import { radius, spacing, touchTarget, type, useColors } from '../../ui/tokens';
 
-type Props = { resource: Resource; onPress: () => void; onEdit?: () => void };
+type Props = {
+  resource: Resource;
+  onPress: () => void;
+  onEdit?: () => void;
+  /** What it belongs to, when listed away from it: 'Flight to Helsinki'. */
+  context?: string | null;
+};
 
-export function ResourceRow({ resource, onPress, onEdit }: Props) {
+/**
+ * One document (B11): what it is, whether it can be opened now — on this phone, a link, or missing
+ * — and what it belongs to when that is not obvious. The file's presence is checked, not assumed.
+ */
+export function ResourceRow({ resource, onPress, onEdit, context }: Props) {
   const c = useColors();
-  const missing = resource.kind === 'file' && !storedFileExists(resource.storedPath);
+  const availability = availabilityOf(
+    resource,
+    resource.kind === 'file' && storedFileExists(resource.storedPath),
+  );
+  const missing = availability === 'missing';
   const badge = resourceBadge(resource);
   // A picture shows itself (F6); one that cannot be decoded falls back to its badge.
   const [unreadable, setUnreadable] = useState(false);
@@ -23,10 +43,10 @@ export function ResourceRow({ resource, onPress, onEdit }: Props) {
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      style={({ pressed }) => [
-        styles.row,
-        { backgroundColor: c.surface, opacity: pressed ? opacity.pressed : 1 },
-      ]}>
+      accessibilityLabel={[resource.label, context, availabilityLabel(availability)]
+        .filter(Boolean)
+        .join(', ')}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.surfaceSunken }]}>
       {thumbnail ? (
         <Image
           source={{ uri: thumbnail }}
@@ -44,18 +64,24 @@ export function ResourceRow({ resource, onPress, onEdit }: Props) {
       )}
 
       <View style={styles.body}>
-        <Text style={[type.bodyStrong, { color: c.text }]} numberOfLines={1}>
+        <Text style={[type.heading, { color: c.text }]} numberOfLines={2}>
           {resource.label}
         </Text>
-        <Text style={[type.caption, { color: missing ? c.danger : c.textMuted }]} numberOfLines={1}>
-          {missing ? 'File missing from this phone' : resourceMeta(resource)}
+        {context ? (
+          <Text style={[type.caption, { color: c.textMuted }]} numberOfLines={1}>
+            {context}
+          </Text>
+        ) : null}
+        <Text style={[type.caption, { color: missing ? c.danger : c.textMuted }]} numberOfLines={2}>
+          {missing
+            ? availabilityLabel(availability)
+            : `${resourceMeta(resource)} · ${availabilityLabel(availability)}`}
         </Text>
       </View>
 
       {onEdit ? (
         <Pressable
           onPress={onEdit}
-          hitSlop={12}
           style={styles.edit}
           accessibilityRole="button"
           accessibilityLabel={`Edit ${resource.label}`}>
@@ -71,17 +97,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    borderRadius: radius.lg,
+    minHeight: 64,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
   },
   badge: {
     width: 44,
     height: 44,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   body: { flex: 1, gap: 2 },
-  edit: { paddingHorizontal: spacing.xs },
+  edit: {
+    width: touchTarget,
+    height: touchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
