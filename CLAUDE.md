@@ -13,6 +13,7 @@ what is still open, and the conventions to follow.
 | `docs/review-plan.md` | R1–R11 from the independent review (done) |
 | `docs/feedback-plan.md` | F1–F6, feedback after showing the app (done; 0.5.0) |
 | `docs/paid-plan.md` | F7, paid or not at a glance (done; 0.5.1, on the phone) |
+| `docs/fieldbook-plan.md` | The design review of 0.5.1: fixes A1–A7, the Fieldbook redesign B1–B11, additions C1–C5, decisions FB-1… (0.6.0) |
 | `docs/decision-log.md` | *Why* things were decided. Rationale only — no authoritative detail |
 | `docs/windows-handoff.md` | **Continuing on Windows** — read this instead of `dev-setup.md` there |
 | `docs/dev-setup.md` | Machine setup for the macOS machine it was started on |
@@ -63,8 +64,9 @@ Do not duplicate status anywhere else; update that one file.
 Work is tracked by **task ID**, not milestone: **C1–C5** (core — domain, schema, repositories,
 files, export; no device needed), **S1–S8** (surface — screens and anything needing a device, done
 on a personal Windows machine, see `docs/windows-handoff.md`), **U1–U8** (the owner's list after
-real use, 2026-10-10), **N1–N6** (features) and **R1–R11** (after an independent review,
-`docs/review-plan.md`). All in `docs/status.md`.
+real use, 2026-10-10), **N1–N6** (features), **R1–R11** (after an independent review,
+`docs/review-plan.md`) and **FB** — A1–A7, B1–B11, C1–C5 (the design review of 0.5.1,
+`docs/fieldbook-plan.md`). All in `docs/status.md`.
 
 The app is in daily use on the owner's phone as a signed release build, **holding a real trip**.
 **What is done and what is next lives only in `docs/status.md`**; where the last session stopped is
@@ -141,8 +143,10 @@ This collapses Places, Bookings and Timeline into three queries over one table, 
 
 ### 5.2 One `trip_items` table
 
-Plus `trips`, `trip_notes`, `resources`, `settings`, and since migration 002 `expenses` and
-`payments` (N5; an expense is not a TripItem, D25). No per-kind tables.
+Plus `trips`, `trip_notes`, `resources`, `settings`, since migration 002 `expenses` and
+`payments` (N5; an expense is not a TripItem, D25), and since migration 003 `travellers`,
+`trip_travellers`, `item_participants`, `lists`, `list_items`, `templates`, `template_uses`
+(Fieldbook C1–C5). No per-kind tables.
 Kind-specific extras live in a Zod-validated `details` JSON column.
 
 ### 5.3 Time: store wall-clock + IANA zone, derive the instant
@@ -259,12 +263,13 @@ wrong.
 - No premature abstraction. Two call sites is not a pattern.
 
 ### UI
-- The design source is `docs/design/` (Claude Design handoff). Where it contradicts the model,
+- The design source is the **Fieldbook** redesign, `docs/fieldbook-plan.md` Part B (0.6.0). The
+  earlier handoff in `docs/design/` is history; where either contradicts the model,
   `docs/decision-log.md` D22 says which wins.
 - **No hex values in components.** Colours are semantic roles read through `useColors()`
   (`src/ui/tokens.ts`); the only hex values live in `src/ui/theme/palette.ts`. To re-theme, change
   the palette and run `roles.test.ts`, which fails if any text role drops below its contrast bar.
-- Text styles come from `type.*` (Caprasimo headings, Figtree body). Android picks a face by font
+- Text styles come from `type.*` (Figtree only, since the Fieldbook redesign). Android picks a face by font
   family, so never set `fontWeight` on these.
 - Icons by meaning — `<Icon name="back" />` — so the icon set can be swapped in `Icon.tsx` alone.
   An item's icon comes from `ITEM_ICONS` there, typed against every kind and subkind (a new one

@@ -553,3 +553,27 @@ Display only — the totals still count `countsAsSpent`, untouched.
 **Rejected:** the amount inside the pill (too wide beside the time; it is on the item and in
 Expenses); a *show only to pay* filter (Expenses → Bookings is that list); a coloured card border
 (colour alone, and a second visual language next to the pills).
+
+## D30 — The Fieldbook review (0.6.0): fixes first, a calmer design, additions in one migration
+
+The owner's design review of 0.5.1, 2026-10-13 (plan and every decision: `docs/fieldbook-plan.md`,
+FB-1…FB-23). Run end to end at the owner's request, with the decisions listed for them to go
+through afterwards rather than asked one by one.
+
+**Correctness before looks (A1–A7).** Several findings were the app saying something untrue — a
+free booking listed as owed, an amount read as a different number, a failed read shown as *missing*,
+an export that could mix two moments. These shipped first, each with a test that fails on the old
+code.
+
+**One visual language, one face (B).** Caprasimo and the warm Organic palette gave way to Fieldbook:
+cool neutrals, one action blue, attention and success roles, Figtree only. The contrast test
+(`roles.test.ts`) still guards every text role. The model did not change; the screens did.
+
+**Everything new in one additive migration (C).** Travellers, lists and templates are seven new
+tables in migration 003, and a price per person lives in `details` with its total in the column the
+cost code already reads, so the phone migrates once and no existing row is touched (FB-6, FB-14).
+Anything that names a person or a booking reference stays out of a shared PDF unless switched on
+(FB-18).
+
+**Deferred:** passports (they need encryption at rest, which this app does not have), in-app
+feedback, and estimated prices on shopping items.

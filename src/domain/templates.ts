@@ -2,7 +2,7 @@
  * Trip templates (C5): reusable preparation — tasks, notes and lists — never an old trip with its
  * bookings. A template is one JSON document (FB-16), read and applied whole. Applying it copies
  * everything into the trip with new ids, ticks cleared, and a task's day moved to the new trip:
- * two days before the old departure becomes two days before the new one.
+ * two days before the old trip's first day becomes two days before the new one's.
  */
 
 import { z } from 'zod';

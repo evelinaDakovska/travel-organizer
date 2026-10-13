@@ -31,8 +31,10 @@ run this app. Workflow is `expo prebuild` then `npx expo run:android`.
 
 ## 2. Domain model
 
-Seven tables: `trips`, `trip_items`, `trip_notes`, `resources`, `settings` (migration 001), and
-`expenses`, `payments` (migration 002, N5). See §13 for expenses.
+Fourteen tables: `trips`, `trip_items`, `trip_notes`, `resources`, `settings` (migration 001);
+`expenses`, `payments` (migration 002, N5, see §13); `travellers`, `trip_travellers`,
+`item_participants`, `lists`, `list_items`, `templates`, `template_uses` (migration 003, Fieldbook
+Part C, see §14).
 
 ### Two independent axes on a TripItem
 
@@ -315,6 +317,22 @@ CREATE INDEX idx_payments_trip ON payments(trip_id);
 ALTER TABLE resources ADD COLUMN expense_id TEXT REFERENCES expenses(id) ON DELETE CASCADE;
 CREATE INDEX idx_resources_expense ON resources(expense_id);
 ```
+
+**Migration 003 (`src/db/migrations/003-fieldbook.ts`, Fieldbook C1–C5)** — purely additive: seven
+new tables and their indexes; no existing table is altered and no existing row is read or written.
+The SQL is in the file, commented; the design is `docs/fieldbook-plan.md` §4.1. Three choices to know:
+
+- `trip_travellers.traveller_id` and `item_participants.traveller_id` are `ON DELETE RESTRICT`: a
+  profile in use cannot be deleted, and the screen says where it is used (FB-11).
+- `lists.trip_id` NULL is a reusable list; a trip copy names its source in `source_list_id`, and
+  `template_uses.template_id` names its template — **provenance, not foreign keys** (FB-19), so a
+  per-trip backup can leave the source out and deleting a template leaves its trips alone.
+- `templates.content` is one Zod-validated JSON document (`domain/templates.ts`), applied whole and
+  never queried (FB-16).
+
+`migrate` also sets `PRAGMA busy_timeout = 5000` on every open, and switches to WAL only when the
+file is not already in WAL: a reopen after a font-scale change could meet the previous connection
+still closing and fail with *database is locked* (FB-20).
 
 **Receipts and the trip-document queries.** Because a receipt has a `trip_id`, every query that
 reads resources by trip must decide about it: `SELECT_RESOURCES_FOR_TRIP` (Trip documents)
@@ -784,10 +802,12 @@ unlike the gate.
 | `expo-document-picker` | Pick PDFs |
 | `expo-image-picker` | Screenshots — a large share of real travel documents |
 | `react-native-svg` + `lucide-react-native` | Icons, behind the name map in `src/ui/components/Icon.tsx`. Native — adding it needed a dev-client rebuild |
-| `@expo-google-fonts/caprasimo` + `@expo-google-fonts/figtree` | The design's typefaces, bundled so they load offline (decision log D19) |
+| `@expo-google-fonts/figtree` | The typeface, bundled so it loads offline (decision log D19). Caprasimo was removed with the Fieldbook redesign |
 | `fflate` | Builds and reads the backup zip in memory. Pure JS, so `domain/archive.ts` is tested in node exactly as it runs on the phone |
 | `expo-sharing` | Hands the backup zip to the Android share sheet (→ Drive). Native — adding it needed a prebuild and a dev-client rebuild |
 | `expo-intent-launcher` | Open a stored PDF in Android's viewer |
+| `expo-print` | The itinerary PDF (C4): HTML printed to A4 by the system WebView, offline. Native |
+| `expo-clipboard` | *Copy* on a booking reference (B4). Native |
 | `expo-linking` | URLs, Maps, Wallet |
 | `expo-notifications` | Local reminders |
 | `expo-localization` | Device timezone default |
@@ -960,6 +980,23 @@ every table's columns, and a test fails if a table in the schema is missing from
 exactly that while N5 was built. On import, expenses are written before resources, so a receipt's
 `expense_id` always has its row.
 
+**Format 3** (0.6.0) added the seven tables of migration 003, each defaulting to `[]`, so formats
+1 and 2 still import. Rows owned by a trip (`trip_travellers`, `item_participants`, a trip's lists
+and their items, `template_uses`) follow their trip exactly as items do. App-level rows
+(`travellers`, reusable lists and their items, `templates`) behave like settings: *merge* inserts
+only ids not already here, *replace* also updates rows with the same id (`upsertSharedRow`) —
+an upsert, never a delete, so RESTRICT cannot bite. The insert order keeps every foreign key valid
+at each step: travellers → trips → trip_travellers → items → participants → notes → expenses →
+payments → resources → lists → list_items → templates → template_uses (the ordered `TABLES` map
+in `repositories/backup.ts`). A per-trip export (`filterTablesForTrip`) carries the travellers the
+trip uses.
+
+**Export reads one snapshot (A4).** `readTables` runs inside `withExclusiveTransactionAsync`, whose
+second connection holds one WAL read snapshot for every table, so a write landing mid-export can
+not produce a backup with an item but not its trip. It only reads, so the change-listener caveat
+below does not apply. The archive is built in memory (`fflate`), so its size is bounded by the
+phone's memory; see the A4 note in `docs/status.md` for what was measured.
+
 `backup.json` carries every table verbatim plus a **file manifest** — one entry per distinct
 file listing every resource that references it, since two resources can share one file.
 
@@ -1086,3 +1123,61 @@ one transaction), `updateExpense` (never writes `paid_by` / `split`, which no fo
 shared with the item form) **keep their own text**: react-hook-form shows a field's default while
 its value is `undefined`, so rendering from the form value dropped a typed decimal point
 (`12.50` → 1250) and snapped a cleared currency back to its default (fixed 2026-10-11).
+
+---
+
+## 14. Lists, travellers, prices per person, the itinerary PDF, templates (Fieldbook C)
+
+The design and every decision behind it: `docs/fieldbook-plan.md` §4 and §5 (FB-1…). Schema:
+migration 003 (§3). Backup: format 3 (§12). What follows is where things live.
+
+### Travellers (C2)
+
+A profile is a name only (`domain/traveller.ts`, `repositories/travellers.ts`). A trip picks its
+people (`trip_travellers`, ordered); an item picks a subset (`item_participants`). None picked on
+an item means *not specified*, never "everyone". Links are by id, so a rename reads everywhere.
+`deleteTraveller` is refused while the profile is used, and `travellerUses` says where (RESTRICT
+is the backstop, the check is the message). The old free-text `trips.travellers` stays as it was;
+`legacyNames` lists the names a trip still holds that are not profiles, and each becomes one only
+by a tap (FB-12) — nothing is merged across trips. `createTripItem` / `updateTripItem` write an item
+and its participants in one `withTransactionAsync`; `insertTripItem` is the part for callers that
+already hold a transaction (`share.ts`).
+
+### A price per person (C3)
+
+Stored in the item's `details` JSON, not a column: `details.pricing = { mode: 'perPerson', lines:
+[{ label?, quantity, unitAmount }] }` in minor units (`domain/pricing.ts`). `price_amount` keeps the
+computed total, because every cost calculation already reads it. The item schema refuses a
+`pricing` whose total does not match `price_amount` (`pricingMatches`), a zero quantity, or a total
+past `Number.MAX_SAFE_INTEGER` (`pricingTotal` returns null). On a journey the pricing goes on the
+first leg only, like its price (`journey.ts`). `pricingText` shows the working.
+
+### Lists (C1)
+
+One `lists` table for reusable lists (`trip_id` NULL) and trip copies (FB-15); ticks (`done_at`)
+exist only on trip copies. `copyListToTrip` makes new rows with no ticks and names its source;
+`countTripCopies` is what warns before copying the same list twice. `addToPacking` turns a bought
+shopping item into an unticked packing item — buying is not packing, and nothing in a list ever
+becomes an expense. `PRESET_LISTS` are offered when there are no reusable lists. Progress
+(`listProgress`) counts rows, not quantities.
+
+### Templates (C5)
+
+`templates.content` is one `templateContentSchema` document of tasks, notes and lists. A task keeps
+`offsetDays` from the trip's first day plus an optional `HH:mm`; `taskStart` rebases it onto the
+new trip, read in the new trip's zone. `applyTemplate` writes everything in one transaction with new
+ids and records a `template_uses` row, which warns before the same template is applied twice.
+Bookings, prices and documents are never in a template.
+
+### The itinerary PDF (C4)
+
+`domain/itineraryHtml.ts` builds the whole document as an HTML string, pure and tested: a summary
+of stays and travel, every trip day (empty ones say so) plus days before and after, both ends of a
+journey in their own zones named by city, documents named and never linked. Every string typed by
+the owner goes through `escapeHtml`. `DEFAULT_PDF_OPTIONS` keeps names, references, tasks, lists and
+costs out until switched on (FB-18). Page numbers come from CSS `@page` margin boxes, which
+Android's WebView prints.
+
+`files/itineraryPdf.ts` prints it with `expo-print` (A4, 595 × 842 pt), copies the result to
+`cache/itinerary/<Trip>-itinerary-<date>-<time>.pdf`, deletes the printer's temporary file, and
+opens the share sheet. The cache is right for it: the PDF is a snapshot that can be made again.

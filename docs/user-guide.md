@@ -4,7 +4,7 @@ Everything about one trip that is already decided, booked or saved, on your phon
 without internet. Not a planner: it holds what you have, so that on the road you can see what
 happens next and open the right ticket in seconds.
 
-Written for version **0.3.1**. The examples follow a winter trip to Lapland: flights from Sofia
+Written for version **0.6.0**. The examples follow a winter trip to Lapland: flights from Sofia
 with a change in Munich, a night train, a hire car, a hotel and a few tours.
 
 **Contents**
@@ -13,10 +13,11 @@ with a change in Munich, a night train, a hire car, a hotel and a few tours.
 2. [Tickets and links](#2-tickets-and-links)
 3. [On the road](#3-on-the-road)
 4. [Expenses](#4-expenses)
-5. [Places and notes](#5-places-and-notes)
+5. [Places, notes and lists](#5-places-notes-and-lists)
 6. [Backup and restore](#6-backup-and-restore)
 7. [Checklist before you fly](#7-checklist-before-you-fly)
 8. [Good to know](#8-good-to-know)
+9. [Travellers, templates and the itinerary PDF](#9-travellers-templates-and-the-itinerary-pdf)
 
 ---
 
@@ -27,7 +28,7 @@ abroad, in a hurry, offline. Entering takes a form or two. Finding things later 
 
 ### Create the trip
 
-On **Trips**, tap **New trip** (top right).
+On **Your trips**, tap **New trip** (top right).
 
 | Field | What to put |
 |---|---|
@@ -36,53 +37,73 @@ On **Trips**, tap **New trip** (top right).
 | **Dates** | First and last day, picked as one range on the calendar. Required. |
 | **Main timezone** | Where you will mostly be: *Helsinki*. Search by city or country. Every time you enter is read in this zone **unless that time says otherwise** (see [time zones](#time-zones-per-leg)). |
 | **Number of people** | Optional. Handy when tickets are per person. |
-| **Travelling with** | Optional, comma separated. |
+| **Travelling with** | Optional, comma separated. For trips made before 0.6.0; the people on a trip are now chosen under **Travellers** (see [section 9](#travellers)). |
 | **Notes** | Optional. |
 
-**Trips** lists *Upcoming* and *Past* trips. While a trip is under way, the app opens straight into
-it.
+If you have saved a **template**, the app then offers one: pick it, or **Skip — a blank trip**
+(see [Templates](#templates)).
+
+**Your trips** shows the next trip as a large card with its route, then *Upcoming* and *Past*
+trips, then **Your data**: *Lists & templates*, *Travellers* and *Backup & restore*. While a trip
+is under way, the app opens straight into it.
 
 ### Add what is booked or planned
 
-Inside a trip, tap the round **+** at the bottom right (on Now, Timeline or Places). It opens
-**Add to trip**. The button shows what it adds: a plain **+** for an item, a receipt on Expenses
-(a new expense), a notebook on Notes (a new note).
+Inside a trip, tap **Add** at the top right (on the Overview or the Timeline). It opens **Add to
+this trip**: pick what it is — *Travel*, *Stay*, *Activity*, *Food*, *To do* or *Other*. On
+Places the same button says **Save a place**, on Expenses **Add an expense**, on Notes & lists
+**Add a note** or a list.
 
 Every item carries an **icon of what it is** — a plane, a train, a bed, a museum, a fork and knife,
-a ticked box for a task — so a list can be read without reading it. The icon follows the *Type*
-you pick (*Flight*, *Museum*…), or the kind (*Travel*, *Stay*…) when there is no type.
+a ticked box for a task — in a small tile whose shape tells the kinds apart. The icon follows the
+*Type* you pick (*Flight*, *Museum*…), or the kind when there is no type.
 
-1. **What is it**: *Travel*, *Stay*, *Activity*, *Food*, *To do* or *Other*. Then an optional
-   **Type** (flight, train, car, hotel, museum, tour…) that picks the icon.
+The form, top to bottom:
+
+1. **What is it** (tap to change it) and an optional **Type** (flight, train, car, hotel, museum,
+   tour…) that picks the icon.
 2. **Title**: what you will look for later, e.g. *Santa Claus Express*.
-3. **Status**:
-   - **Confirmed**: in your itinerary — booked, or simply decided (a walk, a visit with no
-     ticket). It shows on the Timeline and Now.
-   - **Idea**: saved to Places until you decide on it (see [Places](#5-places-and-notes)).
-   - **Cancelled**: kept for its documents, hidden from the Timeline.
-4. **When**: *Starts* and, for anything that lasts, *Ends* (*Departs* and *Arrives* for travel). A day is enough; add a time if you
-   know it. A new item opens on the trip's first day.
+3. **Commitment**:
+   - **In my itinerary** (the default): booked, or simply decided (a walk, a visit with no
+     ticket). It shows on the Timeline and the Overview.
+   - **Saved idea**: kept on Places until you decide on it (see [Places](#places)). *Save a
+     place* starts here.
+
+   Cancelling is not on the form; it is in the item's **More** menu.
+4. **When**: *Starts* and, for anything that lasts, *Ends* (*Departs* and *Arrives* for travel). A
+   day is enough; add a time if you know it. A new item opens on the trip's first day, or on the
+   day you were looking at on the Timeline.
 5. **Where**: *Place* and *Address*. Place names you have used before are suggested.
-6. **Booking**: **Confirmation** code, **Price** and **Currency**, **Paid** (*Not paid yet* /
-   *Paid*), **Refundable** (*Refundable* / *Not refundable*, optional).
+6. **Booking reference**, e.g. *ABC123*.
+7. **Who's going**, when the trip has travellers: tick who this is for. Nobody ticked means *not
+   said* — never "everyone".
+8. **Price & payment** (folded until you open it): **Total price**, or **Per person** — a line for
+   each rate, e.g. *2 × EUR 290.00 Adult* and *1 × EUR 60.00 Child*, with **Add a rate**; the total
+   is worked out for you and shown with its working. Then **Paid** (*Not paid yet* / *Paid*) and
+   **Refundable** (optional).
 
-   A confirmed item then carries a second pill next to *Confirmed* on Now, the Timeline, Places
-   and its own page: **To pay** (red, with a wallet) when it has a price and is not paid, **Paid**
-   (grey, with a tick) when it is marked paid — with or without a price. An item with no price
-   that is not marked paid shows nothing: a free walk owes nothing. Ideas and cancelled items
-   never show it. The legs of a journey share the first leg's pill, since the price sits there.
-7. **Notes**: anything worth remembering.
-8. **Reminder**: see [Reminders](#reminders).
+   A booking then carries a second pill on the Overview, the Timeline, Places and its own page:
+   **To pay** (red, with a wallet) when it has a price above zero and is not paid, **Paid** (grey,
+   with a tick) when it is marked paid. A free item (no price, or a price of 0) owes nothing and
+   shows nothing. Ideas and cancelled items never show it. The legs of a journey share the first
+   leg's pill, since the price sits there.
 
-Tap **Add**. Then attach the tickets (section 2).
+   Amounts are read exactly as typed: *12.50* and *12,50* are both twelve fifty. Something the
+   app cannot read for certain, such as *1.234*, is refused with a message rather than guessed.
+9. **Notes**: anything worth remembering.
+10. **Reminder** (folded): see [Reminders](#reminders).
+
+**Save** stays at the bottom of the screen; it says **Add** on a new item and **Save changes**
+when editing. Then attach the tickets (section 2).
 
 **A stay or a journey that ends on another day** gets two Timeline entries: *Check in · Hotel* on
 its first day and *Check out · Hotel* on its last; *Departs · Santa Claus Express* and
 *Arrives · Santa Claus Express* for a night train.
 
 **Tasks** (*To do*) are dated things to do, such as *Check in for the flight* or *Pack thermal
-layers*. They appear under **Open tasks** on Now until you tick **Mark as done**.
-A task may be dated before the trip starts; check-in opens a day early, and that is fine.
+layers*. They appear on the Overview — under **Get ready** before the trip, **To do** during it —
+until you tick them. Ticking one shows **Undo** for 8 seconds. A task may be dated before the trip
+starts; check-in opens a day early, and that is fine. Tasks are not on the Timeline.
 
 ### Flights with a change, and the way back
 
@@ -95,8 +116,8 @@ For **Travel**, pick how the journey goes:
 
 Each leg has **From**, **To**, **Departs**, **Arrives**, **Number** (e.g. *OS 796*) and **Seat**.
 **Each leg is saved as its own item, with its own times**, so the Timeline shows every flight and
-Now counts down to the right one. Put the price on the first leg only; the others stay without
-one. An item's detail page lists the **Rest of this journey**.
+the Overview counts down to the right one. The price goes on the first leg only; the others stay
+without one. An item's detail page lists the **Rest of this journey**.
 
 ### Time zones per leg
 
@@ -141,9 +162,9 @@ under *When*:
 One tap fixes it: the time you typed stays, only its zone changes. Opening the item in **Edit**
 shows the same fill, and **Save** fixes it too.
 
-On Now and the detail page, a time in another zone carries a label such as *09:20 · Sofia*; a
-time with no label is in the trip's zone, as the trip card says: *Times shown in Helsinki time
-unless an item says otherwise.* A **journey's** detail page names the zone at **both** ends
+On the Overview and the detail page, a time in another zone carries a label such as *09:20 ·
+Sofia time*; a
+time with no label is in the trip's zone. A **journey's** detail page names the zone at **both** ends
 always, even one that follows the trip: *Departs … 09:20 · Sofia time*, *Arrives … 12:15 ·
 Helsinki time*. In its form the ends are called *Departs* and *Arrives* (*Pick up* and *Drop off*
 for a car).
@@ -169,11 +190,12 @@ Tapping a reminder opens its item.
 
 ### Cancelling and deleting
 
-A **confirmed** item cannot be deleted straight away: its tickets may be the only copies. Use
-**Mark as cancelled** first. It leaves the Timeline and Now, keeps its documents, and stays
-searchable. A cancelled item offers **Restore** or **Delete**. An idea can be deleted at once.
+On an item's page, **Edit** is at the top right, and **More** beside it holds **Mark as
+cancelled** and **Delete** (and **Add to itinerary** on an idea). A booking cannot be deleted straight away: its tickets may be the only copies. **Mark as cancelled**
+first. It leaves the Timeline and the Overview, keeps its documents, and stays searchable. A
+cancelled item offers **Restore to the itinerary** or **Delete**. An idea can be deleted at once.
 
-Deleting a trip (**Edit** on the trip → **Delete trip**) says exactly what goes with it, e.g.
+Deleting a trip (Overview → **More** → **Edit trip** → **Delete trip**) says exactly what goes with it, e.g.
 *This also removes 24 items, 2 expenses and 18 saved files.* It cannot be undone.
 
 ---
@@ -184,7 +206,7 @@ The PDF is the point of the app. Everything else exists to find it quickly.
 
 ### Attach to an item
 
-On an item's detail page, **Tickets & links**:
+On an item's detail page, the tickets come first, under **Tickets & links**:
 
 - **+ File**: any file, several at once (a ticket per person).
 - **+ Photo**: from the gallery. Screenshots of boarding passes work well.
@@ -196,14 +218,16 @@ a link *LINK* or *MAP*. Tap an attachment to open it; tap its pencil to **rename
 is (*Document*, *Ticket*, *Confirmation*), or **Remove attachment**.
 
 **Mark the ticket as *Ticket*.** Then the item's main button opens it straight away — *Open
-Boarding pass SOF-HEL* — on Now, the Timeline and the detail page, and everything else sits on a
+Boarding pass SOF-HEL* — on the Overview, the Timeline and the detail page, and everything else sits on a
 second button (*Open Flight booking*, or *Other documents (3)*). Several tickets (a boarding pass
 each) open a list of just the tickets. A shared or picked file starts as *Document*.
 
 ### Trip documents
 
-At the bottom of **Now**, **Trip documents** holds what belongs to the whole trip: insurance, a
-guide, a train ticket for everyone. Same **+ File / + Photo / + Link** buttons.
+On the Overview, the **Trip documents** row opens every document of the trip in one list:
+tickets first, then each item's files, then **For the whole trip** — insurance, a guide, a train
+ticket for everyone, with the same **+ File / + Photo / + Link** buttons. Each says whether it is
+on this phone, a link, or missing.
 
 **One file in two places:** to show a trip document on an item too, open it (pencil) and tap
 **Also attach to an item**. It is the **same** file, not a copy. Attaching the same PDF twice
@@ -232,34 +256,37 @@ missing from this phone** instead of opening nothing. Attach it again.
 
 ## 3. On the road
 
-### Now
+### Overview
 
-The trip opens on **Now**. At the top, always in view as the list scrolls, a band says where and
-when — *Finland · 20–24 Nov 2026* — and *In 40 days*, *Day 2 of 5* or *Ended*, the zone times are
-shown in, and who is travelling. Below it:
+The trip opens on its **Overview**. The top line says where and when, and **Full itinerary** opens
+the Timeline. Below it, one large panel shows the thing that matters most:
 
-- **Happening now**: what is on right now — the tour you are five minutes late for, the train you
-  are on — with its ticket one tap away. It stays until **15 minutes after its end** (*Ended
-  16:00*), or **an hour after its start** if it has no end. Hotel stays and anything longer than a
-  day are not shown here; during a stay its *Check out* is in Up next.
-- **Today, no fixed time**: plans for today with only a date, such as *Santa Claus Village*, all
-  day long — in the place's own time zone. **Maybe today** lists ideas dated today, apart.
-- **Up next**: what happens next, with the time and route, and a button to open its ticket in one
-  tap (see *Mark the ticket as Ticket*). It follows the items, not the trip's dates, so a flight the day before the
-  trip shows up too. Tasks are not here; they are under Open tasks.
-- **Open tasks**: tick them off (**+ Add** adds one). **Show done** lists the ones already ticked;
-  tap a circle there to un-tick it.
-- **Trip documents**, and the trip's own **notes** if it has any.
+- **Before the trip**: **Your first departure**, with the countdown, its route and the zone, and
+  its ticket one tap away. Then **Get ready** (your tasks), **Coming up**, **Stay & transport**
+  (where you sleep and the car you hire), your **Lists** with how far along each is (*Packed 3 of
+  12*), **Travellers** and **Trip documents**.
+- **During the trip**: **Happening now** — the tour you are five minutes late for, the train you
+  are on — or **Next**, with its ticket one tap away. A happening thing stays until **15 minutes
+  after its end**, or **an hour after its start** if it has no end. Then **Today, no fixed time**
+  (plans for today with only a date), **Maybe today** (ideas dated today), **Also on now**,
+  **After that**, **Your base tonight** (the stay you checked into and have not yet left) and **To
+  do**.
+
+It follows the items, not the trip's dates, so a flight the day before the trip shows up too.
+
+**More** (top right) holds **Edit trip**, **Share as PDF**, **Use a template** and **Save as
+template**.
 
 ### Timeline
 
-Every dated item, **day by day**, in time order. Each day is the **local** day where it happens:
-a 23:30 dinner stays on its own evening. Tap an entry for its detail page. Cancelled items are
-not shown.
+Every dated plan, **day by day**, in time order. Each day is the **local** day where it happens: a
+23:30 dinner stays on its own evening. Tap an entry for its detail page. Cancelled items and tasks
+are not shown.
 
-**During the trip** it opens on **today** (marked *Today*), or the next day with something on
-it; earlier days are still above. **Today** at the top brings you back. It never jumps on its
-own while you read another day. Before and after the trip it starts at the beginning.
+Across the top, a **rail** of stops: **All days**, then *Before* when something is dated before the
+trip, **every day of the trip** (*Day 3 · Sun 22*), *After*, and *No date* when a plan has no date
+yet. Tap a day to see just that day; a day with nothing on it says so and offers **Add a plan** for
+that date. **During the trip** it opens on today, and **Today** brings you back.
 
 ### Search
 
@@ -268,22 +295,24 @@ confirmation codes and cancelled items. Results are split into *Items* and *Note
 
 ### Offline
 
-Everything is on the phone. In airplane mode the Timeline, Now, search, notes, expenses and
+Everything is on the phone. In airplane mode the Timeline, the Overview, search, notes, lists,
+expenses and
 **every attached file** work as usual. Files open in your phone's viewer (PDFs in the PDF viewer,
 photos in Photos). Links need internet, since they open web pages.
 
 ### Item details
 
-Shows the times (with zones where they differ), the route, number and seat, confirmation code,
-price and whether it is paid or refundable, the reminder, **Open in Maps** for an address, the
-tickets, and the status actions.
+The ticket first, then both ends of a journey each with its zone, the route, number and seat, the
+**Booking reference** with **Copy** (paste it at the desk or into the airline's app), who is going,
+the price — with its working when it is per person — and whether it is paid or refundable, the
+reminder, and **Open in Maps** for an address. **More** holds the rest.
 
 ---
 
 ## 4. Expenses
 
-The **Expenses** tab (between Places and Notes) answers *what does this trip cost?* At the top, the
-**trip total** per currency, split into **Bookings** and **Spending**. Below, two views:
+The **Expenses** tab answers *what does this trip cost?* At the top, the **trip total** per
+currency. Below, two views, **Bookings** and **Spending**:
 
 ### Spending
 
@@ -293,7 +322,7 @@ What you pay for **during** the trip: a taxi, groceries, a souvenir.
 the booking and mark it **Paid**. Its price is already in the trip total, so adding it here as well
 would count it twice. The form says so under the amount.
 
-On the Expenses tab, **+** opens **New expense**:
+On the Expenses tab, **Add an expense** opens **New expense**:
 
 | Field | |
 |---|---|
@@ -319,8 +348,8 @@ using the app*).
 
 ### Bookings
 
-The prices on the trip's items: what is **Paid** and what is still **To pay**, item by item. It
-counts confirmed items, plus cancelled ones marked *Not refundable* (money you will not get back).
+The prices on the trip's items: what is still to pay and what is **Paid**, item by item. A booking
+priced at 0 is free and not listed. It counts confirmed items, plus cancelled ones marked *Not refundable* (money you will not get back).
 Ideas are not counted.
 
 A cancelled booking you never marked either way is **not counted** — the total is what the trip is
@@ -336,23 +365,48 @@ one forint taxi shows two totals, one per currency.
 
 ---
 
-## 5. Places and notes
+## 5. Places, notes and lists
 
 ### Places
 
 Things you might do, not decided yet: a café someone recommended, a viewpoint, a museum. Add them
-with **Status: Idea** and **How much do you want it** (*Must*, *Want*, *Maybe*).
+with **Save a place**, and say **How much do you want it** (*Must*, *Want*, *Maybe*).
 
-**Places** lists **Ideas**, sorted by how much you want them, and then **In your itinerary**:
-confirmed items that have an address, so the whole map of the trip is in one list. When you decide
+**Places** has two views: **Saved** — your ideas, grouped *Must*, *Want*, *Maybe* — and **In
+itinerary**: plans that have an address, so the whole map of the trip is in one list. When you decide
 on an idea, open it and tap **Add to itinerary**: give it a date (a day is enough) and it becomes
 a confirmed item.
 Nothing is copied; it is the same item.
 
 ### Notes
 
-Free text per trip: a plan, opening hours, the cabin's key code. The **+** on the Notes tab, a
-title and the text. **Pin** keeps a note at the top. Notes are searchable.
+The **Notes & lists** tab has three views: **Notes**, **Packing** and **Shopping**.
+
+Notes are free text per trip: a plan, opening hours, the cabin's key code. **Add a note**, a title
+and the text. **Pin** keeps a note at the top. Each shows its title and the first two lines.
+Notes are searchable.
+
+### Packing and shopping lists
+
+Keep your lists once, under **Your trips → Lists & templates**, and copy them into each trip. The
+first time, **Add the starting lists** gives you *General packing*, *Winter layers*, *Child
+essentials* and *Toiletries to buy* to edit.
+
+In a trip, **Packing** or **Shopping** → **Add a packing list** (or shopping list) copies one of
+yours, or starts an empty one. The copy belongs to the trip: ticking it, adding to it or removing
+from it never changes your kept list, and the kept list's later changes never reach the trip.
+Copying the same list twice asks first.
+
+Each line has **What**, and optionally **How many**, a **Unit**, a **Group** (*Clothes*,
+*Toiletries*…), a **Note**, and who it is **For**. Tap the box to tick it — packed, or bought —
+and **Undo** shows for 8 seconds. Ticked lines fold away under *Packed (8)* or *Bought (3)*. *Packed 8 of 12* counts
+lines, not pieces.
+
+**Bought is not packed.** On a shopping line, **Add to packing list** puts it on the trip's packing
+list, unticked. Nothing in a list ever becomes an expense.
+
+A trip's list can be kept for next time with **More → Keep for next trips**; one that came from a
+kept list can also **Update** that list.
 
 ---
 
@@ -363,8 +417,8 @@ copy anywhere else, so it is the one habit that matters.
 
 ### Make one
 
-On **Trips**, tap **Backup** (top right) → **Export everything**. The app builds one zip with
-every trip, item, note, expense and saved file, and opens the share sheet. Pick **Drive** (or
+On **Your trips**, under *Your data*, tap **Backup & restore** → **Export everything**. The app
+builds one zip with every trip, item, note, expense, traveller, list, template and saved file, and opens the share sheet. Pick **Drive** (or
 anywhere off the phone). The screen then says what went in: *Archive created with 2 trips and
 30 saved files.* The app cannot see where the share sheet put the zip — or whether it was closed
 without saving — so check that the file arrived in Drive. Each zip is named with the date and
@@ -382,14 +436,15 @@ minute it was made, `travel-organizer-backup-2026-10-13-0942.zip`, so the newest
 
 Then **Import a backup** and pick the zip (from Drive, Downloads…). The app says what it will do
 before doing anything, e.g. *Adds 1 trip, 24 items, 2 notes, 2 expenses and 18 saved files. 1
-trip already here is left as it is.* Tap **Import**. It runs all at once or not at all: if
+trip already here is left as it is.* Your travellers, kept lists and templates follow the same
+choice: *Keep mine* adds only the ones this phone does not have. Tap **Import**. It runs all at once or not at all: if
 anything fails, nothing on the phone has changed.
 
 Backups made by older versions of the app still restore.
 
 ### A new phone, or after a reinstall
 
-Install the app, open it, **Restore from a backup** on the empty Trips screen, pick the latest zip
+Install the app, open it, **Restore from a backup** on the empty *Your trips* screen, pick the latest zip
 from Drive. Allow notifications when asked, so reminders come back.
 
 **Updating the app keeps your data.** It is installed over the old version. Uninstalling deletes
@@ -408,10 +463,12 @@ At home, on wifi, a day or two before:
 3. **Tickets attached**: open each one once, and mark each as *Ticket* so its card opens it in one tap.
 4. **Airplane mode test**: switch it on, open the trip, open every ticket, switch it off.
 5. **Reminders** on where you want them; notifications allowed.
-6. **Backup**: Export everything → Drive.
-7. Glance at **Expenses → Bookings**: anything still *To pay*?
+6. **Packing list** copied into the trip, and ticked as you pack.
+7. **Backup**: Export everything → Drive.
+8. Glance at **Expenses → Bookings**: anything still *To pay*?
+9. If someone at home wants the plan: Overview → **More** → **Share as PDF**.
 
-On the road: Now shows what is happening and what is next; a ticket marked *Ticket* is one tap
+On the road: the Overview shows what is happening and what is next; a ticket marked *Ticket* is one tap
 away on its card.
 Photograph receipts as you pay.
 
@@ -423,6 +480,46 @@ Photograph receipts as you pay.
 - **Times never shift** when the phone changes zone. A flight entered as 06:10 reads 06:10 in
   Sofia, Munich or Helsinki.
 - **Items may be dated outside the trip** (check-in the day before, a restaurant booked weeks
-  earlier). They still show on the Timeline and Now.
+  earlier). They still show on the Timeline (under *Before* or *After*) and on the Overview.
 - **Deleted files are cleaned up** when the app next starts, not at the moment of deleting.
 - **A price is stored exactly**: *412.37* stays 412.37, never rounded.
+
+---
+
+## 9. Travellers, templates and the itinerary PDF
+
+### Travellers
+
+The people you travel with are kept once, under **Your trips → Travellers**: a name, nothing else.
+On a trip, Overview → **Travellers** picks who is going, or adds someone new. Then each booking can
+say **Who's going** — tick a subset when not everyone goes. Renaming someone renames them
+everywhere. Someone still on a trip or a booking cannot be deleted; the app says where they are
+used.
+
+A trip made before 0.6.0 keeps the names typed in its *Travelling with* field. Its Travellers page
+lists them, and each becomes a profile only when you tap it (**Make a traveller**, or **Use “Evelina”**
+when a traveller of that name already exists). Nothing is matched up across trips by itself.
+
+### Templates
+
+A template is your usual preparation — tasks, notes and lists — never bookings, prices or tickets.
+On a trip you have prepared well: Overview → **More** → **Save as template**, choose what goes in,
+name it. A task keeps its distance from the trip's first day: *2 days before* stays two days before
+on the next trip, at the same time.
+
+Use one when creating a trip (the app offers it), or later from Overview → **More** → **Use a
+template**. Everything is copied into the trip, lists unticked; later changes to the template never
+reach the trip, nor the other way round. Using the same template on a trip again asks first.
+Templates are listed, renamed and deleted under **Lists & templates**.
+
+### Share the itinerary as a PDF
+
+Overview → **More** → **Share as PDF** makes a printable plan for someone at home, or for paper:
+stays and travel at a glance, then every day of the trip with its times, places and zones, both
+ends of each journey. Tickets are **named, not attached**. It is made on the phone, offline, and
+opens the share sheet (Drive, Messages, Print…).
+
+Choose what goes in. **Notes on each plan** is on; **Booking references**, **Who is going**,
+**To do**, **Packing and shopping lists** and **Booking costs** are off until you switch them on —
+anyone holding the PDF can read whatever is in it. The PDF is a snapshot: make a new one after
+changes.

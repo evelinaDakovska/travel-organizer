@@ -298,3 +298,6 @@ Listed for the owner to go through. Each says what was chosen and why.
 | FB-18 | Itinerary PDF through `expo-print` (on the phone, offline); names and references off by default | The review: explicit choices for anything personal |
 | FB-19 | `source_list_id` and `template_uses.template_id` are provenance, not foreign keys | A per-trip backup leaves the reusable list out; a foreign key would refuse the import |
 | FB-20 | Changing the phone's text size could restart the app's database connection while the old one held a lock; opening now waits instead of failing | Found on the emulator during B |
+| FB-21 | Undo after ticking a task or list item stays for 8 seconds (5 was the first choice) | Reading the toast and reaching for it took longer than 5 s in testing |
+| FB-22 | The PDF: notes on by default; tasks only in a *To do* section at the end, never inside the days; documents named, never attached; made in the cache and shared, not kept | Notes are what a printed plan is for; tasks are preparation, not the itinerary; attaching tickets would put the most private files in a document meant to be passed around; a snapshot can be made again |
+| FB-23 | *Share as PDF*, *Use a template* and *Save as template* sit with *Edit trip* in the Overview's *More* menu | Occasional actions on the whole trip; the header keeps search and add |
