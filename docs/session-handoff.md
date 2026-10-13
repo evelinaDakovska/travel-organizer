@@ -380,9 +380,21 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ---
 
-## 11. Where the last session stopped (2026-10-12) — read this first
+## 11. Where the last session stopped (2026-10-13) — read this first
 
-### 11.00 Latest (2026-10-12) — read this first
+### 11.000 Latest (2026-10-13) — read this first
+
+- **0.6.0 is built and rehearsed, not on the phone.** The owner's design review of 0.5.1 —
+  `docs/fieldbook-plan.md`: fixes A1–A7, the Fieldbook redesign B1–B11, additions C1–C5 (lists,
+  travellers, a price per person, the itinerary PDF, templates) in one additive migration 003 and
+  backup format 3. Run end to end without stopping, at the owner's request; **every decision taken
+  is FB-1…FB-23 in that plan, for the owner to go through.** Review and QA: status.md, FB section.
+- APK: `%USERPROFILE%\.travel-organizer\travel-organizer-0.6.0.apk`. To install: a fresh Drive
+  backup first, then `install -r` as always — never uninstall.
+- The emulator holds release 0.6.0 with the sample data (rehearsed over 0.5.1). Deferred, with
+  reasons in the plan §4.8: passports, in-app feedback, estimated shopping prices.
+
+### 11.00 Earlier (2026-10-12)
 
 - **0.5.1 is on the phone (2026-10-12)** — installed with `install -r` over 0.3.0 after a fresh Drive
   backup; data kept, no crash, the owner checked their trip: fine. It carries N6, R1–R11, F1–F6 and

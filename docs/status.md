@@ -555,6 +555,35 @@ owner's request; the decisions (FB-1…) are listed there for the owner to go th
 | **C3** | A price per person: lines of quantity × price, the total kept in step | ✅ |
 | **C4** | Itinerary PDF: every day, both ends of each journey, documents named; names, references, tasks, lists and costs only when chosen | ✅ |
 | **C5** | Templates: save a trip's preparation, apply it to a new trip with dates rebased | ✅ |
+| **QA** | Full code review and QA of 0.6.0; release built and rehearsed over 0.5.1 | ✅ |
+| **Phone** | 0.6.0 on the owner's phone | ⬜ — the owner's call |
+
+**Code review, what it found and fixed** (each committed, with a test where the logic allows):
+a template saved from a trip with long notes, or a task over a year from the start, could never be
+used (its schema had limits the trip's rows do not); a double tap could save twice or pop two
+screens (`useBusy`); *Use a template* could add a template twice on a double tap; a failed
+*Save as template* failed silently; a non-number quantity gave Zod's raw message; five controls were
+not announced as buttons. Left as it is, by design or for later: the older forms (item, note,
+expense) show no message when a database write fails — rare on a local database; noted, not
+changed.
+
+**QA, what it found and fixed — there since S5:** `File.bytes()` returns a whole file as one array
+on the app's Java heap. One 100 MB attachment made every export fail, and a 150 MB backup could be
+made but **not restored**. Files are now read in 4 MB chunks, and a picked backup is copied to the
+cache first (a `content://` handle lost its descriptor part-way). Measured on the emulator (4 GB
+RAM, 192 MB heap limit): a 380 MB backup exports; a backup holding one 150 MB file exports and
+restores.
+
+**The rehearsal (final APK, `%USERPROFILE%\.travel-organizer\travel-organizer-0.6.0.apk`, same key
+as 0.5.1):** fresh 0.5.1 → sample backup → a task ticked, *Check in for the flight home* set to *No
+reminder* → 12 alarms recorded, export *2 trips and 28 saved files* → 0.6.0 with `install -r`.
+First-install time unchanged, no crash, migration 003 ran, the same 12 alarms at the same times,
+the task still done, the reminder still *Off*, the timeline's times identical, export *Archive
+created with 2 trips and 28 saved files*. In airplane mode a boarding pass opened and the
+itinerary PDF was made and shared. On the release build: a PDF shared from Files cold-started the
+app and saved as a new item; old typed names became travellers by tap, and on the second trip were
+offered as *Use "Evelina"*; a profile in use could not be deleted; a preset list copied into a trip
+and ticked, with Undo.
 
 ---
 
