@@ -28,6 +28,9 @@ type Options = {
  */
 export function asyncDatabase(db: Database.Database, options: Options = {}): SQLiteDatabase {
   const fake = {
+    async execAsync(sql: string) {
+      db.exec(sql);
+    },
     async runAsync(sql: string, params?: Params) {
       const { changes, lastInsertRowid } = db.prepare(sql).run(...bindings(params));
       return { changes, lastInsertRowId: Number(lastInsertRowid) };
