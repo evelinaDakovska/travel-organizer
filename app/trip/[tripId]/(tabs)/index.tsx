@@ -15,7 +15,7 @@ import type { TimelineEntry } from '../../../../src/domain/timeline';
 import type { TripItem } from '../../../../src/domain/tripItem';
 import { groupResourcesByItem, type Resource } from '../../../../src/domain/resource';
 import { ResourceList } from '../../../../src/features/resources/ResourceList';
-import { EntryCard } from '../../../../src/features/timeline/EntryCard';
+import { TimelineRow } from '../../../../src/features/timeline/TimelineRow';
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { TaskRow } from '../../../../src/features/trips/TaskRow';
 import { useTripId } from '../../../../src/features/trips/TripContext';
@@ -266,7 +266,7 @@ function NowSection({
     <View style={styles.section}>
       <SectionLabel>{label}</SectionLabel>
       {entries.map((entry) => (
-        <EntryCard
+        <TimelineRow
           key={entry.key}
           entry={entry}
           resources={byItem.get(entry.item.id) ?? []}

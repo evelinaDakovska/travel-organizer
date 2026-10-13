@@ -6,14 +6,15 @@ import { queryView } from '../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import { NOTE_TABLES } from '../../../src/repositories/notes';
 import { searchTrip, TRIP_ITEM_TABLES } from '../../../src/repositories/tripItems';
-import { Card } from '../../../src/ui/components/Card';
 import { Input } from '../../../src/ui/components/Field';
 import { ItemRow } from '../../../src/ui/components/ItemRow';
+import { Rows } from '../../../src/ui/components/ListRow';
+import { NoteListRow } from '../../../src/features/notes/NoteListRow';
 import { Screen } from '../../../src/ui/components/Screen';
 import { LoadFailed } from '../../../src/ui/components/QueryStates';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../../../src/ui/components/SectionLabel';
-import { spacing, type, useColors } from '../../../src/ui/tokens';
+import { gutter, spacing, type, useColors } from '../../../src/ui/tokens';
 
 const SEARCH_TABLES = [...TRIP_ITEM_TABLES, ...NOTE_TABLES];
 
@@ -73,28 +74,28 @@ export default function TripSearch() {
         {results && results.items.length > 0 ? (
           <View style={styles.section}>
             <SectionLabel>Items</SectionLabel>
-            {results.items.map((item) => (
-              <ItemRow key={item.id} item={item} onPress={() => router.push(`/item/${item.id}`)} />
-            ))}
+            <Rows>
+              {results.items.map((item) => (
+                <ItemRow key={item.id} item={item} onPress={() => router.push(`/item/${item.id}`)} />
+              ))}
+            </Rows>
           </View>
         ) : null}
 
         {results && results.notes.length > 0 ? (
           <View style={styles.section}>
             <SectionLabel>Notes</SectionLabel>
-            {results.notes.map((note) => (
-              <Card
-                key={note.id}
-                accessibilityLabel={note.title}
-                onPress={() => router.push({ pathname: '/note/[noteId]', params: { noteId: note.id } })}>
-                <Text style={[type.heading, { color: c.text }]}>{note.title}</Text>
-                {note.body ? (
-                  <Text style={[type.body, { color: c.textMuted }]} numberOfLines={3}>
-                    {note.body}
-                  </Text>
-                ) : null}
-              </Card>
-            ))}
+            <Rows>
+              {results.notes.map((note) => (
+                <NoteListRow
+                  key={note.id}
+                  note={note}
+                  onPress={() =>
+                    router.push({ pathname: '/note/[noteId]', params: { noteId: note.id } })
+                  }
+                />
+              ))}
+            </Rows>
           </View>
         ) : null}
       </ScrollView>
@@ -103,7 +104,12 @@ export default function TripSearch() {
 }
 
 const styles = StyleSheet.create({
-  box: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
-  content: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.xl, paddingBottom: spacing.xxxl },
-  section: { gap: spacing.md },
+  box: { paddingHorizontal: gutter.normal, paddingBottom: spacing.sm },
+  content: {
+    paddingHorizontal: gutter.normal,
+    paddingTop: spacing.sm,
+    gap: spacing.xl,
+    paddingBottom: spacing.xxxl,
+  },
+  section: { gap: spacing.xs },
 });

@@ -1,14 +1,24 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useRef } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { paymentStatuses } from '../../../../src/domain/bookingCosts';
-import { formatDateRange, formatShortDate } from '../../../../src/domain/format';
+import {
+  dayStops,
+  daysForStop,
+  defaultStopKey,
+  resolveStopKey,
+  stopDescription,
+  stopKey,
+  stopLabels,
+  tripDates,
+} from '../../../../src/domain/dayRail';
+import { formatDateRange, formatDayHeading } from '../../../../src/domain/format';
 import { undatedConfirmed } from '../../../../src/domain/itinerary';
 import { groupResourcesByItem } from '../../../../src/domain/resource';
-import { buildTimeline, landingDay } from '../../../../src/domain/timeline';
+import { buildTimeline } from '../../../../src/domain/timeline';
 import { deviceToday } from '../../../../src/domain/trip';
-import { EntryCard } from '../../../../src/features/timeline/EntryCard';
+import { TimelineRow } from '../../../../src/features/timeline/TimelineRow';
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { useTripId } from '../../../../src/features/trips/TripContext';
 import { queryView } from '../../../../src/hooks/queryView';
@@ -20,13 +30,20 @@ import {
 } from '../../../../src/repositories/resources';
 import { listTripItems, TRIP_ITEM_TABLES } from '../../../../src/repositories/tripItems';
 import { getTrip, TRIP_TABLES } from '../../../../src/repositories/trips';
+import { Button } from '../../../../src/ui/components/Button';
+import { DateRail } from '../../../../src/ui/components/DateRail';
+import { HeaderAction } from '../../../../src/ui/components/HeaderAction';
 import { ItemRow } from '../../../../src/ui/components/ItemRow';
+import { Rows } from '../../../../src/ui/components/ListRow';
 import { LoadFailed, QueryScreen, StaleNotice } from '../../../../src/ui/components/QueryStates';
 import { Screen } from '../../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../../../../src/ui/components/SectionLabel';
 import { Tag } from '../../../../src/ui/components/Tag';
-import { opacity, radius, spacing, type, useColors } from '../../../../src/ui/tokens';
+import { gutter, radius, spacing, type, useColors } from '../../../../src/ui/tokens';
+
+/** Longer than this, the rail also offers a calendar to jump to a day (B3). */
+const RAIL_CALENDAR_AFTER_DAYS = 7;
 
 export default function TimelineScreen() {
   const c = useColors();
@@ -60,24 +77,9 @@ export default function TimelineScreen() {
   // Paid or not (F7), a journey's legs sharing the state of the one that holds the price.
   const payments = useMemo(() => paymentStatuses(items ?? []), [items]);
 
-  // During the trip the list opens on today (R7) — once, when that day is first laid out, never
-  // again on a data update, so an edit while reading another day does not move the list.
   const today = deviceToday(useNow());
-  const landing = trip ? landingDay(days.map((day) => day.day), today, trip) : null;
-  const scroll = useRef<ScrollView>(null);
-  const dayTops = useRef(new Map<string, number>());
-  const landed = useRef(false);
-  const scrollToDay = (day: string, animated: boolean) => {
-    const top = dayTops.current.get(day);
-    if (top !== undefined) scroll.current?.scrollTo({ y: Math.max(0, top - spacing.sm), animated });
-  };
-  const onDayLayout = (day: string, top: number) => {
-    dayTops.current.set(day, top);
-    if (!landed.current && day === landing) {
-      landed.current = true;
-      scrollToDay(day, false);
-    }
-  };
+  // Only a tap changes the day shown: a refresh or an edit elsewhere never moves the reader (B3).
+  const [chosen, setChosen] = useState<string | null>(null);
 
   const tripView = queryView(tripQuery);
   if (tripView !== 'ready' || !trip) {
@@ -92,90 +94,140 @@ export default function TimelineScreen() {
     );
   }
   const itemsFailed = queryView(itemsQuery) === 'failed';
+  const itemsLoading = queryView(itemsQuery) === 'loading';
+
+  const stops = dayStops(
+    trip,
+    days.map((day) => day.day),
+    undated.length > 0,
+  );
+  const selectedKey = resolveStopKey(stops, chosen, defaultStopKey(trip, today));
+  const selected = stops.find((stop) => stopKey(stop) === selectedKey)!;
+  const shownDays = daysForStop(selected, days, trip);
+  const duringTrip = trip.startDate <= today && today <= trip.endDate;
+  const dayNumber = new Map(
+    stops.flatMap((stop) => (stop.kind === 'day' ? [[stop.date, stop.number] as const] : [])),
+  );
 
   const open = (itemId: string) => router.push(`/item/${itemId}`);
+  const addPlan = (date?: string) =>
+    router.push({ pathname: '/item/new', params: { tripId, ...(date ? { date } : {}) } });
 
   return (
     <Screen>
       <ScreenHeader
         title="Timeline"
         subtitle={`${trip.name} · ${formatDateRange(trip.startDate, trip.endDate)}`}
+        leading={false}
         action={
           <View style={styles.headerActions}>
-            {landing ? (
-              <Pressable
-                onPress={() => scrollToDay(landing, true)}
-                hitSlop={12}
-                accessibilityRole="button"
-                accessibilityLabel="Go to today"
-                style={({ pressed }) => ({ opacity: pressed ? opacity.pressed : 1 })}>
-                <Text style={[type.bodyStrong, { color: c.accentText }]}>Today</Text>
-              </Pressable>
+            {duringTrip && selectedKey !== today ? (
+              <HeaderAction label="Today" onPress={() => setChosen(today)} />
             ) : null}
             <SearchButton tripId={tripId} />
+            <HeaderAction
+              icon="add"
+              label="Add"
+              accessibilityLabel="Add to this trip"
+              onPress={() => addPlan(selected.kind === 'day' ? selected.date : undefined)}
+            />
           </View>
         }
       />
 
-      <ScrollView ref={scroll} contentContainerStyle={styles.content}>
+      <DateRail
+        stops={stops.map((stop) => ({
+          key: stopKey(stop),
+          ...stopLabels(stop),
+          today: stop.kind === 'day' && stop.date === today,
+          accessibilityLabel: stopDescription(stop, today),
+        }))}
+        selected={selectedKey}
+        onSelect={setChosen}
+        pickRange={
+          tripDates(trip).length > RAIL_CALENDAR_AFTER_DAYS
+            ? { first: trip.startDate, last: trip.endDate }
+            : undefined
+        }
+        onPickDate={setChosen}
+      />
+
+      <ScrollView contentContainerStyle={styles.content}>
         <StaleNotice queries={[tripQuery, itemsQuery, attachmentsQuery]} />
         {/* A read that failed is not an empty trip, and must not say it is. */}
         {itemsFailed ? <LoadFailed what="the timeline" onRetry={itemsQuery.refetch} /> : null}
         {queryView(attachmentsQuery) === 'failed' ? (
           <LoadFailed what="the attachments" onRetry={attachmentsQuery.refetch} />
         ) : null}
-        {!itemsFailed && items && days.length === 0 && undated.length === 0 ? (
-          <View style={[styles.well, { backgroundColor: c.surfaceSunken }]}>
-            <Text style={[type.body, { color: c.textMuted }]}>
-              Nothing on the timeline yet. Anything with a date appears here, day by day.
-            </Text>
-          </View>
-        ) : null}
 
-        {days.map((day) => (
-          <View
-            key={day.day}
-            style={styles.section}
-            onLayout={(event) => onDayLayout(day.day, event.nativeEvent.layout.y)}>
-            <View style={styles.dayHead}>
-              <SectionLabel>{formatShortDate(day.day)}</SectionLabel>
-              {day.day === today ? <Tag label="Today" tone="accent" /> : null}
-            </View>
-            {day.entries.map((entry) => (
-              <EntryCard
-                key={entry.key}
-                entry={entry}
-                resources={byItem.get(entry.item.id) ?? []}
-                payment={payments.get(entry.item.id) ?? null}
-                onPress={() => open(entry.item.id)}
-              />
-            ))}
-          </View>
-        ))}
-
-        {undated.length > 0 ? (
+        {itemsFailed || itemsLoading ? null : selected.kind === 'undated' ? (
           <View style={styles.section}>
             <SectionLabel>No date yet</SectionLabel>
-            {undated.map((item) => (
-              <ItemRow
-                key={item.id}
-                item={item}
-                payment={payments.get(item.id) ?? null}
-                onPress={() => open(item.id)}
-              />
-            ))}
+            <Rows>
+              {undated.map((item) => (
+                <ItemRow
+                  key={item.id}
+                  item={item}
+                  payment={payments.get(item.id) ?? null}
+                  onPress={() => open(item.id)}
+                />
+              ))}
+            </Rows>
           </View>
-        ) : null}
+        ) : shownDays.length === 0 ? (
+          <View style={[styles.empty, { backgroundColor: c.surfaceSunken }]}>
+            <Text style={[type.body, { color: c.textMuted }]}>
+              {selected.kind === 'day'
+                ? 'Nothing planned for this day yet.'
+                : 'Nothing on the timeline yet. Anything with a date appears here, day by day.'}
+            </Text>
+            <Button
+              label="Add a plan"
+              variant="secondary"
+              onPress={() => addPlan(selected.kind === 'day' ? selected.date : undefined)}
+            />
+          </View>
+        ) : (
+          shownDays.map((day) => {
+            const number = dayNumber.get(day.day);
+            return (
+              <View key={day.day} style={styles.section}>
+                <View style={styles.dayHead}>
+                  <SectionLabel>{formatDayHeading(day.day)}</SectionLabel>
+                  {number ? (
+                    <Text style={[type.caption, { color: c.textMuted }]}>Day {number}</Text>
+                  ) : null}
+                  {day.day === today ? <Tag label="Today" tone="accent" /> : null}
+                </View>
+                <Rows>
+                  {day.entries.map((entry) => (
+                    <TimelineRow
+                      key={entry.key}
+                      entry={entry}
+                      resources={byItem.get(entry.item.id) ?? []}
+                      payment={payments.get(entry.item.id) ?? null}
+                      onPress={() => open(entry.item.id)}
+                    />
+                  ))}
+                </Rows>
+              </View>
+            );
+          })
+        )}
       </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.xl, paddingBottom: 120 },
-  section: { gap: spacing.md },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
-  dayHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  well: { borderRadius: radius.lg, padding: spacing.lg },
-  centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  content: {
+    paddingHorizontal: gutter.normal,
+    paddingTop: spacing.lg,
+    gap: spacing.xl,
+    paddingBottom: spacing.xxxl,
+  },
+  section: { gap: spacing.xs },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
+  dayHead: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
+  empty: { borderRadius: radius.lg, padding: spacing.lg, gap: spacing.md },
 });

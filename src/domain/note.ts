@@ -43,3 +43,15 @@ export function parseNoteRow(row: NoteRow): Note {
     updatedAt: row.updated_at,
   };
 }
+
+/**
+ * The body as a list shows it (B9): its lines run together, so two preview lines hold two lines'
+ * worth of text rather than a title and a blank. The full body is on the note itself.
+ */
+export function notePreview(body: string): string {
+  return body
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join(' · ');
+}

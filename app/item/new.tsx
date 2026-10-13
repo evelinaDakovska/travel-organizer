@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
 
+import { isValidLocal } from '../../src/domain/time';
 import { defaultItemDate } from '../../src/domain/trip';
 import { DEFAULT_CURRENCY, TRIP_ITEM_KINDS, type TripItemKind } from '../../src/domain/tripItem';
 import { ItemForm } from '../../src/features/items/ItemForm';
@@ -22,7 +23,11 @@ import { askForRemindersIfDue } from '../../src/notifications/reminders';
 export default function NewItem() {
   const db = useSQLiteContext();
   const router = useRouter();
-  const { tripId, kind } = useLocalSearchParams<{ tripId: string; kind?: string }>();
+  const params = useLocalSearchParams<{ tripId: string; kind?: string; date?: string }>();
+  const { tripId } = params;
+  const kind = asKind(params.kind);
+  // From a day on the Timeline (B3): a plan for that day, already on the itinerary.
+  const date = params.date && isValidLocal(params.date, 'date') ? params.date : undefined;
 
   const tripQuery = useLiveQuery(
     useCallback((database) => getTrip(database, tripId), [tripId]),
@@ -55,13 +60,14 @@ export default function NewItem() {
       <ItemForm
         submitLabel="Add"
         defaultTz={trip.defaultTz}
-        defaultDate={defaultItemDate(trip)}
+        defaultDate={date ?? defaultItemDate(trip)}
         knownPlaces={knownPlaces ?? []}
         defaultValues={{
-          kind: asKind(kind),
+          kind,
           // A to-do is not an idea to book later; as one it would also land on Places.
           subkind: null,
-          status: asKind(kind) === 'task' ? 'confirmed' : 'idea',
+          status: kind === 'task' || date ? 'confirmed' : 'idea',
+          start: date ? { local: date } : undefined,
           priority: null,
           title: '',
           priceCurrency: DEFAULT_CURRENCY,

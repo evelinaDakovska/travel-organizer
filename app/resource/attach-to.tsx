@@ -16,10 +16,11 @@ import {
 } from '../../src/repositories/resources';
 import { listTripItems } from '../../src/repositories/tripItems';
 import { ItemRow } from '../../src/ui/components/ItemRow';
+import { Rows } from '../../src/ui/components/ListRow';
 import { LoadFailed } from '../../src/ui/components/QueryStates';
 import { Screen } from '../../src/ui/components/Screen';
 import { ScreenHeader } from '../../src/ui/components/ScreenHeader';
-import { spacing, type, useColors } from '../../src/ui/tokens';
+import { gutter, opacity, spacing, type, useColors } from '../../src/ui/tokens';
 
 type Choices = { label: string; items: TripItem[]; holding: Set<string> };
 
@@ -87,16 +88,18 @@ export default function AttachTo() {
           <Text style={[type.body, { color: c.textMuted }]}>
             It stays where it is and shows on the item too. One copy of the file is kept for both.
           </Text>
-          {ordered.map((item) =>
-            data.holding.has(item.id) ? (
-              <View key={item.id} style={styles.held}>
-                <ItemRow item={item} onPress={() => undefined} />
-                <Text style={[type.caption, { color: c.textMuted }]}>Already attached here</Text>
-              </View>
-            ) : (
-              <ItemRow key={item.id} item={item} onPress={() => void attach(item)} />
-            ),
-          )}
+          <Rows>
+            {ordered.map((item) =>
+              data.holding.has(item.id) ? (
+                <View key={item.id} style={styles.held}>
+                  <ItemRow item={item} />
+                  <Text style={[type.caption, { color: c.textMuted }]}>Already attached here</Text>
+                </View>
+              ) : (
+                <ItemRow key={item.id} item={item} onPress={() => void attach(item)} />
+              ),
+            )}
+          </Rows>
         </ScrollView>
       )}
     </Screen>
@@ -117,11 +120,11 @@ function inTimelineOrder(items: readonly TripItem[]): TripItem[] {
 
 const styles = StyleSheet.create({
   content: {
-    padding: spacing.lg,
+    paddingHorizontal: gutter.normal,
     paddingTop: spacing.sm,
     gap: spacing.md,
     paddingBottom: spacing.xxxl,
   },
-  held: { gap: spacing.xs, opacity: 0.55 },
+  held: { paddingBottom: spacing.sm, opacity: opacity.dimmed },
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });
