@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { LIST_KINDS, listKindLabel, type ListKind } from '../src/domain/lists';
+import { templateSummary } from '../src/domain/templates';
 import { queryView } from '../src/hooks/queryView';
 import { useLiveQuery } from '../src/hooks/useLiveQuery';
 import {
@@ -12,6 +13,7 @@ import {
   LIST_TABLES,
   listReusableLists,
 } from '../src/repositories/lists';
+import { listTemplates, TEMPLATE_TABLES } from '../src/repositories/templates';
 import { Button } from '../src/ui/components/Button';
 import { HeaderAction } from '../src/ui/components/HeaderAction';
 import { Icon } from '../src/ui/components/Icon';
@@ -33,6 +35,7 @@ export default function ListsScreen() {
   const router = useRouter();
   const [choosingKind, setChoosingKind] = useState(false);
   const listsQuery = useLiveQuery(listReusableLists, LIST_TABLES);
+  const { data: templates } = useLiveQuery(listTemplates, TEMPLATE_TABLES);
   const lists = listsQuery.data ?? [];
   const view = queryView(listsQuery);
 
@@ -93,6 +96,35 @@ export default function ListsScreen() {
             ) : null;
           })
         )}
+
+        <View style={styles.section}>
+          <SectionLabel>Trip templates</SectionLabel>
+          {templates && templates.length > 0 ? (
+            <Rows>
+              {templates.map((template) => (
+                <ListRow
+                  key={template.id}
+                  title={template.name}
+                  subtitle={
+                    template.content ? templateSummary(template.content) : 'From a newer version'
+                  }
+                  leading={<Icon name="lists" color={c.accentText} />}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/template/[templateId]',
+                      params: { templateId: template.id },
+                    })
+                  }
+                />
+              ))}
+            </Rows>
+          ) : (
+            <Text style={[type.caption, { color: c.textMuted }]}>
+              Tasks, notes and lists kept from a trip, to start the next one with. Save one from a
+              trip’s More menu.
+            </Text>
+          )}
+        </View>
       </ScrollView>
 
       <Sheet visible={choosingKind} title="New list" onClose={() => setChoosingKind(false)}>

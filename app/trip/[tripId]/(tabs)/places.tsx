@@ -65,7 +65,6 @@ export default function PlacesScreen() {
       <ScreenHeader
         title="Places"
         subtitle="Saved ideas, and where your plans are"
-        leading={false}
         action={
           <View style={styles.headerActions}>
             <SearchButton tripId={tripId} />

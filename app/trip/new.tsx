@@ -6,6 +6,7 @@ import { TripForm } from '../../src/features/trips/TripForm';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
 import { isResolvableTimezone } from '../../src/domain/timezones';
 import { getDefaultTravellers, SETTINGS_TABLES } from '../../src/repositories/settings';
+import { listTemplates } from '../../src/repositories/templates';
 import { createTrip } from '../../src/repositories/trips';
 import { Screen } from '../../src/ui/components/Screen';
 import { ScreenHeader } from '../../src/ui/components/ScreenHeader';
@@ -44,7 +45,9 @@ export default function NewTrip() {
           }}
           onSubmit={async (input) => {
             const id = await createTrip(db, input);
-            router.replace(`/trip/${id}`);
+            // With templates kept, the next step offers one; it can be skipped (C5).
+            const hasTemplates = (await listTemplates(db)).some((template) => template.content);
+            router.replace(hasTemplates ? `/trip/${id}/use-template?fresh=1` : `/trip/${id}`);
           }}
         />
       )}

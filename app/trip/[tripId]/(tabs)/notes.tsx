@@ -74,7 +74,6 @@ export default function NotesScreen() {
       <ScreenHeader
         title="Notes & lists"
         subtitle={trip?.name}
-        leading={false}
         action={
           <View style={styles.headerActions}>
             <SearchButton tripId={tripId} />

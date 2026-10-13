@@ -65,6 +65,12 @@ export function addCalendarDays(date: string, days: number): string {
   return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
 }
 
+/** Whole calendar days from one 'YYYY-MM-DD' to another: negative when `to` is earlier. */
+export function calendarDaysBetween(from: string, to: string): number {
+  const ms = Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`);
+  return Math.round(ms / 86_400_000);
+}
+
 /** The same wall-clock moment some calendar days away, in the same zone. */
 export function shiftMoment(moment: LocalMoment, days: number): LocalMoment {
   const date = addCalendarDays(moment.local.slice(0, 10), days);

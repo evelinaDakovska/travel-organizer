@@ -120,7 +120,6 @@ export default function TimelineScreen() {
       <ScreenHeader
         title="Timeline"
         subtitle={`${trip.name} · ${formatDateRange(trip.startDate, trip.endDate)}`}
-        leading={false}
         action={
           <View style={styles.headerActions}>
             {duringTrip && selectedKey !== today ? (

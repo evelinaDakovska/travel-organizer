@@ -50,7 +50,7 @@ import { LIST_TABLES, listTripLists } from '../../../../src/repositories/lists';
 import { listTripTravellers, TRAVELLER_TABLES } from '../../../../src/repositories/travellers';
 import { getTrip, TRIP_TABLES } from '../../../../src/repositories/trips';
 import { HeaderAction } from '../../../../src/ui/components/HeaderAction';
-import { Icon } from '../../../../src/ui/components/Icon';
+import { Icon, type IconName } from '../../../../src/ui/components/Icon';
 import { ItemRow } from '../../../../src/ui/components/ItemRow';
 import { LeadPanel } from '../../../../src/ui/components/LeadPanel';
 import { ListRow, Rows } from '../../../../src/ui/components/ListRow';
@@ -59,8 +59,31 @@ import { LoadFailed, QueryScreen, StaleNotice } from '../../../../src/ui/compone
 import { Screen } from '../../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../../../../src/ui/components/SectionLabel';
+import { Sheet } from '../../../../src/ui/components/Sheet';
 import { UndoToast } from '../../../../src/ui/components/UndoToast';
 import { gutter, spacing, type, useColors } from '../../../../src/ui/tokens';
+
+/** The trip's own actions, behind More in the header. */
+const MORE_ACTIONS: readonly {
+  title: string;
+  subtitle: string;
+  icon: IconName;
+  path: 'edit' | 'use-template' | 'save-template';
+}[] = [
+  { title: 'Edit trip', subtitle: 'Name, dates, time zone, notes', icon: 'settings', path: 'edit' },
+  {
+    title: 'Use a template',
+    subtitle: 'Add saved tasks, notes and lists',
+    icon: 'lists',
+    path: 'use-template',
+  },
+  {
+    title: 'Save as template',
+    subtitle: 'Keep this preparation for next time',
+    icon: 'lists',
+    path: 'save-template',
+  },
+];
 
 const LEAD_EYEBROW: Record<LeadReason, string> = {
   happening: 'Happening now',
@@ -80,6 +103,7 @@ export default function OverviewScreen() {
   const now = useNow();
   const tripId = useTripId();
   const [adding, setAdding] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [undo, setUndo] = useState<{ message: string; taskId: string } | null>(null);
 
   const tripQuery = useLiveQuery(
@@ -178,7 +202,6 @@ export default function OverviewScreen() {
             ? `${trip.name} · ${tripPhaseLabel(phase)}`
             : `${formatDateRange(trip.startDate, trip.endDate)} · ${tripPhaseLabel(phase)}`
         }
-        leading={false}
         action={
           <View style={styles.headerActions}>
             <SearchButton tripId={trip.id} />
@@ -187,6 +210,11 @@ export default function OverviewScreen() {
               label="Add"
               accessibilityLabel="Add to this trip"
               onPress={() => setAdding(true)}
+            />
+            <HeaderAction
+              icon="more"
+              accessibilityLabel="More for this trip"
+              onPress={() => setMoreOpen(true)}
             />
           </View>
         }
@@ -331,6 +359,22 @@ export default function OverviewScreen() {
         onDismiss={() => setUndo(null)}
       />
       <AddSheet visible={adding} onClose={() => setAdding(false)} tripId={trip.id} />
+      <Sheet visible={moreOpen} title={trip.name} onClose={() => setMoreOpen(false)}>
+        <Rows>
+          {MORE_ACTIONS.map(({ title, subtitle, icon, path }) => (
+            <ListRow
+              key={path}
+              title={title}
+              subtitle={subtitle}
+              leading={<Icon name={icon} color={c.accentText} />}
+              onPress={() => {
+                setMoreOpen(false);
+                router.push(`/trip/${trip.id}/${path}`);
+              }}
+            />
+          ))}
+        </Rows>
+      </Sheet>
     </Screen>
   );
 }

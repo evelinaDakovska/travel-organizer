@@ -82,7 +82,6 @@ export default function ExpensesScreen() {
       <ScreenHeader
         title="Expenses"
         subtitle={trip?.name}
-        leading={false}
         action={
           <View style={styles.headerActions}>
             <SearchButton tripId={tripId} />

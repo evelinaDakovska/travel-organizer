@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { isValidLocal, toInstant } from './time';
+import { calendarDaysBetween, isValidLocal, toInstant } from './time';
 import { isResolvableTimezone } from './timezones';
 import { transportDetails, type TripItem } from './tripItem';
 
@@ -95,17 +95,17 @@ export type TripPhase =
   | { phase: 'during'; day: number; of: number }
   | { phase: 'after' };
 
-const daysBetween = (from: string, to: string) =>
-  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
-
 export function tripPhase(
   trip: Pick<Trip, 'startDate' | 'endDate'>,
   now: Date = new Date(),
 ): TripPhase {
   const today = deviceToday(now);
-  if (today < trip.startDate) return { phase: 'before', daysToGo: daysBetween(today, trip.startDate) };
+  if (today < trip.startDate) {
+    return { phase: 'before', daysToGo: calendarDaysBetween(today, trip.startDate) };
+  }
   if (today > trip.endDate) return { phase: 'after' };
-  return { phase: 'during', day: daysBetween(trip.startDate, today) + 1, of: tripDurationDays(trip) };
+  const day = calendarDaysBetween(trip.startDate, today) + 1;
+  return { phase: 'during', day, of: tripDurationDays(trip) };
 }
 
 /** 'In 39 days', 'Tomorrow', 'Day 2 of 5', 'Ended' — the band on top of Now. */
