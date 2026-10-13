@@ -1,7 +1,13 @@
 import { strToU8, zipSync } from 'fflate';
 
-import { packBackup, summariseExport, summariseImportPlan, unpackBackup } from './archive';
-import { buildExportDocument, planImport, type ExportTables } from './export';
+import {
+  importChangesNothing,
+  packBackup,
+  summariseExport,
+  summariseImportPlan,
+  unpackBackup,
+} from './archive';
+import { buildExportDocument, emptyExportTables, planImport, type ExportTables } from './export';
 
 const trip = (id: string) => ({
   id,
@@ -36,11 +42,8 @@ const fileResource = (id: string, tripId: string) => ({
 });
 
 const tables: ExportTables = {
+  ...emptyExportTables(),
   trips: [trip('milan'), trip('lapland')],
-  tripItems: [],
-  tripNotes: [],
-  expenses: [],
-  payments: [],
   resources: [fileResource('hotel', 'milan'), fileResource('train', 'lapland')],
   settings: [{ key: 'default_currency', value: 'EUR' }],
 };
@@ -196,6 +199,45 @@ describe('summariseImportPlan', () => {
   it('warns about files the archive does not contain', () => {
     expect(summariseImportPlan(planImport(document, [], 'merge', ['media/hotel.pdf']))).toBe(
       'Adds 2 trips, 0 items, 0 notes and 1 saved file. 1 file is missing from the backup and will show as missing.',
+    );
+  });
+});
+
+describe('importChangesNothing and the shared rows (format 3)', () => {
+  const at = '2026-10-13T00:00:00.000Z';
+  const withTemplate = buildExportDocument(
+    {
+      ...tables,
+      templates: [{ id: 'tpl', name: 'City break', content: '{}', created_at: at, updated_at: at }],
+    },
+    { exportedAt: at },
+  );
+
+  it('is not nothing when the trips are here but a template is missing', () => {
+    const plan = planImport(withTemplate, ['milan', 'lapland'], 'merge', [], {
+      travellers: [],
+      lists: [],
+      templates: [],
+    });
+    expect(importChangesNothing(plan)).toBe(false);
+    expect(summariseImportPlan(plan)).toBe(
+      'Adds 1 template. The trips in it are already here and are left as they are.',
+    );
+  });
+
+  it('is nothing once the template is here too', () => {
+    const plan = planImport(withTemplate, ['milan', 'lapland'], 'merge', [], {
+      travellers: [],
+      lists: [],
+      templates: ['tpl'],
+    });
+    expect(importChangesNothing(plan)).toBe(true);
+  });
+
+  it('mentions shared rows after the trips', () => {
+    const plan = planImport(withTemplate, [], 'merge', ['media/hotel.pdf', 'media/train.pdf']);
+    expect(summariseImportPlan(plan)).toBe(
+      'Adds 2 trips, 0 items, 0 notes and 2 saved files. Also adds 1 template.',
     );
   });
 });

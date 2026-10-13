@@ -2,7 +2,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { summariseExport, summariseImportPlan } from '../src/domain/archive';
+import { importChangesNothing, summariseExport, summariseImportPlan } from '../src/domain/archive';
 import type { ImportMode } from '../src/domain/export';
 import {
   applyBackupImport,
@@ -61,7 +61,7 @@ export default function Backup() {
       }
 
       const plan = await planBackupImport(db, picked.backup, mode);
-      if (plan.write.trips.length === 0) {
+      if (importChangesNothing(plan)) {
         setResult(summariseImportPlan(plan));
         return;
       }
@@ -82,7 +82,7 @@ export default function Backup() {
 
       try {
         await applyBackupImport(db, picked.backup, plan);
-        setResult("Import finished. The backup's trips are on Home.");
+        setResult("Import finished. The backup's trips are on Your trips.");
         void askForRemindersIfAnyDue(db);
       } catch (error) {
         console.warn('Import failed', error);

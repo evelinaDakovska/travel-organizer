@@ -7,8 +7,12 @@ import { z } from 'zod';
 
 import { isStoredPath, missingFiles } from './resource';
 
-/** 2 added expenses, payments and `resources.expense_id` (N5). A format-1 backup still imports. */
-export const EXPORT_FORMAT_VERSION = 2;
+/**
+ * 2 added expenses, payments and `resources.expense_id` (N5); 3 added travellers, lists and
+ * templates (Fieldbook, migration 003). Formats 1 and 2 still import: their missing tables are
+ * empty.
+ */
+export const EXPORT_FORMAT_VERSION = 3;
 export const EXPORT_APP = 'travel-organizer';
 
 const nullableString = z.string().nullable();
@@ -116,6 +120,65 @@ const paymentRowSchema = z.object({
 
 const settingRowSchema = z.object({ key: z.string(), value: z.string() });
 
+const travellerRowSchema = z.object({
+  id: z.string().min(1),
+  name: z.string(),
+  sort_order: z.number(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+const tripTravellerRowSchema = z.object({
+  trip_id: z.string().min(1),
+  traveller_id: z.string().min(1),
+  sort_order: z.number(),
+});
+
+const itemParticipantRowSchema = z.object({
+  item_id: z.string().min(1),
+  traveller_id: z.string().min(1),
+});
+
+const listRowSchema = z.object({
+  id: z.string().min(1),
+  trip_id: nullableString,
+  kind: z.string(),
+  name: z.string(),
+  source_list_id: nullableString,
+  sort_order: z.number(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+const listItemRowSchema = z.object({
+  id: z.string().min(1),
+  list_id: z.string().min(1),
+  label: z.string(),
+  quantity: nullableNumber,
+  unit: nullableString,
+  category: nullableString,
+  note: nullableString,
+  traveller_id: nullableString,
+  done_at: nullableString,
+  sort_order: z.number(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+const templateRowSchema = z.object({
+  id: z.string().min(1),
+  name: z.string(),
+  content: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+const templateUseRowSchema = z.object({
+  trip_id: z.string().min(1),
+  template_id: z.string().min(1),
+  applied_at: z.string(),
+});
+
 export type TripExportRow = z.infer<typeof tripRowSchema>;
 export type TripItemExportRow = z.infer<typeof tripItemRowSchema>;
 export type NoteExportRow = z.infer<typeof noteRowSchema>;
@@ -123,6 +186,13 @@ export type ResourceExportRow = z.infer<typeof resourceRowSchema>;
 export type SettingExportRow = z.infer<typeof settingRowSchema>;
 export type ExpenseExportRow = z.infer<typeof expenseRowSchema>;
 export type PaymentExportRow = z.infer<typeof paymentRowSchema>;
+export type TravellerExportRow = z.infer<typeof travellerRowSchema>;
+export type TripTravellerExportRow = z.infer<typeof tripTravellerRowSchema>;
+export type ItemParticipantExportRow = z.infer<typeof itemParticipantRowSchema>;
+export type ListExportRow = z.infer<typeof listRowSchema>;
+export type ListItemExportRow = z.infer<typeof listItemRowSchema>;
+export type TemplateExportRow = z.infer<typeof templateRowSchema>;
+export type TemplateUseExportRow = z.infer<typeof templateUseRowSchema>;
 
 export type ExportTables = {
   trips: TripExportRow[];
@@ -132,6 +202,13 @@ export type ExportTables = {
   payments: PaymentExportRow[];
   resources: ResourceExportRow[];
   settings: SettingExportRow[];
+  travellers: TravellerExportRow[];
+  tripTravellers: TripTravellerExportRow[];
+  itemParticipants: ItemParticipantExportRow[];
+  lists: ListExportRow[];
+  listItems: ListItemExportRow[];
+  templates: TemplateExportRow[];
+  templateUses: TemplateUseExportRow[];
 };
 
 /** One entry per distinct file, listing every resource that points at it. */
@@ -160,11 +237,39 @@ export const exportDocumentSchema = z.object({
     payments: z.array(paymentRowSchema).default([]),
     resources: z.array(resourceRowSchema),
     settings: z.array(settingRowSchema),
+    // Absent before format 3.
+    travellers: z.array(travellerRowSchema).default([]),
+    tripTravellers: z.array(tripTravellerRowSchema).default([]),
+    itemParticipants: z.array(itemParticipantRowSchema).default([]),
+    lists: z.array(listRowSchema).default([]),
+    listItems: z.array(listItemRowSchema).default([]),
+    templates: z.array(templateRowSchema).default([]),
+    templateUses: z.array(templateUseRowSchema).default([]),
   }),
   files: z.array(fileManifestEntrySchema),
 });
 
 export type ExportDocument = z.infer<typeof exportDocumentSchema>;
+
+/** A backup with nothing in it: the shape to build one from. */
+export function emptyExportTables(): ExportTables {
+  return {
+    trips: [],
+    tripItems: [],
+    tripNotes: [],
+    expenses: [],
+    payments: [],
+    resources: [],
+    settings: [],
+    travellers: [],
+    tripTravellers: [],
+    itemParticipants: [],
+    lists: [],
+    listItems: [],
+    templates: [],
+    templateUses: [],
+  };
+}
 
 export const EXPORT_TABLE_ORDER = [
   'trips',
@@ -174,6 +279,13 @@ export const EXPORT_TABLE_ORDER = [
   'payments',
   'resources',
   'settings',
+  'travellers',
+  'tripTravellers',
+  'itemParticipants',
+  'lists',
+  'listItems',
+  'templates',
+  'templateUses',
 ] as const satisfies readonly (keyof ExportTables)[];
 
 /** Derived from the rows, so a file can never be listed that nothing references. */
@@ -234,11 +346,24 @@ export function parseExportDocument(value: unknown): ParseResult {
   return { ok: true, document: parsed.data };
 }
 
-/** Everything belonging to one trip. Same format, so a single-trip export needs no new writer. */
+/**
+ * Everything belonging to one trip. Same format, so a single-trip export needs no new writer. It
+ * carries the travellers the trip uses, and none of the reusable lists or templates.
+ */
 export function filterTablesForTrip(tables: ExportTables, tripId: string): ExportTables {
   const itemIds = new Set(
     tables.tripItems.filter((item) => item.trip_id === tripId).map((item) => item.id),
   );
+  const lists = tables.lists.filter((list) => list.trip_id === tripId);
+  const listIds = new Set(lists.map((list) => list.id));
+  const listItems = tables.listItems.filter((item) => listIds.has(item.list_id));
+  const tripTravellers = tables.tripTravellers.filter((member) => member.trip_id === tripId);
+  const itemParticipants = tables.itemParticipants.filter((part) => itemIds.has(part.item_id));
+  const usedTravellers = new Set([
+    ...tripTravellers.map((member) => member.traveller_id),
+    ...itemParticipants.map((part) => part.traveller_id),
+    ...listItems.flatMap((item) => (item.traveller_id ? [item.traveller_id] : [])),
+  ]);
 
   return {
     trips: tables.trips.filter((trip) => trip.id === tripId),
@@ -252,8 +377,24 @@ export function filterTablesForTrip(tables: ExportTables, tripId: string): Expor
         (resource.trip_item_id !== null && itemIds.has(resource.trip_item_id)),
     ),
     settings: [],
+    travellers: tables.travellers.filter((traveller) => usedTravellers.has(traveller.id)),
+    tripTravellers,
+    itemParticipants,
+    lists,
+    listItems,
+    templates: [],
+    templateUses: tables.templateUses.filter((use) => use.trip_id === tripId),
   };
 }
+
+/** Ids of the rows that belong to no trip and are on the phone already. */
+export type ExistingShared = {
+  travellers: Iterable<string>;
+  lists: Iterable<string>;
+  templates: Iterable<string>;
+};
+
+const NOTHING_SHARED: ExistingShared = { travellers: [], lists: [], templates: [] };
 
 export type ImportMode = 'merge' | 'replace';
 
@@ -267,12 +408,17 @@ export type ImportPlan = {
 /**
  * `merge` leaves a trip that is already here untouched, so importing a backup twice is
  * harmless. `replace` overwrites it, which is what restoring after a reinstall means.
+ *
+ * Rows that belong to no trip — travellers, reusable lists and their items, templates — work the
+ * same way: `merge` adds only those the phone lacks (`existingShared`), `replace` takes the
+ * backup's for every id it has. Neither removes one the backup does not have.
  */
 export function planImport(
   document: ExportDocument,
   existingTripIds: Iterable<string>,
   mode: ImportMode = 'merge',
   availableFiles: Iterable<string> = [],
+  existingShared: ExistingShared = NOTHING_SHARED,
 ): ImportPlan {
   const existing = new Set(existingTripIds);
   const present = new Set(availableFiles);
@@ -298,6 +444,17 @@ export function planImport(
     resource.kind === 'file' && resource.stored_path !== null ? [resource.stored_path] : [],
   );
 
+  const { tables } = document;
+  const missing = (existing: Iterable<string>) => {
+    const here = new Set(existing);
+    return (row: { id: string }) => mode === 'replace' || !here.has(row.id);
+  };
+  // A reusable list has no trip; a trip's list goes where its trip goes.
+  const lists = tables.lists.filter((list) =>
+    list.trip_id === null ? missing(existingShared.lists)(list) : keptTripIds.has(list.trip_id),
+  );
+  const keptListIds = new Set(lists.map((list) => list.id));
+
   return {
     mode,
     write: {
@@ -308,6 +465,13 @@ export function planImport(
       payments: document.tables.payments.filter((payment) => keptTripIds.has(payment.trip_id)),
       resources,
       settings: document.tables.settings,
+      travellers: tables.travellers.filter(missing(existingShared.travellers)),
+      tripTravellers: tables.tripTravellers.filter((member) => keptTripIds.has(member.trip_id)),
+      itemParticipants: tables.itemParticipants.filter((part) => keptItemIds.has(part.item_id)),
+      lists,
+      listItems: tables.listItems.filter((item) => keptListIds.has(item.list_id)),
+      templates: tables.templates.filter(missing(existingShared.templates)),
+      templateUses: tables.templateUses.filter((use) => keptTripIds.has(use.trip_id)),
     },
     skippedTripIds,
     missingFiles: missingFiles(present, needed),

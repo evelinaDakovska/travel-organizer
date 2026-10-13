@@ -6,6 +6,7 @@
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
 
 import { parseExportDocument, type ExportDocument, type ImportPlan } from './export';
+import { listPhrase } from './format';
 import { isStoredPath } from './resource';
 
 export const BACKUP_DOCUMENT_NAME = 'backup.json';
@@ -77,12 +78,34 @@ export function summariseExport(document: ExportDocument, packedFiles: number): 
   );
 }
 
+/** Rows that belong to no trip — reusable lists, templates, travellers — the import adds. */
+function sharedParts(write: ImportPlan['write']): string[] {
+  const reusableLists = write.lists.filter((list) => list.trip_id === null).length;
+  return [
+    ...(reusableLists > 0 ? [plural(reusableLists, 'reusable list')] : []),
+    ...(write.templates.length > 0 ? [plural(write.templates.length, 'template')] : []),
+    ...(write.travellers.length > 0 ? [plural(write.travellers.length, 'traveller')] : []),
+  ];
+}
+
+/**
+ * Whether an import would write nothing at all: every trip is here already (in a merge) and
+ * nothing that belongs to no trip is missing either.
+ */
+export function importChangesNothing(plan: ImportPlan): boolean {
+  return plan.write.trips.length === 0 && sharedParts(plan.write).length === 0;
+}
+
 /** What an import is about to do, in the words the confirmation dialog shows. */
 export function summariseImportPlan(plan: ImportPlan): string {
   const { write, skippedTripIds, missingFiles, mode } = plan;
 
-  if (write.trips.length === 0) {
+  if (importChangesNothing(plan)) {
     return 'Everything in this backup is already on this phone, so nothing will change.';
+  }
+  const shared = sharedParts(write);
+  if (write.trips.length === 0) {
+    return `Adds ${listPhrase(shared)}. The trips in it are already here and are left as they are.`;
   }
 
   const stored = new Set(
@@ -98,6 +121,7 @@ export function summariseImportPlan(plan: ImportPlan): string {
     ...(write.expenses.length > 0 ? [plural(write.expenses.length, 'expense')] : []),
   ];
   const sentences = [`Adds ${parts.join(', ')} and ${plural(files, 'saved file')}.`];
+  if (shared.length > 0) sentences.push(`Also adds ${listPhrase(shared)}.`);
 
   if (mode === 'replace') {
     sentences.push("Any of these trips already on this phone is replaced by the backup's copy.");

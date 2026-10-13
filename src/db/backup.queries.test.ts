@@ -1,14 +1,8 @@
 import Database from 'better-sqlite3';
 
 import { MIGRATIONS } from './migrations';
-import {
-  DELETE_TRIP_FOR_REPLACE,
-  EXPORT_COLUMNS,
-  insertRow,
-  MERGE_SETTING,
-  REPLACE_SETTING,
-  selectAll,
-} from './queries';
+import { EXPORT_COLUMNS } from './queries';
+import { asyncDatabase } from './testing/asyncDatabase';
 import {
   buildExportDocument,
   parseExportDocument,
@@ -17,6 +11,12 @@ import {
   type ImportMode,
   type ImportPlan,
 } from '../domain/export';
+import { applyImport as applyImportAsync, readTables } from '../repositories/backup';
+
+/**
+ * The backup's SQL and the repository that writes it, run for real over better-sqlite3: the same
+ * `applyImport` the phone runs, not a copy of it.
+ */
 
 const now = '2026-09-11T00:00:00.000Z';
 
@@ -27,55 +27,33 @@ function fresh() {
   return db;
 }
 
-/** Mirrors repositories/backup.ts, which cannot run here because it imports expo-sqlite. */
-function applyImport(db: Database.Database, plan: ImportPlan) {
-  const run = (sql: string, row: Record<string, unknown>) =>
-    db.prepare(sql).run(Object.fromEntries(Object.entries(row)));
+const readAll = (db: Database.Database): Promise<ExportTables> => readTables(asyncDatabase(db));
+const applyImport = (db: Database.Database, plan: ImportPlan) =>
+  applyImportAsync(asyncDatabase(db), plan);
 
-  db.transaction(() => {
-    if (plan.mode === 'replace') {
-      for (const trip of plan.write.trips) {
-        db.prepare(DELETE_TRIP_FOR_REPLACE).run({ id: trip.id });
-      }
-    }
-    for (const trip of plan.write.trips) run(insertRow('trips'), trip);
-    for (const item of plan.write.tripItems) run(insertRow('trip_items'), item);
-    for (const note of plan.write.tripNotes) run(insertRow('trip_notes'), note);
-    for (const expense of plan.write.expenses) run(insertRow('expenses'), expense);
-    for (const payment of plan.write.payments) run(insertRow('payments'), payment);
-    for (const resource of plan.write.resources) run(insertRow('resources'), resource);
-    const settingSql = plan.mode === 'replace' ? REPLACE_SETTING : MERGE_SETTING;
-    for (const setting of plan.write.settings) run(settingSql, setting);
-  })();
-}
-
-function readAll(db: Database.Database): ExportTables {
-  return {
-    trips: db.prepare(selectAll('trips')).all() as ExportTables['trips'],
-    tripItems: db.prepare(selectAll('trip_items')).all() as ExportTables['tripItems'],
-    tripNotes: db.prepare(selectAll('trip_notes')).all() as ExportTables['tripNotes'],
-    expenses: db.prepare(selectAll('expenses')).all() as ExportTables['expenses'],
-    payments: db.prepare(selectAll('payments')).all() as ExportTables['payments'],
-    resources: db.prepare(selectAll('resources')).all() as ExportTables['resources'],
-    settings: db.prepare(selectAll('settings')).all() as ExportTables['settings'],
-  };
-}
+const run = (db: Database.Database, sql: string, ...params: unknown[]) =>
+  db.prepare(sql).run(...params);
 
 /** A trip using every column that carries meaning, so the round trip has something to lose. */
 function seed(db: Database.Database) {
-  db.prepare(
+  run(
+    db,
     `INSERT INTO trips (id, name, destination, start_date, end_date, default_tz, notes,
                         traveller_count, travellers, created_at, updated_at)
      VALUES ('t1', 'Milan', 'Italy', '2026-09-19', '2026-09-22', 'Europe/Rome', 'Autumn trip',
              2, '["Evelina","A"]', ?, ?)`,
-  ).run(now, now);
-
-  db.prepare(
+    now,
+    now,
+  );
+  run(
+    db,
     `INSERT INTO trips (id, name, start_date, end_date, default_tz, created_at, updated_at)
      VALUES ('t2', 'Lapland', '2026-12-18', '2026-12-23', 'Europe/Helsinki', ?, ?)`,
-  ).run(now, now);
-
-  db.prepare(
+    now,
+    now,
+  );
+  run(
+    db,
     `INSERT INTO trip_items
        (id, trip_id, kind, subkind, status, priority, title,
         start_local, start_tz, start_precision, start_utc,
@@ -86,96 +64,168 @@ function seed(db: Database.Database) {
              '2026-09-19T15:00', 'Europe/Rome', 'time', '2026-09-19T13:00:00.000Z',
              '2026-09-22T11:00', NULL, 'time', '2026-09-22T09:00:00.000Z',
              'Via Roma 1', '20121 Milano', 45.4642, 9.19, 'ABC123', 'Ask for a high floor',
-             '{"room":"402"}', 24000, 'EUR', 1, ?, ?)`,
-  ).run(now, now);
-
-  db.prepare(
+             '{"room":"402","pricing":{"mode":"perPerson","lines":[{"label":"Adult","quantity":2,"unitAmount":12000}]}}',
+             24000, 'EUR', 1, ?, ?)`,
+    now,
+    now,
+  );
+  run(
+    db,
     `INSERT INTO trip_items (id, trip_id, kind, status, priority, title, created_at, updated_at)
      VALUES ('i2', 't1', 'food', 'idea', 'must', 'Pave', ?, ?)`,
-  ).run(now, now);
-
-  db.prepare(
+    now,
+    now,
+  );
+  run(
+    db,
     `INSERT INTO trip_items (id, trip_id, kind, status, title, completed_at, created_at, updated_at)
      VALUES ('i3', 't2', 'task', 'confirmed', 'Online check-in', ?, ?, ?)`,
-  ).run(now, now, now);
-
-  db.prepare(
+    now,
+    now,
+    now,
+  );
+  run(
+    db,
     `INSERT INTO trip_notes (id, trip_id, title, body, pinned, sort_order, created_at, updated_at)
      VALUES ('n1', 't1', 'Door codes', 'Front door 4417', 1, 0, ?, ?)`,
-  ).run(now, now);
-
-  db.prepare(
+    now,
+    now,
+  );
+  run(
+    db,
     `INSERT INTO resources (id, trip_item_id, kind, subtype, label, stored_path, file_name,
                             mime_type, size_bytes, sort_order, created_at)
      VALUES ('r1', 'i1', 'file', 'confirmation', 'Booking', 'media/r1.pdf', 'booking.pdf',
              'application/pdf', 8192, 0, ?)`,
-  ).run(now);
-
-  db.prepare(
+    now,
+  );
+  run(
+    db,
     `INSERT INTO resources (id, trip_id, kind, subtype, label, url, sort_order, created_at)
      VALUES ('r2', 't1', 'link', 'maps', 'Maps', 'https://maps.example', 0, ?)`,
-  ).run(now);
-
-  db.prepare(
+    now,
+  );
+  run(
+    db,
     `INSERT INTO expenses (id, trip_id, category, label, amount, currency, spent_on, notes,
                            paid_by, split, created_at, updated_at)
      VALUES ('e1', 't1', 'groceries', 'Esselunga', 2345, 'EUR', '2026-09-20', 'Water, fruit',
              'Evelina', '{"mode":"equal","people":["Evelina","A"]}', ?, ?)`,
-  ).run(now, now);
-
-  db.prepare(
+    now,
+    now,
+  );
+  run(
+    db,
     `INSERT INTO resources (id, trip_id, expense_id, kind, subtype, label, stored_path,
                             sort_order, created_at)
      VALUES ('r4', 't1', 'e1', 'file', 'generic', 'Receipt', 'media/r4.jpg', 1, ?)`,
-  ).run(now);
-
-  db.prepare(
+    now,
+  );
+  run(
+    db,
     `INSERT INTO payments (id, trip_id, from_name, to_name, amount, currency, created_at)
      VALUES ('p1', 't1', 'A', 'Evelina', 1172, 'EUR', ?)`,
-  ).run(now);
-
-  db.prepare(`INSERT INTO settings (key, value) VALUES ('defaultTravellers', '["Evelina"]')`).run();
+    now,
+  );
+  run(db, `INSERT INTO settings (key, value) VALUES ('defaultTravellers', '["Evelina"]')`);
 }
 
-const documentFrom = (db: Database.Database) =>
-  buildExportDocument(readAll(db), { exportedAt: now, sizeOf: () => 8192 });
+/** Format 3: travellers, membership, participants, lists of both kinds, a template and its use. */
+function seedFieldbook(db: Database.Database) {
+  run(
+    db,
+    `INSERT INTO travellers (id, name, sort_order, created_at, updated_at)
+     VALUES ('ev', 'Evelina', 0, ?, ?), ('mia', 'Мия', 1, ?, ?)`,
+    now,
+    now,
+    now,
+    now,
+  );
+  run(db, `INSERT INTO trip_travellers (trip_id, traveller_id, sort_order) VALUES ('t1', 'ev', 0)`);
+  run(db, `INSERT INTO trip_travellers (trip_id, traveller_id, sort_order) VALUES ('t1', 'mia', 1)`);
+  run(db, `INSERT INTO item_participants (item_id, traveller_id) VALUES ('i1', 'mia')`);
+  run(
+    db,
+    `INSERT INTO lists (id, trip_id, kind, name, source_list_id, sort_order, created_at, updated_at)
+     VALUES ('winter', NULL, 'packing', 'Winter layers', NULL, 0, ?, ?),
+            ('milan-pack', 't1', 'packing', 'Winter layers', 'winter', 0, ?, ?)`,
+    now,
+    now,
+    now,
+    now,
+  );
+  run(
+    db,
+    `INSERT INTO list_items (id, list_id, label, quantity, unit, category, note, traveller_id,
+                             done_at, sort_order, created_at, updated_at)
+     VALUES ('w1', 'winter', 'Wool socks', 3, 'pairs', 'Clothing', NULL, NULL, NULL, 0, ?, ?),
+            ('m1', 'milan-pack', 'Wool socks', 2, 'pairs', 'Clothing', 'thick', 'mia', ?, 0, ?, ?)`,
+    now,
+    now,
+    now,
+    now,
+    now,
+  );
+  run(
+    db,
+    `INSERT INTO templates (id, name, content, created_at, updated_at)
+     VALUES ('city', 'City break', '{"version":1,"tasks":[],"notes":[],"lists":[]}', ?, ?)`,
+    now,
+    now,
+  );
+  run(db, `INSERT INTO template_uses (trip_id, template_id, applied_at) VALUES ('t1', 'city', ?)`, now);
+}
+
+const documentFrom = async (db: Database.Database) =>
+  buildExportDocument(await readAll(db), { exportedAt: now, sizeOf: () => 8192 });
+
+const sharedIds = (db: Database.Database) => {
+  const ids = (sql: string) => (db.prepare(sql).all() as { id: string }[]).map((row) => row.id);
+  return {
+    travellers: ids(`SELECT id FROM travellers`),
+    lists: ids(`SELECT id FROM lists WHERE trip_id IS NULL`),
+    templates: ids(`SELECT id FROM templates`),
+  };
+};
 
 /** Export, serialise, parse, restore — the path a real backup actually takes. */
-function restoreInto(target: Database.Database, source: Database.Database, mode: ImportMode) {
-  const onWire: unknown = JSON.parse(JSON.stringify(documentFrom(source)));
+async function restoreInto(target: Database.Database, source: Database.Database, mode: ImportMode) {
+  const onWire: unknown = JSON.parse(JSON.stringify(await documentFrom(source)));
   const parsed = parseExportDocument(onWire);
   if (!parsed.ok) throw new Error(parsed.reason);
 
   const existing = (target.prepare(`SELECT id FROM trips`).all() as { id: string }[]).map(
     (r) => r.id,
   );
-  const plan = planImport(parsed.document, existing, mode, ['media/r1.pdf', 'media/r4.jpg']);
-  applyImport(target, plan);
+  const files = ['media/r1.pdf', 'media/r4.jpg'];
+  const plan = planImport(parsed.document, existing, mode, files, sharedIds(target));
+  await applyImport(target, plan);
   return plan;
 }
 
 describe('the backup round trip', () => {
-  it('restores every table into an empty app, byte for byte', () => {
+  it('restores every table into an empty app, byte for byte', async () => {
     const source = fresh();
     seed(source);
+    seedFieldbook(source);
     const target = fresh();
 
-    restoreInto(target, source, 'merge');
+    await restoreInto(target, source, 'merge');
 
-    expect(readAll(target)).toEqual(readAll(source));
+    expect(await readAll(target)).toEqual(await readAll(source));
   });
 
-  it('loses nothing on a column that is easy to drop', () => {
+  it('loses nothing on a column that is easy to drop', async () => {
     const source = fresh();
     seed(source);
     const target = fresh();
-    restoreInto(target, source, 'merge');
+    await restoreInto(target, source, 'merge');
 
     const [item] = target.prepare(`SELECT * FROM trip_items WHERE id = 'i1'`).all() as Record<
       string,
       unknown
     >[];
-    expect(item.details).toBe('{"room":"402"}');
+    expect(item.details).toContain('"pricing"');
     expect(item.latitude).toBe(45.4642);
     expect(item.price_amount).toBe(24000);
     expect(item.is_paid).toBe(1);
@@ -202,12 +252,12 @@ describe('the backup round trip', () => {
     expect(Object.keys(EXPORT_COLUMNS).sort()).toEqual(tables.sort());
   });
 
-  it('restores expenses with their receipts and payments', () => {
+  it('restores expenses with their receipts and payments', async () => {
     const source = fresh();
     seed(source);
     const target = fresh();
 
-    restoreInto(target, source, 'merge');
+    await restoreInto(target, source, 'merge');
 
     expect(target.prepare(`SELECT id, label, amount FROM expenses`).all()).toEqual([
       { id: 'e1', label: 'Esselunga', amount: 2345 },
@@ -219,14 +269,25 @@ describe('the backup round trip', () => {
     expect(target.prepare(`SELECT COUNT(*) AS n FROM payments`).get()).toEqual({ n: 1 });
   });
 
-  it('still imports a backup made before expenses existed (format 1, app 0.2.0)', () => {
+  it('still imports a backup made before expenses existed (format 1, app 0.2.0)', async () => {
     const source = fresh();
     seed(source);
     for (const table of ['payments', 'resources WHERE expense_id IS NOT NULL', 'expenses']) {
       source.prepare(`DELETE FROM ${table}`).run();
     }
-    const current = JSON.parse(JSON.stringify(documentFrom(source)));
-    const { expenses: _expenses, payments: _payments, ...oldTables } = current.tables;
+    const current = JSON.parse(JSON.stringify(await documentFrom(source)));
+    const {
+      expenses: _expenses,
+      payments: _payments,
+      travellers: _travellers,
+      tripTravellers: _tripTravellers,
+      itemParticipants: _itemParticipants,
+      lists: _lists,
+      listItems: _listItems,
+      templates: _templates,
+      templateUses: _templateUses,
+      ...oldTables
+    } = current.tables;
     const formatOne = {
       ...current,
       formatVersion: 1,
@@ -241,99 +302,208 @@ describe('the backup round trip', () => {
     const parsed = parseExportDocument(formatOne);
     if (!parsed.ok) throw new Error(parsed.reason);
     const target = fresh();
-    applyImport(target, planImport(parsed.document, [], 'merge', ['media/r1.pdf']));
+    await applyImport(target, planImport(parsed.document, [], 'merge', ['media/r1.pdf']));
 
-    expect(readAll(target)).toEqual(readAll(source));
+    expect(await readAll(target)).toEqual(await readAll(source));
   });
 
-  it('survives being restored twice, leaving one copy rather than two', () => {
+  it('still imports a format-2 backup (app 0.5.1, on the phone today)', async () => {
     const source = fresh();
     seed(source);
+    const current = JSON.parse(JSON.stringify(await documentFrom(source)));
+    const {
+      travellers: _travellers,
+      tripTravellers: _tripTravellers,
+      itemParticipants: _itemParticipants,
+      lists: _lists,
+      listItems: _listItems,
+      templates: _templates,
+      templateUses: _templateUses,
+      ...formatTwoTables
+    } = current.tables;
+
+    const parsed = parseExportDocument({ ...current, formatVersion: 2, tables: formatTwoTables });
+    if (!parsed.ok) throw new Error(parsed.reason);
+    const target = fresh();
+    await applyImport(target, planImport(parsed.document, [], 'merge', ['media/r1.pdf']));
+
+    expect(await readAll(target)).toEqual(await readAll(source));
+  });
+
+  it('survives being restored twice, leaving one copy rather than two', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
     const target = fresh();
 
-    restoreInto(target, source, 'merge');
-    const plan = restoreInto(target, source, 'merge');
+    await restoreInto(target, source, 'merge');
+    const plan = await restoreInto(target, source, 'merge');
 
     expect(plan.skippedTripIds.sort()).toEqual(['t1', 't2']);
-    expect(readAll(target)).toEqual(readAll(source));
+    expect(plan.write.travellers).toEqual([]);
+    expect(plan.write.lists).toEqual([]);
+    expect(plan.write.templates).toEqual([]);
+    expect(await readAll(target)).toEqual(await readAll(source));
   });
 
-  it('keeps a local trip the backup does not know about', () => {
+  it('keeps a local trip the backup does not know about', async () => {
     const source = fresh();
     seed(source);
     const target = fresh();
-    target
-      .prepare(
-        `INSERT INTO trips (id, name, start_date, end_date, default_tz, created_at, updated_at)
-         VALUES ('local', 'Mine', '2027-01-01', '2027-01-05', 'Europe/Sofia', ?, ?)`,
-      )
-      .run(now, now);
+    run(
+      target,
+      `INSERT INTO trips (id, name, start_date, end_date, default_tz, created_at, updated_at)
+       VALUES ('local', 'Mine', '2027-01-01', '2027-01-05', 'Europe/Sofia', ?, ?)`,
+      now,
+      now,
+    );
 
-    restoreInto(target, source, 'merge');
+    await restoreInto(target, source, 'merge');
 
-    expect((readAll(target).trips.map((t) => t.id) as string[]).sort()).toEqual([
+    expect(((await readAll(target)).trips.map((t) => t.id) as string[]).sort()).toEqual([
       'local',
       't1',
       't2',
     ]);
   });
 
-  it('replace overwrites a diverged trip without stranding its old children', () => {
+  it('replace overwrites a diverged trip without stranding its old children', async () => {
     const source = fresh();
     seed(source);
+    seedFieldbook(source);
     const target = fresh();
     seed(target);
-    target.prepare(`UPDATE trips SET name = 'Edited' WHERE id = 't1'`).run();
-    target
-      .prepare(
-        `INSERT INTO trip_items (id, trip_id, kind, status, title, created_at, updated_at)
-         VALUES ('extra', 't1', 'other', 'idea', 'Added later', ?, ?)`,
-      )
-      .run(now, now);
+    seedFieldbook(target);
+    run(target, `UPDATE trips SET name = 'Edited' WHERE id = 't1'`);
+    run(
+      target,
+      `INSERT INTO trip_items (id, trip_id, kind, status, title, created_at, updated_at)
+       VALUES ('extra', 't1', 'other', 'idea', 'Added later', ?, ?)`,
+      now,
+      now,
+    );
+    run(
+      target,
+      `INSERT INTO list_items (id, list_id, label, sort_order, created_at, updated_at)
+       VALUES ('m2', 'milan-pack', 'Added later', 1, ?, ?)`,
+      now,
+      now,
+    );
 
-    restoreInto(target, source, 'replace');
+    await restoreInto(target, source, 'replace');
 
-    expect(readAll(target)).toEqual(readAll(source));
+    expect(await readAll(target)).toEqual(await readAll(source));
     expect(target.prepare(`SELECT COUNT(*) AS n FROM trip_items WHERE id = 'extra'`).get()).toEqual({
       n: 0,
     });
   });
 
-  it('reports a file the archive is missing rather than restoring a dead reference silently', () => {
+  it('reports a file the archive is missing rather than restoring a dead reference silently', async () => {
     const source = fresh();
     seed(source);
-    source
-      .prepare(
-        `INSERT INTO resources (id, trip_item_id, kind, subtype, label, stored_path, sort_order,
-                                created_at)
-         VALUES ('r3', 'i2', 'file', 'ticket', 'Lost', 'media/r3.pdf', 0, ?)`,
-      )
-      .run(now);
+    run(
+      source,
+      `INSERT INTO resources (id, trip_item_id, kind, subtype, label, stored_path, sort_order,
+                              created_at)
+       VALUES ('r3', 'i2', 'file', 'ticket', 'Lost', 'media/r3.pdf', 0, ?)`,
+      now,
+    );
 
-    const plan = restoreInto(fresh(), source, 'merge');
+    const plan = await restoreInto(fresh(), source, 'merge');
 
     expect(plan.missingFiles).toEqual(['media/r3.pdf']);
   });
 
-  it('writes nothing at all when one row in the batch is bad', () => {
+  it('writes nothing at all when one row in the batch is bad', async () => {
     const source = fresh();
     seed(source);
     const target = fresh();
-    const parsed = parseExportDocument(JSON.parse(JSON.stringify(documentFrom(source))));
+    const parsed = parseExportDocument(JSON.parse(JSON.stringify(await documentFrom(source))));
     if (!parsed.ok) throw new Error(parsed.reason);
 
     const plan = planImport(parsed.document, [], 'merge');
     plan.write.tripItems[1] = { ...plan.write.tripItems[1], kind: 'not-a-kind' };
 
-    expect(() => applyImport(target, plan)).toThrow(/CHECK constraint failed/);
-    expect(readAll(target).trips).toEqual([]);
+    await expect(applyImport(target, plan)).rejects.toThrow(/CHECK constraint failed/);
+    expect((await readAll(target)).trips).toEqual([]);
+  });
+});
+
+describe('rows that belong to no trip (format 3)', () => {
+  it('keep mine adds a reusable list or template the phone lacks, and leaves its own alone', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    const target = fresh();
+    seed(target);
+    run(
+      target,
+      `INSERT INTO travellers (id, name, sort_order, created_at, updated_at)
+       VALUES ('ev', 'Evelina (mine)', 0, ?, ?)`,
+      now,
+      now,
+    );
+
+    const plan = await restoreInto(target, source, 'merge');
+
+    // Both trips were here: nothing of theirs is written, but what was missing is.
+    expect(plan.write.trips).toEqual([]);
+    expect(plan.write.lists.map((list) => list.id)).toEqual(['winter']);
+    expect(plan.write.templates.map((template) => template.id)).toEqual(['city']);
+    expect(target.prepare(`SELECT name FROM travellers ORDER BY id`).all()).toEqual([
+      { name: 'Evelina (mine)' },
+      { name: 'Мия' },
+    ]);
+    expect(target.prepare(`SELECT label FROM list_items WHERE list_id = 'winter'`).all()).toEqual([
+      { label: 'Wool socks' },
+    ]);
+  });
+
+  it("use the backup's updates a profile in place, even one a trip still uses", async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    const target = fresh();
+    seed(target);
+    seedFieldbook(target);
+    run(target, `UPDATE travellers SET name = 'Renamed' WHERE id = 'ev'`);
+    run(
+      target,
+      `INSERT INTO travellers (id, name, sort_order, created_at, updated_at)
+       VALUES ('only-here', 'Local', 9, ?, ?)`,
+      now,
+      now,
+    );
+
+    await restoreInto(target, source, 'replace');
+
+    expect(target.prepare(`SELECT id, name FROM travellers ORDER BY id`).all()).toEqual([
+      { id: 'ev', name: 'Evelina' },
+      { id: 'mia', name: 'Мия' },
+      // Never deleted: the backup not knowing it is no reason to lose it.
+      { id: 'only-here', name: 'Local' },
+    ]);
+  });
+
+  it('restores a trip copy of a list even when its reusable source is not in the backup', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    run(source, `DELETE FROM lists WHERE id = 'winter'`);
+    const target = fresh();
+
+    await restoreInto(target, source, 'merge');
+
+    expect(target.prepare(`SELECT id, source_list_id FROM lists`).all()).toEqual([
+      { id: 'milan-pack', source_list_id: 'winter' },
+    ]);
   });
 });
 
 describe('settings follow the import mode', () => {
   const withSetting = (value: string) => {
     const db = fresh();
-    db.prepare(`INSERT INTO settings (key, value) VALUES ('defaultTravellers', ?)`).run(value);
+    run(db, `INSERT INTO settings (key, value) VALUES ('defaultTravellers', ?)`, value);
     return db;
   };
 
@@ -342,32 +512,32 @@ describe('settings follow the import mode', () => {
       value: string;
     }).value;
 
-  it('merge keeps the value already on this device', () => {
+  it('merge keeps the value already on this device', async () => {
     const source = fresh();
     seed(source);
     const target = withSetting('["LOCAL"]');
 
-    restoreInto(target, source, 'merge');
+    await restoreInto(target, source, 'merge');
 
     expect(valueIn(target)).toBe('["LOCAL"]');
   });
 
-  it('replace takes the value from the backup, which is what restoring means', () => {
+  it('replace takes the value from the backup, which is what restoring means', async () => {
     const source = fresh();
     seed(source);
     const target = withSetting('["LOCAL"]');
 
-    restoreInto(target, source, 'replace');
+    await restoreInto(target, source, 'replace');
 
     expect(valueIn(target)).toBe('["Evelina"]');
   });
 
-  it('merge still brings across a setting this device has never had', () => {
+  it('merge still brings across a setting this device has never had', async () => {
     const source = fresh();
     seed(source);
     const target = fresh();
 
-    restoreInto(target, source, 'merge');
+    await restoreInto(target, source, 'merge');
 
     expect(valueIn(target)).toBe('["Evelina"]');
   });

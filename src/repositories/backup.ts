@@ -6,18 +6,33 @@ import {
   MERGE_SETTING,
   REPLACE_SETTING,
   selectAll,
+  upsertSharedRow,
+  type ExportTableName,
 } from '../db/queries';
-import type {
-  ExpenseExportRow,
-  ExportTables,
-  ImportPlan,
-  NoteExportRow,
-  PaymentExportRow,
-  ResourceExportRow,
-  SettingExportRow,
-  TripExportRow,
-  TripItemExportRow,
-} from '../domain/export';
+import type { ExistingShared, ExportTables, ImportPlan } from '../domain/export';
+
+/** Which database table each part of the backup is, in the order rows are written on import. */
+const TABLES: readonly (readonly [keyof ExportTables, ExportTableName])[] = [
+  // Travellers before anything that names one.
+  ['travellers', 'travellers'],
+  ['trips', 'trips'],
+  ['tripTravellers', 'trip_travellers'],
+  ['tripItems', 'trip_items'],
+  ['itemParticipants', 'item_participants'],
+  ['tripNotes', 'trip_notes'],
+  // Before resources: a receipt names its expense.
+  ['expenses', 'expenses'],
+  ['payments', 'payments'],
+  ['resources', 'resources'],
+  ['lists', 'lists'],
+  ['listItems', 'list_items'],
+  ['templates', 'templates'],
+  ['templateUses', 'template_uses'],
+  ['settings', 'settings'],
+];
+
+/** Rows that belong to no trip: kept or updated by id, never replaced along with a trip. */
+const SHARED: ReadonlySet<keyof ExportTables> = new Set(['travellers', 'templates']);
 
 /**
  * Every table as of one moment (A4). The reads share one transaction on a connection of its own,
@@ -33,22 +48,29 @@ export async function readAllTables(db: SQLiteDatabase): Promise<ExportTables> {
   return tables!;
 }
 
-async function readTables(db: SQLiteDatabase): Promise<ExportTables> {
-  const [trips, tripItems, tripNotes, expenses, payments, resources, settings] = await Promise.all([
-    db.getAllAsync<TripExportRow>(selectAll('trips')),
-    db.getAllAsync<TripItemExportRow>(selectAll('trip_items')),
-    db.getAllAsync<NoteExportRow>(selectAll('trip_notes')),
-    db.getAllAsync<ExpenseExportRow>(selectAll('expenses')),
-    db.getAllAsync<PaymentExportRow>(selectAll('payments')),
-    db.getAllAsync<ResourceExportRow>(selectAll('resources')),
-    db.getAllAsync<SettingExportRow>(selectAll('settings')),
-  ]);
-  return { trips, tripItems, tripNotes, expenses, payments, resources, settings };
+/** Every table, read on the connection given; `readAllTables` gives it a snapshot. */
+export async function readTables(db: SQLiteDatabase): Promise<ExportTables> {
+  const rows = await Promise.all(
+    TABLES.map(async ([key, table]) => [key, await db.getAllAsync(selectAll(table))] as const),
+  );
+  return Object.fromEntries(rows) as unknown as ExportTables;
 }
 
 export async function listTripIds(db: SQLiteDatabase): Promise<string[]> {
   const rows = await db.getAllAsync<{ id: string }>(`SELECT id FROM trips`);
   return rows.map((row) => row.id);
+}
+
+/** The rows on the phone that belong to no trip, so an import can tell what is missing. */
+export async function listSharedIds(db: SQLiteDatabase): Promise<ExistingShared> {
+  const ids = async (sql: string) =>
+    (await db.getAllAsync<{ id: string }>(sql)).map((row) => row.id);
+  const [travellers, lists, templates] = await Promise.all([
+    ids(`SELECT id FROM travellers`),
+    ids(`SELECT id FROM lists WHERE trip_id IS NULL`),
+    ids(`SELECT id FROM templates`),
+  ]);
+  return { travellers, lists, templates };
 }
 
 type ExportRow = Record<string, string | number | null>;
@@ -65,29 +87,35 @@ const bindRow = (row: ExportRow): Record<string, string | number | null> =>
  * listener never hears, so every open screen kept showing the phone as it was before the import.
  */
 export async function applyImport(db: SQLiteDatabase, plan: ImportPlan): Promise<void> {
-  const { write } = plan;
+  const { write, mode } = plan;
 
   await db.withTransactionAsync(async () => {
-    if (plan.mode === 'replace') {
+    if (mode === 'replace') {
+      // The cascade clears each trip's children, its travellers' places in it and its lists.
       for (const trip of write.trips) {
         await db.runAsync(DELETE_TRIP_FOR_REPLACE, { $id: trip.id });
       }
     }
 
-    for (const trip of write.trips) await db.runAsync(insertRow('trips'), bindRow(trip));
-    for (const item of write.tripItems) await db.runAsync(insertRow('trip_items'), bindRow(item));
-    for (const note of write.tripNotes) await db.runAsync(insertRow('trip_notes'), bindRow(note));
-    // Before resources: a receipt names its expense.
-    for (const expense of write.expenses) {
-      await db.runAsync(insertRow('expenses'), bindRow(expense));
+    for (const [key, table] of TABLES) {
+      for (const row of write[key] as ExportRow[]) {
+        await db.runAsync(sqlFor(key, table, row, mode), bindRow(row));
+      }
     }
-    for (const payment of write.payments) {
-      await db.runAsync(insertRow('payments'), bindRow(payment));
-    }
-    for (const resource of write.resources) {
-      await db.runAsync(insertRow('resources'), bindRow(resource));
-    }
-    const settingSql = plan.mode === 'replace' ? REPLACE_SETTING : MERGE_SETTING;
-    for (const setting of write.settings) await db.runAsync(settingSql, bindRow(setting));
   });
+}
+
+/** How one row is written: shared rows by id, settings by key, the rest as they come. */
+function sqlFor(
+  key: keyof ExportTables,
+  table: ExportTableName,
+  row: ExportRow,
+  mode: ImportPlan['mode'],
+): string {
+  if (key === 'settings') return mode === 'replace' ? REPLACE_SETTING : MERGE_SETTING;
+  if (SHARED.has(key)) return upsertSharedRow(table, mode);
+  // A reusable list and its items belong to no trip either.
+  if (key === 'lists' && row.trip_id === null) return upsertSharedRow(table, mode);
+  if (key === 'listItems') return upsertSharedRow(table, mode);
+  return insertRow(table);
 }

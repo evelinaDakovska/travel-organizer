@@ -1,5 +1,6 @@
 import { sql as m001 } from './001-initial';
 import { sql as m002 } from './002-expenses';
+import { sql as m003 } from './003-fieldbook';
 
 export type Migration = { version: number; sql: string };
 
@@ -7,6 +8,7 @@ export type Migration = { version: number; sql: string };
 export const MIGRATIONS: Migration[] = [
   { version: 1, sql: m001 },
   { version: 2, sql: m002 },
+  { version: 3, sql: m003 },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

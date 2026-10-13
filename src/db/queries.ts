@@ -325,6 +325,16 @@ export const EXPORT_COLUMNS = {
              'paid_by', 'split', 'created_at', 'updated_at'],
   payments: ['id', 'trip_id', 'from_name', 'to_name', 'amount', 'currency', 'created_at'],
   settings: ['key', 'value'],
+  // Format 3 (Fieldbook, migration 003).
+  travellers: ['id', 'name', 'sort_order', 'created_at', 'updated_at'],
+  trip_travellers: ['trip_id', 'traveller_id', 'sort_order'],
+  item_participants: ['item_id', 'traveller_id'],
+  lists: ['id', 'trip_id', 'kind', 'name', 'source_list_id', 'sort_order', 'created_at',
+          'updated_at'],
+  list_items: ['id', 'list_id', 'label', 'quantity', 'unit', 'category', 'note', 'traveller_id',
+               'done_at', 'sort_order', 'created_at', 'updated_at'],
+  templates: ['id', 'name', 'content', 'created_at', 'updated_at'],
+  template_uses: ['trip_id', 'template_id', 'applied_at'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type ExportTableName = keyof typeof EXPORT_COLUMNS;
@@ -352,6 +362,20 @@ export const REPLACE_SETTING = `
 INSERT INTO settings (key, value) VALUES ($key, $value)
   ON CONFLICT(key) DO UPDATE SET value = excluded.value
 `;
+
+/**
+ * A row that belongs to no trip — a traveller, a reusable list or its item, a template — in an
+ * import. *Keep mine* adds it only when the phone lacks it; *Use the backup's* also updates the
+ * phone's row with the same id. Never a delete: a profile still in use cannot be removed.
+ */
+export const upsertSharedRow = (table: ExportTableName, mode: 'merge' | 'replace') => {
+  const columns = EXPORT_COLUMNS[table].filter((column) => column !== 'id');
+  const onConflict =
+    mode === 'merge'
+      ? 'DO NOTHING'
+      : `DO UPDATE SET ${columns.map((column) => `${column} = excluded.${column}`).join(', ')}`;
+  return `${insertRow(table)} ON CONFLICT(id) ${onConflict}`;
+};
 
 /**
  * Replace mode deletes the trip first and lets the cascade clear its children. Using

@@ -23,7 +23,7 @@ import {
   type ImportMode,
   type ImportPlan,
 } from '../domain/export';
-import { applyImport, listTripIds, readAllTables } from '../repositories/backup';
+import { applyImport, listSharedIds, listTripIds, readAllTables } from '../repositories/backup';
 import { readStoredFile, storedFileExists, storedFileSize, writeStoredFile } from './storage';
 
 export type ExportedBackup = { uri: string; document: ExportDocument; packedFiles: number };
@@ -70,7 +70,8 @@ export async function planBackupImport(
   backup: UnpackedBackup,
   mode: ImportMode,
 ): Promise<ImportPlan> {
-  return planImport(backup.document, await listTripIds(db), mode, backup.files.keys());
+  const [tripIds, shared] = await Promise.all([listTripIds(db), listSharedIds(db)]);
+  return planImport(backup.document, tripIds, mode, backup.files.keys(), shared);
 }
 
 /**

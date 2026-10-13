@@ -46,11 +46,18 @@ describe('migrations', () => {
       .sort();
     expect(tables).toEqual([
       'expenses',
+      'item_participants',
+      'list_items',
+      'lists',
       'payments',
       'resources',
       'settings',
+      'template_uses',
+      'templates',
+      'travellers',
       'trip_items',
       'trip_notes',
+      'trip_travellers',
       'trips',
     ]);
     db.close();

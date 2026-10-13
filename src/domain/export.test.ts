@@ -1,6 +1,7 @@
 import {
   buildExportDocument,
   buildFileManifest,
+  emptyExportTables,
   EXPORT_FORMAT_VERSION,
   exportFileName,
   filterTablesForTrip,
@@ -117,6 +118,7 @@ const payment = (id: string, tripId: string) => ({
 });
 
 const tables = (): ExportTables => ({
+  ...emptyExportTables(),
   trips: [trip('t1'), trip('t2')],
   tripItems: [item('i1', 't1'), item('i2', 't2')],
   tripNotes: [note('n1', 't1')],
@@ -290,5 +292,91 @@ describe('exportFileName', () => {
     expect(exportFileName(new Date(2026, 0, 2, 23, 5))).toBe(
       'travel-organizer-backup-2026-01-02-2305.zip',
     );
+  });
+});
+
+describe('format 3: travellers and lists', () => {
+  const at = '2026-10-13T00:00:00.000Z';
+  const traveller = (id: string) => ({ id, name: id, sort_order: 0, created_at: at, updated_at: at });
+  const list = (id: string, tripId: string | null) => ({
+    id,
+    trip_id: tripId,
+    kind: 'packing',
+    name: id,
+    source_list_id: null,
+    sort_order: 0,
+    created_at: at,
+    updated_at: at,
+  });
+  const listItem = (id: string, listId: string, travellerId: string | null = null) => ({
+    id,
+    list_id: listId,
+    label: id,
+    quantity: null,
+    unit: null,
+    category: null,
+    note: null,
+    traveller_id: travellerId,
+    done_at: null,
+    sort_order: 0,
+    created_at: at,
+    updated_at: at,
+  });
+  const withLists = (): ExportTables => ({
+    ...tables(),
+    travellers: [traveller('ev'), traveller('mia'), traveller('other')],
+    tripTravellers: [{ trip_id: 't1', traveller_id: 'ev', sort_order: 0 }],
+    itemParticipants: [{ item_id: 'i1', traveller_id: 'ev' }],
+    lists: [list('master', null), list('t1-pack', 't1'), list('t2-pack', 't2')],
+    listItems: [listItem('a', 'master'), listItem('b', 't1-pack', 'mia'), listItem('c', 't2-pack')],
+    templates: [{ id: 'tpl', name: 'City', content: '{}', created_at: at, updated_at: at }],
+    templateUses: [{ trip_id: 't1', template_id: 'tpl', applied_at: at }],
+  });
+
+  it('carries a trip’s own lists and the travellers it uses, not reusable lists or templates', () => {
+    const scoped = filterTablesForTrip(withLists(), 't1');
+    expect(scoped.lists.map((l) => l.id)).toEqual(['t1-pack']);
+    expect(scoped.listItems.map((i) => i.id)).toEqual(['b']);
+    expect(scoped.travellers.map((t) => t.id).sort()).toEqual(['ev', 'mia']);
+    expect(scoped.templates).toEqual([]);
+    expect(scoped.templateUses.map((u) => u.trip_id)).toEqual(['t1']);
+  });
+
+  it('keeps mine: shared rows only when the phone lacks them; trip rows with their trip', () => {
+    const document = buildExportDocument(withLists(), { exportedAt: at });
+    const plan = planImport(document, ['t2'], 'merge', [], {
+      travellers: ['ev'],
+      lists: ['master'],
+      templates: [],
+    });
+    expect(plan.write.travellers.map((t) => t.id)).toEqual(['mia', 'other']);
+    expect(plan.write.lists.map((l) => l.id)).toEqual(['t1-pack']);
+    expect(plan.write.listItems.map((i) => i.id)).toEqual(['b']);
+    expect(plan.write.templates.map((t) => t.id)).toEqual(['tpl']);
+    expect(plan.write.tripTravellers).toHaveLength(1);
+  });
+
+  it("uses the backup's: every shared row, to update the phone's by id", () => {
+    const document = buildExportDocument(withLists(), { exportedAt: at });
+    const plan = planImport(document, ['t1', 't2'], 'replace', [], {
+      travellers: ['ev', 'mia', 'other'],
+      lists: ['master'],
+      templates: ['tpl'],
+    });
+    expect(plan.write.travellers).toHaveLength(3);
+    expect(plan.write.lists).toHaveLength(3);
+    expect(plan.write.templates).toHaveLength(1);
+  });
+
+  it('reads a format-2 backup, which has none of these tables, as having none', () => {
+    const { travellers: _t, lists: _l, listItems: _i, templates: _p, ...older } = withLists();
+    const parsed = parseExportDocument({
+      formatVersion: 2,
+      app: 'travel-organizer',
+      exportedAt: at,
+      tables: older,
+      files: [],
+    });
+    expect(parsed.ok && parsed.document.tables.lists).toEqual([]);
   });
 });
