@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
-import { isValidLocal } from './time';
+import { isValidLocal, toInstant } from './time';
 import { isResolvableTimezone } from './timezones';
+import { transportDetails, type TripItem } from './tripItem';
 
 export type Trip = {
   id: string;
@@ -164,4 +165,32 @@ export function defaultItemDate(
 ): string {
   const today = deviceToday(now);
   return trip.startDate <= today && today <= trip.endDate ? today : trip.startDate;
+}
+
+/**
+ * The way out, as cities (B6): 'Sofia → Helsinki → Rovaniemi'. Confirmed journeys in time order,
+ * each one's From then To, until a city comes round again — the way back is the same cities in
+ * reverse and would only repeat them. Car rentals are left out: they are a place, not a hop. Null
+ * when no journey names two cities.
+ */
+export function outboundRoute(
+  items: readonly Pick<TripItem, 'kind' | 'subkind' | 'status' | 'start' | 'details'>[],
+): string | null {
+  const stops = items
+    .filter((item) => item.kind === 'transport' && item.subkind !== 'car')
+    .filter((item) => item.status === 'confirmed' && item.start !== null)
+    .map((item) => ({ at: toInstant(item.start!), route: transportDetails(item) }))
+    .sort((a, b) => a.at.localeCompare(b.at))
+    .flatMap(({ route }) => [route?.from, route?.to])
+    .filter((city): city is string => Boolean(city?.trim()));
+
+  const key = (city: string) => city.trim().toLowerCase();
+  const cities: string[] = [];
+  for (const city of stops) {
+    // A connection repeats the city it arrived in; skip it. Any other repeat is the way back.
+    if (cities.length > 0 && key(cities[cities.length - 1]) === key(city)) continue;
+    if (cities.some((seen) => key(seen) === key(city))) break;
+    cities.push(city.trim());
+  }
+  return cities.length > 1 ? cities.join(' → ') : null;
 }

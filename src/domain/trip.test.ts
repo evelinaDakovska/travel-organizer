@@ -2,6 +2,7 @@ import {
   defaultItemDate,
   groupTrips,
   isTripActive,
+  outboundRoute,
   parseTripRow,
   tripDurationDays,
   tripInputSchema,
@@ -172,5 +173,48 @@ describe('tripPhase', () => {
     expect(tripPhase({ startDate: '2026-10-30', endDate: '2026-11-02' }, new Date(2026, 10, 1, 8))).toEqual(
       { phase: 'during', day: 3, of: 4 },
     );
+  });
+});
+
+describe('outboundRoute (B6)', () => {
+  const leg = (
+    local: string,
+    from: string | null,
+    to: string | null,
+    over: { subkind?: string; status?: 'confirmed' | 'idea' | 'cancelled' } = {},
+  ) => ({
+    kind: 'transport' as const,
+    subkind: over.subkind ?? 'flight',
+    status: over.status ?? 'confirmed',
+    start: { local, tz: 'Europe/Helsinki', precision: 'time' as const },
+    details: { ...(from ? { from } : {}), ...(to ? { to } : {}) },
+  });
+
+  it('reads the way out, stopping where the way back begins', () => {
+    expect(
+      outboundRoute([
+        leg('2026-11-24T13:50', 'Rovaniemi', 'Helsinki'),
+        leg('2026-11-20T09:20', 'Sofia', 'Helsinki'),
+        leg('2026-11-20T19:27', 'Helsinki', 'Rovaniemi', { subkind: 'train' }),
+        leg('2026-11-21T09:00', 'Rovaniemi station', 'Rovaniemi station', { subkind: 'car' }),
+        leg('2026-11-24T17:00', 'Helsinki', 'Sofia'),
+      ]),
+    ).toBe('Sofia → Helsinki → Rovaniemi');
+  });
+
+  it('leaves out ideas, cancellations and blank cities', () => {
+    expect(
+      outboundRoute([
+        leg('2026-11-20T07:00', 'Sofia', ' '),
+        leg('2026-11-20T09:00', 'Munich', 'Helsinki'),
+        leg('2026-11-19T07:20', 'Sofia', 'Vienna', { status: 'idea' }),
+        leg('2026-11-19T08:20', 'Sofia', 'Rome', { status: 'cancelled' }),
+      ]),
+    ).toBe('Sofia → Munich → Helsinki');
+  });
+
+  it('is null with fewer than two cities', () => {
+    expect(outboundRoute([])).toBeNull();
+    expect(outboundRoute([leg('2026-11-20T07:20', 'Sofia', null)])).toBeNull();
   });
 });

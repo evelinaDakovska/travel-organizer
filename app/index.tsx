@@ -1,19 +1,25 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { formatDateRange, formatDuration } from '../src/domain/format';
 import { singleActiveTrip } from '../src/domain/itinerary';
-import { groupTrips } from '../src/domain/trip';
+import { groupTrips, outboundRoute, tripDurationDays, type Trip } from '../src/domain/trip';
+import { DestinationCover } from '../src/features/trips/DestinationCover';
 import { queryView } from '../src/hooks/queryView';
 import { useLiveQuery } from '../src/hooks/useLiveQuery';
+import { useNow } from '../src/hooks/useNow';
+import { listTripItems, TRIP_ITEM_TABLES } from '../src/repositories/tripItems';
 import { listTrips, TRIP_TABLES } from '../src/repositories/trips';
 import { Button } from '../src/ui/components/Button';
+import { HeaderAction } from '../src/ui/components/HeaderAction';
 import { Icon } from '../src/ui/components/Icon';
+import { ListRow, Rows } from '../src/ui/components/ListRow';
 import { LoadFailed, StaleNotice } from '../src/ui/components/QueryStates';
 import { Screen } from '../src/ui/components/Screen';
+import { ScreenHeader } from '../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../src/ui/components/SectionLabel';
-import { TripCard } from '../src/ui/components/TripCard';
-import { elevation, radius, spacing, type, useColors } from '../src/ui/tokens';
+import { gutter, spacing, type, useColors } from '../src/ui/tokens';
 
 /**
  * Module scope, not state: jump into the active trip once per launch, not every time Home is
@@ -21,14 +27,29 @@ import { elevation, radius, spacing, type, useColors } from '../src/ui/tokens';
  */
 let openedActiveTrip = false;
 
+/** Your trips (B6): the next one as a cover, the others as rows, and the backup one tap away. */
 export default function Home() {
   const c = useColors();
   const router = useRouter();
+  const now = useNow();
   const tripsQuery = useLiveQuery(listTrips, TRIP_TABLES);
   const trips = tripsQuery.data;
   const view = queryView(tripsQuery);
 
-  const grouped = useMemo(() => groupTrips(trips ?? []), [trips]);
+  const grouped = useMemo(() => groupTrips(trips ?? [], now), [trips, now]);
+  const [cover, ...laterTrips] = grouped.upcoming;
+
+  // Only the cover trip's journeys are read, for its route.
+  const coverId = cover?.id;
+  const { data: coverItems } = useLiveQuery(
+    useCallback(
+      async (database) => (coverId ? listTripItems(database, coverId) : []),
+      [coverId],
+    ),
+    TRIP_ITEM_TABLES,
+    [coverId],
+  );
+  const route = useMemo(() => outboundRoute(coverItems ?? []), [coverItems]);
 
   useEffect(() => {
     if (openedActiveTrip || !trips) return;
@@ -37,38 +58,28 @@ export default function Home() {
     if (active) router.push(`/trip/${active.id}`);
   }, [trips, router]);
 
+  const open = (trip: Trip) => router.push(`/trip/${trip.id}`);
+  const tripRow = (trip: Trip) => (
+    <ListRow
+      key={trip.id}
+      title={trip.name}
+      subtitle={`${formatDateRange(trip.startDate, trip.endDate)} · ${formatDuration(
+        tripDurationDays(trip),
+      )}`}
+      detail={trip.destination}
+      onPress={() => open(trip)}
+    />
+  );
+
   return (
     <Screen>
-      <View style={styles.header}>
-        <Text style={[type.display, { color: c.text }]} accessibilityRole="header">
-          Trips
-        </Text>
-        <View style={styles.headerActions}>
-          <Pressable
-            onPress={() => router.push('/backup')}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Backup"
-            style={({ pressed }) => [
-              styles.iconButton,
-              { borderColor: c.border, backgroundColor: pressed ? c.surfaceSunken : 'transparent' },
-            ]}>
-            <Icon name="backup" color={c.text} />
-          </Pressable>
-          <Pressable
-            onPress={() => router.push('/trip/new')}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="New trip"
-            style={({ pressed }) => [
-              styles.add,
-              elevation.md,
-              { backgroundColor: pressed ? c.accentPressed : c.accent, shadowColor: c.shadow },
-            ]}>
-            <Icon name="add" size={26} color={c.onAccent} strokeWidth={2.75} />
-          </Pressable>
-        </View>
-      </View>
+      <ScreenHeader
+        title="Your trips"
+        leading={false}
+        action={
+          <HeaderAction icon="add" label="New trip" onPress={() => router.push('/trip/new')} />
+        }
+      />
 
       {view === 'loading' ? (
         <View style={styles.centre}>
@@ -88,33 +99,42 @@ export default function Home() {
           <View style={styles.emptyAction}>
             <Button label="Add your first trip" onPress={() => router.push('/trip/new')} />
           </View>
-          <Button label="Restore from a backup" variant="ghost" onPress={() => router.push('/backup')} />
+          <Button
+            label="Restore from a backup"
+            variant="ghost"
+            onPress={() => router.push('/backup')}
+          />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <StaleNotice queries={[tripsQuery]} />
-          {grouped.upcoming.length > 0 && (
+
+          {cover ? (
             <View style={styles.section}>
               <SectionLabel>Upcoming</SectionLabel>
-              {grouped.upcoming.map((trip) => (
-                <TripCard key={trip.id} trip={trip} onPress={() => router.push(`/trip/${trip.id}`)} />
-              ))}
+              <DestinationCover trip={cover} route={route} now={now} onPress={() => open(cover)} />
+              {laterTrips.length > 0 ? <Rows>{laterTrips.map(tripRow)}</Rows> : null}
             </View>
-          )}
+          ) : null}
 
-          {grouped.past.length > 0 && (
+          {grouped.past.length > 0 ? (
             <View style={styles.section}>
-              <SectionLabel>Past</SectionLabel>
-              {grouped.past.map((trip) => (
-                <TripCard
-                  key={trip.id}
-                  trip={trip}
-                  muted
-                  onPress={() => router.push(`/trip/${trip.id}`)}
-                />
-              ))}
+              <SectionLabel>Past trips</SectionLabel>
+              <Rows>{grouped.past.map(tripRow)}</Rows>
             </View>
-          )}
+          ) : null}
+
+          <View style={styles.section}>
+            <SectionLabel>Your data</SectionLabel>
+            <Rows>
+              <ListRow
+                title="Backup & restore"
+                subtitle="Everything lives only on this phone. Save a copy before each trip."
+                leading={<Icon name="backup" color={c.accentText} />}
+                onPress={() => router.push('/backup')}
+              />
+            </Rows>
+          </View>
         </ScrollView>
       )}
     </Screen>
@@ -122,33 +142,20 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
+  content: {
+    paddingHorizontal: gutter.normal,
+    paddingTop: spacing.sm,
+    gap: spacing.xl,
+    paddingBottom: spacing.xxxl,
   },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  iconButton: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.pill,
-    borderWidth: 1,
+  section: { gap: spacing.sm },
+  centre: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: spacing.xxl,
+    gap: spacing.md,
   },
-  add: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: { padding: spacing.xl, paddingTop: spacing.sm, gap: spacing.xxl, paddingBottom: spacing.xxxl },
-  section: { gap: spacing.md },
-  centre: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxl, gap: spacing.md },
   centred: { textAlign: 'center' },
   emptyBody: { maxWidth: 300 },
   emptyAction: { marginTop: spacing.lg },
