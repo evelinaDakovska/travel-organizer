@@ -1,4 +1,3 @@
-import { Caprasimo_400Regular } from '@expo-google-fonts/caprasimo';
 import {
   Figtree_400Regular,
   Figtree_500Medium,
@@ -23,7 +22,6 @@ export default function RootLayout() {
   // The fonts ship inside the bundle, so this settles in milliseconds with no network. If one
   // fails, render anyway: the system font is a better failure than a blank screen abroad.
   const [fontsLoaded, fontError] = useFonts({
-    Caprasimo_400Regular,
     Figtree_400Regular,
     Figtree_500Medium,
     Figtree_600SemiBold,

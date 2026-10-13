@@ -3,14 +3,16 @@ import { StyleSheet, Text, View } from 'react-native';
 import { radius, spacing, type, useColors, type Colors } from '../tokens';
 import { Icon, type IconName } from './Icon';
 
-export type TagTone = 'accent' | 'accent2' | 'neutral' | 'outline' | 'danger';
+export type TagTone = 'accent' | 'attention' | 'success' | 'neutral' | 'outline' | 'danger';
 
 function toneColors(c: Colors, tone: TagTone) {
   switch (tone) {
     case 'accent':
       return { fill: c.accentSoft, text: c.accentText, border: c.accentSoft };
-    case 'accent2':
-      return { fill: c.accent2Soft, text: c.accent2Text, border: c.accent2Soft };
+    case 'attention':
+      return { fill: c.attentionSoft, text: c.attention, border: c.attentionSoft };
+    case 'success':
+      return { fill: c.successSoft, text: c.success, border: c.successSoft };
     case 'outline':
       return { fill: 'transparent', text: c.accentText, border: c.accent };
     case 'danger':
@@ -50,8 +52,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     borderWidth: 1,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 3,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
   },
 });

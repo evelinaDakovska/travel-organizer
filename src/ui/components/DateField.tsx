@@ -42,13 +42,13 @@ export function DateField({ value, onChange, invalid = false, minDate }: Props) 
 }
 
 /** Builds a device-local Date so the picker opens on the intended day. */
-function toLocalDate(isoDate: string): Date {
+export function toLocalDate(isoDate: string): Date {
   const [year, month, day] = isoDate.split('-').map(Number);
   return Number.isFinite(year) ? new Date(year, month - 1, day, 12) : new Date();
 }
 
 /** Reads device-local components, not UTC, so the chosen day is preserved. */
-function toIsoDate(date: Date): string {
+export function toIsoDate(date: Date): string {
   return [
     date.getFullYear(),
     String(date.getMonth() + 1).padStart(2, '0'),

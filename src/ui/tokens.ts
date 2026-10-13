@@ -23,36 +23,62 @@ export const spacing = {
   xxxl: 48,
 } as const;
 
-/** Organic over-rounds: cards near 32, every control a pill. */
-export const radius = { sm: 8, md: 16, lg: 28, xl: 32, pill: 999 } as const;
+/**
+ * Fieldbook radii (B1): 6 for a status label, 10 for inputs and buttons, 14 for a highlighted
+ * panel, 16 for the destination cover. Rows are not rounded at all: they are separated by rules.
+ */
+export const radius = { sm: 6, md: 10, lg: 14, xl: 16, pill: 999 } as const;
+
+/** Screen gutters: 20 normally, 16 on a narrow screen (B1). */
+export const gutter = { normal: 20, narrow: 16 } as const;
+
+/** The smallest touch target, in dp (B1). */
+export const touchTarget = 48;
 
 /**
  * Family names as registered in `app/_layout.tsx`. Android chooses a face by family, not by
  * `fontWeight`, so each weight is its own family and no style below sets a weight.
  */
 export const fonts = {
-  heading: 'Caprasimo_400Regular',
   body: 'Figtree_400Regular',
   bodyMedium: 'Figtree_500Medium',
   bodySemiBold: 'Figtree_600SemiBold',
   bodyBold: 'Figtree_700Bold',
 } as const;
 
+/** Figures that line up in columns: times, amounts, counts. */
+const tabular = { fontVariant: ['tabular-nums'] as 'tabular-nums'[] };
+
+/**
+ * One sans-serif family throughout (B1): the trip's name and the times carry the weight, not a
+ * display face. Sizes are dp and grow with the phone's font scale; nothing essential is below 12.
+ */
 export const type = {
-  display: { fontFamily: fonts.heading, fontSize: 32, lineHeight: 38, letterSpacing: -0.3 },
-  title: { fontFamily: fonts.heading, fontSize: 23, lineHeight: 28, letterSpacing: -0.2 },
-  heading: { fontFamily: fonts.heading, fontSize: 17, lineHeight: 22 },
-  body: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22 },
-  bodyStrong: { fontFamily: fonts.bodySemiBold, fontSize: 15, lineHeight: 22 },
-  label: { fontFamily: fonts.bodySemiBold, fontSize: 13, lineHeight: 18 },
-  caption: { fontFamily: fonts.body, fontSize: 12, lineHeight: 16 },
-  tag: { fontFamily: fonts.bodySemiBold, fontSize: 12, lineHeight: 16, letterSpacing: 0.2 },
-  overline: { fontFamily: fonts.bodySemiBold, fontSize: 11, lineHeight: 14, letterSpacing: 0.9 },
+  /** The key time or amount on a screen: 32/38, figures aligned. */
+  display: { fontFamily: fonts.bodyBold, fontSize: 32, lineHeight: 38, letterSpacing: -0.5, ...tabular },
+  /** A screen's title: 28/34. */
+  title: { fontFamily: fonts.bodySemiBold, fontSize: 28, lineHeight: 34, letterSpacing: -0.4 },
+  /** A section's heading: 18/24. */
+  section: { fontFamily: fonts.bodySemiBold, fontSize: 18, lineHeight: 24, letterSpacing: -0.2 },
+  /** An item's title in a row or card: 16/22. */
+  heading: { fontFamily: fonts.bodySemiBold, fontSize: 16, lineHeight: 22 },
+  body: { fontFamily: fonts.body, fontSize: 16, lineHeight: 22 },
+  bodyStrong: { fontFamily: fonts.bodySemiBold, fontSize: 16, lineHeight: 22 },
+  /** A time in a row's time column, or an amount at the end of one. */
+  figure: { fontFamily: fonts.bodySemiBold, fontSize: 16, lineHeight: 22, ...tabular },
+  label: { fontFamily: fonts.bodySemiBold, fontSize: 14, lineHeight: 20 },
+  /** Metadata under a title: 13/18. */
+  caption: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18 },
+  tag: { fontFamily: fonts.bodySemiBold, fontSize: 12, lineHeight: 16 },
+  /** Small context above a heading ('39 DAYS TO GO'). Decoration, never the only copy of a fact. */
+  overline: { fontFamily: fonts.bodySemiBold, fontSize: 12, lineHeight: 16, letterSpacing: 1 },
 } as const;
 
-/** Android draws shadows from `elevation`; pair with `shadowColor: c.shadow` to tint them. */
+/**
+ * Android draws shadows from `elevation`; pair with `shadowColor: c.shadow` to tint them. Fieldbook
+ * keeps shadows off peer rows and panels; only something floating over content (a sheet) has one.
+ */
 export const elevation = {
-  sm: { elevation: 2, shadowOpacity: 0.14, shadowRadius: 2, shadowOffset: { width: 0, height: 1 } },
   md: { elevation: 6, shadowOpacity: 0.16, shadowRadius: 10, shadowOffset: { width: 0, height: 3 } },
 } as const;
 

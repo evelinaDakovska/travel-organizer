@@ -1,6 +1,6 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 
-import { opacity, radius, spacing, type, useColors, type Colors } from '../tokens';
+import { opacity, radius, spacing, touchTarget, type, useColors, type Colors } from '../tokens';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
@@ -10,7 +10,7 @@ type Props = {
   variant?: Variant;
   disabled?: boolean;
   busy?: boolean;
-  /** A shorter pill for rows of several actions. */
+  /** A shorter button for rows of several actions. Still a 44 dp target. */
   compact?: boolean;
 };
 
@@ -19,7 +19,7 @@ function look(c: Colors, variant: Variant) {
     case 'primary':
       return { fill: c.accent, pressed: c.accentPressed, text: c.onAccent, border: c.accent };
     case 'secondary':
-      return { fill: 'transparent', pressed: c.surfaceSunken, text: c.text, border: c.border };
+      return { fill: c.surface, pressed: c.surfaceSunken, text: c.accentText, border: c.border };
     case 'ghost':
       return { fill: 'transparent', pressed: c.accentSoft, text: c.accentText, border: 'transparent' };
     case 'danger':
@@ -59,7 +59,7 @@ export function Button({
       {busy ? (
         <ActivityIndicator color={colors.text} />
       ) : (
-        <Text style={[type.heading, compact && styles.compactLabel, { color: colors.text }]} numberOfLines={1}>
+        <Text style={[compact ? type.label : type.bodyStrong, { color: colors.text }]} numberOfLines={1}>
           {label}
         </Text>
       )}
@@ -69,13 +69,12 @@ export function Button({
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 52,
-    borderRadius: radius.pill,
+    minHeight: touchTarget,
+    borderRadius: radius.md,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
   },
-  compact: { minHeight: 44, paddingHorizontal: spacing.lg },
-  compactLabel: { fontSize: 15, lineHeight: 20 },
+  compact: { minHeight: 44, paddingHorizontal: spacing.md },
 });

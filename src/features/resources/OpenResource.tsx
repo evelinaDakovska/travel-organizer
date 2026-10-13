@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { openGroups, type OpenGroup, type Resource } from '../../domain/resource';
 import { Button } from '../../ui/components/Button';
-import { SectionLabel } from '../../ui/components/SectionLabel';
-import { opacity, radius, spacing, useColors } from '../../ui/tokens';
+import { Sheet } from '../../ui/components/Sheet';
+import { spacing } from '../../ui/tokens';
 import { openResource } from './open';
 import { ResourceRow } from './ResourceRow';
 
@@ -20,7 +20,6 @@ export function OpenResource({
   /** A shorter button, for use inside a card. */
   compact?: boolean;
 }) {
-  const c = useColors();
   const [sheet, setSheet] = useState<OpenGroup | null>(null);
 
   const groups = openGroups(resources);
@@ -44,46 +43,22 @@ export function OpenResource({
         ))}
       </View>
 
-      <Modal
-        visible={sheet !== null}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={close}>
-        <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Close">
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim, opacity: opacity.scrim }]} />
-        </Pressable>
-        <View style={[styles.sheet, { backgroundColor: c.background }]}>
-          <SectionLabel>{sheet?.sheetTitle ?? 'Open'}</SectionLabel>
-          <ScrollView style={styles.scroll} contentContainerStyle={styles.list}>
-            {(sheet?.resources ?? []).map((resource) => (
-              <ResourceRow
-                key={resource.id}
-                resource={resource}
-                onPress={() => {
-                  close();
-                  void openResource(resource);
-                }}
-              />
-            ))}
-          </ScrollView>
-          <Button label="Cancel" variant="secondary" onPress={close} />
-        </View>
-      </Modal>
+      <Sheet visible={sheet !== null} title={sheet?.sheetTitle ?? 'Open'} onClose={close}>
+        {(sheet?.resources ?? []).map((resource) => (
+          <ResourceRow
+            key={resource.id}
+            resource={resource}
+            onPress={() => {
+              close();
+              void openResource(resource);
+            }}
+          />
+        ))}
+      </Sheet>
     </>
   );
 }
 
 const styles = StyleSheet.create({
   buttons: { gap: spacing.sm },
-  backdrop: { flex: 1 },
-  sheet: {
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    padding: spacing.xl,
-    paddingBottom: spacing.xxxl,
-    gap: spacing.md,
-  },
-  scroll: { maxHeight: 420 },
-  list: { gap: spacing.sm },
 });

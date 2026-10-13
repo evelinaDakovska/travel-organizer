@@ -14,8 +14,8 @@ export function ExpenseRow({ expense, receipts, onPress }: Props) {
 
   return (
     <Card onPress={onPress} accessibilityLabel={title} style={styles.card}>
-      <View style={[styles.icon, { backgroundColor: c.accent2Soft }]}>
-        <Icon name={expense.category} size={20} color={c.accent2Text} />
+      <View style={[styles.icon, { backgroundColor: c.accentSoft }]}>
+        <Icon name={expense.category} size={20} color={c.accentText} />
       </View>
 
       <View style={styles.body}>

@@ -3,7 +3,7 @@ import { Tag, type TagTone } from './Tag';
 
 const STATUS_TAGS: Record<TripItemStatus, { label: string; tone: TagTone }> = {
   idea: { label: 'Idea', tone: 'outline' },
-  confirmed: { label: 'Confirmed', tone: 'accent2' },
+  confirmed: { label: 'Confirmed', tone: 'neutral' },
   cancelled: { label: 'Cancelled', tone: 'neutral' },
 };
 

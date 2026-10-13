@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { spacing, type, useColors } from '../tokens';
+import { gutter, spacing, type, useColors } from '../tokens';
 import { Icon } from './Icon';
 
 type Props = {
@@ -31,7 +31,8 @@ export function ScreenHeader({ title, subtitle, action, leading = 'back' }: Prop
       ) : null}
 
       <View style={styles.titles}>
-        <Text style={[type.title, { color: c.text }]} numberOfLines={1} accessibilityRole="header">
+        {/* Two lines, not one: a long trip name wraps at a large font scale rather than vanish. */}
+        <Text style={[type.title, { color: c.text }]} numberOfLines={2} accessibilityRole="header">
           {title}
         </Text>
         {subtitle ? (
@@ -52,9 +53,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     minHeight: 56,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingHorizontal: gutter.normal,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
   },
   leading: { padding: spacing.xs, marginLeft: -spacing.xs },
   titles: { flex: 1, gap: 2 },

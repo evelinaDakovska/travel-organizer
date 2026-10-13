@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { elevation, radius, spacing, useColors } from '../tokens';
+import { opacity, radius, spacing, useColors } from '../tokens';
 
 type Props = {
   children: ReactNode;
@@ -11,10 +11,13 @@ type Props = {
   accessibilityLabel?: string;
 };
 
-/** The design's surface card: sand fill, soft shadow, over-rounded corners. */
+/**
+ * A panel: a white surface with a hairline border and no shadow (B1). For a block that stands on
+ * its own — a form section, a summary. Lists of peers are `ListRow`s, not cards.
+ */
 export function Card({ children, onPress, onLongPress, style, accessibilityLabel }: Props) {
   const c = useColors();
-  const base = [styles.card, elevation.sm, { backgroundColor: c.surface, shadowColor: c.shadow }];
+  const base = [styles.card, { backgroundColor: c.surface, borderColor: c.border }];
 
   if (!onPress && !onLongPress) return <View style={[base, style]}>{children}</View>;
 
@@ -31,6 +34,11 @@ export function Card({ children, onPress, onLongPress, style, accessibilityLabel
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: radius.xl, padding: spacing.lg, gap: spacing.sm },
-  pressed: { opacity: 0.8 },
+  card: {
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: spacing.lg,
+    gap: spacing.sm,
+  },
+  pressed: { opacity: opacity.pressed },
 });

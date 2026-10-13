@@ -1,12 +1,11 @@
 /**
  * Semantic colour roles for each scheme. Components ask for a role ("the text on a tinted tag"),
- * never for a ramp step, so changing the palette never means editing a screen.
+ * never for a swatch, so changing the palette never means editing a screen.
  *
  * Pure TypeScript — no React Native — so `roles.test.ts` can check contrast in node.
- * The light scheme is the design; the dark one is derived from the same ramps.
  */
 
-import { grounds, ramps } from './palette';
+import { dark, light, type Swatches } from './palette';
 
 export type ColorRoles = {
   background: string;
@@ -20,92 +19,79 @@ export type ColorRoles = {
   /** Placeholders and decoration only. Not held to body-text contrast. */
   textFaint: string;
 
-  /** Filled controls: primary buttons, the add button, selected chips. */
+  /** The one action colour: primary buttons, links, selection, the active tab. */
   accent: string;
   accentPressed: string;
-  /** Label on an accent fill. Held to 3:1 (large text and controls). */
+  /** Label on an accent fill. */
   onAccent: string;
+  /** A tinted ground for the selected day, an icon tile, an informational tag. */
   accentSoft: string;
-  /** Accent-coloured text: section labels, links, the active tab. */
+  /** Accent-coloured text: links, the active tab, text on `accentSoft`. */
   accentText: string;
 
-  accent2: string;
-  accent2Soft: string;
-  accent2Text: string;
+  /** What needs doing: money still owed, a zone to confirm, a stale screen. Never every item. */
+  attention: string;
+  attentionSoft: string;
+  /** What is settled: paid, happening now. Quieter than attention. */
+  success: string;
+  successSoft: string;
 
   neutralSoft: string;
   neutralText: string;
 
+  /** Destructive actions and a file that has gone missing. */
   danger: string;
   dangerSoft: string;
-  warning: string;
+
+  /** The destination cover on Trips. */
+  cover: string;
+  onCover: string;
+  onCoverMuted: string;
 
   shadow: string;
   scrim: string;
   tabInactive: string;
 };
 
-export const lightRoles: ColorRoles = {
-  background: grounds.cream,
-  surface: grounds.sand,
-  surfaceSunken: grounds.creamShade,
-  border: grounds.creamRule,
-  text: grounds.ink,
-  textMuted: ramps.neutral[700],
-  textFaint: ramps.neutral[600],
+function rolesFrom(s: Swatches): ColorRoles {
+  return {
+    background: s.canvas,
+    surface: s.surface,
+    surfaceSunken: s.sunken,
+    border: s.border,
+    text: s.ink,
+    textMuted: s.secondary,
+    textFaint: s.faint,
 
-  accent: grounds.accentBase,
-  accentPressed: ramps.accent[600],
-  onAccent: grounds.cream,
-  accentSoft: ramps.accent[100],
-  accentText: ramps.accent[700],
+    accent: s.action,
+    accentPressed: s.actionPressed,
+    onAccent: s.onAction,
+    accentSoft: s.tint,
+    accentText: s.tintText,
 
-  accent2: grounds.accent2Base,
-  accent2Soft: ramps.accent2[100],
-  accent2Text: ramps.accent2[800],
+    attention: s.attention,
+    attentionSoft: s.attentionSoft,
+    success: s.success,
+    successSoft: s.successSoft,
 
-  neutralSoft: ramps.neutral[100],
-  neutralText: ramps.neutral[800],
+    neutralSoft: s.neutralSoft,
+    neutralText: s.neutralText,
 
-  danger: ramps.danger[700],
-  dangerSoft: ramps.danger[100],
-  warning: ramps.accent2[700],
+    danger: s.danger,
+    dangerSoft: s.dangerSoft,
 
-  shadow: ramps.neutral[900],
-  scrim: ramps.neutral[900],
-  tabInactive: ramps.neutral[600],
-};
+    cover: s.cover,
+    onCover: s.onCover,
+    onCoverMuted: s.onCoverMuted,
 
-export const darkRoles: ColorRoles = {
-  background: grounds.ink,
-  surface: ramps.neutral[900],
-  surfaceSunken: grounds.inkShade,
-  border: ramps.neutral[800],
-  text: ramps.neutral[100],
-  textMuted: ramps.neutral[400],
-  textFaint: ramps.neutral[500],
+    shadow: s.shadow,
+    scrim: s.scrim,
+    tabInactive: s.secondary,
+  };
+}
 
-  accent: ramps.accent[400],
-  accentPressed: ramps.accent[300],
-  onAccent: ramps.accent[900],
-  accentSoft: ramps.accent[900],
-  accentText: ramps.accent[300],
-
-  accent2: ramps.accent2[400],
-  accent2Soft: ramps.accent2[900],
-  accent2Text: ramps.accent2[300],
-
-  neutralSoft: ramps.neutral[800],
-  neutralText: ramps.neutral[200],
-
-  danger: ramps.danger[300],
-  dangerSoft: ramps.danger[900],
-  warning: ramps.accent2[300],
-
-  shadow: '#000000',
-  scrim: '#000000',
-  tabInactive: ramps.neutral[500],
-};
+export const lightRoles: ColorRoles = rolesFrom(light);
+export const darkRoles: ColorRoles = rolesFrom(dark);
 
 export const colorRoles = { light: lightRoles, dark: darkRoles } as const;
 
@@ -117,6 +103,6 @@ export function relativeLuminance(hex: string): number {
 }
 
 export function contrastRatio(a: string, b: string): number {
-  const [light, dark] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
-  return (light + 0.05) / (dark + 0.05);
+  const [lighter, darker] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
+  return (lighter + 0.05) / (darker + 0.05);
 }

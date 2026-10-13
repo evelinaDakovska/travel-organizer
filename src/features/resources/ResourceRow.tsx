@@ -34,12 +34,12 @@ export function ResourceRow({ resource, onPress, onEdit }: Props) {
           resizeMethod="resize"
           resizeMode="cover"
           onError={() => setUnreadable(true)}
-          style={[styles.badge, { backgroundColor: c.accent2Soft }]}
+          style={[styles.badge, { backgroundColor: c.accentSoft }]}
           accessibilityIgnoresInvertColors
         />
       ) : (
-        <View style={[styles.badge, { backgroundColor: missing ? c.dangerSoft : c.accent2Soft }]}>
-          <Text style={[type.overline, { color: missing ? c.danger : c.accent2Text }]}>{badge}</Text>
+        <View style={[styles.badge, { backgroundColor: missing ? c.dangerSoft : c.accentSoft }]}>
+          <Text style={[type.overline, { color: missing ? c.danger : c.accentText }]}>{badge}</Text>
         </View>
       )}
 

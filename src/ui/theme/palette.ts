@@ -1,80 +1,111 @@
 /**
- * Raw colour ramps — the only place hex values live. Nothing outside `src/ui/theme/` imports this
- * file: screens read semantic roles through `useColors()`. To re-theme the app, edit these ramps
- * (or point `roles.ts` at different steps) and run the contrast test in `roles.test.ts`.
+ * Raw colours — the only place hex values live. Nothing outside `src/ui/theme/` imports this file:
+ * screens read semantic roles through `useColors()`. To re-theme the app, edit these swatches (or
+ * point `roles.ts` at different ones) and run the contrast test in `roles.test.ts`.
  *
- * Source: the Organic design system with the travel app's accents. Accent ramps were generated in
- * OKLCH on one shared lightness curve (97% → 24%), so the same step of any ramp carries the same
- * visual weight; React Native cannot parse oklch(), hence hex.
+ * Source: the Fieldbook design (owner's design review, 12 Oct 2026, B1). A quiet cool neutral
+ * instead of beige, one blue for action and selection, burnt orange for what needs attention
+ * (money owed, a zone to confirm), green for what is settled. Personality lives in the trip's
+ * name and cover, not in the colours.
  */
 
-type Ramp = Record<100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900, string>;
+export type Swatches = {
+  canvas: string;
+  surface: string;
+  /** A step below the canvas: wells, empty states, a pressed row. */
+  sunken: string;
+  border: string;
+  ink: string;
+  secondary: string;
+  faint: string;
 
-/** Organic's warm grey. */
-const neutral: Ramp = {
-  100: '#f9f4ed',
-  200: '#eee7db',
-  300: '#dcd3c4',
-  400: '#c0b6a5',
-  500: '#a19786',
-  600: '#82796a',
-  700: '#645c50',
-  800: '#474238',
-  900: '#2e2b25',
+  action: string;
+  actionPressed: string;
+  onAction: string;
+  tint: string;
+  tintText: string;
+
+  attention: string;
+  attentionSoft: string;
+  success: string;
+  successSoft: string;
+  danger: string;
+  dangerSoft: string;
+
+  neutralSoft: string;
+  neutralText: string;
+
+  /** The destination cover: a deep blue in both schemes, with light text on it. */
+  cover: string;
+  onCover: string;
+  onCoverMuted: string;
+
+  shadow: string;
+  scrim: string;
 };
 
-/** "Canal teal" — oklch(58% 0.09 210) at its base. */
-const accent: Ramp = {
-  100: '#eaf8fb',
-  200: '#d2eef3',
-  300: '#acdbe3',
-  400: '#7bbeca',
-  500: '#3c9baa',
-  600: '#107c8b',
-  700: '#005e6b',
-  800: '#004049',
-  900: '#00252b',
+export const light: Swatches = {
+  canvas: '#f5f7fa',
+  surface: '#ffffff',
+  sunken: '#e9edf2',
+  border: '#dce3eb',
+  ink: '#172331',
+  secondary: '#536477',
+  faint: '#7a8899',
+
+  action: '#2457cf',
+  actionPressed: '#1c45a8',
+  onAction: '#ffffff',
+  tint: '#eef3ff',
+  tintText: '#2457cf',
+
+  attention: '#8b431e',
+  attentionSoft: '#fff0e5',
+  success: '#23664c',
+  successSoft: '#eaf5ee',
+  danger: '#a8321f',
+  dangerSoft: '#fdeeeb',
+
+  neutralSoft: '#edf1f5',
+  neutralText: '#3c4a5a',
+
+  cover: '#182f43',
+  onCover: '#ffffff',
+  onCoverMuted: '#c9d8e4',
+
+  shadow: '#172331',
+  scrim: '#0b1118',
 };
 
-/** "Stone gold" — oklch(62% 0.09 75) at its base. */
-const accent2: Ramp = {
-  100: '#fdf4e7',
-  200: '#f8e5cb',
-  300: '#e9cca6',
-  400: '#cfaa77',
-  500: '#b08341',
-  600: '#906520',
-  700: '#6f4a06',
-  800: '#4d3202',
-  900: '#2d1b00',
+export const dark: Swatches = {
+  canvas: '#111821',
+  surface: '#1b2530',
+  sunken: '#0c1219',
+  border: '#344251',
+  ink: '#eef3fa',
+  secondary: '#b1bdcc',
+  faint: '#8796a8',
+
+  action: '#a7c1ff',
+  actionPressed: '#c4d6ff',
+  onAction: '#172331',
+  tint: '#233551',
+  tintText: '#a7c1ff',
+
+  attention: '#ffd1a8',
+  attentionSoft: '#38291e',
+  success: '#a3e0be',
+  successSoft: '#20382b',
+  danger: '#ffb4a9',
+  dangerSoft: '#3d1f1b',
+
+  neutralSoft: '#26313d',
+  neutralText: '#d3dbe5',
+
+  cover: '#243d52',
+  onCover: '#ffffff',
+  onCoverMuted: '#c9d8e4',
+
+  shadow: '#000000',
+  scrim: '#000000',
 };
-
-/** Not in Organic. Hue 30 on the same lightness curve, a little more chroma so it reads as a warning. */
-const danger: Ramp = {
-  100: '#fff1ed',
-  200: '#ffdfd8',
-  300: '#fcc1b6',
-  400: '#ea998b',
-  500: '#cf6b5b',
-  600: '#b1483a',
-  700: '#8c2e23',
-  800: '#621e16',
-  900: '#3a0f09',
-};
-
-export const ramps = { neutral, accent, accent2, danger } as const;
-
-/** The grounds the ramps sit on. */
-export const grounds = {
-  cream: '#f5ead8',
-  /** Cream darkened by the ink at 6%, for sunken wells on the light ground. */
-  creamShade: '#e8ddcc',
-  sand: '#ebddc5',
-  /** Ink at 16% over cream — Organic's divider. */
-  creamRule: '#d3c9ba',
-  ink: '#201e1d',
-  inkShade: '#191716',
-  /** Accent base, shared by both schemes' filled controls on the light ground. */
-  accentBase: '#258998',
-  accent2Base: '#a67e44',
-} as const;

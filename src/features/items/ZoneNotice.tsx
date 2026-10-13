@@ -43,9 +43,9 @@ export function ZoneNotice({ item, mismatches }: Props) {
       {mismatches.map((mismatch) => (
         <View
           key={mismatch.end}
-          style={[styles.notice, { backgroundColor: c.accent2Soft }]}
+          style={[styles.notice, { backgroundColor: c.attentionSoft }]}
           accessibilityRole="alert">
-          <Icon name="warning" size={18} color={c.accent2Text} />
+          <Icon name="warning" size={18} color={c.attention} />
           <View style={styles.body}>
             <Text style={[type.body, { color: c.text }]}>{mismatchText(mismatch)}</Text>
             <Pressable

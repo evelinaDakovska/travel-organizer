@@ -18,22 +18,36 @@ describe.each(schemes)('%s scheme', (_name, roles) => {
     for (const ground of grounds) expect(contrastRatio(roles.text, ground)).toBeGreaterThanOrEqual(7);
   });
 
-  it('keeps secondary, accent and danger text at 4.5:1 or better', () => {
-    for (const ground of grounds) {
+  it('keeps secondary, accent, attention, success and danger text at 4.5:1 or better', () => {
+    for (const ground of [...grounds, roles.surfaceSunken]) {
       expect(contrastRatio(roles.textMuted, ground)).toBeGreaterThanOrEqual(4.5);
       expect(contrastRatio(roles.accentText, ground)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(roles.attention, ground)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(roles.success, ground)).toBeGreaterThanOrEqual(4.5);
       expect(contrastRatio(roles.danger, ground)).toBeGreaterThanOrEqual(4.5);
     }
   });
 
   it('keeps tag text readable on its own tint', () => {
     expect(contrastRatio(roles.accentText, roles.accentSoft)).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(roles.accent2Text, roles.accent2Soft)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(roles.attention, roles.attentionSoft)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(roles.success, roles.successSoft)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(roles.danger, roles.dangerSoft)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(roles.neutralText, roles.neutralSoft)).toBeGreaterThanOrEqual(4.5);
   });
 
-  it('keeps a label on the accent fill above the large-text bar', () => {
-    expect(contrastRatio(roles.onAccent, roles.accent)).toBeGreaterThanOrEqual(3);
+  it('keeps a label on the accent fill readable as body text', () => {
+    // Fieldbook button labels are 15–16, not large text, so the full 4.5:1 applies.
+    expect(contrastRatio(roles.onAccent, roles.accent)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('keeps the destination cover readable', () => {
+    expect(contrastRatio(roles.onCover, roles.cover)).toBeGreaterThanOrEqual(7);
+    expect(contrastRatio(roles.onCoverMuted, roles.cover)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('keeps the inactive tab readable on the bar', () => {
+    expect(contrastRatio(roles.tabInactive, roles.surface)).toBeGreaterThanOrEqual(4.5);
   });
 
   it('uses plain six-digit hex, which is what React Native parses everywhere', () => {

@@ -80,9 +80,9 @@ export function StaleNotice({ queries }: { queries: readonly Retryable[] }) {
 
   return (
     <View
-      style={[styles.notice, { backgroundColor: c.accent2Soft }]}
+      style={[styles.notice, { backgroundColor: c.attentionSoft }]}
       accessibilityRole="alert">
-      <Icon name="warning" size={18} color={c.accent2Text} />
+      <Icon name="warning" size={18} color={c.attention} />
       <Text style={[type.caption, styles.grow, { color: c.text }]}>
         Could not refresh. Showing what was loaded before.
       </Text>

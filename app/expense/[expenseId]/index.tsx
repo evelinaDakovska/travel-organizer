@@ -102,8 +102,8 @@ export default function ExpenseDetail() {
 
         <View style={styles.heading}>
           <View style={styles.titleRow}>
-            <View style={[styles.icon, { backgroundColor: c.accent2Soft }]}>
-              <Icon name={expense.category} size={22} color={c.accent2Text} />
+            <View style={[styles.icon, { backgroundColor: c.accentSoft }]}>
+              <Icon name={expense.category} size={22} color={c.accentText} />
             </View>
             <Text style={[type.title, styles.title, { color: c.text }]}>
               {expenseTitle(expense)}
