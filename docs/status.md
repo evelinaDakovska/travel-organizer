@@ -523,6 +523,27 @@ trip details read). The owner then checked their trip on the phone: everything f
 
 ---
 
+## FB — Fieldbook: the design review of 0.5.1 · 2026-10-13
+
+The owner's review (`travel-organizer-design-review.html`): seven engineering findings, the
+Fieldbook redesign and eight approved additions. Plan and every decision taken:
+[`fieldbook-plan.md`](fieldbook-plan.md). Run end to end without stopping for approval at the
+owner's request; the decisions (FB-1…) are listed there for the owner to go through.
+
+| | Step | ✓ |
+|---|---|---|
+| **A1** | A free booking owes nothing: no *To pay*, not in the cost lists | ✅ |
+| **A2** | Amounts read exactly or refused — never a different number | ✅ |
+| **A3** | Date-only ends and the event cutoff counted in calendar days (DST) | ✅ |
+| **A4** | Export reads one snapshot, says *Archive created*, timestamped name | ✅ — size limit measured in QA |
+| **A5** | A failed read never claims *missing* or *empty*; Now waits for its first read | ✅ |
+| **A6** | A zone filled from a city follows the city; *Munich time*, not Berlin | ✅ |
+| **A7** | Finished plans marked archived | ✅ |
+| **B1–B11** | The Fieldbook redesign — see the plan | ⬜ |
+| **C1–C5** | Lists, travellers, price per person, itinerary PDF, templates — migration 003 | ⬜ |
+
+---
+
 ## U — the owner's list after real use · 2026-10-10
 
 Collected while planning a real trip on the phone, with that trip's data already in the app.
