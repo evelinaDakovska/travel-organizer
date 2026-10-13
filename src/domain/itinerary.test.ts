@@ -116,6 +116,18 @@ describe('entryZoneLabel', () => {
     expect(entryZoneLabel({ role: 'full', item: flight })).toBe('Sofia');
   });
 
+  it('names a journey’s end by its city when the city is in that zone (A6)', () => {
+    const munich = {
+      kind: 'transport' as const,
+      details: { from: 'Sofia', to: 'Munich' },
+      startTzOverride: null,
+      endTzOverride: 'Europe/Berlin',
+    };
+    expect(entryZoneLabel({ role: 'end', item: munich })).toBe('Munich');
+    const stay = { ...munich, kind: 'stay' as const };
+    expect(entryZoneLabel({ role: 'end', item: stay })).toBe('Berlin');
+  });
+
   it('says nothing for an end that follows the trip', () => {
     expect(entryZoneLabel({ role: 'end', item: flight })).toBeNull();
     expect(entryZoneLabel({ role: 'full', item: { startTzOverride: null, endTzOverride: null } })).toBeNull();

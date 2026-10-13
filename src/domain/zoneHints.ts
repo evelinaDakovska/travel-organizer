@@ -13,10 +13,12 @@
 import { toInstant, type LocalMoment } from './time';
 import { TIMEZONE_PLACES, TIMEZONES, timezoneLabel } from './timezones';
 import {
+  transportDetails,
   tripItemFormValues,
   tripItemInputSchema,
   type TripItem,
   type TripItemInput,
+  type TripItemKind,
 } from './tripItem';
 
 const normalise = (text: string) => text.trim().toLowerCase().replace(/_/g, ' ');
@@ -81,6 +83,25 @@ export function zoneSuggestion(
 }
 
 /**
+ * What to call a time's zone where people read it (A6): the city at that end when the city is in
+ * that zone — 'Munich' for Europe/Berlin — else the zone's own city. The IANA id is what is
+ * stored; this is only the name.
+ */
+export function zoneName(tz: string, place?: string | null): string {
+  return place && zoneForPlace(place) === tz ? place.trim() : timezoneLabel(tz);
+}
+
+/** The city at one end of a journey: From for its start, To for its end. Null for other kinds. */
+export function routePlace(
+  item: { kind?: TripItemKind; details?: Record<string, unknown> | null },
+  end: 'start' | 'end',
+): string | null {
+  if (!item.kind || !item.details) return null;
+  const route = transportDetails({ kind: item.kind, details: item.details });
+  return (end === 'start' ? route?.from : route?.to) ?? null;
+}
+
+/**
  * The moment with the city's zone filled in, or the same object when there is nothing to fill —
  * so a caller can tell by identity whether anything changed.
  */
@@ -93,6 +114,46 @@ export function withSuggestedZone<M extends FormMoment>(
   return tz && moment ? { ...moment, tz } : moment;
 }
 
+/**
+ * The city to remember at one end while From or To is being typed: the new text once it is a city
+ * we know, else the last one that was (A6). Half-typed text ('Rom') is never a city, so it never
+ * makes a zone look chosen by hand.
+ */
+export function lastKnownPlace(
+  previous: string | null | undefined,
+  place: string | null | undefined,
+): string | null {
+  return zoneForPlace(place) ? place!.trim() : (previous ?? null);
+}
+
+/**
+ * A moment after the city at its end changed to `place`; `previous` is the last city known there
+ * (`lastKnownPlace`). Nothing is stored to say where a zone came from — it is read off the zone
+ * itself (A6, FB-3):
+ * - no zone yet: the city's is filled in when it keeps another clock (`withSuggestedZone`);
+ * - the previous city's own zone was filled from it, so it follows a new city we know — to that
+ *   city's zone, or back to the trip's when the new city keeps the trip's clock;
+ * - any other zone was chosen by hand and stays;
+ * - while the city is not one we know ('Munich Airport', half-typed), nothing changes.
+ * Same object when nothing changes.
+ *
+ * A zone picked by hand that happens to be the city's own follows the city too: the two cannot be
+ * told apart without storing more, and following the city is what that choice meant.
+ */
+export function followPlace<M extends FormMoment>(
+  previous: string | null | undefined,
+  place: string | null | undefined,
+  moment: M | undefined,
+  tripTz: string,
+): M | undefined {
+  if (!moment?.tz) return withSuggestedZone(place, moment, tripTz);
+  const cityTz = zoneForPlace(place);
+  if (!cityTz || cityTz === moment.tz || moment.tz !== zoneForPlace(previous)) return moment;
+
+  const { tz: _filledFromCity, ...followingTrip } = moment;
+  return withSuggestedZone(place, followingTrip as M, tripTz);
+}
+
 type RouteLeg = {
   from?: string;
   to?: string;
@@ -100,10 +161,17 @@ type RouteLeg = {
   arrives?: FormMoment;
 };
 
-/** A journey leg with both ends' zones filled from From and To in one step. Same object if none. */
-export function withLegZones<L extends RouteLeg>(leg: L, tripTz: string): L {
-  const departs = withSuggestedZone(leg.from, leg.departs, tripTz);
-  const arrives = withSuggestedZone(leg.to, leg.arrives, tripTz);
+/**
+ * A journey leg after an edit, both ends' zones following From and To (`followPlace`) in one
+ * step. Same object if nothing changed.
+ */
+export function withLegZones<L extends RouteLeg>(
+  previous: { from?: string | null; to?: string | null },
+  leg: L,
+  tripTz: string,
+): L {
+  const departs = followPlace(previous.from, leg.from, leg.departs, tripTz);
+  const arrives = followPlace(previous.to, leg.to, leg.arrives, tripTz);
   return departs === leg.departs && arrives === leg.arrives ? leg : { ...leg, departs, arrives };
 }
 
@@ -123,9 +191,29 @@ export function zoneHint(
   return { place: place.trim(), tz: moment.tz, tripTz };
 }
 
-/** "Munich is on a different clock, so this time is in Berlin time." */
-export function zoneHintText(hint: { place: string; tz: string }): string {
-  return `${hint.place} is on a different clock, so this time is in ${timezoneLabel(hint.tz)} time.`;
+/** "Munich is on a different clock from Helsinki, so this time is in Munich time." */
+export function zoneHintText(hint: { place: string; tripTz: string }): string {
+  return (
+    `${hint.place} is on a different clock from ${timezoneLabel(hint.tripTz)}, ` +
+    `so this time is in ${hint.place} time.`
+  );
+}
+
+/**
+ * A time whose zone was chosen by hand but whose city keeps another clock (A6): the zone the city
+ * would give it, offered and never applied. Null when they agree, when the time is pinned to the
+ * trip's own zone (that is what *Use … time* under the hint does, on purpose), or when nothing is
+ * known.
+ */
+export function cityZoneConflict(
+  place: string | null | undefined,
+  moment: FormMoment | undefined,
+  tripTz: string,
+): string | null {
+  if (!moment?.tz || moment.tz === tripTz || !hasTime(moment.local)) return null;
+  const cityTz = zoneForPlace(place);
+  if (!cityTz || !differentClock(cityTz, moment.tz, moment.local)) return null;
+  return cityTz;
 }
 
 export type ZoneMismatch = {

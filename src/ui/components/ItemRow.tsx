@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { paymentStatus, type PaymentStatus } from '../../domain/bookingCosts';
 import { formatMoney, formatShortMoment } from '../../domain/format';
-import { timezoneLabel } from '../../domain/timezones';
+import { routePlace, zoneName } from '../../domain/zoneHints';
 import {
   kindLabel,
   routeLabel,
@@ -83,7 +83,9 @@ const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slic
 function when(item: TripItem): string {
   if (!item.start) return item.status === 'idea' ? '' : 'No date yet';
   const date = formatShortMoment(item.start.local, item.start.precision);
-  return item.startTzOverride ? `${date} · ${timezoneLabel(item.startTzOverride)}` : date;
+  return item.startTzOverride
+    ? `${date} · ${zoneName(item.startTzOverride, routePlace(item, 'start'))}`
+    : date;
 }
 
 const styles = StyleSheet.create({

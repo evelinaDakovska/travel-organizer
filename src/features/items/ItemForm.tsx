@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { randomUUID } from 'expo-crypto';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm, type Control } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -41,7 +41,7 @@ import {
   type TripItemInput,
   type TripItemKind,
 } from '../../domain/tripItem';
-import { withSuggestedZone } from '../../domain/zoneHints';
+import { followPlace, lastKnownPlace } from '../../domain/zoneHints';
 import { Button } from '../../ui/components/Button';
 import { FormScroll } from '../../ui/components/FormScroll';
 import { ChoiceField } from '../../ui/components/ChoiceField';
@@ -128,13 +128,20 @@ export function ItemForm({
   const [problems, setProblems] = useState<LegProblem[]>([]);
   const [journeyError, setJourneyError] = useState<string | null>(null);
 
-  // A city in From or To fills that end's zone when it keeps another clock (N6). Also on opening an
-  // item saved without one: the hint under the time says so, and nothing is written until Save.
+  // A city in From or To fills that end's zone when it keeps another clock (N6), and a zone filled
+  // from the old city follows a new one (A6). Also on opening an item saved without one: the hint
+  // under the time says so, and nothing is written until Save.
+  const knownCities = useRef({ from: lastKnownPlace(null, from), to: lastKnownPlace(null, to) });
   useEffect(() => {
+    const before = knownCities.current;
+    knownCities.current = {
+      from: lastKnownPlace(before.from, from),
+      to: lastKnownPlace(before.to, to),
+    };
     if (journey) return;
-    const filledStart = withSuggestedZone(from, start, defaultTz);
+    const filledStart = followPlace(before.from, from, start, defaultTz);
     if (filledStart !== start) setValue('start', filledStart, { shouldDirty: true });
-    const filledEnd = withSuggestedZone(to, end, defaultTz);
+    const filledEnd = followPlace(before.to, to, end, defaultTz);
     if (filledEnd !== end) setValue('end', filledEnd, { shouldDirty: true });
   }, [journey, from, to, start, end, defaultTz, setValue]);
 

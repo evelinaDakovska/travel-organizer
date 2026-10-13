@@ -6,7 +6,8 @@
 import { formatShortDate, formatShortMoment } from './format';
 import { dayKey, localDateIn, shiftMoment, timeOfDay, toInstant } from './time';
 import { timelineEntries, type TimelineEntry, type TimelineItem } from './timeline';
-import { timezoneLabel } from './timezones';
+import type { TripItemKind } from './tripItem';
+import { routePlace, zoneName } from './zoneHints';
 import { isTripActive, type Trip } from './trip';
 
 /** The next confirmed things to be at. Tasks have their own list; ideas are not commitments. */
@@ -116,6 +117,7 @@ export function happeningNote(
   item: Pick<TimelineItem, 'kind' | 'start' | 'end'> & {
     subkind?: string | null;
     endTzOverride: string | null;
+    details?: Record<string, unknown> | null;
   },
   now: Date = new Date(),
 ): string | null {
@@ -123,7 +125,7 @@ export function happeningNote(
   if (!start || !end) return null;
   const time = timeOfDay(end);
   if (time && Date.parse(toInstant(end)) <= now.getTime()) return `Ended ${time}`;
-  const zone = item.endTzOverride ? timezoneLabel(item.endTzOverride) : null;
+  const zone = item.endTzOverride ? zoneName(item.endTzOverride, routePlace(item, 'end')) : null;
   const when =
     dayKey(end) === dayKey(start)
       ? `Until ${time ?? 'the end of the day'}`
@@ -193,14 +195,23 @@ export function entryRoleLabel(entry: {
 
 /**
  * 'Sofia' when this end of the entry states its own zone, null when it follows the trip. A 06:10
- * departure from Sofia on a Milan trip must not read as 06:10 Milan time.
+ * departure from Sofia on a Milan trip must not read as 06:10 Milan time. A journey's end is
+ * named by its city when the city is in that zone: 'Munich', not 'Berlin' (A6).
  */
 export function entryZoneLabel(entry: {
   role: TimelineEntry['role'];
-  item: { startTzOverride: string | null; endTzOverride: string | null };
+  item: {
+    startTzOverride: string | null;
+    endTzOverride: string | null;
+    kind?: TripItemKind;
+    details?: Record<string, unknown> | null;
+  };
 }): string | null {
-  const zone = entry.role === 'end' ? entry.item.endTzOverride : entry.item.startTzOverride;
-  return zone ? timezoneLabel(zone) : null;
+  const { item } = entry;
+  const end = entry.role === 'end' ? 'end' : 'start';
+  const zone = end === 'end' ? item.endTzOverride : item.startTzOverride;
+  if (!zone) return null;
+  return zoneName(zone, routePlace(item, end));
 }
 
 /** Launch opens straight into a trip only when there is no doubt which one. */

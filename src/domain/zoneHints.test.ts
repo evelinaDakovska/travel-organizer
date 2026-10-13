@@ -1,9 +1,15 @@
 import type { LocalMoment } from './time';
 import type { TripItem } from './tripItem';
 import {
+  cityZoneConflict,
   differentClock,
   durationText,
+  followPlace,
+  lastKnownPlace,
   mismatchText,
+  routePlace,
+  withLegZones,
+  zoneName,
   zoneForPlace,
   zoneHint,
   zoneHintText,
@@ -97,12 +103,122 @@ describe('withSuggestedZone', () => {
   });
 });
 
+describe('zoneName (A6)', () => {
+  it('names a zone by the city at that end when the city is in it', () => {
+    expect(zoneName('Europe/Berlin', 'Munich')).toBe('Munich');
+    expect(zoneName('Europe/Berlin', ' Munich ')).toBe('Munich');
+  });
+
+  it('falls back to the zone’s own city otherwise', () => {
+    expect(zoneName('Europe/Berlin')).toBe('Berlin');
+    expect(zoneName('Europe/Berlin', 'Helsinki')).toBe('Berlin');
+    expect(zoneName('Europe/Berlin', 'Munich Airport')).toBe('Berlin');
+  });
+});
+
+describe('routePlace', () => {
+  const flight = { kind: 'transport' as const, details: { from: 'Sofia', to: 'Munich' } };
+
+  it('reads From for the start and To for the end of a journey', () => {
+    expect(routePlace(flight, 'start')).toBe('Sofia');
+    expect(routePlace(flight, 'end')).toBe('Munich');
+  });
+
+  it('has nothing for other kinds, or without details', () => {
+    expect(routePlace({ kind: 'stay', details: { from: 'Sofia' } }, 'start')).toBeNull();
+    expect(routePlace({ kind: 'transport', details: null }, 'start')).toBeNull();
+    expect(routePlace({}, 'end')).toBeNull();
+  });
+});
+
+describe('lastKnownPlace', () => {
+  it('remembers the last city we know while the field is being typed', () => {
+    expect(lastKnownPlace(null, 'Munich')).toBe('Munich');
+    expect(lastKnownPlace('Munich', 'Rom')).toBe('Munich');
+    expect(lastKnownPlace('Munich', 'Rome')).toBe('Rome');
+    expect(lastKnownPlace('Munich', '')).toBe('Munich');
+    expect(lastKnownPlace(null, 'Atlantis')).toBeNull();
+  });
+});
+
+describe('followPlace (A6)', () => {
+  const BER = 'Europe/Berlin';
+  const local = '2026-11-20T09:00';
+  const time = (tz?: string) => (tz ? { local, tz } : { local });
+
+  it('fills a time with no zone from its city, as before', () => {
+    expect(followPlace(null, 'Munich', time(), HEL)).toEqual(time(BER));
+  });
+
+  it('moves a zone filled from the old city to the new city’s', () => {
+    expect(followPlace('Munich', 'Rome', time(BER), HEL)).toEqual(time('Europe/Rome'));
+  });
+
+  it('goes back to the trip’s zone when the new city keeps the trip’s clock', () => {
+    expect(followPlace('Munich', 'Rovaniemi', time(BER), HEL)).toEqual(time());
+    expect(followPlace('Munich', 'Sofia', time(BER), HEL)).toEqual(time());
+  });
+
+  it('leaves a zone chosen by hand alone, whatever the city', () => {
+    const paris = time('Europe/Paris');
+    expect(followPlace('Munich', 'Rome', paris, HEL)).toBe(paris);
+    const pinned = time(HEL);
+    expect(followPlace('Munich', 'Rome', pinned, HEL)).toBe(pinned);
+  });
+
+  it('changes nothing while the city is unknown or keeps the same zone', () => {
+    const berlin = time(BER);
+    expect(followPlace('Munich', 'Munich Airport', berlin, HEL)).toBe(berlin);
+    expect(followPlace('Munich', 'Frankfurt', berlin, HEL)).toBe(berlin);
+    expect(followPlace('Munich', 'Munich', berlin, HEL)).toBe(berlin);
+    expect(followPlace('Munich', 'Munich', undefined, HEL)).toBeUndefined();
+  });
+});
+
+describe('withLegZones', () => {
+  it('follows both ends at once, and returns the same leg when nothing moved', () => {
+    const leg = {
+      from: 'Rome',
+      to: 'Helsinki',
+      departs: { local: '2026-11-20T09:00', tz: 'Europe/Berlin' },
+      arrives: { local: '2026-11-20T13:00' },
+    };
+    expect(withLegZones({ from: 'Munich', to: 'Helsinki' }, leg, HEL)).toEqual({
+      ...leg,
+      departs: { local: '2026-11-20T09:00', tz: 'Europe/Rome' },
+    });
+    const unchanged = { ...leg, from: 'Munich' };
+    expect(withLegZones({ from: 'Munich', to: 'Helsinki' }, unchanged, HEL)).toBe(unchanged);
+  });
+});
+
+describe('cityZoneConflict (A6)', () => {
+  it('offers the city’s zone when a zone chosen by hand keeps another clock', () => {
+    const london = { local: '2026-11-20T09:00', tz: 'Europe/London' };
+    expect(cityZoneConflict('Munich', london, HEL)).toBe('Europe/Berlin');
+  });
+
+  it('is quiet when they agree, when pinned to the trip, without a time or a known city', () => {
+    expect(cityZoneConflict('Munich', { local: '2026-11-20T09:00', tz: 'Europe/Berlin' }, HEL))
+      .toBeNull();
+    // Paris keeps Munich's clock.
+    expect(cityZoneConflict('Munich', { local: '2026-11-20T09:00', tz: 'Europe/Paris' }, HEL))
+      .toBeNull();
+    expect(cityZoneConflict('Munich', { local: '2026-11-20T09:00', tz: HEL }, HEL)).toBeNull();
+    const dateOnly = { local: '2026-11-20', tz: 'Europe/London' };
+    expect(cityZoneConflict('Munich', dateOnly, HEL)).toBeNull();
+    expect(cityZoneConflict('Atlantis', { local: '2026-11-20T09:00', tz: 'Europe/London' }, HEL))
+      .toBeNull();
+    expect(cityZoneConflict('Munich', { local: '2026-11-20T09:00' }, HEL)).toBeNull();
+  });
+});
+
 describe('zoneHint', () => {
   it('explains a zone that came from the city', () => {
     const hint = zoneHint('Munich ', { local: '2026-11-20T09:00', tz: 'Europe/Berlin' }, HEL);
     expect(hint).toEqual({ place: 'Munich', tz: 'Europe/Berlin', tripTz: HEL });
     expect(zoneHintText(hint!)).toBe(
-      'Munich is on a different clock, so this time is in Berlin time.',
+      'Munich is on a different clock from Helsinki, so this time is in Munich time.',
     );
   });
 

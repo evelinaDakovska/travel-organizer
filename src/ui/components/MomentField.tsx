@@ -2,7 +2,13 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { timezoneLabel } from '../../domain/timezones';
-import { zoneHint, zoneHintText, zoneSuggestion } from '../../domain/zoneHints';
+import {
+  cityZoneConflict,
+  zoneHint,
+  zoneHintText,
+  zoneName,
+  zoneSuggestion,
+} from '../../domain/zoneHints';
 import { opacity, radius, spacing, type, useColors } from '../tokens';
 import { DateField } from './DateField';
 import { Icon } from './Icon';
@@ -65,8 +71,9 @@ export function MomentField({
     );
   }
 
-  const zoneName = timezoneLabel(value.tz ?? defaultTz);
+  const shownZone = zoneName(value.tz ?? defaultTz, place);
   const hint = zoneHint(place, value, defaultTz);
+  const conflict = cityZoneConflict(place, value, defaultTz);
   const date = value.local.slice(0, 10);
   const time = value.local.length > 10 ? value.local.slice(11, 16) : null;
 
@@ -91,14 +98,14 @@ export function MomentField({
           onPress={() => setEditingZone((open) => !open)}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel={`Time zone: ${zoneName}. Change`}
+          accessibilityLabel={`Time zone: ${shownZone}. Change`}
           accessibilityState={{ expanded: editingZone }}
           style={({ pressed }) => [
             styles.chip,
             { backgroundColor: c.accentSoft, opacity: pressed ? opacity.pressed : 1 },
           ]}>
           <Icon name="zone" size={15} color={c.accentText} />
-          <Text style={[type.caption, { color: c.accentText }]}>{zoneName} time</Text>
+          <Text style={[type.caption, { color: c.accentText }]}>{shownZone} time</Text>
           <Icon name="expand" size={15} color={c.accentText} />
         </Pressable>
         <View style={styles.grow} />
@@ -128,6 +135,21 @@ export function MomentField({
           </Pressable>
         </View>
       )}
+
+      {conflict && place ? (
+        <View style={styles.hint}>
+          <Text style={[type.caption, styles.grow, { color: c.textMuted }]}>
+            {place.trim()} keeps a different clock from {timezoneLabel(value.tz!)}.
+          </Text>
+          {/* Offered, never applied: this zone was chosen by hand (A6). */}
+          <Pressable
+            onPress={() => onChange({ ...value, tz: conflict })}
+            hitSlop={8}
+            accessibilityRole="button">
+            <Text style={[type.caption, { color: c.accentText }]}>Use {place.trim()} time</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {editingZone && (
         <View style={styles.stack}>

@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -8,7 +9,7 @@ import {
   type LegProblem,
 } from '../../domain/journey';
 import { followStart } from '../../domain/tripItem';
-import { withLegZones } from '../../domain/zoneHints';
+import { lastKnownPlace, withLegZones } from '../../domain/zoneHints';
 import { Button } from '../../ui/components/Button';
 import { Card } from '../../ui/components/Card';
 import { Field, Input } from '../../ui/components/Field';
@@ -80,8 +81,28 @@ type LegProps = {
 
 function LegCard({ title, leg, onChange, onRemove, defaultTz, defaultDate, problem }: LegProps) {
   const c = useColors();
-  // Every change passes through here, so a city typed in From or To fills that end's zone (N6).
-  const change = (next: Leg) => onChange(withLegZones(next, defaultTz));
+  // Every change passes through here, so a city typed in From or To fills that end's zone (N6),
+  // and a zone filled from the last city known there follows a new one (A6). Cards are keyed by
+  // position, so a leg this card did not produce (one moved up by a removal) starts afresh.
+  const memory = useRef<{ sent: Leg | null; from: string | null; to: string | null }>({
+    sent: null,
+    from: null,
+    to: null,
+  });
+  const change = (next: Leg) => {
+    const own = memory.current.sent === leg;
+    const before = {
+      from: own ? memory.current.from : lastKnownPlace(null, leg.from),
+      to: own ? memory.current.to : lastKnownPlace(null, leg.to),
+    };
+    const result = withLegZones(before, next, defaultTz);
+    memory.current = {
+      sent: result,
+      from: lastKnownPlace(before.from, next.from),
+      to: lastKnownPlace(before.to, next.to),
+    };
+    onChange(result);
+  };
   const text = (key: 'from' | 'to' | 'number' | 'seat') => (value: string) =>
     change({ ...leg, [key]: value === '' ? undefined : value });
 

@@ -147,16 +147,24 @@ export function timezoneCountry(tz: string): string | null {
  * A formatted time with its zone when it states its own: "Sunday, 20 September · 16:50 · Sofia".
  * Without the zone, an arrival in Sofia on a Vienna trip reads as Vienna time — an hour out.
  */
-export function withZone(formatted: string, zoneOverride: string | null): string {
-  return zoneOverride ? `${formatted} · ${timezoneLabel(zoneOverride)}` : formatted;
+export function withZone(
+  formatted: string,
+  zoneOverride: string | null,
+  name: string | null = zoneOverride && timezoneLabel(zoneOverride),
+): string {
+  return zoneOverride ? `${formatted} · ${name}` : formatted;
 }
 
 /**
  * One end of a journey: always with its zone, whether the item sets it or follows the trip, because
  * the time is local to that end — "13:50 · Helsinki time". A date alone has no clock to qualify.
  */
-export function withJourneyZone(formatted: string, moment: { tz: string; precision: string }): string {
-  return moment.precision === 'time' ? `${formatted} · ${timezoneLabel(moment.tz)} time` : formatted;
+export function withJourneyZone(
+  formatted: string,
+  moment: { tz: string; precision: string },
+  name: string = timezoneLabel(moment.tz),
+): string {
+  return moment.precision === 'time' ? `${formatted} · ${name} time` : formatted;
 }
 
 const searchable = (text: string) => text.toLowerCase().replace(/_/g, ' ');

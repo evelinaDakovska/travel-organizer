@@ -19,7 +19,8 @@ import {
   transportDetails,
   type TripItem,
 } from '../../../src/domain/tripItem';
-import { zoneMismatches } from '../../../src/domain/zoneHints';
+import type { LocalMoment } from '../../../src/domain/time';
+import { routePlace, zoneMismatches, zoneName } from '../../../src/domain/zoneHints';
 import { ZoneNotice } from '../../../src/features/items/ZoneNotice';
 import { OpenResource } from '../../../src/features/resources/OpenResource';
 import { ResourceList } from '../../../src/features/resources/ResourceList';
@@ -113,16 +114,23 @@ export default function ItemDetail() {
 
   // Each end carries its own zone: a flight leaving Vienna and landing in Sofia says so on both.
   // A journey names both zones always — inherited or not — since its times are local to each end.
+  // Named by the city at that end when it is in the zone: 'Munich time', not 'Berlin time' (A6).
   const journey = item.kind === 'transport';
+  const journeyEnd = (end: 'start' | 'end', moment: LocalMoment) =>
+    `${entryRoleLabel({ role: end, item })} ${withJourneyZone(
+      formatMoment(moment.local, moment.precision),
+      moment,
+      zoneName(moment.tz, routePlace(item, end)),
+    )}`;
   const startText = item.start
     ? journey
-      ? `${entryRoleLabel({ role: 'start', item })} ${withJourneyZone(formatMoment(item.start.local, item.start.precision), item.start)}`
+      ? journeyEnd('start', item.start)
       : withZone(formatMoment(item.start.local, item.start.precision), item.startTzOverride)
     : 'No date yet';
   const whenDetail = !item.end
     ? ''
     : journey
-      ? `${entryRoleLabel({ role: 'end', item })} ${withJourneyZone(formatMoment(item.end.local, item.end.precision), item.end)}`
+      ? journeyEnd('end', item.end)
       : `until ${withZone(formatMoment(item.end.local, item.end.precision), item.endTzOverride)}`;
 
   return (
