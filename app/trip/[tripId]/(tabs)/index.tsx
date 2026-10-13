@@ -68,9 +68,15 @@ const MORE_ACTIONS: readonly {
   title: string;
   subtitle: string;
   icon: IconName;
-  path: 'edit' | 'use-template' | 'save-template';
+  path: 'edit' | 'itinerary-pdf' | 'use-template' | 'save-template';
 }[] = [
   { title: 'Edit trip', subtitle: 'Name, dates, time zone, notes', icon: 'settings', path: 'edit' },
+  {
+    title: 'Share as PDF',
+    subtitle: 'The itinerary, day by day, to send or print',
+    icon: 'pdf',
+    path: 'itinerary-pdf',
+  },
   {
     title: 'Use a template',
     subtitle: 'Add saved tasks, notes and lists',

@@ -549,7 +549,12 @@ owner's request; the decisions (FB-1…) are listed there for the owner to go th
 | **B9** | Notes: title and a two-line preview, pinned first | ✅ |
 | **B10** | Add / edit: kind first, Type and Reminder as selects, folded optional sections, Save pinned | ✅ |
 | **B11** | Trip documents (N1): every document, tickets first, on this phone / link / missing | ✅ |
-| **C1–C5** | Lists, travellers, price per person, itinerary PDF, templates — migration 003 | ⬜ |
+| **C** | Migration 003 (seven tables) and backup format 3, rehearsed over the sample backup | ✅ |
+| **C1** | Packing and shopping lists: presets copied into a trip, ticked only on the trip copy | ✅ |
+| **C2** | Travellers: a list of people, chosen per trip and per item; old names converted by tap | ✅ |
+| **C3** | A price per person: lines of quantity × price, the total kept in step | ✅ |
+| **C4** | Itinerary PDF: every day, both ends of each journey, documents named; names, references, tasks, lists and costs only when chosen | ✅ |
+| **C5** | Templates: save a trip's preparation, apply it to a new trip with dates rebased | ✅ |
 
 ---
 
