@@ -13,6 +13,11 @@ import {
   TRIP_ITEM_TABLES,
   updateTripItem,
 } from '../../../src/repositories/tripItems';
+import {
+  listItemParticipants,
+  listTripTravellers,
+  TRAVELLER_TABLES,
+} from '../../../src/repositories/travellers';
 import { getTrip, TRIP_TABLES } from '../../../src/repositories/trips';
 import { QueryScreen } from '../../../src/ui/components/QueryStates';
 import { Screen } from '../../../src/ui/components/Screen';
@@ -46,6 +51,22 @@ export default function EditItem() {
     TRIP_ITEM_TABLES,
     [tripId],
   );
+  // Who can go and who does, read together: the form starts from them, so it waits for both.
+  const peopleQuery = useLiveQuery(
+    useCallback(
+      async (database) => {
+        if (!tripId) return null;
+        const [travellers, participants] = await Promise.all([
+          listTripTravellers(database, tripId),
+          listItemParticipants(database, itemId),
+        ]);
+        return { travellers, participants: participants.map((person) => person.id) };
+      },
+      [tripId, itemId],
+    ),
+    TRAVELLER_TABLES,
+    [tripId, itemId],
+  );
 
   const itemView = queryView(itemQuery);
   if (itemView !== 'ready' || !item) {
@@ -73,6 +94,21 @@ export default function EditItem() {
     );
   }
 
+  // Saving before these are read would clear who takes part (C2): no form until they are.
+  const people = peopleQuery.data;
+  const peopleView = queryView(peopleQuery);
+  if (peopleView !== 'ready' || !people) {
+    return (
+      <QueryScreen
+        title="Edit item"
+        view={peopleView === 'missing' ? 'loading' : peopleView}
+        missingText=""
+        what="who is going"
+        onRetry={peopleQuery.refetch}
+      />
+    );
+  }
+
   return (
     <Screen>
       <ScreenHeader title="Edit item" />
@@ -83,8 +119,10 @@ export default function EditItem() {
         defaultDate={defaultItemDate(trip)}
         knownPlaces={knownPlaces ?? []}
         defaultValues={tripItemFormValues(item)}
-        onSubmit={async (input) => {
-          await updateTripItem(db, item.id, input);
+        travellers={people.travellers}
+        defaultParticipants={people.participants}
+        onSubmit={async (input, participants) => {
+          await updateTripItem(db, item.id, input, participants);
           router.back();
           void askForRemindersIfDue(db, item.id);
         }}

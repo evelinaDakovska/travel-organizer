@@ -306,6 +306,69 @@ export const SET_NOTE_PINNED = `
 UPDATE trip_notes SET pinned = $pinned, updated_at = $now WHERE id = $id
 `;
 
+/* Travellers (C2). Profiles in the order they were added; a trip's in the order it chose them. */
+
+export const SELECT_TRAVELLERS = `
+SELECT * FROM travellers ORDER BY sort_order, name
+`;
+
+export const INSERT_TRAVELLER = `
+INSERT INTO travellers (id, name, sort_order, created_at, updated_at)
+VALUES ($id, $name, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM travellers), $now, $now)
+`;
+
+export const RENAME_TRAVELLER = `
+UPDATE travellers SET name = $name, updated_at = $now WHERE id = $id
+`;
+
+/** Where a profile is used: the trips it goes on, and how many items list it. */
+export const SELECT_TRAVELLER_TRIPS = `
+SELECT t.name FROM trip_travellers tt JOIN trips t ON t.id = tt.trip_id
+ WHERE tt.traveller_id = $id ORDER BY t.start_date
+`;
+
+export const COUNT_TRAVELLER_ITEMS = `
+SELECT COUNT(*) AS n FROM item_participants WHERE traveller_id = $id
+`;
+
+export const SELECT_TRIP_TRAVELLERS = `
+SELECT p.* FROM trip_travellers tt JOIN travellers p ON p.id = tt.traveller_id
+ WHERE tt.trip_id = $tripId ORDER BY tt.sort_order, p.name
+`;
+
+export const INSERT_TRIP_TRAVELLER = `
+INSERT INTO trip_travellers (trip_id, traveller_id, sort_order)
+VALUES ($tripId, $travellerId,
+        (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM trip_travellers WHERE trip_id = $tripId))
+ON CONFLICT (trip_id, traveller_id) DO NOTHING
+`;
+
+/** Leaving a trip takes them off its items too: otherwise the profile could never be deleted. */
+export const DELETE_TRIP_TRAVELLER_PARTICIPATION = `
+DELETE FROM item_participants
+ WHERE traveller_id = $travellerId
+   AND item_id IN (SELECT id FROM trip_items WHERE trip_id = $tripId)
+`;
+
+export const DELETE_TRIP_TRAVELLER = `
+DELETE FROM trip_travellers WHERE trip_id = $tripId AND traveller_id = $travellerId
+`;
+
+export const SELECT_ITEM_PARTICIPANTS = `
+SELECT p.* FROM item_participants ip
+  JOIN travellers p ON p.id = ip.traveller_id
+  LEFT JOIN trip_items i ON i.id = ip.item_id
+  LEFT JOIN trip_travellers tt ON tt.trip_id = i.trip_id AND tt.traveller_id = p.id
+ WHERE ip.item_id = $itemId
+ ORDER BY tt.sort_order, p.name
+`;
+
+export const DELETE_ITEM_PARTICIPANTS = `DELETE FROM item_participants WHERE item_id = $itemId`;
+
+export const INSERT_ITEM_PARTICIPANT = `
+INSERT INTO item_participants (item_id, traveller_id) VALUES ($itemId, $travellerId)
+`;
+
 /** Column order for the backup. Append only — a restore binds by name, but order documents it. */
 export const EXPORT_COLUMNS = {
   trips: ['id', 'name', 'destination', 'start_date', 'end_date', 'default_tz', 'cover_path',

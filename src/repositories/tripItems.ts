@@ -19,6 +19,7 @@ import {
   UPDATE_TRIP_ITEM_STATUS,
 } from '../db/queries';
 import { parseNoteRow, type Note, type NoteRow } from '../domain/note';
+import { writeItemParticipants } from './travellers';
 import type { KnownPlace } from '../domain/places';
 import { searchPattern } from '../domain/search';
 import { localPrecision, toInstant, type LocalMoment, type TimePrecision } from '../domain/time';
@@ -70,10 +71,15 @@ export async function listReminderCandidates(db: SQLiteDatabase, now: Date): Pro
   return rows.map((row) => parseTripItemRow(row, row.trip_default_tz));
 }
 
-export async function createTripItem(
+/**
+ * One item and who takes part in it (C2), for a caller that already holds a transaction —
+ * `createTripItem`, a journey's legs, a share. On its own it would not be atomic.
+ */
+export async function insertTripItem(
   db: SQLiteDatabase,
   tripId: string,
   input: TripItemInput,
+  participants: readonly string[],
 ): Promise<string> {
   const id = randomUUID();
   await db.runAsync(INSERT_TRIP_ITEM, {
@@ -82,35 +88,62 @@ export async function createTripItem(
     $now: new Date().toISOString(),
     ...tripItemBindings(input, await tripDefaultTz(db, tripId)),
   });
+  if (participants.length > 0) await writeItemParticipants(db, id, participants);
+  return id;
+}
+
+/**
+ * An item and its participants, both or neither. Not `withExclusiveTransactionAsync` — its second
+ * connection is never heard by the change listener (CLAUDE.md, finding 6).
+ */
+export async function createTripItem(
+  db: SQLiteDatabase,
+  tripId: string,
+  input: TripItemInput,
+  participants: readonly string[] = [],
+): Promise<string> {
+  let id = '';
+  await db.withTransactionAsync(async () => {
+    id = await insertTripItem(db, tripId, input, participants);
+  });
   return id;
 }
 
 /**
  * The legs of one journey (U7), all or none: a connection saved without the flight before it would
- * be worse than nothing. Not `withExclusiveTransactionAsync` — its second connection is never heard
- * by the change listener (CLAUDE.md, finding 6).
+ * be worse than nothing. Every leg has the same participants.
  */
 export async function createTripItems(
   db: SQLiteDatabase,
   tripId: string,
   inputs: readonly TripItemInput[],
+  participants: readonly string[] = [],
 ): Promise<string[]> {
   const ids: string[] = [];
   await db.withTransactionAsync(async () => {
-    for (const input of inputs) ids.push(await createTripItem(db, tripId, input));
+    for (const input of inputs) ids.push(await insertTripItem(db, tripId, input, participants));
   });
   return ids;
 }
 
+/**
+ * Saves an edit. `participants` replaces who takes part, in the same transaction; left out, they
+ * are not touched.
+ */
 export async function updateTripItem(
   db: SQLiteDatabase,
   id: string,
   input: TripItemInput,
+  participants?: readonly string[],
 ): Promise<void> {
-  await db.runAsync(UPDATE_TRIP_ITEM, {
-    $id: id,
-    $now: new Date().toISOString(),
-    ...tripItemBindings(input, await itemDefaultTz(db, id)),
+  const defaultTz = await itemDefaultTz(db, id);
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(UPDATE_TRIP_ITEM, {
+      $id: id,
+      $now: new Date().toISOString(),
+      ...tripItemBindings(input, defaultTz),
+    });
+    if (participants) await writeItemParticipants(db, id, participants);
   });
 }
 

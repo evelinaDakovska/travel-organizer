@@ -24,6 +24,7 @@ import { groupResourcesByItem, type Resource } from '../../../../src/domain/reso
 import { dayKey } from '../../../../src/domain/time';
 import type { TimelineEntry } from '../../../../src/domain/timeline';
 import { timezoneLabel } from '../../../../src/domain/timezones';
+import { tripPeopleLine } from '../../../../src/domain/traveller';
 import { deviceToday, tripPhase, tripPhaseLabel } from '../../../../src/domain/trip';
 import { routeLabel, transportDetails, type TripItem } from '../../../../src/domain/tripItem';
 import { AddSheet } from '../../../../src/features/items/AddSheet';
@@ -44,6 +45,7 @@ import {
   setTaskCompleted,
   TRIP_ITEM_TABLES,
 } from '../../../../src/repositories/tripItems';
+import { listTripTravellers, TRAVELLER_TABLES } from '../../../../src/repositories/travellers';
 import { getTrip, TRIP_TABLES } from '../../../../src/repositories/trips';
 import { HeaderAction } from '../../../../src/ui/components/HeaderAction';
 import { Icon } from '../../../../src/ui/components/Icon';
@@ -93,6 +95,11 @@ export default function OverviewScreen() {
     ITEM_RESOURCE_TABLES,
     [tripId],
   );
+  const { data: members } = useLiveQuery(
+    useCallback((database) => listTripTravellers(database, tripId), [tripId]),
+    TRAVELLER_TABLES,
+    [tripId],
+  );
   const trip = tripQuery.data;
   const items = itemsQuery.data;
 
@@ -130,8 +137,9 @@ export default function OverviewScreen() {
 
   const phase = tripPhase(trip, now);
   const during = phase.phase === 'during';
-  const travellers = trip.travellers.length > 0 ? trip.travellers.join(', ') : null;
-  const meta = [`${timezoneLabel(trip.defaultTz)} time`, travellers].filter(Boolean).join(' · ');
+  // The trip's travellers, or the names typed before there were profiles (FB-12).
+  const people = tripPeopleLine(members ?? [], trip.travellers);
+  const meta = [`${timezoneLabel(trip.defaultTz)} time`, people].filter(Boolean).join(' · ');
 
   const toggle = (task: TripItem, completed: boolean) => {
     void setTaskCompleted(db, task.id, completed);
@@ -266,6 +274,12 @@ export default function OverviewScreen() {
         ) : null}
 
         <Rows>
+          <ListRow
+            title="Travellers"
+            subtitle={people || 'Who is going'}
+            leading={<Icon name="travellers" color={c.accentText} />}
+            onPress={() => router.push(`/trip/${trip.id}/travellers`)}
+          />
           <ListRow
             title="Trip documents"
             subtitle="Tickets, bookings and insurance — on this phone and as links"

@@ -18,6 +18,7 @@ import {
   transportDetails,
   type TripItem,
 } from '../../../src/domain/tripItem';
+import { namesLine } from '../../../src/domain/traveller';
 import { zoneMismatches } from '../../../src/domain/zoneHints';
 import { JourneyEnds } from '../../../src/features/items/JourneyEnds';
 import { ZoneNotice } from '../../../src/features/items/ZoneNotice';
@@ -38,6 +39,7 @@ import {
   setTripItemStatus,
   TRIP_ITEM_TABLES,
 } from '../../../src/repositories/tripItems';
+import { listItemParticipants, TRAVELLER_TABLES } from '../../../src/repositories/travellers';
 import { Button } from '../../../src/ui/components/Button';
 import { CopyValue } from '../../../src/ui/components/CopyValue';
 import { Fact } from '../../../src/ui/components/Fact';
@@ -65,6 +67,12 @@ export default function ItemDetail() {
   const itemQuery = useLiveQuery(
     useCallback((database) => getTripItem(database, itemId), [itemId]),
     TRIP_ITEM_TABLES,
+    [itemId],
+  );
+
+  const { data: participants } = useLiveQuery(
+    useCallback((database) => listItemParticipants(database, itemId), [itemId]),
+    TRAVELLER_TABLES,
     [itemId],
   );
 
@@ -210,6 +218,9 @@ export default function ItemDetail() {
             />
           ) : null}
           {reminder ? <Fact label="Reminder" value={reminder} muted={reminder === 'Off'} /> : null}
+          {participants && participants.length > 0 ? (
+            <Fact label="Who's going" value={namesLine(participants)} />
+          ) : null}
           {item.notes ? <Fact label="Notes" value={item.notes} selectable /> : null}
         </View>
 

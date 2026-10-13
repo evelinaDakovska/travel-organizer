@@ -43,6 +43,7 @@ import {
   type TripItemKind,
   type TripItemStatus,
 } from '../../domain/tripItem';
+import type { Traveller } from '../../domain/traveller';
 import { followPlace, lastKnownPlace } from '../../domain/zoneHints';
 import { Button } from '../../ui/components/Button';
 import { ChoiceField } from '../../ui/components/ChoiceField';
@@ -53,6 +54,7 @@ import { Icon } from '../../ui/components/Icon';
 import { KindTile } from '../../ui/components/KindTile';
 import { ListRow, Rows } from '../../ui/components/ListRow';
 import { MomentField } from '../../ui/components/MomentField';
+import { MultiChoiceField } from '../../ui/components/MultiChoiceField';
 import { AmountInput, CurrencyInput } from '../../ui/components/MoneyInputs';
 import { SectionLabel } from '../../ui/components/SectionLabel';
 import { SelectField } from '../../ui/components/SelectField';
@@ -70,9 +72,14 @@ type Props = {
   submitLabel: string;
   /** Editing an existing item: *Cancelled* is offered as a status too. */
   editing?: boolean;
-  onSubmit: (input: TripItemInput) => Promise<void>;
+  /** The trip's travellers, offered as *Who's going* (C2). None: the question is not asked. */
+  travellers?: readonly Traveller[];
+  /** Who takes part already, on an edit. */
+  defaultParticipants?: readonly string[];
+  /** The item and who takes part in it; none ticked means not specified. */
+  onSubmit: (input: TripItemInput, participants: string[]) => Promise<void>;
   /** Offered only when creating: connections and a return save one item per leg (U7). */
-  onSubmitJourney?: (inputs: TripItemInput[]) => Promise<void>;
+  onSubmitJourney?: (inputs: TripItemInput[], participants: string[]) => Promise<void>;
 };
 
 const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
@@ -112,6 +119,8 @@ export function ItemForm({
   knownPlaces = [],
   submitLabel,
   editing = false,
+  travellers = [],
+  defaultParticipants = [],
   onSubmit,
   onSubmitJourney,
 }: Props) {
@@ -160,6 +169,10 @@ export function ItemForm({
   const c = useColors();
 
   const [choosingKind, setChoosingKind] = useState(false);
+  // Only the trip's travellers can be ticked; one taken off the trip since is left out on save.
+  const [participants, setParticipants] = useState<string[]>(() =>
+    defaultParticipants.filter((id) => travellers.some((traveller) => traveller.id === id)),
+  );
   // Null is the ordinary form; a journey replaces its When and route with a list of legs.
   const [journey, setJourney] = useState<Journey | null>(null);
   const [problems, setProblems] = useState<LegProblem[]>([]);
@@ -263,7 +276,10 @@ export function ItemForm({
       return;
     }
     setJourneyError(null);
-    await onSubmitJourney?.(parsed.map((result) => result.data!));
+    await onSubmitJourney?.(
+      parsed.map((result) => result.data!),
+      participants,
+    );
   };
 
   /** Changing kind keeps everything but what belongs to the old kind only. */
@@ -305,7 +321,7 @@ export function ItemForm({
             busy={isSubmitting}
             onPress={handleSubmit(async (values) => {
               if (journey) await submitJourney(journey);
-              else await onSubmit(values);
+              else await onSubmit(values, participants);
             })}
           />
         </>
@@ -402,6 +418,22 @@ export function ItemForm({
             </Field>
           )}
         />
+      )}
+
+      {travellers.length > 0 && (
+        <Field
+          label="Who's going"
+          hint={
+            participants.length === 0
+              ? 'None ticked: not specified'
+              : `${participants.length} of ${travellers.length}`
+          }>
+          <MultiChoiceField
+            options={travellers.map((traveller) => ({ id: traveller.id, label: traveller.name }))}
+            selected={participants}
+            onChange={setParticipants}
+          />
+        </Field>
       )}
 
       {onSubmitJourney && kind === 'transport' && (

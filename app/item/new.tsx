@@ -19,6 +19,7 @@ import {
   listKnownPlaces,
   TRIP_ITEM_TABLES,
 } from '../../src/repositories/tripItems';
+import { listTripTravellers, TRAVELLER_TABLES } from '../../src/repositories/travellers';
 import { getTrip, TRIP_TABLES } from '../../src/repositories/trips';
 import { QueryScreen } from '../../src/ui/components/QueryStates';
 import { Screen } from '../../src/ui/components/Screen';
@@ -52,6 +53,12 @@ export default function NewItem() {
     [tripId],
   );
 
+  const { data: travellers } = useLiveQuery(
+    useCallback((database) => listTripTravellers(database, tripId), [tripId]),
+    TRAVELLER_TABLES,
+    [tripId],
+  );
+
   const trip = tripQuery.data;
   const tripView = queryView(tripQuery);
   if (tripView !== 'ready' || !trip) {
@@ -74,6 +81,7 @@ export default function NewItem() {
         defaultTz={trip.defaultTz}
         defaultDate={date ?? defaultItemDate(trip)}
         knownPlaces={knownPlaces ?? []}
+        travellers={travellers ?? []}
         defaultValues={{
           kind,
           // A to-do is not an idea to book later; as one it would also land on Places.
@@ -85,13 +93,13 @@ export default function NewItem() {
           priceCurrency: DEFAULT_CURRENCY,
           isPaid: false,
         }}
-        onSubmitJourney={async (inputs) => {
-          const [first] = await createTripItems(db, trip.id, inputs);
+        onSubmitJourney={async (inputs, participants) => {
+          const [first] = await createTripItems(db, trip.id, inputs, participants);
           router.replace(`/item/${first}`);
           void askForRemindersIfDue(db, first);
         }}
-        onSubmit={async (input) => {
-          const id = await createTripItem(db, trip.id, input);
+        onSubmit={async (input, participants) => {
+          const id = await createTripItem(db, trip.id, input, participants);
           router.replace(`/item/${id}`);
           void askForRemindersIfDue(db, id);
         }}

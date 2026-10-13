@@ -128,6 +128,12 @@ export default function Home() {
             <SectionLabel>Your data</SectionLabel>
             <Rows>
               <ListRow
+                title="Travellers"
+                subtitle="The people you travel with, chosen per trip"
+                leading={<Icon name="travellers" color={c.accentText} />}
+                onPress={() => router.push('/travellers')}
+              />
+              <ListRow
                 title="Backup & restore"
                 subtitle="Everything lives only on this phone. Save a copy before each trip."
                 leading={<Icon name="backup" color={c.accentText} />}

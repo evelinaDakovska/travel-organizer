@@ -3,7 +3,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import type { ResourceInput, ResourceOwner } from '../domain/resource';
 import type { TripItemInput } from '../domain/tripItem';
 import { createResource } from './resources';
-import { createTripItem } from './tripItems';
+import { insertTripItem } from './tripItems';
 
 /** Where a share's rows go: a new item made from it, or something that already exists. */
 export type ShareRowsTarget =
@@ -23,7 +23,8 @@ export async function saveSharedRows(
   let owner: ResourceOwner | null = target.to === 'existing' ? target.owner : null;
   await db.withTransactionAsync(async () => {
     if (target.to === 'new-item') {
-      owner = { scope: 'item', id: await createTripItem(db, target.tripId, target.input) };
+      const id = await insertTripItem(db, target.tripId, target.input, []);
+      owner = { scope: 'item', id };
     }
     for (const resource of resources) await createResource(db, owner!, resource);
   });
