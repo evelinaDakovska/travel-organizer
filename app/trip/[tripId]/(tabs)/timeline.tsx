@@ -18,6 +18,7 @@ import { undatedConfirmed } from '../../../../src/domain/itinerary';
 import { groupResourcesByItem } from '../../../../src/domain/resource';
 import { buildTimeline } from '../../../../src/domain/timeline';
 import { deviceToday } from '../../../../src/domain/trip';
+import { AddSheet } from '../../../../src/features/items/AddSheet';
 import { TimelineRow } from '../../../../src/features/timeline/TimelineRow';
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { useTripId } from '../../../../src/features/trips/TripContext';
@@ -80,6 +81,7 @@ export default function TimelineScreen() {
   const today = deviceToday(useNow());
   // Only a tap changes the day shown: a refresh or an edit elsewhere never moves the reader (B3).
   const [chosen, setChosen] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
 
   const tripView = queryView(tripQuery);
   if (tripView !== 'ready' || !trip) {
@@ -110,8 +112,8 @@ export default function TimelineScreen() {
   );
 
   const open = (itemId: string) => router.push(`/item/${itemId}`);
-  const addPlan = (date?: string) =>
-    router.push({ pathname: '/item/new', params: { tripId, ...(date ? { date } : {}) } });
+  // On a day, what is added is planned for that day (B3); the kind is asked first (B10).
+  const addDate = selected.kind === 'day' ? selected.date : undefined;
 
   return (
     <Screen>
@@ -129,7 +131,7 @@ export default function TimelineScreen() {
               icon="add"
               label="Add"
               accessibilityLabel="Add to this trip"
-              onPress={() => addPlan(selected.kind === 'day' ? selected.date : undefined)}
+              onPress={() => setAdding(true)}
             />
           </View>
         }
@@ -181,11 +183,7 @@ export default function TimelineScreen() {
                 ? 'Nothing planned for this day yet.'
                 : 'Nothing on the timeline yet. Anything with a date appears here, day by day.'}
             </Text>
-            <Button
-              label="Add a plan"
-              variant="secondary"
-              onPress={() => addPlan(selected.kind === 'day' ? selected.date : undefined)}
-            />
+            <Button label="Add a plan" variant="secondary" onPress={() => setAdding(true)} />
           </View>
         ) : (
           shownDays.map((day) => {
@@ -215,6 +213,13 @@ export default function TimelineScreen() {
           })
         )}
       </ScrollView>
+
+      <AddSheet
+        visible={adding}
+        onClose={() => setAdding(false)}
+        tripId={tripId}
+        date={addDate}
+      />
     </Screen>
   );
 }

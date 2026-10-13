@@ -22,7 +22,7 @@ export function Field({ label, error, hint, children }: FieldProps) {
 
 /**
  * The box every input and picker sits in, so a text field and a date button look like one
- * family. Single-line controls are pills; a multi-line box is rounded instead.
+ * family: 48 dp, a 10 dp radius, a hairline that turns blue on focus (B1).
  */
 export function inputFrame(
   c: Colors,
@@ -40,10 +40,10 @@ export function inputFrame(
   | 'borderColor'
 > {
   return {
-    minHeight: 50,
+    minHeight: 48,
     borderWidth: 1,
-    borderRadius: multiline ? radius.lg : radius.pill,
-    paddingHorizontal: spacing.lg + 2,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.md,
     justifyContent: 'center',
     backgroundColor: c.surface,

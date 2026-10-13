@@ -5,6 +5,7 @@ import { Controller, useForm, type Control } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { refundableOf, withRefundable } from '../../domain/bookingCosts';
+import { formatMoney } from '../../domain/format';
 import {
   firstReturnLeg,
   isMultiLeg,
@@ -40,17 +41,24 @@ import {
   type TripItemFormValues,
   type TripItemInput,
   type TripItemKind,
+  type TripItemStatus,
 } from '../../domain/tripItem';
 import { followPlace, lastKnownPlace } from '../../domain/zoneHints';
 import { Button } from '../../ui/components/Button';
-import { FormScroll } from '../../ui/components/FormScroll';
 import { ChoiceField } from '../../ui/components/ChoiceField';
+import { Disclosure } from '../../ui/components/Disclosure';
 import { Field, Input } from '../../ui/components/Field';
+import { FormScroll } from '../../ui/components/FormScroll';
+import { Icon } from '../../ui/components/Icon';
+import { KindTile } from '../../ui/components/KindTile';
+import { ListRow, Rows } from '../../ui/components/ListRow';
 import { MomentField } from '../../ui/components/MomentField';
 import { AmountInput, CurrencyInput } from '../../ui/components/MoneyInputs';
 import { SectionLabel } from '../../ui/components/SectionLabel';
-import { JourneyFields } from './JourneyFields';
+import { SelectField } from '../../ui/components/SelectField';
+import { Sheet } from '../../ui/components/Sheet';
 import { opacity, radius, spacing, type, useColors } from '../../ui/tokens';
+import { JourneyFields } from './JourneyFields';
 
 type Props = {
   defaultValues: TripItemFormValues;
@@ -60,6 +68,8 @@ type Props = {
   /** Place names written before, offered while typing one. */
   knownPlaces?: readonly KnownPlace[];
   submitLabel: string;
+  /** Editing an existing item: *Cancelled* is offered as a status too. */
+  editing?: boolean;
   onSubmit: (input: TripItemInput) => Promise<void>;
   /** Offered only when creating: connections and a return save one item per leg (U7). */
   onSubmitJourney?: (inputs: TripItemInput[]) => Promise<void>;
@@ -67,18 +77,41 @@ type Props = {
 
 const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
-const STATUS_HINTS = {
-  idea: 'Saved to Places until you decide on it',
-  confirmed: 'In your itinerary — it shows on the Timeline',
-  cancelled: 'Kept for its documents, hidden from the Timeline',
-} as const;
+/** Commitment in words (B10): *confirmed* means decided, booked or not. */
+const STATUS_LABELS: Record<TripItemStatus, string> = {
+  confirmed: 'In my itinerary',
+  idea: 'Saved idea',
+  cancelled: 'Cancelled',
+};
 
+const STATUS_HINTS: Record<TripItemStatus, string> = {
+  idea: 'Saved to Places until you decide on it',
+  confirmed: 'It shows on the Timeline and the Overview',
+  cancelled: 'Kept for its documents, hidden from the Timeline',
+};
+
+/** A title worth copying, per kind: the form opens on it (B10). */
+const TITLE_PLACEHOLDERS: Record<TripItemKind, string> = {
+  transport: 'Flight to Bergamo',
+  stay: 'Hotel Brera',
+  activity: 'Duomo rooftop tour',
+  food: 'Trattoria da Mario',
+  task: 'Print the car rental voucher',
+  other: 'Travel insurance',
+};
+
+/**
+ * Add or edit an item (B10). The kind was chosen before the form opened (AddSheet) and is only
+ * changed here; title first, then when and where; price, payment and the reminder fold away
+ * until wanted — and open by themselves when they hold something, so nothing saved is hidden.
+ */
 export function ItemForm({
   defaultValues,
   defaultTz,
   defaultDate,
   knownPlaces = [],
   submitLabel,
+  editing = false,
   onSubmit,
   onSubmitJourney,
 }: Props) {
@@ -119,10 +152,14 @@ export function ItemForm({
   const to = routeEnd('to');
   const reminder = reminderSetting(watch('details'));
   const refundable = refundableOf(watch('details'));
-  const hasPrice = watch('priceAmount') !== undefined;
+  const priceAmount = watch('priceAmount');
+  const priceCurrency = watch('priceCurrency');
+  const isPaid = watch('isPaid');
+  const hasPrice = priceAmount !== undefined;
   const subkinds = subkindsFor(kind);
   const c = useColors();
 
+  const [choosingKind, setChoosingKind] = useState(false);
   // Null is the ordinary form; a journey replaces its When and route with a list of legs.
   const [journey, setJourney] = useState<Journey | null>(null);
   const [problems, setProblems] = useState<LegProblem[]>([]);
@@ -229,34 +266,72 @@ export function ItemForm({
     await onSubmitJourney?.(parsed.map((result) => result.data!));
   };
 
+  /** Changing kind keeps everything but what belongs to the old kind only. */
+  const changeKind = (next: TripItemKind) => {
+    setChoosingKind(false);
+    if (next === kind) return;
+    setValue('kind', next, { shouldDirty: true });
+    // A subkind belongs to one kind, and the route only to transport. Everything else in details
+    // — the reminder, refundable — belongs to every kind.
+    setValue('subkind', null);
+    // Legs are travel only; leaving travel folds them back into one.
+    if (journey && next !== 'transport') {
+      applyJourney({ outbound: [mergeToDirect(journey.outbound)], returning: [] });
+    }
+    setValue('details', detailsForKind(getValues('details'), next));
+  };
+
+  // What the folded Price section holds, so closed it still says so.
+  const priceSummary = [
+    hasPrice && Number.isFinite(priceAmount) && priceCurrency
+      ? formatMoney(priceAmount, priceCurrency)
+      : null,
+    isPaid ? 'Paid' : null,
+    refundable === null ? null : refundable ? 'Refundable' : 'Not refundable',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const reminderText = reminderHint(kind, start, defaultTz, reminder);
+
   return (
-    <FormScroll>
-      <Controller
-        control={control}
-        name="kind"
-        render={({ field }) => (
-          <Field label="What is it">
-            <ChoiceField
-              value={field.value ?? 'other'}
-              options={TRIP_ITEM_KINDS}
-              labelFor={kindLabel}
-              onChange={(next) => {
-                if (!next) return;
-                field.onChange(next);
-                // A subkind belongs to one kind, and the route only to transport. Everything
-                // else in details — the reminder, refundable — belongs to every kind.
-                setValue('subkind', null);
-                // Legs are travel only; leaving travel folds them back into one.
-                if (journey && next !== 'transport') {
-                  const outbound = [mergeToDirect(journey.outbound)];
-                  applyJourney({ outbound, returning: [] });
-                }
-                setValue('details', detailsForKind(getValues('details'), next));
-              }}
+    <FormScroll
+      footer={
+        <>
+          {journeyError ? (
+            <Text style={[type.body, styles.error, { color: c.danger }]}>{journeyError}</Text>
+          ) : null}
+          <Button
+            label={submitLabel}
+            busy={isSubmitting}
+            onPress={handleSubmit(async (values) => {
+              if (journey) await submitJourney(journey);
+              else await onSubmit(values);
+            })}
+          />
+        </>
+      }>
+      <Pressable
+        onPress={() => setChoosingKind(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`Kind: ${kindLabel(kind)}. Change`}
+        style={({ pressed }) => [styles.kindRow, { opacity: pressed ? opacity.pressed : 1 }]}>
+        <KindTile kind={kind} subkind={null} size={32} />
+        <Text style={[type.heading, styles.grow, { color: c.text }]}>{kindLabel(kind)}</Text>
+        <Text style={[type.label, { color: c.accentText }]}>Change</Text>
+      </Pressable>
+      <Sheet visible={choosingKind} title="What is it" onClose={() => setChoosingKind(false)}>
+        <Rows>
+          {TRIP_ITEM_KINDS.map((option) => (
+            <ListRow
+              key={option}
+              title={kindLabel(option)}
+              leading={<KindTile kind={option} subkind={null} size={32} />}
+              trailing={option === kind ? <Icon name="check" color={c.accentText} /> : null}
+              onPress={() => changeKind(option)}
             />
-          </Field>
-        )}
-      />
+          ))}
+        </Rows>
+      </Sheet>
 
       <Controller
         control={control}
@@ -267,7 +342,7 @@ export function ItemForm({
               value={field.value}
               onChangeText={field.onChange}
               onBlur={field.onBlur}
-              placeholder={kind === 'transport' ? 'Flight to Bergamo' : 'Duomo Fast Track'}
+              placeholder={TITLE_PLACEHOLDERS[kind]}
               invalid={!!errors.title}
               autoFocus={!defaultValues.title}
             />
@@ -281,12 +356,13 @@ export function ItemForm({
           name="subkind"
           render={({ field }) => (
             <Field label="Type" error={errors.subkind?.message} hint="Optional">
-              <ChoiceField
+              <SelectField
                 value={(field.value as string | null) ?? null}
                 options={subkinds}
                 labelFor={subkindLabel}
                 onChange={field.onChange}
-                clearable
+                title={`Type of ${kindLabel(kind).toLowerCase()}`}
+                noneLabel="Not specified"
               />
             </Field>
           )}
@@ -297,11 +373,13 @@ export function ItemForm({
         control={control}
         name="status"
         render={({ field }) => (
-          <Field label="Status" hint={STATUS_HINTS[status ?? 'idea']}>
+          <Field label="Commitment" hint={STATUS_HINTS[status ?? 'idea']}>
             <ChoiceField
               value={field.value ?? 'idea'}
-              options={TRIP_ITEM_STATUSES}
-              labelFor={capitalise}
+              // Cancelling is on the item's More menu; here only an item already cancelled, or
+              // being edited, can be set to it.
+              options={editing ? TRIP_ITEM_STATUSES : (['confirmed', 'idea'] as const)}
+              labelFor={(value) => STATUS_LABELS[value]}
               onChange={(next) => next && field.onChange(next)}
             />
           </Field>
@@ -394,7 +472,7 @@ export function ItemForm({
                 hint={
                   kind === 'transport'
                     ? 'Each end is in the local time where it happens. Check both zones'
-                    : 'A stay that finishes on another day gets its own timeline entry'
+                    : 'One that ends on a later day shows on that day too'
                 }>
                 <MomentField
                   value={field.value}
@@ -411,27 +489,9 @@ export function ItemForm({
         </>
       )}
 
-      {status === 'confirmed' && (
-        // Not a second Controller: `details` already has one in TransportFields.
-        <Field label="Reminder" hint={reminderHint(kind, start, defaultTz, reminder)}>
-          <ChoiceField
-            value={reminder}
-            options={REMINDER_SETTINGS}
-            labelFor={reminderSettingLabel}
-            onChange={(next) =>
-              next &&
-              setValue('details', withReminderSetting(getValues('details'), next), {
-                shouldDirty: true,
-              })
-            }
-          />
-        </Field>
-      )}
-
       {kind === 'transport' && !journey && <TransportFields control={control} />}
 
       <SectionLabel>Where</SectionLabel>
-
       <Controller
         control={control}
         name="locationName"
@@ -472,13 +532,11 @@ export function ItemForm({
         )}
       />
 
-      <SectionLabel>Booking</SectionLabel>
-
       <Controller
         control={control}
         name="confirmationCode"
         render={({ field }) => (
-          <Field label="Confirmation" error={errors.confirmationCode?.message} hint="Optional">
+          <Field label="Booking reference" error={errors.confirmationCode?.message} hint="Optional">
             <Input
               value={field.value ?? ''}
               onChangeText={field.onChange}
@@ -489,76 +547,6 @@ export function ItemForm({
           </Field>
         )}
       />
-
-      <View style={styles.row}>
-        <View style={styles.grow}>
-          <Controller
-            control={control}
-            name="priceAmount"
-            render={({ field }) => (
-              <Field label="Price" error={errors.priceAmount?.message} hint="Optional">
-                <AmountInput
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  invalid={!!errors.priceAmount}
-                />
-              </Field>
-            )}
-          />
-        </View>
-        <View style={styles.currency}>
-          <Controller
-            control={control}
-            name="priceCurrency"
-            render={({ field }) => (
-              <Field label="Currency" error={errors.priceCurrency?.message}>
-                <CurrencyInput
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  invalid={!!errors.priceCurrency}
-                />
-              </Field>
-            )}
-          />
-        </View>
-      </View>
-
-      <Controller
-        control={control}
-        name="isPaid"
-        render={({ field }) => (
-          <Field label="Paid">
-            <ChoiceField
-              value={field.value ? 'paid' : 'unpaid'}
-              options={['unpaid', 'paid'] as const}
-              labelFor={(v) => (v === 'paid' ? 'Paid' : 'Not paid yet')}
-              onChange={(next) => field.onChange(next === 'paid')}
-            />
-          </Field>
-        )}
-      />
-
-      {hasPrice && (
-        // Not a second Controller: `details` already has one in TransportFields.
-        <Field
-          label="Refundable"
-          hint="Optional. A cancelled booking that is not refundable still counts in the expenses">
-          <ChoiceField
-            value={refundable === null ? null : refundable ? 'yes' : 'no'}
-            options={['yes', 'no'] as const}
-            labelFor={(v) => (v === 'yes' ? 'Refundable' : 'Not refundable')}
-            onChange={(next) => {
-              const value = next === null ? null : next === 'yes';
-              setValue('details', withRefundable(getValues('details'), value), {
-                shouldDirty: true,
-              });
-            }}
-            clearable
-          />
-        </Field>
-      )}
 
       <Controller
         control={control}
@@ -578,19 +566,102 @@ export function ItemForm({
         )}
       />
 
-      <View style={styles.actions}>
-        {journeyError ? (
-          <Text style={[type.body, styles.error, { color: c.danger }]}>{journeyError}</Text>
-        ) : null}
-        <Button
-          label={submitLabel}
-          busy={isSubmitting}
-          onPress={handleSubmit(async (values) => {
-            if (journey) await submitJourney(journey);
-            else await onSubmit(values);
-          })}
+      {/* Folded until wanted; open from the start when it holds anything, and on an error. */}
+      <Disclosure
+        title="Price & payment"
+        summary={priceSummary || 'Optional'}
+        initiallyOpen={defaultValues.priceAmount !== undefined || defaultValues.isPaid === true}
+        forceOpen={!!errors.priceAmount || !!errors.priceCurrency}>
+        <View style={styles.row}>
+          <View style={styles.grow}>
+            <Controller
+              control={control}
+              name="priceAmount"
+              render={({ field }) => (
+                <Field label="Price" error={errors.priceAmount?.message}>
+                  <AmountInput
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    invalid={!!errors.priceAmount}
+                  />
+                </Field>
+              )}
+            />
+          </View>
+          <View style={styles.currency}>
+            <Controller
+              control={control}
+              name="priceCurrency"
+              render={({ field }) => (
+                <Field label="Currency" error={errors.priceCurrency?.message}>
+                  <CurrencyInput
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    invalid={!!errors.priceCurrency}
+                  />
+                </Field>
+              )}
+            />
+          </View>
+        </View>
+
+        <Controller
+          control={control}
+          name="isPaid"
+          render={({ field }) => (
+            <Field label="Paid">
+              <ChoiceField
+                value={field.value ? 'paid' : 'unpaid'}
+                options={['unpaid', 'paid'] as const}
+                labelFor={(v) => (v === 'paid' ? 'Paid' : 'Not paid yet')}
+                onChange={(next) => field.onChange(next === 'paid')}
+              />
+            </Field>
+          )}
         />
-      </View>
+
+        {hasPrice && (
+          // Not a second Controller: `details` already has one in TransportFields.
+          <Field
+            label="Refundable"
+            hint="Optional. A cancelled booking that is not refundable still counts in the expenses">
+            <ChoiceField
+              value={refundable === null ? null : refundable ? 'yes' : 'no'}
+              options={['yes', 'no'] as const}
+              labelFor={(v) => (v === 'yes' ? 'Refundable' : 'Not refundable')}
+              onChange={(next) => {
+                const value = next === null ? null : next === 'yes';
+                setValue('details', withRefundable(getValues('details'), value), {
+                  shouldDirty: true,
+                });
+              }}
+              clearable
+            />
+          </Field>
+        )}
+      </Disclosure>
+
+      {status === 'confirmed' && (
+        <Disclosure title="Reminder" summary={reminderText} initiallyOpen={reminder !== 'default'}>
+          {/* Not a second Controller: `details` already has one in TransportFields. */}
+          <Field label="Remind me" hint={reminderText}>
+            <SelectField
+              value={reminder}
+              options={REMINDER_SETTINGS}
+              labelFor={reminderSettingLabel}
+              title="Remind me"
+              onChange={(next) =>
+                next &&
+                setValue('details', withReminderSetting(getValues('details'), next), {
+                  shouldDirty: true,
+                })
+              }
+            />
+          </Field>
+        </Disclosure>
+      )}
     </FormScroll>
   );
 }
@@ -719,6 +790,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1 },
   row: { flexDirection: 'row', gap: spacing.lg },
   currency: { width: 110 },
+  kindRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 48 },
   suggestions: { gap: spacing.xs },
   suggestion: {
     borderRadius: radius.md,
@@ -726,6 +798,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   multiline: { minHeight: 110, textAlignVertical: 'top' },
-  actions: { marginTop: spacing.sm, gap: spacing.md },
   error: { textAlign: 'center' },
 });

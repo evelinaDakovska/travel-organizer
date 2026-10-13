@@ -78,6 +78,7 @@ export default function EditItem() {
       <ScreenHeader title="Edit item" />
       <ItemForm
         submitLabel="Save changes"
+        editing
         defaultTz={trip.defaultTz}
         defaultDate={defaultItemDate(trip)}
         knownPlaces={knownPlaces ?? []}
