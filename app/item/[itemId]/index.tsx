@@ -1,17 +1,16 @@
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useMemo } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { paymentStatuses, refundableOf } from '../../../src/domain/bookingCosts';
 import { formatMoment, formatMoney } from '../../../src/domain/format';
-import { entryRoleLabel } from '../../../src/domain/itinerary';
 import { journeyLegs } from '../../../src/domain/journey';
 import { mapsUrl } from '../../../src/domain/places';
 import { reminderLabel } from '../../../src/domain/reminders';
 import { statusActions } from '../../../src/domain/status';
-import { withJourneyZone, withZone } from '../../../src/domain/timezones';
+import { withZone } from '../../../src/domain/timezones';
 import {
   kindLabel,
   routeLabel,
@@ -19,8 +18,8 @@ import {
   transportDetails,
   type TripItem,
 } from '../../../src/domain/tripItem';
-import type { LocalMoment } from '../../../src/domain/time';
-import { routePlace, zoneMismatches, zoneName } from '../../../src/domain/zoneHints';
+import { zoneMismatches } from '../../../src/domain/zoneHints';
+import { JourneyEnds } from '../../../src/features/items/JourneyEnds';
 import { ZoneNotice } from '../../../src/features/items/ZoneNotice';
 import { OpenResource } from '../../../src/features/resources/OpenResource';
 import { ResourceList } from '../../../src/features/resources/ResourceList';
@@ -40,23 +39,28 @@ import {
   TRIP_ITEM_TABLES,
 } from '../../../src/repositories/tripItems';
 import { Button } from '../../../src/ui/components/Button';
+import { CopyValue } from '../../../src/ui/components/CopyValue';
 import { Fact } from '../../../src/ui/components/Fact';
+import { HeaderAction } from '../../../src/ui/components/HeaderAction';
 import { ItemRow } from '../../../src/ui/components/ItemRow';
 import { KindTile } from '../../../src/ui/components/KindTile';
+import { Rows } from '../../../src/ui/components/ListRow';
 import { PaymentTag } from '../../../src/ui/components/PaymentTag';
 import { LoadFailed, QueryScreen, StaleNotice } from '../../../src/ui/components/QueryStates';
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../../../src/ui/components/SectionLabel';
+import { Sheet } from '../../../src/ui/components/Sheet';
 import { StatusTag } from '../../../src/ui/components/StatusTag';
 import { Tag } from '../../../src/ui/components/Tag';
-import { spacing, type, useColors } from '../../../src/ui/tokens';
+import { gutter, spacing, type, useColors } from '../../../src/ui/tokens';
 
 export default function ItemDetail() {
   const c = useColors();
   const db = useSQLiteContext();
   const router = useRouter();
   const { itemId } = useLocalSearchParams<{ itemId: string }>();
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const itemQuery = useLiveQuery(
     useCallback((database) => getTripItem(database, itemId), [itemId]),
@@ -111,77 +115,85 @@ export default function ItemDetail() {
   const mismatches = zoneMismatches(item, details);
   // The place or address only; a journey's from and to are not searched.
   const maps = mapsUrl(item);
-
-  // Each end carries its own zone: a flight leaving Vienna and landing in Sofia says so on both.
-  // A journey names both zones always — inherited or not — since its times are local to each end.
-  // Named by the city at that end when it is in the zone: 'Munich time', not 'Berlin time' (A6).
   const journey = item.kind === 'transport';
-  const journeyEnd = (end: 'start' | 'end', moment: LocalMoment) =>
-    `${entryRoleLabel({ role: end, item })} ${withJourneyZone(
-      formatMoment(moment.local, moment.precision),
-      moment,
-      zoneName(moment.tz, routePlace(item, end)),
-    )}`;
-  const startText = item.start
-    ? journey
-      ? journeyEnd('start', item.start)
-      : withZone(formatMoment(item.start.local, item.start.precision), item.startTzOverride)
-    : 'No date yet';
-  const whenDetail = !item.end
-    ? ''
-    : journey
-      ? journeyEnd('end', item.end)
-      : `until ${withZone(formatMoment(item.end.local, item.end.precision), item.endTzOverride)}`;
+
+  // Anything but a journey: one line, each end with its zone when it states its own.
+  const when = item.start
+    ? withZone(formatMoment(item.start.local, item.start.precision), item.startTzOverride)
+    : null;
+  const until = item.end
+    ? `Until ${withZone(formatMoment(item.end.local, item.end.precision), item.endTzOverride)}`
+    : null;
+
+  const remove = async () => {
+    setMoreOpen(false);
+    // Files also attached elsewhere stay, so they are not counted as lost.
+    confirmDelete(item, await countItemOwnFiles(db, item.id), async () => {
+      await deleteTripItem(db, item.id);
+      router.back();
+    });
+  };
 
   return (
     <Screen>
       <ScreenHeader
-        title="Details"
+        title={kind}
         action={
-          <Pressable
-            onPress={() => router.push(`/item/${item.id}/edit`)}
-            hitSlop={12}
-            accessibilityRole="button">
-            <Text style={[type.bodyStrong, { color: c.accentText }]}>Edit</Text>
-          </Pressable>
+          <View style={styles.headerActions}>
+            <HeaderAction label="Edit" onPress={() => router.push(`/item/${item.id}/edit`)} />
+            <HeaderAction
+              icon="more"
+              label="More"
+              accessibilityLabel="More options"
+              onPress={() => setMoreOpen(true)}
+            />
+          </View>
         }
       />
 
       <ScrollView contentContainerStyle={styles.content}>
         <StaleNotice queries={[itemQuery, resourcesQuery]} />
+
         <View style={styles.heading}>
+          <View style={styles.titleRow}>
+            <KindTile kind={item.kind} subkind={item.subkind} size={40} />
+            <Text style={[type.title, styles.grow, { color: c.text }]}>{item.title}</Text>
+          </View>
+          {route && !journey ? (
+            <Text style={[type.body, { color: c.textMuted }]}>{route}</Text>
+          ) : null}
           <View style={styles.tags}>
-            <StatusTag status={item.status} />
+            {/* Confirmed is the usual state and goes unsaid (B4). */}
+            {item.status !== 'confirmed' ? <StatusTag status={item.status} /> : null}
             <PaymentTag status={payments.get(item.id)} />
             {item.status === 'idea' && item.priority ? (
               <Tag label={capitalise(item.priority)} tone="neutral" />
             ) : null}
           </View>
-          <Text style={[type.display, { color: c.text }]}>{item.title}</Text>
-          <View style={styles.kindRow}>
-            <KindTile kind={item.kind} subkind={item.subkind} size={32} />
-            <Text style={[type.body, styles.kindText, { color: c.textMuted }]}>
-              {route ? `${kind} · ${route}` : kind}
-            </Text>
-          </View>
         </View>
 
+        {journey ? (
+          <JourneyEnds item={item} />
+        ) : when ? (
+          <Fact label="When" value={when} detail={until} />
+        ) : null}
+        {mismatches.length > 0 ? <ZoneNotice item={item} mismatches={mismatches} /> : null}
+
+        {/* The ticket comes before everything else that can be read later (B4). */}
         <OpenResource resources={resources ?? []} />
 
+        {item.confirmationCode ? (
+          <CopyValue label="Booking reference" value={item.confirmationCode} />
+        ) : null}
+
         <View style={styles.facts}>
-          {/* Empty fields are not shown (F4): no date, no When. */}
-          {item.start ? <Fact label="When" value={startText} detail={whenDetail || null} /> : null}
-          {mismatches.length > 0 ? <ZoneNotice item={item} mismatches={mismatches} /> : null}
-          {reminder ? <Fact label="Reminder" value={reminder} muted={reminder === 'Off'} /> : null}
           {item.locationName || item.address ? (
             <Fact
               label="Where"
               value={item.locationName ?? item.address ?? ''}
               detail={item.locationName ? item.address : null}
+              selectable
             />
-          ) : null}
-          {item.confirmationCode ? (
-            <Fact label="Confirmation" value={item.confirmationCode} selectable />
           ) : null}
           {details?.number ? <Fact label="Number" value={details.number} selectable /> : null}
           {details?.seat ? <Fact label="Seat" value={details.seat} /> : null}
@@ -190,14 +202,15 @@ export default function ItemDetail() {
               label="Price"
               value={formatMoney(item.priceAmount, item.priceCurrency)}
               detail={[
-                item.isPaid ? 'Paid' : 'Not paid yet',
+                item.isPaid ? 'Paid' : item.priceAmount > 0 ? 'Not paid yet' : null,
                 REFUNDABLE_LABEL[String(refundableOf(item.details))],
               ]
                 .filter(Boolean)
                 .join(' · ')}
             />
           ) : null}
-          {item.notes ? <Fact label="Notes" value={item.notes} /> : null}
+          {reminder ? <Fact label="Reminder" value={reminder} muted={reminder === 'Off'} /> : null}
+          {item.notes ? <Fact label="Notes" value={item.notes} selectable /> : null}
         </View>
 
         {maps ? (
@@ -213,22 +226,24 @@ export default function ItemDetail() {
         ) : null}
 
         {legs.length > 0 ? (
-          <View style={styles.legs}>
+          <View style={styles.section}>
             <SectionLabel>Rest of this journey</SectionLabel>
-            {legs.map((leg) => (
-              <ItemRow
-                key={leg.id}
-                item={leg}
-                payment={payments.get(leg.id) ?? null}
-                onPress={() => router.push(`/item/${leg.id}`)}
-              />
-            ))}
+            <Rows>
+              {legs.map((leg) => (
+                <ItemRow
+                  key={leg.id}
+                  item={leg}
+                  payment={payments.get(leg.id) ?? null}
+                  onPress={() => router.push(`/item/${leg.id}`)}
+                />
+              ))}
+            </Rows>
           </View>
         ) : null}
 
         {/* A failed read is not "nothing attached" — least of all where the ticket should be. */}
         {queryView(resourcesQuery) === 'failed' ? (
-          <View style={styles.facts}>
+          <View style={styles.section}>
             <SectionLabel>Tickets & links</SectionLabel>
             <LoadFailed what="the tickets and links" onRetry={resourcesQuery.refetch} />
           </View>
@@ -239,47 +254,49 @@ export default function ItemDetail() {
             title="Tickets & links"
           />
         )}
+      </ScrollView>
 
-        <View style={styles.actions}>
+      {/* Moving an item between states lives one tap away, never beside the ticket (B4). */}
+      <Sheet visible={moreOpen} title={item.title} onClose={() => setMoreOpen(false)}>
+        <View style={styles.sheetActions}>
           {actions.promote ? (
             <Button
               label="Add to itinerary"
-              onPress={() => router.push(`/item/${item.id}/schedule`)}
+              onPress={() => {
+                setMoreOpen(false);
+                router.push(`/item/${item.id}/schedule`);
+              }}
             />
           ) : null}
           {actions.cancel ? (
             <Button
               label="Mark as cancelled"
               variant="secondary"
-              onPress={() => confirmCancel(item, () => setTripItemStatus(db, item.id, 'cancelled'))}
+              onPress={() => {
+                setMoreOpen(false);
+                confirmCancel(item, () => setTripItemStatus(db, item.id, 'cancelled'));
+              }}
             />
           ) : null}
           {actions.restore ? (
             <Button
-              label="Restore"
+              label="Restore to the itinerary"
               variant="secondary"
-              onPress={() => setTripItemStatus(db, item.id, 'confirmed')}
+              onPress={() => {
+                setMoreOpen(false);
+                void setTripItemStatus(db, item.id, 'confirmed');
+              }}
             />
           ) : null}
           {actions.delete ? (
-            <Button
-              label="Delete"
-              variant="danger"
-              onPress={async () =>
-                // Files also attached elsewhere stay, so they are not counted as lost.
-                confirmDelete(item, await countItemOwnFiles(db, item.id), async () => {
-                  await deleteTripItem(db, item.id);
-                  router.back();
-                })
-              }
-            />
+            <Button label="Delete" variant="danger" onPress={() => void remove()} />
           ) : (
-            <Text style={[type.caption, styles.hint, { color: c.textMuted }]}>
+            <Text style={[type.caption, { color: c.textMuted }]}>
               To delete it, mark it as cancelled first — its tickets may be the only copies.
             </Text>
           )}
         </View>
-      </ScrollView>
+      </Sheet>
     </Screen>
   );
 }
@@ -297,7 +314,7 @@ async function openMaps(url: string) {
 function confirmCancel(item: TripItem, cancel: () => void) {
   Alert.alert(
     `Mark ${item.title} as cancelled?`,
-    'It leaves the timeline and Now. Its tickets and documents stay with it.',
+    'It leaves the timeline and the overview. Search still finds it, with its tickets and documents.',
     [
       { text: 'Keep it', style: 'cancel' },
       { text: 'Mark cancelled', style: 'destructive', onPress: cancel },
@@ -328,14 +345,18 @@ const REFUNDABLE_LABEL: Record<string, string | null> = {
 const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
 const styles = StyleSheet.create({
-  kindRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  kindText: { flex: 1 },
-  content: { padding: spacing.xl, paddingTop: spacing.sm, gap: spacing.xl, paddingBottom: spacing.xxxl },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
+  content: {
+    paddingHorizontal: gutter.normal,
+    paddingTop: spacing.sm,
+    gap: spacing.xl,
+    paddingBottom: spacing.xxxl,
+  },
   heading: { gap: spacing.sm },
-  tags: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
-  facts: { gap: spacing.md },
-  actions: { gap: spacing.sm },
-  legs: { gap: spacing.md },
-  hint: { textAlign: 'center' },
-  centre: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  grow: { flex: 1 },
+  tags: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
+  facts: { gap: spacing.lg },
+  section: { gap: spacing.xs },
+  sheetActions: { gap: spacing.sm },
 });

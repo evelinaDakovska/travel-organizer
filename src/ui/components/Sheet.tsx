@@ -10,7 +10,7 @@ type Props = {
   title: string;
   onClose: () => void;
   children: ReactNode;
-  /** The button at the bottom. 'Cancel' unless said otherwise. */
+  /** The button at the bottom. 'Close' unless said otherwise. */
   closeLabel?: string;
 };
 
@@ -18,7 +18,7 @@ type Props = {
  * A bottom sheet over the screen, for a short choice: which document to open, what to add, the
  * actions behind More. Tapping outside or Back closes it.
  */
-export function Sheet({ visible, title, onClose, children, closeLabel = 'Cancel' }: Props) {
+export function Sheet({ visible, title, onClose, children, closeLabel = 'Close' }: Props) {
   const c = useColors();
   const insets = useSafeAreaInsets();
 
