@@ -13,6 +13,7 @@ import {
   renameTraveller,
   TRAVELLER_TABLES,
   travellerUses,
+  type TravellerUses,
 } from '../../src/repositories/travellers';
 import { Button } from '../../src/ui/components/Button';
 import { Field, Input } from '../../src/ui/components/Field';
@@ -57,15 +58,24 @@ export default function TravellerScreen() {
     );
   }
 
+  const refuse = (uses: TravellerUses) =>
+    Alert.alert(
+      `${traveller.name} is still listed`,
+      `${usesText(uses)}. Take them off those first, from each trip's Travellers.`,
+    );
   const remove = async () => {
     const result = await deleteTraveller(db, traveller.id);
     if (result.deleted) router.back();
-    else {
-      Alert.alert(
-        `${traveller.name} is still listed`,
-        `${usesText(result.uses)}. Take them off those first, from each trip's Travellers.`,
-      );
-    }
+    else refuse(result.uses);
+  };
+  // Known to be in use: say so at once, rather than ask and then refuse.
+  const uses = usesQuery.data;
+  const confirmDelete = () => {
+    if (uses && (uses.trips.length > 0 || uses.items > 0)) return refuse(uses);
+    Alert.alert(`Delete ${traveller.name}?`, 'This cannot be undone.', [
+      { text: 'Keep', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => void remove() },
+    ]);
   };
 
   return (
@@ -80,12 +90,7 @@ export default function TravellerScreen() {
           await renameTraveller(db, traveller.id, name);
           router.back();
         }}
-        onDelete={() =>
-          Alert.alert(`Delete ${traveller.name}?`, 'Trips and bookings never list them again.', [
-            { text: 'Keep', style: 'cancel' },
-            { text: 'Delete', style: 'destructive', onPress: () => void remove() },
-          ])
-        }
+        onDelete={confirmDelete}
       />
     </Screen>
   );
