@@ -112,12 +112,19 @@ describe('packBackup and unpackBackup', () => {
 
 describe('summariseExport', () => {
   it('counts trips and the files that were packed', () => {
-    expect(summariseExport(document, 2)).toBe('Backed up 2 trips and 2 saved files.');
+    expect(summariseExport(document, 2)).toBe(
+      'Archive created with 2 trips and 2 saved files. It is only a backup once it is saved ' +
+        'somewhere off this phone — Drive, or email it to yourself.',
+    );
+  });
+
+  it('never claims the data is backed up: the share sheet may have been dismissed (A4)', () => {
+    expect(summariseExport(document, 2)).not.toMatch(/backed up/i);
   });
 
   it('warns about files that were already missing on the phone', () => {
-    expect(summariseExport(document, 1)).toBe(
-      'Backed up 2 trips and 1 saved file. 1 file was already missing on this phone.',
+    expect(summariseExport(document, 1)).toContain(
+      'Archive created with 2 trips and 1 saved file. 1 file was already missing on this phone.',
     );
   });
 });

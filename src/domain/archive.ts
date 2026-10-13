@@ -60,13 +60,21 @@ export function unpackBackup(bytes: Uint8Array): UnpackResult {
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
-/** 'Backed up 2 trips and 5 saved files.' — plus a warning when a file could not be read. */
+/**
+ * What went into the archive, and what is still to do (A4). The app cannot know where the share
+ * sheet put it — or whether it was dismissed — so it never claims the data is backed up.
+ */
 export function summariseExport(document: ExportDocument, packedFiles: number): string {
-  const summary = `Backed up ${plural(document.tables.trips.length, 'trip')} and ${plural(packedFiles, 'saved file')}.`;
+  const contents = `${plural(document.tables.trips.length, 'trip')} and ${plural(packedFiles, 'saved file')}`;
   const unreadable = document.files.length - packedFiles;
-  return unreadable > 0
-    ? `${summary} ${plural(unreadable, 'file')} ${unreadable === 1 ? 'was' : 'were'} already missing on this phone.`
-    : summary;
+  const missing =
+    unreadable > 0
+      ? ` ${plural(unreadable, 'file')} ${unreadable === 1 ? 'was' : 'were'} already missing on this phone.`
+      : '';
+  return (
+    `Archive created with ${contents}.${missing} ` +
+    'It is only a backup once it is saved somewhere off this phone — Drive, or email it to yourself.'
+  );
 }
 
 /** What an import is about to do, in the words the confirmation dialog shows. */

@@ -31,7 +31,8 @@ export type ExportedBackup = { uri: string; document: ExportDocument; packedFile
 /** Builds the zip in the cache, which the OS may reclaim — fine, since it is shared straight away. */
 export async function exportBackup(db: SQLiteDatabase): Promise<ExportedBackup> {
   const tables = await readAllTables(db);
-  const exportedAt = new Date().toISOString();
+  const now = new Date();
+  const exportedAt = now.toISOString();
   const document = buildExportDocument(tables, { exportedAt, sizeOf: storedFileSize });
 
   const files = new Map<string, Uint8Array>();
@@ -40,7 +41,7 @@ export async function exportBackup(db: SQLiteDatabase): Promise<ExportedBackup> 
     if (bytes) files.set(entry.storedPath, bytes);
   }
 
-  const archive = new File(Paths.cache, exportFileName(exportedAt));
+  const archive = new File(Paths.cache, exportFileName(now));
   if (archive.exists) archive.delete();
   archive.create();
   archive.write(packBackup(document, files));

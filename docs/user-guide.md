@@ -365,8 +365,10 @@ copy anywhere else, so it is the one habit that matters.
 
 On **Trips**, tap **Backup** (top right) → **Export everything**. The app builds one zip with
 every trip, item, note, expense and saved file, and opens the share sheet. Pick **Drive** (or
-anywhere off the phone). The screen then says what went in: *Backed up 2 trips and 30 saved
-files.*
+anywhere off the phone). The screen then says what went in: *Archive created with 2 trips and
+30 saved files.* The app cannot see where the share sheet put the zip — or whether it was closed
+without saving — so check that the file arrived in Drive. Each zip is named with the date and
+minute it was made, `travel-organizer-backup-2026-10-13-0942.zip`, so the newest is easy to find.
 
 **When:** before every trip, after adding the last tickets. Also after any big round of changes.
 

@@ -282,7 +282,13 @@ describe('planImport', () => {
 });
 
 describe('exportFileName', () => {
-  it('names the archive by the day it was taken', () => {
-    expect(exportFileName(now)).toBe('travel-organizer-backup-2026-09-11.zip');
+  it('names the archive by the minute it was taken, in the phone’s time (A4)', () => {
+    // Built from local parts, so the test reads the same in any zone.
+    expect(exportFileName(new Date(2026, 9, 13, 9, 42, 30))).toBe(
+      'travel-organizer-backup-2026-10-13-0942.zip',
+    );
+    expect(exportFileName(new Date(2026, 0, 2, 23, 5))).toBe(
+      'travel-organizer-backup-2026-01-02-2305.zip',
+    );
   });
 });

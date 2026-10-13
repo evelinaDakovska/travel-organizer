@@ -19,7 +19,21 @@ import type {
   TripItemExportRow,
 } from '../domain/export';
 
+/**
+ * Every table as of one moment (A4). The reads share one transaction on a connection of its own,
+ * which in WAL mode is a snapshot: a write landing mid-export — a task ticked, a reminder
+ * reconciled — cannot leave an item in the backup without its trip, or the other way round. Only
+ * reads, so it never takes the write lock, and there is nothing for the change listener to miss.
+ */
 export async function readAllTables(db: SQLiteDatabase): Promise<ExportTables> {
+  let tables: ExportTables | undefined;
+  await db.withExclusiveTransactionAsync(async (snapshot) => {
+    tables = await readTables(snapshot);
+  });
+  return tables!;
+}
+
+async function readTables(db: SQLiteDatabase): Promise<ExportTables> {
   const [trips, tripItems, tripNotes, expenses, payments, resources, settings] = await Promise.all([
     db.getAllAsync<TripExportRow>(selectAll('trips')),
     db.getAllAsync<TripItemExportRow>(selectAll('trip_items')),

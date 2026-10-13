@@ -314,6 +314,12 @@ export function planImport(
   };
 }
 
-export function exportFileName(exportedAt: string): string {
-  return `${EXPORT_APP}-backup-${exportedAt.slice(0, 10)}.zip`;
+/**
+ * 'travel-organizer-backup-2026-10-13-0942.zip', in the phone's own time (A4): two backups made
+ * on the same day no longer share a name, and the newest is the one that sorts last.
+ */
+export function exportFileName(now: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  return `${EXPORT_APP}-backup-${date}-${pad(now.getHours())}${pad(now.getMinutes())}.zip`;
 }
