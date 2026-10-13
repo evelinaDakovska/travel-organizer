@@ -14,7 +14,7 @@ single source of truth for schema, time, files, queries). Read in this order:
 5. `docs/decision-log.md` — why, and what was rejected (D1–D29)
 6. `docs/windows-handoff.md` — machine setup, release build, Windows specifics
 
-Last verified: **2026-10-12**, N6 + R1–R11 + F1–F7 built (0.5.1, see `docs/status.md`), **582 tests**,
+Last verified: **2026-10-13**, Google Maps Directions & Timeline Connectors (0.7.0, see `docs/status.md`), **784 tests**,
 typecheck clean.
 
 > **Starting fresh? Jump to §11 first** — it is the exact point the last session stopped, what is

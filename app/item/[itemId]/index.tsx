@@ -21,6 +21,12 @@ import {
 } from '../../../src/domain/tripItem';
 import { namesLine } from '../../../src/domain/traveller';
 import { zoneMismatches } from '../../../src/domain/zoneHints';
+import {
+  findTripSavedPlaces,
+  findTripStays,
+  resolveItemEndpoint,
+} from '../../../src/domain/directions';
+import { DirectionsSheet } from '../../../src/features/directions/DirectionsSheet';
 import { JourneyEnds } from '../../../src/features/items/JourneyEnds';
 import { ZoneNotice } from '../../../src/features/items/ZoneNotice';
 import { OpenResource } from '../../../src/features/resources/OpenResource';
@@ -102,6 +108,14 @@ export default function ItemDetail() {
   );
   // Paid or not (F7), the journey's legs sharing the state of the one that holds the price.
   const payments = useMemo(() => paymentStatuses(item ? [item, ...legs] : []), [item, legs]);
+
+  const [directionsOpen, setDirectionsOpen] = useState(false);
+  const destinationEndpoint = useMemo(
+    () => (item ? resolveItemEndpoint(item, 'destination') : null),
+    [item],
+  );
+  const stays = useMemo(() => findTripStays(tripItems ?? []), [tripItems]);
+  const savedPlaces = useMemo(() => findTripSavedPlaces(tripItems ?? []), [tripItems]);
 
   const itemView = queryView(itemQuery);
   if (itemView !== 'ready' || !item) {
@@ -228,8 +242,23 @@ export default function ItemDetail() {
           {item.notes ? <Fact label="Notes" value={item.notes} selectable /> : null}
         </View>
 
-        {maps ? (
-          <Button label="Open in Maps" variant="secondary" onPress={() => void openMaps(maps)} />
+        {destinationEndpoint || maps ? (
+          <View style={styles.locationActions}>
+            {destinationEndpoint ? (
+              <Button
+                label="How to get there"
+                variant="secondary"
+                onPress={() => setDirectionsOpen(true)}
+              />
+            ) : null}
+            {maps ? (
+              <Button
+                label="Open in Maps"
+                variant={destinationEndpoint ? 'ghost' : 'secondary'}
+                onPress={() => void openMaps(maps)}
+              />
+            ) : null}
+          </View>
         ) : null}
 
         {item.kind === 'task' ? (
@@ -312,6 +341,16 @@ export default function ItemDetail() {
           )}
         </View>
       </Sheet>
+
+      {destinationEndpoint ? (
+        <DirectionsSheet
+          visible={directionsOpen}
+          onClose={() => setDirectionsOpen(false)}
+          destination={destinationEndpoint}
+          hotel={stays[0] ?? null}
+          savedPlaces={savedPlaces}
+        />
+      ) : null}
     </Screen>
   );
 }
@@ -372,6 +411,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1 },
   tags: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
   facts: { gap: spacing.lg },
+  locationActions: { gap: spacing.xs },
   section: { gap: spacing.xs },
   sheetActions: { gap: spacing.sm },
 });

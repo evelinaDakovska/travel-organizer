@@ -123,6 +123,7 @@ const ICONS = {
   shoppingList: ShoppingCart,
   travellers: Users,
   pdf: FileDown,
+  directions: Route,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

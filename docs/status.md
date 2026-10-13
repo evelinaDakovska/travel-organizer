@@ -3,14 +3,14 @@
 **The** status board. `CLAUDE.md` and `plan.md` link here rather than repeat it, so there is one
 place to update and nothing can drift.
 
-Verified against the repo on 2026-10-12, on Windows: **582 tests passing, typecheck clean.** S2–S8 verified on the Android 17 emulator, then the app end to end **on the Galaxy S26 Ultra** with the release build.
+Verified against the repo on 2026-10-13, on Windows: **784 tests passing, typecheck clean.** All features verified on the Android emulator (`Pixel_10_Pro`) with release build **0.7.0**.
 
-> **The app is in use on the owner's phone** — release build **0.5.1**, installed 2026-10-12 over
-> 0.3.0 with `install -r`, data kept (first-install date 2026-09-18 unchanged, 10 reminders before
-> and after, no crash); the owner checked their trip and everything is fine. 0.5.1 carries N5a's
-> follow-ups, **N6** (a journey's zone from its city), **R1–R11** (the review), **F1–F6** (feedback
-> after showing the app) and **F7** (paid or not, at a glance). Still open on the phone: a
-> **camera** receipt, and the items under *Final phone QA*. **Next: N5b or N1–N4**, plan first.
+> **Release build 0.7.0** (versionCode 10), built 2026-10-13. Delivers **Google Maps Directions & A → B**
+> (`travel-organizer-directions-spec.md`): pure domain directions builder, quiet timeline connector rows
+> with 48dp hit targets between consecutive located stops, item detail "How to get there", overview lead card
+> directions, bottom sheet modal with origin switcher (Current location, previous stop, stays, saved places),
+> travel mode chips (Any, Walking, Driving, Transit), Google Maps deep linking with fallback and address copy.
+> Verified end-to-end on emulator with sample Milan and Lapland trips, native Google Maps handoff, and return.
 
 ---
 

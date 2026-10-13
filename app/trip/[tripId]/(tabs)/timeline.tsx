@@ -18,7 +18,15 @@ import { undatedConfirmed } from '../../../../src/domain/itinerary';
 import { groupResourcesByItem } from '../../../../src/domain/resource';
 import { buildTimeline } from '../../../../src/domain/timeline';
 import { deviceToday } from '../../../../src/domain/trip';
+import {
+  findTimelineConnectors,
+  findTripSavedPlaces,
+  findTripStays,
+  type TimelineConnector,
+} from '../../../../src/domain/directions';
+import { DirectionsSheet } from '../../../../src/features/directions/DirectionsSheet';
 import { AddSheet } from '../../../../src/features/items/AddSheet';
+import { TimelineConnectorRow } from '../../../../src/features/timeline/TimelineConnectorRow';
 import { TimelineRow } from '../../../../src/features/timeline/TimelineRow';
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { useTripId } from '../../../../src/features/trips/TripContext';
@@ -82,6 +90,10 @@ export default function TimelineScreen() {
   // Only a tap changes the day shown: a refresh or an edit elsewhere never moves the reader (B3).
   const [chosen, setChosen] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [activeConnector, setActiveConnector] = useState<TimelineConnector | null>(null);
+
+  const stays = useMemo(() => findTripStays(items ?? []), [items]);
+  const savedPlaces = useMemo(() => findTripSavedPlaces(items ?? []), [items]);
 
   const tripView = queryView(tripQuery);
   if (tripView !== 'ready' || !trip) {
@@ -187,6 +199,9 @@ export default function TimelineScreen() {
         ) : (
           shownDays.map((day) => {
             const number = dayNumber.get(day.day);
+            const connectors = findTimelineConnectors(day.entries);
+            const connectorByToId = new Map(connectors.map((conn) => [conn.toItem.id, conn]));
+
             return (
               <View key={day.day} style={styles.section}>
                 <View style={styles.dayHead}>
@@ -197,15 +212,29 @@ export default function TimelineScreen() {
                   {day.day === today ? <Tag label="Today" tone="accent" /> : null}
                 </View>
                 <Rows>
-                  {day.entries.map((entry) => (
-                    <TimelineRow
-                      key={entry.key}
-                      entry={entry}
-                      resources={byItem.get(entry.item.id) ?? []}
-                      payment={payments.get(entry.item.id) ?? null}
-                      onPress={() => open(entry.item.id)}
-                    />
-                  ))}
+                  {day.entries.flatMap((entry) => {
+                    const conn = connectorByToId.get(entry.item.id);
+                    const elements = [];
+                    if (conn) {
+                      elements.push(
+                        <TimelineConnectorRow
+                          key={`conn-${conn.id}`}
+                          connector={conn}
+                          onPress={() => setActiveConnector(conn)}
+                        />,
+                      );
+                    }
+                    elements.push(
+                      <TimelineRow
+                        key={entry.key}
+                        entry={entry}
+                        resources={byItem.get(entry.item.id) ?? []}
+                        payment={payments.get(entry.item.id) ?? null}
+                        onPress={() => open(entry.item.id)}
+                      />,
+                    );
+                    return elements;
+                  })}
                 </Rows>
               </View>
             );
@@ -219,6 +248,18 @@ export default function TimelineScreen() {
         tripId={tripId}
         date={addDate}
       />
+
+      {activeConnector ? (
+        <DirectionsSheet
+          visible={activeConnector !== null}
+          onClose={() => setActiveConnector(null)}
+          destination={activeConnector.destination}
+          initialOrigin={{ type: 'endpoint', endpoint: activeConnector.origin }}
+          previousEndpoint={activeConnector.origin}
+          hotel={stays[0] ?? null}
+          savedPlaces={savedPlaces}
+        />
+      ) : null}
     </Screen>
   );
 }

@@ -49,6 +49,14 @@ import {
 import { LIST_TABLES, listTripLists } from '../../../../src/repositories/lists';
 import { listTripTravellers, TRAVELLER_TABLES } from '../../../../src/repositories/travellers';
 import { getTrip, TRIP_TABLES } from '../../../../src/repositories/trips';
+import {
+  findTripSavedPlaces,
+  findTripStays,
+  resolveItemEndpoint,
+  type DirectionEndpoint,
+} from '../../../../src/domain/directions';
+import { DirectionsSheet } from '../../../../src/features/directions/DirectionsSheet';
+import { Button } from '../../../../src/ui/components/Button';
 import { HeaderAction } from '../../../../src/ui/components/HeaderAction';
 import { Icon, type IconName } from '../../../../src/ui/components/Icon';
 import { ItemRow } from '../../../../src/ui/components/ItemRow';
@@ -154,6 +162,9 @@ export default function OverviewScreen() {
   const today = deviceToday(now);
   const base = useMemo(() => baseTonight(items ?? [], today), [items, today]);
   const stays = useMemo(() => staysAndRentals(items ?? [], now), [items, now]);
+  const allStays = useMemo(() => findTripStays(items ?? []), [items]);
+  const savedPlaces = useMemo(() => findTripSavedPlaces(items ?? []), [items]);
+  const [directionsTarget, setDirectionsTarget] = useState<DirectionEndpoint | null>(null);
 
   const tripView = queryView(tripQuery);
   if (tripView !== 'ready' || !trip || !plan) {
@@ -250,6 +261,7 @@ export default function OverviewScreen() {
             resources={byItem.get(plan.lead.entry.item.id) ?? []}
             payment={payments.get(plan.lead.entry.item.id) ?? null}
             onOpen={() => open(plan.lead!.entry.item.id)}
+            onDirections={setDirectionsTarget}
           />
         ) : null}
 
@@ -381,6 +393,16 @@ export default function OverviewScreen() {
           ))}
         </Rows>
       </Sheet>
+
+      {directionsTarget ? (
+        <DirectionsSheet
+          visible={directionsTarget !== null}
+          onClose={() => setDirectionsTarget(null)}
+          destination={directionsTarget}
+          hotel={base ?? allStays[0] ?? null}
+          savedPlaces={savedPlaces}
+        />
+      ) : null}
     </Screen>
   );
 }
@@ -393,6 +415,7 @@ function Lead({
   resources,
   payment,
   onOpen,
+  onDirections,
 }: {
   entry: TimelineEntry<TripItem>;
   reason: LeadReason;
@@ -400,6 +423,7 @@ function Lead({
   resources: readonly Resource[];
   payment: PaymentStatus | null;
   onOpen: () => void;
+  onDirections?: (endpoint: DirectionEndpoint) => void;
 }) {
   const { item, moment } = entry;
   const role = entryRoleLabel(entry);
@@ -408,6 +432,8 @@ function Lead({
   const day = formatShortDate(dayKey(moment));
   const eyebrow =
     reason === 'happening' ? LEAD_EYEBROW.happening : `${LEAD_EYEBROW[reason]} · ${day}`;
+
+  const destinationEndpoint = resolveItemEndpoint(item, 'destination');
 
   return (
     <LeadPanel
@@ -418,7 +444,20 @@ function Lead({
       note={leadNote(entry, reason, now)}
       tags={payment ? <PaymentTag status={payment} /> : null}
       onPress={onOpen}
-      actions={resources.length > 0 ? <OpenResource resources={resources} /> : null}
+      actions={
+        resources.length > 0 || (destinationEndpoint && onDirections) ? (
+          <View style={styles.leadActions}>
+            {resources.length > 0 ? <OpenResource resources={resources} /> : null}
+            {destinationEndpoint && onDirections ? (
+              <Button
+                label="Directions"
+                variant={resources.length > 0 ? 'secondary' : 'primary'}
+                onPress={() => onDirections(destinationEndpoint)}
+              />
+            ) : null}
+          </View>
+        ) : null
+      }
     />
   );
 }
@@ -544,4 +583,5 @@ const styles = StyleSheet.create({
   grow: { flex: 1 },
   section: { gap: spacing.xs },
   sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  leadActions: { gap: spacing.sm },
 });
