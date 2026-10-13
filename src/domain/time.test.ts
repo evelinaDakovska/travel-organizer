@@ -1,4 +1,13 @@
-import { dayKey, isPastDate, isValidLocal, minutesUntil, timeOfDay, toInstant } from './time';
+import {
+  addCalendarDays,
+  dayKey,
+  isPastDate,
+  isValidLocal,
+  minutesUntil,
+  shiftMoment,
+  timeOfDay,
+  toInstant,
+} from './time';
 
 const sofiaFlight = { local: '2026-09-19T06:10', tz: 'Europe/Sofia', precision: 'time' } as const;
 
@@ -46,6 +55,31 @@ describe('toInstant', () => {
     expect(() => toInstant({ local: '2026-09-19', tz: 'Europe/Rome', precision: 'time' })).toThrow();
     expect(() => toInstant({ local: '2026-02-30', tz: 'Europe/Rome', precision: 'date' })).toThrow();
     expect(() => toInstant({ local: '2026-09-19T25:00', tz: 'Europe/Rome', precision: 'time' })).toThrow();
+  });
+});
+
+describe('addCalendarDays', () => {
+  it('moves across month and year ends, and back', () => {
+    expect(addCalendarDays('2026-01-31', 1)).toBe('2026-02-01');
+    expect(addCalendarDays('2026-12-31', 1)).toBe('2027-01-01');
+    expect(addCalendarDays('2026-03-01', -1)).toBe('2026-02-28');
+    expect(addCalendarDays('2028-03-01', -1)).toBe('2028-02-29');
+  });
+});
+
+describe('shiftMoment', () => {
+  it('keeps the wall clock across a clock change, where 24 hours would not (A3)', () => {
+    // 25 Oct 2026 is 25 hours long in Sofia.
+    const evening = { local: '2026-10-24T20:00', tz: 'Europe/Sofia', precision: 'time' } as const;
+    const next = shiftMoment(evening, 1);
+    expect(next).toEqual({ ...evening, local: '2026-10-25T20:00' });
+    const hours = (Date.parse(toInstant(next)) - Date.parse(toInstant(evening))) / 3_600_000;
+    expect(hours).toBe(25);
+  });
+
+  it('shifts a date-only moment by its date', () => {
+    const day = { local: '2026-03-29', tz: 'Europe/Sofia', precision: 'date' } as const;
+    expect(shiftMoment(day, 1).local).toBe('2026-03-30');
   });
 });
 

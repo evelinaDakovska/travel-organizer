@@ -4,7 +4,7 @@
  */
 
 import { formatShortDate, formatShortMoment } from './format';
-import { dayKey, localDateIn, timeOfDay, toInstant } from './time';
+import { dayKey, localDateIn, shiftMoment, timeOfDay, toInstant } from './time';
 import { timelineEntries, type TimelineEntry, type TimelineItem } from './timeline';
 import { timezoneLabel } from './timezones';
 import { isTripActive, type Trip } from './trip';
@@ -26,8 +26,6 @@ export function upNext<T extends TimelineItem>(
 export const OPEN_ENDED_MINUTES = 60;
 /** How long an event stays in Happening now after its end, read as 'Ended 11:15' (decision 4). */
 export const ENDED_GRACE_MINUTES = 15;
-/** Longer than this, an item is a span rather than an event: its end waits in Up next instead. */
-const LONGEST_EVENT_MINUTES = 24 * 60;
 
 const MINUTE = 60_000;
 
@@ -42,13 +40,16 @@ export type NowSections<T extends TimelineItem> = {
   upNext: TimelineEntry<T>[];
 };
 
-/** The instant an item stops being on: its end, or the end of its end day when that is a date. */
+/**
+ * The instant an item stops being on: its end, or for an end that is a date, midnight starting
+ * the next day there — 23 or 25 hours after the date's own midnight across a clock change.
+ */
 function endInstantOf(item: TimelineItem): number | null {
   const { start, end } = item;
   if (!start) return null;
   if (!end) return Date.parse(toInstant(start)) + OPEN_ENDED_MINUTES * MINUTE;
   if (end.precision === 'time') return Date.parse(toInstant(end));
-  return Date.parse(toInstant(end)) + 24 * 60 * MINUTE;
+  return Date.parse(toInstant(shiftMoment(end, 1)));
 }
 
 function isHappening(item: TimelineItem, now: number): boolean {
@@ -57,7 +58,8 @@ function isHappening(item: TimelineItem, now: number): boolean {
   if (!start || start.precision !== 'time') return false;
   const begins = Date.parse(toInstant(start));
   const ends = endInstantOf(item)!;
-  if (ends - begins > LONGEST_EVENT_MINUTES * MINUTE) return false;
+  // Longer than a calendar day, an item is a span rather than an event: its end waits in Up next.
+  if (ends > Date.parse(toInstant(shiftMoment(start, 1)))) return false;
   const grace = item.end ? ENDED_GRACE_MINUTES * MINUTE : 0;
   return begins <= now && now < ends + grace;
 }

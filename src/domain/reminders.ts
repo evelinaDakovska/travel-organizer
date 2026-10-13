@@ -7,7 +7,7 @@
  * reminds on that morning. Each item can switch its reminder off, or pick its own time (U3).
  */
 
-import { timeOfDay, toInstant, type LocalMoment } from './time';
+import { shiftMoment, timeOfDay, toInstant, type LocalMoment } from './time';
 import type { TripItem, TripItemKind } from './tripItem';
 
 /** Minutes before a timed start. A stay is absent: it always reminds on the morning. */
@@ -129,19 +129,13 @@ function morningOf(start: LocalMoment): string {
   });
 }
 
-function dayBefore(local: string): string {
-  const [year, month, day] = local.slice(0, 10).split('-').map(Number);
-  const previous = new Date(Date.UTC(year, month - 1, day - 1));
-  return previous.toISOString().slice(0, 10);
-}
-
 function fireAtFor(item: ReminderItem & { start: LocalMoment }): string {
   const { start } = item;
   const setting = reminderSetting(item.details);
 
   if (setting === 'day-before') {
     // On the wall clock, not 24 hours: across a clock change those differ by one.
-    const previous = { ...start, local: dayBefore(start.local) + start.local.slice(10) };
+    const previous = shiftMoment(start, -1);
     return previous.precision === 'date' ? morningOf(previous) : toInstant(previous);
   }
   if (start.precision === 'date') return morningOf(start);

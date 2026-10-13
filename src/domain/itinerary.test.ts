@@ -259,6 +259,47 @@ describe('nowSections', () => {
       expect(sections.happening).toEqual([]);
       expect(keys(sections.upNext)).toEqual(['car:end']);
     });
+
+    // Real clock changes in Sofia: 25 Oct 2026 lasts 25 hours, 29 Mar 2026 lasts 23 (A3).
+    describe('across a clock change', () => {
+      const sofia = (local: string) => at(local, 'Europe/Sofia');
+
+      it('keeps a date-only end on until midnight on a 25-hour day', () => {
+        const night = item({ id: 'night', start: sofia('2026-10-25T00:30'), end: sofia('2026-10-25') });
+        // 23:30, after the 24th elapsed hour but before midnight.
+        const lateEvening = new Date('2026-10-25T23:30:00+02:00');
+        expect(keys(nowSections([night], lateEvening).happening)).toEqual(['night']);
+      });
+
+      it('ends a date-only end at midnight on a 23-hour day, not an hour later', () => {
+        const day = item({ id: 'day', start: sofia('2026-03-29T10:00'), end: sofia('2026-03-29') });
+        // 00:20 on the next day, past the grace after midnight.
+        expect(nowSections([day], new Date('2026-03-30T00:20:00+03:00')).happening).toEqual([]);
+        expect(keys(nowSections([day], new Date('2026-03-29T23:50:00+03:00')).happening)).toEqual([
+          'day',
+        ]);
+      });
+
+      it('counts a calendar day, not 24 hours, as the longest event', () => {
+        // 09:00 to 09:00 over the night the clocks go back is 25 hours, and still one day.
+        const overnight = item({
+          id: 'overnight',
+          start: sofia('2026-10-24T09:00'),
+          end: sofia('2026-10-25T09:00'),
+        });
+        const evening = new Date('2026-10-24T21:00:00+03:00');
+        expect(keys(nowSections([overnight], evening).happening)).toEqual(['overnight']);
+      });
+
+      it('still treats more than a calendar day as a span', () => {
+        const longer = item({
+          id: 'longer',
+          start: sofia('2026-10-24T09:00'),
+          end: sofia('2026-10-25T09:01'),
+        });
+        expect(nowSections([longer], new Date('2026-10-24T21:00:00+03:00')).happening).toEqual([]);
+      });
+    });
   });
 
   describe('today, no fixed time', () => {

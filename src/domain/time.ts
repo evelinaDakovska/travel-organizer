@@ -56,6 +56,21 @@ export function toInstant({ local, tz, precision }: LocalMoment): string {
   return new Date(zoned.getTime()).toISOString();
 }
 
+/**
+ * 'YYYY-MM-DD' moved by whole calendar days. Counted on the calendar, never in hours: across a
+ * clock change a day is 23 or 25 hours long and is still one day.
+ */
+export function addCalendarDays(date: string, days: number): string {
+  const [year, month, day] = date.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+/** The same wall-clock moment some calendar days away, in the same zone. */
+export function shiftMoment(moment: LocalMoment, days: number): LocalMoment {
+  const date = addCalendarDays(moment.local.slice(0, 10), days);
+  return { ...moment, local: date + moment.local.slice(10) };
+}
+
 /** The day a moment belongs to. Derived from local text so a late-evening event never shifts day. */
 export function dayKey({ local }: LocalMoment): string {
   return local.slice(0, 10);
