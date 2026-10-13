@@ -26,11 +26,19 @@ export function withRefundable(
 type Priced = Pick<TripItem, 'status' | 'priceAmount' | 'priceCurrency' | 'isPaid' | 'details'>;
 
 /**
+ * A price that is money: a positive amount in a currency. A free booking (price 0) costs nothing
+ * and owes nothing, so it is never counted, listed or marked *To pay* (FB-1).
+ */
+function hasCost(item: Pick<TripItem, 'priceAmount' | 'priceCurrency'>): boolean {
+  return item.priceAmount !== null && item.priceAmount > 0 && item.priceCurrency !== null;
+}
+
+/**
  * Money the trip really costs: everything booked, and a cancellation that cannot be refunded.
  * Ideas are not spent yet; a refundable or unspecified cancellation is assumed to come back.
  */
 export function countsAsSpent(item: Priced): boolean {
-  if (item.priceAmount === null || item.priceCurrency === null) return false;
+  if (!hasCost(item)) return false;
   if (item.status === 'confirmed') return true;
   return item.status === 'cancelled' && refundableOf(item.details) === false;
 }
@@ -84,11 +92,7 @@ export function refundNotSaid<T extends Priced>(
   items: readonly T[],
 ): { items: T[]; byCurrency: { currency: string; amount: number }[] } {
   const unknown = items.filter(
-    (item) =>
-      item.status === 'cancelled' &&
-      item.priceAmount !== null &&
-      item.priceCurrency !== null &&
-      refundableOf(item.details) === null,
+    (item) => item.status === 'cancelled' && hasCost(item) && refundableOf(item.details) === null,
   );
   const sums = new Map<string, number>();
   for (const item of unknown) {
@@ -116,18 +120,18 @@ export function expenseGroups<T extends Priced>(items: readonly T[]): ExpenseGro
 
 export type PaymentStatus = 'paid' | 'toPay';
 
-type Payable = Pick<TripItem, 'status' | 'priceAmount' | 'isPaid'>;
+type Payable = Pick<TripItem, 'status' | 'priceAmount' | 'priceCurrency' | 'isPaid'>;
 
 /**
  * Paid or not, for the pill on a card (F7, D29). Only a confirmed item owes anything: an idea's
  * price is a budget, a cancellation's is a refund question. *Paid* counts without a price — the
  * form offers it either way — but an item with neither is unknown, not *To pay*: every free item
- * has `isPaid = false`.
+ * has `isPaid = false`. A price of 0 owes nothing either (FB-1).
  */
 export function paymentStatus(item: Payable): PaymentStatus | null {
   if (item.status !== 'confirmed') return null;
   if (item.isPaid) return 'paid';
-  return item.priceAmount !== null ? 'toPay' : null;
+  return hasCost(item) ? 'toPay' : null;
 }
 
 /**

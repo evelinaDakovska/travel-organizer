@@ -46,6 +46,14 @@ describe('countsAsSpent', () => {
     expect(countsAsSpent(priced({ status: 'cancelled' }))).toBe(false);
     expect(countsAsSpent(priced({ priceAmount: null, priceCurrency: null }))).toBe(false);
   });
+
+  it('leaves out a free booking: a price of 0 is not a cost (FB-1)', () => {
+    expect(countsAsSpent(priced({ priceAmount: 0 }))).toBe(false);
+    expect(countsAsSpent(priced({ priceAmount: 0, isPaid: true }))).toBe(false);
+    expect(
+      countsAsSpent(priced({ status: 'cancelled', priceAmount: 0, details: { refundable: false } })),
+    ).toBe(false);
+  });
 });
 
 describe('tripExpenses', () => {
@@ -72,6 +80,11 @@ describe('tripExpenses', () => {
 
   it('is empty when nothing has a price', () => {
     expect(tripExpenses([priced({ priceAmount: null, priceCurrency: null })])).toEqual([]);
+  });
+
+  it('neither counts nor owes a free booking', () => {
+    const [eur] = tripExpenses([priced({ priceAmount: 2500 }), priced({ priceAmount: 0 })]);
+    expect(eur).toMatchObject({ total: 2500, toPay: 2500, items: 1 });
   });
 });
 
@@ -115,6 +128,7 @@ describe('refundNotSaid', () => {
       priced({ status: 'confirmed' }),
       priced({ status: 'idea' }),
       priced({ status: 'cancelled', priceAmount: null, priceCurrency: null }),
+      priced({ status: 'cancelled', priceAmount: 0 }),
     ];
     expect(refundNotSaid(items)).toEqual({ items: [], byCurrency: [] });
   });
@@ -143,6 +157,11 @@ describe('paymentStatus', () => {
       'paid',
     );
     expect(paymentStatus(priced({ priceAmount: null, priceCurrency: null }))).toBeNull();
+  });
+
+  it('says nothing for a free booking, and Paid when it is marked paid anyway (FB-1)', () => {
+    expect(paymentStatus(priced({ priceAmount: 0 }))).toBeNull();
+    expect(paymentStatus(priced({ priceAmount: 0, isPaid: true }))).toBe('paid');
   });
 
   it('says nothing for ideas and cancellations', () => {
@@ -183,6 +202,11 @@ describe('paymentStatuses', () => {
     expect(statuses.get('a')).toBe('paid');
     expect(statuses.get('b')).toBe('toPay');
     expect(statuses.get('c')).toBe('toPay');
+  });
+
+  it('gives a journey whose first leg is free no state at all', () => {
+    const statuses = paymentStatuses([leg('a', { priceAmount: 0, priceCurrency: 'EUR' }), leg('b')]);
+    expect(statuses.size).toBe(0);
   });
 
   it('takes nothing from a cancelled leg, and gives nothing to one', () => {
