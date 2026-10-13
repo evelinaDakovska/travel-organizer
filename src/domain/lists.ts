@@ -100,7 +100,7 @@ export const listNameSchema = z.string().trim().min(1, 'Give the list a name').m
 
 export const listItemInputSchema = z.object({
   label: z.string().trim().min(1, 'What is it?').max(120),
-  quantity: z.number().int('A whole number').min(1, 'At least 1').optional(),
+  quantity: z.number({ error: 'A whole number' }).int('A whole number').min(1, 'At least 1').optional(),
   unit: optionalText(20),
   category: optionalText(40),
   note: optionalText(200),

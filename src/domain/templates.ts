@@ -15,16 +15,18 @@ const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const templateTaskSchema = z.object({
   title: z.string().trim().min(1).max(120),
-  notes: z.string().max(2000).optional(),
+  // No length limits beyond the ones the trip's own rows have: a template saved from a trip must
+  // always read back (a task's notes and a note's body are unbounded there).
+  notes: z.string().optional(),
   /** Days from the trip's first day: -2 is two days before it. Null: undated, stays undated. */
-  offsetDays: z.number().int().min(-366).max(366).nullable(),
+  offsetDays: z.number().int().nullable(),
   /** 'HH:mm' on that day, read in the new trip's zone; null for a date only. */
   time: z.string().regex(TIME).nullable(),
 });
 
 const templateNoteSchema = z.object({
   title: z.string().trim().min(1).max(120),
-  body: z.string().max(20000),
+  body: z.string(),
   pinned: z.boolean(),
 });
 

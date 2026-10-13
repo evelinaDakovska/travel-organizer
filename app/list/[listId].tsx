@@ -14,6 +14,7 @@ import {
 } from '../../src/domain/lists';
 import { ListItemRow } from '../../src/features/lists/ListItemRow';
 import { queryView } from '../../src/hooks/queryView';
+import { useBusy } from '../../src/hooks/useBusy';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
 import {
   addListItem,
@@ -307,10 +308,11 @@ function RenameSheet({
 }) {
   const [text, setText] = useState(name);
   const [error, setError] = useState<string | null>(null);
+  const [busy, run] = useBusy();
   const save = async () => {
     const parsed = listNameSchema.safeParse(text);
     if (!parsed.success) setError(parsed.error.issues[0]?.message ?? 'Check the name');
-    else await onSave(parsed.data);
+    else await run(() => onSave(parsed.data));
   };
   return (
     <Sheet visible={visible} title="Rename list" onClose={onClose}>
@@ -318,7 +320,7 @@ function RenameSheet({
         <Field label="Name" error={error ?? undefined}>
           <Input value={text} onChangeText={setText} invalid={!!error} autoFocus />
         </Field>
-        <Button label="Save" onPress={() => void save()} />
+        <Button label="Save" busy={busy} onPress={() => void save()} />
       </View>
     </Sheet>
   );

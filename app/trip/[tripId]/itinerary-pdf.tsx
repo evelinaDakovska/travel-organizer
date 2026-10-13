@@ -11,6 +11,7 @@ import {
 import { groupResourcesByItem } from '../../../src/domain/resource';
 import { shareItineraryPdf } from '../../../src/files/itineraryPdf';
 import { queryView } from '../../../src/hooks/queryView';
+import { useBusy } from '../../../src/hooks/useBusy';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import { listListItems, listTripLists } from '../../../src/repositories/lists';
 import { listItemResourcesForTrip } from '../../../src/repositories/resources';
@@ -48,7 +49,7 @@ export default function ItineraryPdfScreen() {
   const db = useSQLiteContext();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const [options, setOptions] = useState<PdfOptions>(DEFAULT_PDF_OPTIONS);
-  const [busy, setBusy] = useState(false);
+  const [busy, run] = useBusy();
 
   const tripQuery = useLiveQuery(
     useCallback((database) => getTrip(database, tripId), [tripId]),
@@ -70,38 +71,40 @@ export default function ItineraryPdfScreen() {
   }
 
   /** Read everything at the moment of making it: the PDF is a snapshot. */
-  const create = async () => {
-    setBusy(true);
-    try {
-      const [items, travellers, resources, lists] = await Promise.all([
-        listTripItems(db, trip.id),
-        listTripTravellers(db, trip.id),
-        listItemResourcesForTrip(db, trip.id),
-        listTripLists(db, trip.id),
-      ]);
-      const withItems = await Promise.all(
-        lists.map(async (list) => ({ list, items: await listListItems(db, list.id) })),
-      );
-      const now = new Date();
-      const html = itineraryHtml(
-        {
-          trip,
-          items,
-          travellers,
-          documents: groupResourcesByItem(resources),
-          lists: withItems,
-          generatedAt: now,
-        },
-        options,
-      );
-      await shareItineraryPdf(html, trip.name, now);
-    } catch (error) {
-      console.warn('Itinerary PDF failed', error);
-      Alert.alert('Could not make the PDF', 'Nothing was shared. Try again.');
-    } finally {
-      setBusy(false);
-    }
+  const makePdf = async () => {
+    const [items, travellers, resources, lists] = await Promise.all([
+      listTripItems(db, trip.id),
+      listTripTravellers(db, trip.id),
+      listItemResourcesForTrip(db, trip.id),
+      listTripLists(db, trip.id),
+    ]);
+    const withItems = await Promise.all(
+      lists.map(async (list) => ({ list, items: await listListItems(db, list.id) })),
+    );
+    const now = new Date();
+    const html = itineraryHtml(
+      {
+        trip,
+        items,
+        travellers,
+        documents: groupResourcesByItem(resources),
+        lists: withItems,
+        generatedAt: now,
+      },
+      options,
+    );
+    await shareItineraryPdf(html, trip.name, now);
   };
+
+  const create = () =>
+    run(async () => {
+      try {
+        await makePdf();
+      } catch (error) {
+        console.warn('Itinerary PDF failed', error);
+        Alert.alert('Could not make the PDF', 'Nothing was shared. Try again.');
+      }
+    });
 
   return (
     <Screen>

@@ -85,6 +85,36 @@ describe('saving a trip as a template', () => {
     });
     expect(JSON.stringify(template)).not.toMatch(/AUR-1|Aurora|66000/);
   });
+
+  it('saves only what it can read back: long notes and a task far from the start still apply', async () => {
+    const { db } = setup();
+    const schema = tripItemInputSchema('Europe/Helsinki');
+    // Nothing limits these on a trip, so a template must not either.
+    await createTripItem(
+      db,
+      'lapland',
+      schema.parse({
+        kind: 'task',
+        status: 'confirmed',
+        title: 'Renew passports',
+        notes: 'x'.repeat(5000),
+        start: { local: '2025-10-01' },
+      }),
+    );
+    await createNote(db, 'lapland', { title: 'Everything', body: 'y'.repeat(50000), pinned: false });
+    const items = await listTripItems(db, 'lapland');
+    const id = await saveTemplate(db, '2026-11-20', 'Long', {
+      tasks: items,
+      notes: await listNotes(db, 'lapland'),
+      lists: [],
+    });
+
+    expect((await getTemplate(db, id))?.content?.tasks[0].offsetDays).toBe(-415);
+    await applyTemplate(db, id, 'vienna');
+    const [task] = await listTripItems(db, 'vienna');
+    expect(task).toMatchObject({ title: 'Renew passports', start: { local: '2026-01-10' } });
+    expect(task.notes).toHaveLength(5000);
+  });
 });
 
 describe('applying a template', () => {

@@ -64,6 +64,11 @@ describe('listItemInputSchema', () => {
     expect(listItemInputSchema.safeParse({ label: 'x', quantity: 0 }).success).toBe(false);
     expect(listItemInputSchema.safeParse({ label: 'x', quantity: 1.5 }).success).toBe(false);
   });
+
+  it('says what is wrong when the quantity is not a number at all', () => {
+    const typed = listItemInputSchema.safeParse({ label: 'x', quantity: Number('two') });
+    expect(typed.error?.issues[0]?.message).toBe('A whole number');
+  });
 });
 
 describe('PRESET_LISTS', () => {

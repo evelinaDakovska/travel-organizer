@@ -6,6 +6,7 @@ import type { Note } from '../domain/note';
 import {
   parseTemplateContent,
   taskStart,
+  templateContentSchema,
   templateTask,
   type TemplateContent,
 } from '../domain/templates';
@@ -84,12 +85,13 @@ export async function saveTemplate(
       items: (await listListItems(db, list.id)).map(templateListItem),
     })),
   );
-  const content: TemplateContent = {
+  // Checked as it will be read, so a template that saves is always one that can be used.
+  const content: TemplateContent = templateContentSchema.parse({
     version: 1,
     tasks: chosen.tasks.map((task) => templateTask(task, tripStart)),
     notes: chosen.notes.map((note) => ({ title: note.title, body: note.body, pinned: note.pinned })),
     lists,
-  };
+  });
   const id = randomUUID();
   const now = new Date().toISOString();
   await db.runAsync(

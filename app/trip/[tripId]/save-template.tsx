@@ -9,6 +9,7 @@ import type { Trip } from '../../../src/domain/trip';
 import type { TripItem } from '../../../src/domain/tripItem';
 import { offsetLabel, templateNameSchema, templateTask } from '../../../src/domain/templates';
 import { queryView } from '../../../src/hooks/queryView';
+import { useBusy } from '../../../src/hooks/useBusy';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import { LIST_TABLES, listTripLists, type ListSummary } from '../../../src/repositories/lists';
 import { listNotes } from '../../../src/repositories/notes';
@@ -84,6 +85,7 @@ function Chooser({ trip, tasks, notes, lists }: ChooserProps) {
   const router = useRouter();
   const [name, setName] = useState(trip.name);
   const [error, setError] = useState<string | null>(null);
+  const [busy, run] = useBusy();
   // Everything starts chosen; untick what is particular to this trip.
   const [chosen, setChosen] = useState<Set<string>>(
     () => new Set([...tasks, ...notes, ...lists].map((thing) => thing.id)),
@@ -105,18 +107,26 @@ function Chooser({ trip, tasks, notes, lists }: ChooserProps) {
       setError(parsed.error.issues[0]?.message ?? 'Check the name');
       return;
     }
-    await saveTemplate(db, trip.startDate, parsed.data, {
-      tasks: tasks.filter((task) => chosen.has(task.id)),
-      notes: notes.filter((note) => chosen.has(note.id)),
-      lists: lists.filter((list) => chosen.has(list.id)),
+    await run(async () => {
+      try {
+        await saveTemplate(db, trip.startDate, parsed.data, {
+          tasks: tasks.filter((task) => chosen.has(task.id)),
+          notes: notes.filter((note) => chosen.has(note.id)),
+          lists: lists.filter((list) => chosen.has(list.id)),
+        });
+      } catch (failure) {
+        console.warn('Saving a template failed', failure);
+        Alert.alert('Could not save the template', 'Nothing was saved. Try again.');
+        return;
+      }
+      router.back();
+      Alert.alert('Template saved', `“${parsed.data}” is under Lists & templates.`);
     });
-    router.back();
-    Alert.alert('Template saved', `“${parsed.data}” is under Lists & templates.`);
   };
 
   const nothing = tasks.length + notes.length + lists.length === 0;
   return (
-    <FormScroll footer={<Button label="Save template" onPress={() => void save()} />}>
+    <FormScroll footer={<Button label="Save template" busy={busy} onPress={() => void save()} />}>
       <Field label="Name" error={error ?? undefined}>
         <Input value={name} onChangeText={setName} invalid={!!error} placeholder="City break" />
       </Field>

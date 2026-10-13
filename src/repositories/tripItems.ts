@@ -19,7 +19,6 @@ import {
   UPDATE_TRIP_ITEM_STATUS,
 } from '../db/queries';
 import { parseNoteRow, type Note, type NoteRow } from '../domain/note';
-import { writeItemParticipants } from './travellers';
 import type { KnownPlace } from '../domain/places';
 import { searchPattern } from '../domain/search';
 import { localPrecision, toInstant, type LocalMoment, type TimePrecision } from '../domain/time';
@@ -31,6 +30,7 @@ import {
   type TripItemRow,
   type TripItemStatus,
 } from '../domain/tripItem';
+import { writeItemParticipants } from './travellers';
 
 export const TRIP_ITEM_TABLES = ['trip_items'] as const;
 

@@ -12,6 +12,7 @@ import {
 } from '../../src/domain/lists';
 import type { Traveller } from '../../src/domain/traveller';
 import { queryView } from '../../src/hooks/queryView';
+import { useBusy } from '../../src/hooks/useBusy';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
 import {
   addToPacking,
@@ -94,6 +95,7 @@ function ItemForm({ item, list, people }: { item: ListItem; list: List; people: 
   const [note, setNote] = useState(item.note ?? '');
   const [travellerId, setTravellerId] = useState(item.travellerId);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, run] = useBusy();
 
   const save = async () => {
     const parsed = listItemInputSchema.safeParse({
@@ -112,8 +114,10 @@ function ItemForm({ item, list, people }: { item: ListItem; list: List; people: 
       );
       return;
     }
-    await updateListItem(db, item.id, parsed.data);
-    router.back();
+    await run(async () => {
+      await updateListItem(db, item.id, parsed.data);
+      router.back();
+    });
   };
 
   const move = async (delta: -1 | 1) => {
@@ -144,7 +148,7 @@ function ItemForm({ item, list, people }: { item: ListItem; list: List; people: 
     ]);
 
   return (
-    <FormScroll footer={<Button label="Save" onPress={() => void save()} />}>
+    <FormScroll footer={<Button label="Save" busy={busy} onPress={() => void save()} />}>
       <Field label="What" error={errors.label}>
         <Input value={label} onChangeText={setLabel} invalid={!!errors.label} />
       </Field>

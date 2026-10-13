@@ -5,6 +5,7 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { travellerNameSchema, usesText } from '../../src/domain/traveller';
 import { queryView } from '../../src/hooks/queryView';
+import { useBusy } from '../../src/hooks/useBusy';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
 import {
   deleteTraveller,
@@ -105,15 +106,16 @@ function NameForm({
   const [text, setText] = useState(name);
   const where = uses ? usesText(uses) : null;
   const [error, setError] = useState<string | null>(null);
+  const [busy, run] = useBusy();
 
   const save = async () => {
     const parsed = travellerNameSchema.safeParse(text);
     if (!parsed.success) setError(parsed.error.issues[0]?.message ?? 'Check the name');
-    else await onSave(parsed.data);
+    else await run(() => onSave(parsed.data));
   };
 
   return (
-    <FormScroll footer={<Button label="Save" onPress={() => void save()} />}>
+    <FormScroll footer={<Button label="Save" busy={busy} onPress={() => void save()} />}>
       <Field label="Name" error={error ?? undefined} hint="A new name shows wherever they are listed">
         <Input value={text} onChangeText={setText} invalid={!!error} autoFocus={false} />
       </Field>

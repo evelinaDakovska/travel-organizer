@@ -6,6 +6,7 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 import { listKindLabel } from '../../src/domain/lists';
 import { offsetLabel, templateNameSchema, templateSummary } from '../../src/domain/templates';
 import { queryView } from '../../src/hooks/queryView';
+import { useBusy } from '../../src/hooks/useBusy';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
 import {
   deleteTemplate,
@@ -59,6 +60,7 @@ function TemplateForm({ template }: { template: Template }) {
   const router = useRouter();
   const [name, setName] = useState(template.name);
   const [error, setError] = useState<string | null>(null);
+  const [busy, run] = useBusy();
   const { content } = template;
 
   const save = async () => {
@@ -67,8 +69,10 @@ function TemplateForm({ template }: { template: Template }) {
       setError(parsed.error.issues[0]?.message ?? 'Check the name');
       return;
     }
-    await renameTemplate(db, template.id, parsed.data);
-    router.back();
+    await run(async () => {
+      await renameTemplate(db, template.id, parsed.data);
+      router.back();
+    });
   };
   const confirmDelete = () =>
     Alert.alert(`Delete “${template.name}”?`, 'Trips already made from it keep what it added.', [
@@ -84,7 +88,7 @@ function TemplateForm({ template }: { template: Template }) {
     ]);
 
   return (
-    <FormScroll footer={<Button label="Save" onPress={() => void save()} />}>
+    <FormScroll footer={<Button label="Save" busy={busy} onPress={() => void save()} />}>
       <Field label="Name" error={error ?? undefined}>
         <Input value={name} onChangeText={setName} invalid={!!error} />
       </Field>
