@@ -24,7 +24,13 @@ import {
   type ImportPlan,
 } from '../domain/export';
 import { applyImport, listSharedIds, listTripIds, readAllTables } from '../repositories/backup';
-import { readStoredFile, storedFileExists, storedFileSize, writeStoredFile } from './storage';
+import {
+  readFileBytes,
+  readStoredFile,
+  storedFileExists,
+  storedFileSize,
+  writeStoredFile,
+} from './storage';
 
 export type ExportedBackup = { uri: string; document: ExportDocument; packedFiles: number };
 
@@ -56,13 +62,21 @@ export async function shareBackup(uri: string): Promise<void> {
 /**
  * Null when the picker is dismissed. Any file can be picked: providers report zips under several
  * mime types, and unpacking explains clearly when the file is not one of ours.
+ *
+ * The picker copies the zip into the cache first (a stream, disk to disk), and the copy is read in
+ * chunks: a handle on the provider's `content://` URI loses its descriptor part-way through a large
+ * file ("Bad file descriptor"), and one read of the whole zip ran out of memory past ~100 MB.
  */
 export async function pickBackup(): Promise<UnpackResult | null> {
-  const picked = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: false });
+  const picked = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
   if (picked.canceled) return null;
 
-  const bytes = await new File(picked.assets[0].uri).bytes();
-  return unpackBackup(bytes);
+  const copy = new File(picked.assets[0].uri);
+  try {
+    return unpackBackup(readFileBytes(copy));
+  } finally {
+    if (copy.exists) copy.delete();
+  }
 }
 
 export async function planBackupImport(

@@ -3,6 +3,7 @@ import { strToU8, zipSync } from 'fflate';
 import {
   importChangesNothing,
   packBackup,
+  readInChunks,
   summariseExport,
   summariseImportPlan,
   unpackBackup,
@@ -239,5 +240,39 @@ describe('importChangesNothing and the shared rows (format 3)', () => {
     expect(summariseImportPlan(plan)).toBe(
       'Adds 2 trips, 0 items, 0 notes and 2 saved files. Also adds 1 template.',
     );
+  });
+});
+
+describe('readInChunks', () => {
+  /** A file of `size` bytes whose reader records how much each call asked for. */
+  const source = (size: number) => {
+    const data = Uint8Array.from({ length: size }, (_, i) => i % 251);
+    const asked: number[] = [];
+    let offset = 0;
+    const read = (length: number) => {
+      asked.push(length);
+      const part = data.slice(offset, offset + length);
+      offset += part.length;
+      return part;
+    };
+    return { data, asked, read };
+  };
+
+  it('reads the whole file in bounded pieces, in order', () => {
+    const file = source(10);
+    expect(readInChunks(10, file.read, 4)).toEqual(file.data);
+    expect(file.asked).toEqual([4, 4, 2]);
+  });
+
+  it('never asks for more than one chunk, however large the file', () => {
+    const file = source(1000);
+    readInChunks(1000, file.read, 64);
+    expect(Math.max(...file.asked)).toBe(64);
+  });
+
+  it('returns what there was when the file ends early, and nothing for an empty one', () => {
+    const file = source(6);
+    expect(readInChunks(10, file.read, 4)).toEqual(file.data);
+    expect(readInChunks(0, source(0).read)).toEqual(new Uint8Array(0));
   });
 });

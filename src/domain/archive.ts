@@ -11,6 +11,32 @@ import { isStoredPath } from './resource';
 
 export const BACKUP_DOCUMENT_NAME = 'backup.json';
 
+/** How much of a file is read at once: far below any app's Java heap, large enough to be quick. */
+export const READ_CHUNK_BYTES = 4 * 1024 * 1024;
+
+/**
+ * A file's bytes, assembled from reads of at most `chunk` bytes. Android returns every read as one
+ * array on the app's Java heap (192 MB on the test emulator), so reading a 100 MB file or a 150 MB
+ * backup in one call failed with OutOfMemoryError: a backup that could be made but not restored.
+ * Only the assembled result is whole, and it lives outside that heap. `read(n)` returns at most n
+ * bytes; an empty read means the file ended early, and what was read is returned.
+ */
+export function readInChunks(
+  size: number,
+  read: (length: number) => Uint8Array,
+  chunk: number = READ_CHUNK_BYTES,
+): Uint8Array {
+  const bytes = new Uint8Array(size);
+  let at = 0;
+  while (at < size) {
+    const part = read(Math.min(chunk, size - at));
+    if (part.length === 0) break;
+    bytes.set(part, at);
+    at += part.length;
+  }
+  return at === size ? bytes : bytes.slice(0, at);
+}
+
 /** PDFs and photos are already compressed, so they are stored as they are; only the JSON is deflated. */
 export function packBackup(
   document: ExportDocument,

@@ -995,7 +995,16 @@ trip uses.
 second connection holds one WAL read snapshot for every table, so a write landing mid-export can
 not produce a backup with an item but not its trip. It only reads, so the change-listener caveat
 below does not apply. The archive is built in memory (`fflate`), so its size is bounded by the
-phone's memory; see the A4 note in `docs/status.md` for what was measured.
+phone's memory.
+
+**Files are read in chunks (QA of 0.6.0).** `File.bytes()` returns the whole file as one array on
+the app's Java heap (growth limit 192 MB on the test emulator): a 100 MB attachment made every
+export fail with OutOfMemoryError, and a 150 MB backup could be made but not restored. Since
+0.6.0 `readFileBytes` (`files/storage.ts`) reads 4 MB at a time (`readInChunks`, domain, tested)
+into one buffer outside that heap. A picked backup is copied into the cache by the picker first:
+a handle on the provider's `content://` URI lost its descriptor part-way through (*Bad file
+descriptor*). Measured on the emulator (4 GB RAM): a 380 MB backup exported; a backup with one
+150 MB file exported and restored.
 
 `backup.json` carries every table verbatim plus a **file manifest** — one entry per distinct
 file listing every resource that references it, since two resources can share one file.

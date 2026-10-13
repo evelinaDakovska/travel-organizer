@@ -225,9 +225,9 @@ each) open a list of just the tickets. A shared or picked file starts as *Docume
 ### Trip documents
 
 On the Overview, the **Trip documents** row opens every document of the trip in one list:
-tickets first, then each item's files, then **For the whole trip** — insurance, a guide, a train
-ticket for everyone, with the same **+ File / + Photo / + Link** buttons. Each says whether it is
-on this phone, a link, or missing.
+tickets first, then **For the whole trip** — insurance, a guide, a train ticket for everyone, with
+the same **+ File / + Photo / + Link** buttons — then each item's files in itinerary order. Each
+says whether it is on this phone, a link, or missing.
 
 **One file in two places:** to show a trip document on an item too, open it (pencil) and tap
 **Also attach to an item**. It is the **same** file, not a copy. Attaching the same PDF twice
@@ -423,6 +423,10 @@ anywhere off the phone). The screen then says what went in: *Archive created wit
 30 saved files.* The app cannot see where the share sheet put the zip — or whether it was closed
 without saving — so check that the file arrived in Drive. Each zip is named with the date and
 minute it was made, `travel-organizer-backup-2026-10-13-0942.zip`, so the newest is easy to find.
+
+**Size.** The zip is built on the phone, in its memory. Tested on a smaller emulator than the
+phone: a backup of 380 MB exported, and one holding a single 150 MB file both exported and
+restored. Tickets and photos are a few MB each, so this leaves a wide margin.
 
 **When:** before every trip, after adding the last tickets. Also after any big round of changes.
 

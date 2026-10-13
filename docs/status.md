@@ -535,7 +535,7 @@ owner's request; the decisions (FB-1…) are listed there for the owner to go th
 | **A1** | A free booking owes nothing: no *To pay*, not in the cost lists | ✅ |
 | **A2** | Amounts read exactly or refused — never a different number | ✅ |
 | **A3** | Date-only ends and the event cutoff counted in calendar days (DST) | ✅ |
-| **A4** | Export reads one snapshot, says *Archive created*, timestamped name | ✅ — size limit measured in QA |
+| **A4** | Export reads one snapshot, says *Archive created*, timestamped name | ✅ — size measured in QA, see below |
 | **A5** | A failed read never claims *missing* or *empty*; Now waits for its first read | ✅ |
 | **A6** | A zone filled from a city follows the city; *Munich time*, not Berlin | ✅ |
 | **A7** | Finished plans marked archived | ✅ |

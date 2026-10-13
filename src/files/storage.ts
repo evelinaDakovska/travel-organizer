@@ -3,9 +3,10 @@
  * by their original URI — Android grants only temporary permission on those.
  */
 
-import { Directory, File, Paths } from 'expo-file-system';
+import { Directory, File, FileMode, Paths } from 'expo-file-system';
 import * as IntentLauncher from 'expo-intent-launcher';
 
+import { readInChunks } from '../domain/archive';
 import {
   isStoredPath,
   MEDIA_DIR,
@@ -42,10 +43,27 @@ export function storedFileSize(storedPath: string): number | null {
   return file.exists ? file.size : null;
 }
 
+/**
+ * A file's bytes, a chunk at a time (`readInChunks`), so that neither a large stored file nor a
+ * large backup has to fit in the app's Java heap at once. For a file in the app's own storage: a
+ * handle on a `content://` URI loses its descriptor part-way through (see `pickBackup`).
+ */
+export function readFileBytes(file: File): Uint8Array {
+  const handle = file.open(FileMode.ReadOnly);
+  try {
+    const size = handle.size;
+    // A provider that streams without a size is read whole, as before, rather than as empty.
+    if (!size) return file.bytesSync();
+    return readInChunks(size, (length) => handle.readBytes(length));
+  } finally {
+    handle.close();
+  }
+}
+
 /** A stored file's bytes, for a backup. Null when the file has gone missing. */
 export async function readStoredFile(storedPath: string): Promise<Uint8Array | null> {
   const file = new File(absoluteUriFor(storedPath));
-  return file.exists ? file.bytes() : null;
+  return file.exists ? readFileBytes(file) : null;
 }
 
 /** Writes a restored file into the media directory, and nowhere else. */
