@@ -1,5 +1,7 @@
 # N6 — A journey's time zone from its city: the plan, and how it went
 
+> **Archived — done.** This plan is complete and kept as a record of how the work went. What is done and what is next lives only in [`status.md`](status.md).
+
 **Why:** the owner's real data (2026-10-11) had no item with a zone of its own, so four flight
 times in Munich and Frankfurt were read in Helsinki time: an hour out in the countdown, *Up next*
 and reminders, while the screen showed the times as typed. Decision log D26.

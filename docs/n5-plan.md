@@ -1,5 +1,7 @@
 # N5a — Expenses without splitting: the step-by-step plan, and an audit against it
 
+> **Archived — done.** This plan is complete and kept as a record of how the work went. What is done and what is next lives only in [`status.md`](status.md).
+
 **Why this file exists.** N5a was built from the spec (`expenses-spec.md`) without a step-by-step
 plan agreed first. This is that plan written after the fact, each step checked against what was
 actually built (2026-10-11), so nothing skipped by not planning goes unnoticed. From now on the

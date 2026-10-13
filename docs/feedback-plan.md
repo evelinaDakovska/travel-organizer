@@ -1,5 +1,7 @@
 # Feedback plan — F1–F6
 
+> **Archived — done.** This plan is complete and kept as a record of how the work went. What is done and what is next lives only in [`status.md`](status.md).
+
 Feedback from a senior frontend developer (the owner's husband) after seeing the app, 2026-10-11,
 plus two requests from the owner the same evening. Each item was checked against the code and the
 emulator first. **Status: done** — all six built, tested end to end on the emulator and rehearsed in 0.5.0; on the phone in **0.5.1** since 2026-10-12. Each step is ticked in `docs/status.md` → *F*.

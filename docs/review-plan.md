@@ -1,10 +1,12 @@
 # Review plan — R0–R11
 
+> **Archived — done.** This plan is complete and kept as a record of how the work went. What is done and what is next lives only in [`status.md`](status.md).
+
 An independent review of the app (ChatGPT, product and technical, at commit `813a0f7`) was checked
 against the code on 2026-10-11, at `6a09622` plus the uncommitted N6 work. This file is the plan
 that came out of it: what was confirmed, what needs a decision, and the steps, in order.
 
-**Status: decided, not started.** The owner answered all eight decisions on 2026-10-11 (§7;
+**Status: done** (2026-10-11; on the phone in 0.5.1 since 2026-10-12). It read *decided, not started* until the Fieldbook review pointed it out. The owner answered all eight decisions on 2026-10-11 (§7;
 rationale in `decision-log.md` D27). N6 is done (0.3.1; on the phone in 0.5.1 since 2026-10-12). Each step is ticked
 in `docs/status.md` → *R — after the review*.
 

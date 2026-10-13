@@ -1,5 +1,7 @@
 # Paid plan — F7: paid or not, at a glance
 
+> **Archived — done.** This plan is complete and kept as a record of how the work went. What is done and what is next lives only in [`status.md`](status.md).
+
 The owner's idea, 2026-10-12: *"be able to easily distinguish what is paid and what is not from
 the Now and Timeline etc views"*. The owner asked for research, a detailed plan, a review of the
 plan, then the build without waiting for a go. **Status: done** — built, tested, rehearsed, and on
