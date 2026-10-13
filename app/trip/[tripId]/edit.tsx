@@ -1,8 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Alert } from 'react-native';
 
 import { countOf, listPhrase } from '../../../src/domain/format';
 import { TripForm } from '../../../src/features/trips/TripForm';
@@ -19,14 +18,12 @@ import { Button } from '../../../src/ui/components/Button';
 import { QueryScreen } from '../../../src/ui/components/QueryStates';
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
-import { spacing } from '../../../src/ui/tokens';
 
 export default function EditTrip() {
   const db = useSQLiteContext();
   const router = useRouter();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   // The screen draws under the navigation bar, so the pinned button must clear it itself.
-  const insets = useSafeAreaInsets();
 
   const tripQuery = useLiveQuery(
     useCallback((database) => getTrip(database, tripId), [tripId]),
@@ -95,14 +92,8 @@ export default function EditTrip() {
           await updateTrip(db, trip.id, input);
           router.back();
         }}
+        secondaryActions={<Button label="Delete trip" variant="danger" onPress={confirmDelete} />}
       />
-      <View style={[styles.danger, { paddingBottom: spacing.xl + insets.bottom }]}>
-        <Button label="Delete trip" variant="danger" onPress={confirmDelete} />
-      </View>
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  danger: { padding: spacing.xl, paddingTop: 0 },
-});

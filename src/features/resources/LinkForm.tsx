@@ -1,6 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
-import { StyleSheet } from 'react-native';
 
 import {
   linkFormSchema,
@@ -12,7 +11,6 @@ import {
 import { Button } from '../../ui/components/Button';
 import { FormScroll } from '../../ui/components/FormScroll';
 import { Field, Input } from '../../ui/components/Field';
-import { spacing } from '../../ui/tokens';
 
 type Props = { onSubmit: (input: ResourceInput) => Promise<void> };
 
@@ -28,7 +26,16 @@ export function LinkForm({ onSubmit }: Props) {
   });
 
   return (
-    <FormScroll>
+    <FormScroll
+      footer={
+        <Button
+          label="Save link"
+          busy={isSubmitting}
+          onPress={handleSubmit(async (values) => {
+            await onSubmit(linkResourceInput(values));
+          })}
+        />
+      }>
       <Controller
         control={control}
         name="url"
@@ -67,16 +74,6 @@ export function LinkForm({ onSubmit }: Props) {
         )}
       />
 
-      <Button
-        label="Save link"
-        busy={isSubmitting}
-        onPress={handleSubmit(async (values) => {
-          await onSubmit(linkResourceInput(values));
-        })}
-      />
     </FormScroll>
   );
 }
-
-const styles = StyleSheet.create({
-});

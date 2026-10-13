@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import type { ReactNode } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet } from 'react-native';
 import type { z } from 'zod';
@@ -8,7 +9,6 @@ import { Button } from '../../ui/components/Button';
 import { FormScroll } from '../../ui/components/FormScroll';
 import { ChoiceField } from '../../ui/components/ChoiceField';
 import { Field, Input } from '../../ui/components/Field';
-import { spacing } from '../../ui/tokens';
 
 export type NoteFormValues = z.input<typeof noteInputSchema>;
 
@@ -16,11 +16,14 @@ type Props = {
   defaultValues: NoteFormValues;
   submitLabel: string;
   onSubmit: (input: NoteInput) => Promise<void>;
-  /** Rendered under the save button, for a destructive action on an existing note. */
-  footer?: React.ReactNode;
+  /**
+   * After the fields, in the scroll — a destructive action such as Delete, kept away from the
+   * Save button pinned below.
+   */
+  secondaryActions?: ReactNode;
 };
 
-export function NoteForm({ defaultValues, submitLabel, onSubmit, footer }: Props) {
+export function NoteForm({ defaultValues, submitLabel, onSubmit, secondaryActions }: Props) {
   const {
     control,
     handleSubmit,
@@ -32,7 +35,16 @@ export function NoteForm({ defaultValues, submitLabel, onSubmit, footer }: Props
   });
 
   return (
-    <FormScroll>
+    <FormScroll
+      footer={
+        <Button
+          label={submitLabel}
+          busy={isSubmitting}
+          onPress={handleSubmit(async (values) => {
+            await onSubmit(values);
+          })}
+        />
+      }>
       <Controller
         control={control}
         name="title"
@@ -83,14 +95,7 @@ export function NoteForm({ defaultValues, submitLabel, onSubmit, footer }: Props
         )}
       />
 
-      <Button
-        label={submitLabel}
-        busy={isSubmitting}
-        onPress={handleSubmit(async (values) => {
-          await onSubmit(values);
-        })}
-      />
-      {footer}
+      {secondaryActions}
     </FormScroll>
   );
 }

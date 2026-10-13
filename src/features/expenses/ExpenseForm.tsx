@@ -25,12 +25,21 @@ type Props = {
   onSubmit: (input: ExpenseInput) => Promise<void>;
   /** The receipts section: pending files on a new expense, saved ones on an existing one. */
   receipts?: ReactNode;
-  /** Under the save button, for deleting an existing expense. */
-  footer?: ReactNode;
+  /**
+   * After the fields, in the scroll — a destructive action such as Delete, kept away from the
+   * Save button pinned below.
+   */
+  secondaryActions?: ReactNode;
 };
 
 /** Built for one hand at a till: the amount first, with the keypad already open. */
-export function ExpenseForm({ defaultValues, submitLabel, onSubmit, receipts, footer }: Props) {
+export function ExpenseForm({
+  defaultValues,
+  submitLabel,
+  onSubmit,
+  receipts,
+  secondaryActions,
+}: Props) {
   const c = useColors();
   const {
     control,
@@ -43,7 +52,16 @@ export function ExpenseForm({ defaultValues, submitLabel, onSubmit, receipts, fo
   });
 
   return (
-    <FormScroll>
+    <FormScroll
+      footer={
+        <Button
+          label={submitLabel}
+          busy={isSubmitting}
+          onPress={handleSubmit(async (values) => {
+            await onSubmit(values);
+          })}
+        />
+      }>
       <View style={styles.row}>
         <View style={styles.grow}>
           <Controller
@@ -143,14 +161,7 @@ export function ExpenseForm({ defaultValues, submitLabel, onSubmit, receipts, fo
 
       {receipts}
 
-      <Button
-        label={submitLabel}
-        busy={isSubmitting}
-        onPress={handleSubmit(async (values) => {
-          await onSubmit(values);
-        })}
-      />
-      {footer}
+      {secondaryActions}
     </FormScroll>
   );
 }

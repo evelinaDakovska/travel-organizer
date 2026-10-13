@@ -19,7 +19,7 @@ import { MomentField, type MomentValue } from '../../../src/ui/components/Moment
 import { QueryScreen } from '../../../src/ui/components/QueryStates';
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
-import { spacing, type, useColors } from '../../../src/ui/tokens';
+import { gutter, spacing, type, useColors } from '../../../src/ui/tokens';
 import { askForRemindersIfDue } from '../../../src/notifications/reminders';
 
 /** Moving an idea onto the timeline: give it a day, and it becomes confirmed. */
@@ -118,5 +118,10 @@ function ScheduleForm({ item, trip }: { item: TripItem; trip: Trip }) {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.xl, gap: spacing.xl, paddingBottom: spacing.xxxl },
+  content: {
+    paddingHorizontal: gutter.normal,
+    paddingTop: spacing.sm,
+    gap: spacing.xl,
+    paddingBottom: spacing.xxxl,
+  },
 });

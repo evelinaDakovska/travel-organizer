@@ -17,7 +17,7 @@ import { LoadFailed, QueryScreen, StaleNotice } from '../../../src/ui/components
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../../../src/ui/components/SectionLabel';
-import { radius, spacing, type, useColors } from '../../../src/ui/tokens';
+import { gutter, radius, spacing, type, useColors } from '../../../src/ui/tokens';
 
 /**
  * An expense, read (F5): what, how much, when, its receipts. Edit is at the top, as on an item;
@@ -141,7 +141,12 @@ export default function ExpenseDetail() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.xl, paddingTop: spacing.sm, gap: spacing.xl, paddingBottom: spacing.xxxl },
+  content: {
+    paddingHorizontal: gutter.normal,
+    paddingTop: spacing.sm,
+    gap: spacing.xl,
+    paddingBottom: spacing.xxxl,
+  },
   heading: { gap: spacing.sm },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   icon: {

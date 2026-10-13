@@ -61,7 +61,9 @@ export default function EditNote() {
           await updateNote(db, note.id, input);
           router.back();
         }}
-        footer={<Button label="Delete note" variant="danger" onPress={confirmDelete} />}
+        secondaryActions={
+          <Button label="Delete note" variant="danger" onPress={confirmDelete} />
+        }
       />
     </Screen>
   );

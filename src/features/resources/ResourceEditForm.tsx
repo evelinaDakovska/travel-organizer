@@ -38,7 +38,16 @@ export function ResourceEditForm({ resource, onSave, onDelete, onAttachToItem }:
   });
 
   return (
-    <FormScroll>
+    <FormScroll
+      footer={
+        <Button
+          label="Save"
+          busy={isSubmitting}
+          onPress={handleSubmit(async (values) => {
+            await onSave(values);
+          })}
+        />
+      }>
       <View style={[styles.source, { backgroundColor: c.surfaceSunken }]}>
         <SectionLabel>{resource.kind === 'file' ? 'Saved file' : 'Link'}</SectionLabel>
         <Text style={[type.body, { color: c.text }]} selectable numberOfLines={3}>
@@ -77,13 +86,6 @@ export function ResourceEditForm({ resource, onSave, onDelete, onAttachToItem }:
         )}
       />
 
-      <Button
-        label="Save"
-        busy={isSubmitting}
-        onPress={handleSubmit(async (values) => {
-          await onSave(values);
-        })}
-      />
       {onAttachToItem ? (
         <Button label="Also attach to an item" variant="secondary" onPress={onAttachToItem} />
       ) : null}

@@ -36,7 +36,7 @@ import { LoadFailed } from '../src/ui/components/QueryStates';
 import { Screen } from '../src/ui/components/Screen';
 import { ScreenHeader } from '../src/ui/components/ScreenHeader';
 import { StatusTag } from '../src/ui/components/StatusTag';
-import { radius, spacing, type, useColors } from '../src/ui/tokens';
+import { gutter, radius, spacing, type, useColors } from '../src/ui/tokens';
 
 const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
@@ -346,7 +346,8 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   content: {
-    padding: spacing.xl,
+    paddingHorizontal: gutter.normal,
+    paddingTop: spacing.sm,
     gap: spacing.xl,
     paddingBottom: spacing.xxxl,
   },

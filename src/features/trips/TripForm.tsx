@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import type { ReactNode } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { tripInputSchema, type TripInput } from '../../domain/trip';
 import { Button } from '../../ui/components/Button';
@@ -8,15 +9,19 @@ import { DateRangeField } from '../../ui/components/DateRangeField';
 import { Field, Input } from '../../ui/components/Field';
 import { FormScroll } from '../../ui/components/FormScroll';
 import { TimezoneField } from '../../ui/components/TimezoneField';
-import { spacing } from '../../ui/tokens';
 
 type Props = {
   defaultValues: TripInput;
   submitLabel: string;
   onSubmit: (input: TripInput) => Promise<void>;
+  /**
+   * After the fields, in the scroll — a destructive action such as Delete, kept away from the
+   * Save button pinned below.
+   */
+  secondaryActions?: ReactNode;
 };
 
-export function TripForm({ defaultValues, submitLabel, onSubmit }: Props) {
+export function TripForm({ defaultValues, submitLabel, onSubmit, secondaryActions }: Props) {
   const {
     control,
     watch,
@@ -30,7 +35,16 @@ export function TripForm({ defaultValues, submitLabel, onSubmit }: Props) {
   });
 
   return (
-    <FormScroll>
+    <FormScroll
+      footer={
+        <Button
+          label={submitLabel}
+          busy={isSubmitting}
+          onPress={handleSubmit(async (values) => {
+            await onSubmit(values);
+          })}
+        />
+      }>
       <Controller
         control={control}
         name="name"
@@ -155,20 +169,11 @@ export function TripForm({ defaultValues, submitLabel, onSubmit }: Props) {
         )}
       />
 
-      <View style={styles.actions}>
-        <Button
-          label={submitLabel}
-          busy={isSubmitting}
-          onPress={handleSubmit(async (values) => {
-            await onSubmit(values);
-          })}
-        />
-      </View>
+      {secondaryActions}
     </FormScroll>
   );
 }
 
 const styles = StyleSheet.create({
   multiline: { minHeight: 100, textAlignVertical: 'top' },
-  actions: { marginTop: spacing.sm },
 });

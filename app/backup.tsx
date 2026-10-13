@@ -19,7 +19,7 @@ import { Field } from '../src/ui/components/Field';
 import { Screen } from '../src/ui/components/Screen';
 import { ScreenHeader } from '../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../src/ui/components/SectionLabel';
-import { spacing, type, useColors } from '../src/ui/tokens';
+import { gutter, spacing, type, useColors } from '../src/ui/tokens';
 
 const MODE_HINTS: Record<ImportMode, string> = {
   merge: 'Adds trips that are not on this phone. Trips already here are left exactly as they are.',
@@ -146,6 +146,11 @@ export default function Backup() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.xl, gap: spacing.xl, paddingBottom: spacing.xxxl },
+  content: {
+    paddingHorizontal: gutter.normal,
+    paddingTop: spacing.sm,
+    gap: spacing.xl,
+    paddingBottom: spacing.xxxl,
+  },
   section: { gap: spacing.md },
 });
