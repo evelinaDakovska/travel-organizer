@@ -8,6 +8,7 @@ import { paymentStatuses, refundableOf } from '../../../src/domain/bookingCosts'
 import { formatMoment, formatMoney } from '../../../src/domain/format';
 import { journeyLegs } from '../../../src/domain/journey';
 import { mapsUrl } from '../../../src/domain/places';
+import { pricingOf, pricingText } from '../../../src/domain/pricing';
 import { reminderLabel } from '../../../src/domain/reminders';
 import { statusActions } from '../../../src/domain/status';
 import { withZone } from '../../../src/domain/timezones';
@@ -124,6 +125,7 @@ export default function ItemDetail() {
   // The place or address only; a journey's from and to are not searched.
   const maps = mapsUrl(item);
   const journey = item.kind === 'transport';
+  const pricing = pricingOf(item.details);
 
   // Anything but a journey: one line, each end with its zone when it states its own.
   const when = item.start
@@ -210,6 +212,8 @@ export default function ItemDetail() {
               label="Price"
               value={formatMoney(item.priceAmount, item.priceCurrency)}
               detail={[
+                // The working of a per-person price (C3): 2 × EUR 90.00 Adult + …
+                pricing ? pricingText(pricing, item.priceCurrency) : null,
                 item.isPaid ? 'Paid' : item.priceAmount > 0 ? 'Not paid yet' : null,
                 REFUNDABLE_LABEL[String(refundableOf(item.details))],
               ]

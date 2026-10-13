@@ -466,3 +466,35 @@ describe('itemIconKey', () => {
     expect(itemIconKey('food', 'flight')).toBe('food');
   });
 });
+
+describe('a per-person price (C3)', () => {
+  const parse = (details: object, priceAmount?: number) =>
+    tripItemInputSchema('Europe/Rome').safeParse({
+      kind: 'activity',
+      title: 'Husky safari',
+      details,
+      priceAmount,
+      priceCurrency: 'EUR',
+    });
+  const lines = (unitAmount: number | undefined) => ({
+    pricing: { mode: 'perPerson', lines: [{ label: 'Adult', quantity: 2, unitAmount }] },
+  });
+
+  it('saves when the rates make the price', () => {
+    expect(parse(lines(9000), 18000).success).toBe(true);
+  });
+
+  it('says a rate has no price, under the price', () => {
+    const result = parse(lines(undefined), undefined);
+    expect(result.error?.issues[0]).toMatchObject({
+      path: ['priceAmount'],
+      message: 'Enter a price like 12.50',
+    });
+  });
+
+  it('refuses a price the rates do not make', () => {
+    expect(parse(lines(9000), 18001).error?.issues.map((issue) => issue.message)).toEqual([
+      'The rates do not add up to this price',
+    ]);
+  });
+});

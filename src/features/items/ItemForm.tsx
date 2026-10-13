@@ -4,8 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm, type Control } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { refundableOf, withRefundable } from '../../domain/bookingCosts';
-import { formatMoney } from '../../domain/format';
 import {
   firstReturnLeg,
   isMultiLeg,
@@ -55,12 +53,12 @@ import { KindTile } from '../../ui/components/KindTile';
 import { ListRow, Rows } from '../../ui/components/ListRow';
 import { MomentField } from '../../ui/components/MomentField';
 import { MultiChoiceField } from '../../ui/components/MultiChoiceField';
-import { AmountInput, CurrencyInput } from '../../ui/components/MoneyInputs';
 import { SectionLabel } from '../../ui/components/SectionLabel';
 import { SelectField } from '../../ui/components/SelectField';
 import { Sheet } from '../../ui/components/Sheet';
 import { opacity, radius, spacing, type, useColors } from '../../ui/tokens';
 import { JourneyFields } from './JourneyFields';
+import { PriceSection } from './PriceSection';
 
 type Props = {
   defaultValues: TripItemFormValues;
@@ -160,11 +158,6 @@ export function ItemForm({
   const from = routeEnd('from');
   const to = routeEnd('to');
   const reminder = reminderSetting(watch('details'));
-  const refundable = refundableOf(watch('details'));
-  const priceAmount = watch('priceAmount');
-  const priceCurrency = watch('priceCurrency');
-  const isPaid = watch('isPaid');
-  const hasPrice = priceAmount !== undefined;
   const subkinds = subkindsFor(kind);
   const c = useColors();
 
@@ -297,16 +290,6 @@ export function ItemForm({
     setValue('details', detailsForKind(getValues('details'), next));
   };
 
-  // What the folded Price section holds, so closed it still says so.
-  const priceSummary = [
-    hasPrice && Number.isFinite(priceAmount) && priceCurrency
-      ? formatMoney(priceAmount, priceCurrency)
-      : null,
-    isPaid ? 'Paid' : null,
-    refundable === null ? null : refundable ? 'Refundable' : 'Not refundable',
-  ]
-    .filter(Boolean)
-    .join(' · ');
   const reminderText = reminderHint(kind, start, defaultTz, reminder);
 
   return (
@@ -599,81 +582,14 @@ export function ItemForm({
       />
 
       {/* Folded until wanted; open from the start when it holds anything, and on an error. */}
-      <Disclosure
-        title="Price & payment"
-        summary={priceSummary || 'Optional'}
+      <PriceSection
+        control={control}
+        errors={errors}
+        setValue={setValue}
+        getValues={getValues}
         initiallyOpen={defaultValues.priceAmount !== undefined || defaultValues.isPaid === true}
-        forceOpen={!!errors.priceAmount || !!errors.priceCurrency}>
-        <View style={styles.row}>
-          <View style={styles.grow}>
-            <Controller
-              control={control}
-              name="priceAmount"
-              render={({ field }) => (
-                <Field label="Price" error={errors.priceAmount?.message}>
-                  <AmountInput
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    invalid={!!errors.priceAmount}
-                  />
-                </Field>
-              )}
-            />
-          </View>
-          <View style={styles.currency}>
-            <Controller
-              control={control}
-              name="priceCurrency"
-              render={({ field }) => (
-                <Field label="Currency" error={errors.priceCurrency?.message}>
-                  <CurrencyInput
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    invalid={!!errors.priceCurrency}
-                  />
-                </Field>
-              )}
-            />
-          </View>
-        </View>
-
-        <Controller
-          control={control}
-          name="isPaid"
-          render={({ field }) => (
-            <Field label="Paid">
-              <ChoiceField
-                value={field.value ? 'paid' : 'unpaid'}
-                options={['unpaid', 'paid'] as const}
-                labelFor={(v) => (v === 'paid' ? 'Paid' : 'Not paid yet')}
-                onChange={(next) => field.onChange(next === 'paid')}
-              />
-            </Field>
-          )}
-        />
-
-        {hasPrice && (
-          // Not a second Controller: `details` already has one in TransportFields.
-          <Field
-            label="Refundable"
-            hint="Optional. A cancelled booking that is not refundable still counts in the expenses">
-            <ChoiceField
-              value={refundable === null ? null : refundable ? 'yes' : 'no'}
-              options={['yes', 'no'] as const}
-              labelFor={(v) => (v === 'yes' ? 'Refundable' : 'Not refundable')}
-              onChange={(next) => {
-                const value = next === null ? null : next === 'yes';
-                setValue('details', withRefundable(getValues('details'), value), {
-                  shouldDirty: true,
-                });
-              }}
-              clearable
-            />
-          </Field>
-        )}
-      </Disclosure>
+        goingCount={participants.length}
+      />
 
       {status === 'confirmed' && (
         <Disclosure title="Reminder" summary={reminderText} initiallyOpen={reminder !== 'default'}>

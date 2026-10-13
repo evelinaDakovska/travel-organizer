@@ -138,6 +138,15 @@ describe('journeyItemValues', () => {
     const schema = tripItemInputSchema(ROME);
     for (const v of values) expect(schema.safeParse(v).success).toBe(true);
   });
+
+  it('keeps a per-person breakdown with the price, on the first leg only (C3)', () => {
+    const pricing = { mode: 'perPerson', lines: [{ label: 'Adult', quantity: 2, unitAmount: 15500 }] };
+    const priced = { ...base, details: { ...base.details, pricing } };
+    const legs = journeyItemValues(priced, { outbound: [out1, out2], returning: [] }, 'j1');
+    expect(legs.map((v) => v.details?.pricing)).toEqual([pricing, undefined]);
+    const schema = tripItemInputSchema(ROME);
+    for (const v of legs) expect(schema.safeParse(v).success).toBe(true);
+  });
 });
 
 describe('journeyLegs', () => {

@@ -5,6 +5,7 @@
 
 import { z } from 'zod';
 
+import { pricingMatches, pricingSchema } from './pricing';
 import { localPrecision, toInstant, type LocalMoment, type TimePrecision } from './time';
 import { isResolvableTimezone } from './timezones';
 
@@ -254,6 +255,22 @@ export function tripItemInputSchema(defaultTz: string) {
     .refine((v) => v.priceAmount === undefined || v.priceCurrency !== undefined, {
       message: 'Pick a currency',
       path: ['priceCurrency'],
+    })
+    // A per-person breakdown (C3) must be complete — its own message, under the total — ...
+    .superRefine((v, context) => {
+      if (v.details?.pricing === undefined) return;
+      const parsed = pricingSchema.safeParse(v.details.pricing);
+      if (parsed.success) return;
+      context.addIssue({
+        code: 'custom',
+        message: parsed.error.issues[0]?.message ?? 'Check the rates',
+        path: ['priceAmount'],
+      });
+    })
+    // ... and make the price saved with it: one authoritative total, never two that disagree.
+    .refine((v) => pricingMatches(v.details, v.priceAmount), {
+      message: 'The rates do not add up to this price',
+      path: ['priceAmount'],
     });
 }
 

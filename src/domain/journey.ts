@@ -137,13 +137,15 @@ export function journeyItemValues(
       ROUTE_KEYS.map((key) => [key, trimmed(leg[key])]).filter(([, value]) => value !== undefined),
     );
     const first = index === 0;
+    // The price, and any per-person breakdown of it (C3), are on the first leg only.
+    const { pricing: _pricing, ...sharedWithoutPrice } = shared;
     return {
       ...base,
       kind: 'transport',
       title: title.slice(0, 120),
       start: leg.departs,
       end: leg.arrives,
-      details: { ...shared, ...route, journeyId },
+      details: { ...(first ? shared : sharedWithoutPrice), ...route, journeyId },
       priceAmount: first ? base.priceAmount : undefined,
       priceCurrency: first ? base.priceCurrency : undefined,
       isPaid: first ? base.isPaid : false,
