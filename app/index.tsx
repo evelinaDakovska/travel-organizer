@@ -128,6 +128,12 @@ export default function Home() {
             <SectionLabel>Your data</SectionLabel>
             <Rows>
               <ListRow
+                title="Lists & templates"
+                subtitle="Packing and shopping lists to copy into a trip"
+                leading={<Icon name="lists" color={c.accentText} />}
+                onPress={() => router.push('/lists')}
+              />
+              <ListRow
                 title="Travellers"
                 subtitle="The people you travel with, chosen per trip"
                 leading={<Icon name="travellers" color={c.accentText} />}

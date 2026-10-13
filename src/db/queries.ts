@@ -369,6 +369,78 @@ export const INSERT_ITEM_PARTICIPANT = `
 INSERT INTO item_participants (item_id, traveller_id) VALUES ($itemId, $travellerId)
 `;
 
+/* Lists (C1). A list with no trip is a reusable one; its items are never ticked. */
+
+/** Lists with how many rows they hold and how many are ticked, for one trip or the reusable ones. */
+const LIST_WITH_PROGRESS = `
+SELECT l.*,
+       (SELECT COUNT(*) FROM list_items i WHERE i.list_id = l.id) AS item_count,
+       (SELECT COUNT(*) FROM list_items i WHERE i.list_id = l.id AND i.done_at IS NOT NULL)
+         AS done_count
+  FROM lists l
+`;
+
+export const SELECT_TRIP_LISTS = `${LIST_WITH_PROGRESS}
+ WHERE l.trip_id = $tripId ORDER BY l.kind, l.sort_order, l.name`;
+
+export const SELECT_REUSABLE_LISTS = `${LIST_WITH_PROGRESS}
+ WHERE l.trip_id IS NULL ORDER BY l.kind, l.sort_order, l.name`;
+
+export const SELECT_LIST = `SELECT * FROM lists WHERE id = $id`;
+
+export const INSERT_LIST = `
+INSERT INTO lists (id, trip_id, kind, name, source_list_id, sort_order, created_at, updated_at)
+VALUES ($id, $tripId, $kind, $name, $sourceListId,
+        (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM lists
+          WHERE trip_id IS $tripId AND kind = $kind),
+        $now, $now)
+`;
+
+export const RENAME_LIST = `UPDATE lists SET name = $name, updated_at = $now WHERE id = $id`;
+
+/** How many copies of a reusable list a trip already has, to warn before another. */
+export const COUNT_TRIP_COPIES = `
+SELECT COUNT(*) AS n FROM lists WHERE trip_id = $tripId AND source_list_id = $sourceListId
+`;
+
+export const SELECT_LIST_ITEMS = `
+SELECT * FROM list_items WHERE list_id = $listId ORDER BY sort_order, created_at
+`;
+
+export const SELECT_LIST_ITEM = `SELECT * FROM list_items WHERE id = $id`;
+
+export const INSERT_LIST_ITEM = `
+INSERT INTO list_items (id, list_id, label, quantity, unit, category, note, traveller_id, done_at,
+                        sort_order, created_at, updated_at)
+VALUES ($id, $listId, $label, $quantity, $unit, $category, $note, $travellerId, NULL,
+        (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM list_items WHERE list_id = $listId),
+        $now, $now)
+`;
+
+export const UPDATE_LIST_ITEM = `
+UPDATE list_items
+   SET label = $label, quantity = $quantity, unit = $unit, category = $category, note = $note,
+       traveller_id = $travellerId, updated_at = $now
+ WHERE id = $id
+`;
+
+/** Ticks only on a trip's list: a reusable one is never packed or bought (FB-15). */
+export const SET_LIST_ITEM_DONE = `
+UPDATE list_items SET done_at = $doneAt, updated_at = $now
+ WHERE id = $id AND list_id IN (SELECT id FROM lists WHERE trip_id IS NOT NULL)
+`;
+
+export const SET_LIST_ITEM_ORDER = `UPDATE list_items SET sort_order = $sortOrder WHERE id = $id`;
+
+/** A copy's items: new ids, in the same order, every tick cleared. */
+export const COPY_LIST_ITEMS = `
+INSERT INTO list_items (id, list_id, label, quantity, unit, category, note, traveller_id, done_at,
+                        sort_order, created_at, updated_at)
+SELECT $newId, $toListId, label, quantity, unit, category, note, traveller_id, NULL,
+       sort_order, $now, $now
+  FROM list_items WHERE id = $fromItemId
+`;
+
 /** Column order for the backup. Append only — a restore binds by name, but order documents it. */
 export const EXPORT_COLUMNS = {
   trips: ['id', 'name', 'destination', 'start_date', 'end_date', 'default_tz', 'cover_path',

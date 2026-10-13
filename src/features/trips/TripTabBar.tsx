@@ -12,7 +12,7 @@ const TABS: Record<string, { label: string; icon: IconName }> = {
   timeline: { label: 'Timeline', icon: 'timeline' },
   places: { label: 'Places', icon: 'places' },
   expenses: { label: 'Expenses', icon: 'wallet' },
-  notes: { label: 'Notes', icon: 'notes' },
+  notes: { label: 'Notes & lists', icon: 'notes' },
 };
 
 /** The design's bottom bar: icon over label, the active tab in the accent. */

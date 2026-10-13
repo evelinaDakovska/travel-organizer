@@ -24,6 +24,7 @@ import { groupResourcesByItem, type Resource } from '../../../../src/domain/reso
 import { dayKey } from '../../../../src/domain/time';
 import type { TimelineEntry } from '../../../../src/domain/timeline';
 import { timezoneLabel } from '../../../../src/domain/timezones';
+import { progressText } from '../../../../src/domain/lists';
 import { tripPeopleLine } from '../../../../src/domain/traveller';
 import { deviceToday, tripPhase, tripPhaseLabel } from '../../../../src/domain/trip';
 import { routeLabel, transportDetails, type TripItem } from '../../../../src/domain/tripItem';
@@ -45,6 +46,7 @@ import {
   setTaskCompleted,
   TRIP_ITEM_TABLES,
 } from '../../../../src/repositories/tripItems';
+import { LIST_TABLES, listTripLists } from '../../../../src/repositories/lists';
 import { listTripTravellers, TRAVELLER_TABLES } from '../../../../src/repositories/travellers';
 import { getTrip, TRIP_TABLES } from '../../../../src/repositories/trips';
 import { HeaderAction } from '../../../../src/ui/components/HeaderAction';
@@ -98,6 +100,11 @@ export default function OverviewScreen() {
   const { data: members } = useLiveQuery(
     useCallback((database) => listTripTravellers(database, tripId), [tripId]),
     TRAVELLER_TABLES,
+    [tripId],
+  );
+  const { data: lists } = useLiveQuery(
+    useCallback((database) => listTripLists(database, tripId), [tripId]),
+    LIST_TABLES,
     [tripId],
   );
   const trip = tripQuery.data;
@@ -267,6 +274,31 @@ export default function OverviewScreen() {
                   item={stay}
                   payment={payments.get(stay.id) ?? null}
                   onPress={() => open(stay.id)}
+                />
+              ))}
+            </Rows>
+          </View>
+        ) : null}
+
+        {/* Getting ready includes the lists: how far along each is, one tap away (C1). */}
+        {lists && lists.length > 0 ? (
+          <View style={styles.section}>
+            <SectionLabel>Lists</SectionLabel>
+            <Rows>
+              {lists.map((list) => (
+                <ListRow
+                  key={list.id}
+                  title={list.name}
+                  subtitle={progressText(list.kind, list)}
+                  leading={
+                    <Icon
+                      name={list.kind === 'packing' ? 'packing' : 'shoppingList'}
+                      color={c.accentText}
+                    />
+                  }
+                  onPress={() =>
+                    router.push({ pathname: '/list/[listId]', params: { listId: list.id } })
+                  }
                 />
               ))}
             </Rows>
