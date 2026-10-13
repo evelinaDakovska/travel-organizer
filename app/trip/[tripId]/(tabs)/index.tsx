@@ -95,6 +95,8 @@ export default function NowScreen() {
     );
   }
   const itemsFailed = queryView(itemsQuery) === 'failed';
+  // Until the first read lands, an empty task list would say "Nothing left to do" (A5).
+  const itemsLoading = queryView(itemsQuery) === 'loading';
 
   return (
     <Screen>
@@ -170,7 +172,9 @@ export default function NowScreen() {
               <Text style={[type.bodyStrong, { color: c.accentText }]}>Add</Text>
             </Pressable>
           </View>
-          {itemsFailed ? null : tasks.length > 0 ? (
+          {itemsFailed ? null : itemsLoading ? (
+            <Text style={[type.body, { color: c.textMuted }]}>Loading…</Text>
+          ) : tasks.length > 0 ? (
             tasks.map((task) => (
               <TaskRow
                 key={task.id}
@@ -219,7 +223,11 @@ export default function NowScreen() {
             owner={{ scope: 'trip', id: trip.id }}
             resources={documents ?? []}
             title="Trip documents"
-            emptyText="Insurance, passport scans, visas — anything that belongs to the whole trip."
+            emptyText={
+              documents
+                ? 'Insurance, passport scans, visas — anything that belongs to the whole trip.'
+                : undefined
+            }
           />
         )}
 

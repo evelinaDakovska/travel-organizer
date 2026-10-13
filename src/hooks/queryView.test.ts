@@ -42,9 +42,15 @@ describe('queryView', () => {
     expect(isStale(state({ error: failure }))).toBe(false);
   });
 
-  it('treats a deleted record whose refresh then fails as stale, still missing', () => {
+  it('never claims a record is gone when the latest read failed (A5)', () => {
     const gone = state({ data: null, error: failure });
-    expect(queryView(gone)).toBe('missing');
-    expect(isStale(gone)).toBe(true);
+    expect(queryView(gone)).toBe('failed');
+    expect(isStale(gone)).toBe(false);
+  });
+
+  it('never claims a list is empty when the latest read failed (A5)', () => {
+    const empty = state({ data: [], error: failure });
+    expect(queryView(empty)).toBe('failed');
+    expect(isStale(empty)).toBe(false);
   });
 });

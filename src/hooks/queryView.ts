@@ -9,21 +9,25 @@ export type QueryState<T> = { data: T | undefined; error: Error | undefined; loa
 
 /**
  * - `loading` — the first read has not finished.
- * - `failed` — the first read failed; nothing to show. Retries run on their own meanwhile.
- * - `missing` — the read worked and found no such record: it was deleted.
- * - `empty` — the read worked and the list has nothing in it.
+ * - `failed` — the latest read failed and there is nothing to show. Retries run on their own.
+ * - `missing` — the latest read worked and found no such record: it was deleted.
+ * - `empty` — the latest read worked and the list has nothing in it.
  * - `ready` — there is something to show (possibly stale: see `isStale`).
  */
 export type QueryView = 'loading' | 'failed' | 'missing' | 'empty' | 'ready';
 
 export function queryView<T>({ data, error }: QueryState<T>): QueryView {
   if (data === undefined) return error ? 'failed' : 'loading';
+  const nothing = data === null || (Array.isArray(data) && data.length === 0);
+  // An earlier read found nothing, but the latest one failed: the record or the list may be back
+  // by now, so claiming "deleted" or "nothing here" would be a guess (A5).
+  if (nothing && error) return 'failed';
   if (data === null) return 'missing';
-  if (Array.isArray(data) && data.length === 0) return 'empty';
+  if (nothing) return 'empty';
   return 'ready';
 }
 
-/** A refresh failed after an earlier read worked: the screen shows the earlier data. */
-export function isStale<T>({ data, error }: QueryState<T>): boolean {
-  return error !== undefined && data !== undefined;
+/** A refresh failed after an earlier read found something: the screen shows that earlier data. */
+export function isStale<T>(state: QueryState<T>): boolean {
+  return state.error !== undefined && queryView(state) === 'ready';
 }
