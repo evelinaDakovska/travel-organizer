@@ -92,7 +92,9 @@ export const expenseInputSchema = z.object({
   category: z.enum(EXPENSE_CATEGORIES, { message: 'Pick a category' }),
   label: optionalText(120),
   amount: z
-    .number({ message: 'Enter the amount' })
+    .number({
+      error: (issue) => (issue.input === undefined ? 'Enter the amount' : 'Enter an amount like 12.50'),
+    })
     .int()
     .positive('Enter an amount above zero'),
   currency: z

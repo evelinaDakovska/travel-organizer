@@ -14,6 +14,9 @@ type AmountInputProps = {
 /**
  * An amount in minor units. Keeps the text as typed: rendering it back from the stored number
  * can drop a decimal point the moment it is typed, so the number only flows outwards.
+ *
+ * Text that is not an amount ('-12', '1.234') goes out as `NaN`, which the form's schema refuses
+ * with a message — never as `undefined`, which would quietly save no price at all (FB-2).
  */
 export function AmountInput({ value, onChange, onBlur, invalid, autoFocus }: AmountInputProps) {
   const [text, setText] = useState(() => amountText(value));
@@ -23,7 +26,8 @@ export function AmountInput({ value, onChange, onBlur, invalid, autoFocus }: Amo
       value={text}
       onChangeText={(next) => {
         setText(next);
-        onChange(parseAmount(next));
+        const amount = parseAmount(next);
+        onChange(amount === null ? Number.NaN : amount);
       }}
       onBlur={onBlur}
       keyboardType="decimal-pad"

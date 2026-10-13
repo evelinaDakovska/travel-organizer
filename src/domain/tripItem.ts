@@ -227,7 +227,11 @@ export function tripItemInputSchema(defaultTz: string) {
       confirmationCode: z.string().trim().max(60).optional(),
       notes: z.string().trim().optional(),
       details: z.record(z.string(), z.unknown()).optional(),
-      priceAmount: z.number().int().optional(),
+      priceAmount: z
+        .number({ error: 'Enter an amount like 12.50' })
+        .int()
+        .nonnegative('A price cannot be negative')
+        .optional(),
       priceCurrency: z.string().trim().length(3).optional(),
       isPaid: z.boolean().default(false),
     })

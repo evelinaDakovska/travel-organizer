@@ -96,15 +96,44 @@ export function formatFileSize(bytes: number): string {
   return `${megabytes < 10 ? megabytes.toFixed(1) : Math.round(megabytes)} MB`;
 }
 
+/** The decimal part: a point or a comma and at most two digits, at the very end. */
+const DECIMAL_PART = /^(.*?)([.,])(\d{0,2})$/;
+/** Thousands grouped by one separator, every group after the first exactly three digits. */
+const GROUPED = /^\d{1,3}([.,' ])\d{3}(?:\1\d{3})*$/;
+
 /**
- * A typed amount in minor units: '12.50' and '12,50' are both 1250 — a phone set to a European
- * locale puts a comma on the decimal key. Undefined for an empty or unreadable entry.
+ * A typed or pasted amount in minor units, or what is wrong with it (FB-2):
+ * - `undefined` — nothing entered, so no price;
+ * - `null` — not an amount we can read without guessing. Never a different number.
+ *
+ * '12.50' and '12,50' are both 1250 — a phone set to a European locale puts a comma on the
+ * decimal key — and '12.' is 1200 while it is being typed. Thousands may be grouped where that
+ * cannot be mistaken for decimals: '1,234.50', '1.234,50', '1 234,50', '1,234,567'. '1.234' on
+ * its own could be either, so it is refused, as are signs, letters and a third decimal.
  */
-export function parseAmount(text: string): number | undefined {
-  const cleaned = text.replace(/\s/g, '').replace(',', '.').replace(/[^0-9.]/g, '');
-  if (cleaned === '' || cleaned === '.') return undefined;
-  const value = Number(cleaned);
-  return Number.isFinite(value) ? Math.round(value * 100) : undefined;
+export function parseAmount(text: string): number | undefined | null {
+  const trimmed = text.trim();
+  if (trimmed === '') return undefined;
+
+  const decimal = DECIMAL_PART.exec(trimmed);
+  const whole = decimal ? decimal[1] : trimmed;
+  const decimalSeparator = decimal?.[2];
+  const fraction = decimal?.[3] ?? '';
+  if (whole === '' && fraction === '') return null;
+
+  let digits = whole;
+  if (!/^\d*$/.test(whole)) {
+    const grouped = GROUPED.exec(whole);
+    const groupSeparator = grouped?.[1];
+    if (!groupSeparator || groupSeparator === decimalSeparator) return null;
+    const groups = whole.split(groupSeparator);
+    const pointOrComma = groupSeparator === '.' || groupSeparator === ',';
+    if (pointOrComma && groups.length === 2 && !decimalSeparator) return null;
+    digits = groups.join('');
+  }
+
+  const minorUnits = Number(digits || '0') * 100 + Number(fraction.padEnd(2, '0'));
+  return Number.isSafeInteger(minorUnits) ? minorUnits : null;
 }
 
 /** What the price field shows for a stored amount: '12.50', '25', never a float artefact. */

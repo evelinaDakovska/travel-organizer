@@ -176,6 +176,18 @@ describe('tripItemInputSchema', () => {
       .toEqual(['priceAmount']);
   });
 
+  it('refuses a negative price and one that could not be read, saying why (FB-2)', () => {
+    const negative = parse({ ...valid, priceAmount: -1250, priceCurrency: 'EUR' });
+    expect(negative.error?.issues.map((issue) => issue.message)).toEqual([
+      'A price cannot be negative',
+    ]);
+    const unreadable = parse({ ...valid, priceAmount: Number.NaN, priceCurrency: 'EUR' });
+    expect(unreadable.error?.issues.map((issue) => issue.message)).toEqual([
+      'Enter an amount like 12.50',
+    ]);
+    expect(parse({ ...valid, priceAmount: 0, priceCurrency: 'EUR' }).success).toBe(true);
+  });
+
   it('rejects coordinates outside the world', () => {
     expect(errorPaths(parse({ ...valid, latitude: 91 }))).toEqual(['latitude']);
     expect(errorPaths(parse({ ...valid, longitude: -181 }))).toEqual(['longitude']);

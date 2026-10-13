@@ -63,6 +63,7 @@ describe('expenseInputSchema', () => {
     ['a zero amount', { amount: 0 }, 'amount'],
     ['a negative amount', { amount: -100 }, 'amount'],
     ['a fraction of a cent', { amount: 12.5 }, 'amount'],
+    ['an amount that could not be read', { amount: Number.NaN }, 'amount'],
     ['an unknown category', { category: 'fun' }, 'category'],
     ['a lowercase currency', { currency: 'eur' }, 'currency'],
     ['a currency that is not three letters', { currency: 'EURO' }, 'currency'],
@@ -71,6 +72,13 @@ describe('expenseInputSchema', () => {
     const result = expenseInputSchema.safeParse({ ...valid, ...change });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0].path).toEqual([field]);
+  });
+
+  it('tells a missing amount from one that could not be read (FB-2)', () => {
+    const message = (amount: number | undefined) =>
+      expenseInputSchema.safeParse({ ...valid, amount }).error?.issues[0].message;
+    expect(message(undefined)).toBe('Enter the amount');
+    expect(message(Number.NaN)).toBe('Enter an amount like 12.50');
   });
 });
 

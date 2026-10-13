@@ -122,14 +122,61 @@ describe('parseAmount', () => {
     expect(parseAmount('12,')).toBe(1200);
   });
 
-  it('is undefined for nothing at all', () => {
+  it('is undefined for nothing at all, so there is no price', () => {
     expect(parseAmount('')).toBeUndefined();
-    expect(parseAmount('.')).toBeUndefined();
+    expect(parseAmount('   ')).toBeUndefined();
   });
 
   it('never stores a float', () => {
     expect(parseAmount('0.29')).toBe(29);
+    expect(parseAmount('19.99')).toBe(1999);
     expect(Number.isInteger(parseAmount('19.99'))).toBe(true);
+  });
+
+  it('reads whole amounts, a leading separator and surrounding spaces', () => {
+    expect(parseAmount('25')).toBe(2500);
+    expect(parseAmount('0')).toBe(0);
+    expect(parseAmount('.5')).toBe(50);
+    expect(parseAmount(' 12,50 ')).toBe(1250);
+  });
+
+  it('reads thousands grouping only where it cannot be decimals (FB-2)', () => {
+    expect(parseAmount('1,234.50')).toBe(123450);
+    expect(parseAmount('1.234,50')).toBe(123450);
+    expect(parseAmount('1 234,50')).toBe(123450);
+    expect(parseAmount("1'234.50")).toBe(123450);
+    expect(parseAmount('1 234')).toBe(123400);
+    expect(parseAmount('1,234,567')).toBe(123456700);
+    expect(parseAmount('1.234.567,89')).toBe(123456789);
+  });
+
+  it('refuses what it would have to guess at, rather than change the amount (FB-2)', () => {
+    // Was 1250: the sign was stripped.
+    expect(parseAmount('-12.50')).toBeNull();
+    expect(parseAmount('+12')).toBeNull();
+    // Thousands or a mistyped decimal? Either is plausible.
+    expect(parseAmount('1.234')).toBeNull();
+    expect(parseAmount('1,234')).toBeNull();
+    // Was 1.23: only the first comma was read as the point.
+    expect(parseAmount('1,234,56')).toBeNull();
+    expect(parseAmount('1.234.50')).toBeNull();
+    expect(parseAmount('12.345')).toBeNull();
+    expect(parseAmount('12,50,1')).toBeNull();
+    expect(parseAmount('1,23.50')).toBeNull();
+    expect(parseAmount('12 50')).toBeNull();
+  });
+
+  it('refuses pasted text with a currency or letters instead of stripping them', () => {
+    expect(parseAmount('€12,50')).toBeNull();
+    expect(parseAmount('12.50 EUR')).toBeNull();
+    expect(parseAmount('12e3')).toBeNull();
+    expect(parseAmount('.')).toBeNull();
+    expect(parseAmount(',')).toBeNull();
+    expect(parseAmount('abc')).toBeNull();
+  });
+
+  it('refuses an amount too large to store exactly', () => {
+    expect(parseAmount('99999999999999999')).toBeNull();
   });
 });
 
