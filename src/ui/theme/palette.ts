@@ -53,11 +53,11 @@ export const light: Swatches = {
   secondary: '#536477',
   faint: '#7a8899',
 
-  action: '#2457cf',
-  actionPressed: '#1c45a8',
+  action: '#13616b',
+  actionPressed: '#0e4a52',
   onAction: '#ffffff',
-  tint: '#eef3ff',
-  tintText: '#2457cf',
+  tint: '#e6f3f5',
+  tintText: '#13616b',
 
   attention: '#8b431e',
   attentionSoft: '#fff0e5',
@@ -86,11 +86,11 @@ export const dark: Swatches = {
   secondary: '#b1bdcc',
   faint: '#8796a8',
 
-  action: '#a7c1ff',
-  actionPressed: '#c4d6ff',
-  onAction: '#172331',
-  tint: '#233551',
-  tintText: '#a7c1ff',
+  action: '#78d0d8',
+  actionPressed: '#9fe1e7',
+  onAction: '#111821',
+  tint: '#16353b',
+  tintText: '#78d0d8',
 
   attention: '#ffd1a8',
   attentionSoft: '#38291e',

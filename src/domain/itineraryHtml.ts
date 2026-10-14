@@ -256,7 +256,7 @@ const STYLE = `
 }
 * { box-sizing: border-box; }
 body { font-family: Roboto, "Noto Sans", Arial, sans-serif; color: #172331; font-size: 10.5pt; line-height: 1.45; }
-header { border-bottom: 2px solid #2457cf; padding-bottom: 8pt; margin-bottom: 12pt; }
+header { border-bottom: 2px solid #13616b; padding-bottom: 8pt; margin-bottom: 12pt; }
 h1 { font-size: 22pt; margin: 0 0 2pt; }
 h2 { font-size: 13pt; margin: 14pt 0 4pt; break-after: avoid; }
 h3 { font-size: 11pt; margin: 8pt 0 2pt; break-after: avoid; }
@@ -268,7 +268,7 @@ h3 { font-size: 11pt; margin: 8pt 0 2pt; break-after: avoid; }
 .what { flex: 1; }
 .title { font-weight: bold; }
 .line { color: #36475a; }
-.tag { font-size: 8.5pt; border: 0.5pt solid #2457cf; color: #2457cf; border-radius: 3pt; padding: 0 3pt; font-weight: normal; }
+.tag { font-size: 8.5pt; border: 0.5pt solid #13616b; color: #13616b; border-radius: 3pt; padding: 0 3pt; font-weight: normal; }
 .zone { font-size: 8.5pt; color: #8b431e; font-weight: normal; margin-left: 4pt; }
 table { width: 100%; border-collapse: collapse; }
 td { padding: 3pt 4pt; border-bottom: 0.5pt solid #dce3eb; vertical-align: top; }
