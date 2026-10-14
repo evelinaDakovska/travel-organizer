@@ -59,6 +59,7 @@ import { DirectionsSheet } from '../../../../src/features/directions/DirectionsS
 import { Button } from '../../../../src/ui/components/Button';
 import { HeaderAction } from '../../../../src/ui/components/HeaderAction';
 import { Icon, type IconName } from '../../../../src/ui/components/Icon';
+import { IconTile } from '../../../../src/ui/components/IconTile';
 import { ItemRow } from '../../../../src/ui/components/ItemRow';
 import { LeadPanel } from '../../../../src/ui/components/LeadPanel';
 import { ListRow, Rows } from '../../../../src/ui/components/ListRow';
@@ -339,9 +340,9 @@ export default function OverviewScreen() {
                   title={list.name}
                   subtitle={progressText(list.kind, list)}
                   leading={
-                    <Icon
+                    <IconTile
                       name={list.kind === 'packing' ? 'packing' : 'shoppingList'}
-                      color={c.accentText}
+                      size={36}
                     />
                   }
                   onPress={() =>
@@ -357,16 +358,22 @@ export default function OverviewScreen() {
           <ListRow
             title="Travellers"
             subtitle={people || 'Who is going'}
-            leading={<Icon name="travellers" color={c.accentText} />}
+            leading={<IconTile name="travellers" size={36} />}
             onPress={() => router.push(`/trip/${trip.id}/travellers`)}
           />
           <ListRow
             title="Trip documents"
             subtitle="Tickets, bookings and insurance — on this phone and as links"
-            leading={<Icon name="file" color={c.accentText} />}
+            leading={<IconTile name="file" size={36} />}
             onPress={() => router.push(`/trip/${trip.id}/documents`)}
           />
-          {trip.notes ? <ListRow title="Trip notes" subtitle={trip.notes} /> : null}
+          {trip.notes ? (
+            <ListRow
+              title="Trip notes"
+              subtitle={trip.notes}
+              leading={<IconTile name="lists" size={36} />}
+            />
+          ) : null}
         </Rows>
       </ScrollView>
 
