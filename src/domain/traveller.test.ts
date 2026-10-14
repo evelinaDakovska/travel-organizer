@@ -49,11 +49,40 @@ describe('legacyNames (FB-12)', () => {
   });
 });
 
-describe('tripPeopleLine', () => {
-  it('shows the trip’s travellers, or the names typed before there were any', () => {
-    expect(tripPeopleLine([{ name: 'Evelina' }], ['Old', 'Names'])).toBe('Evelina');
-    expect(tripPeopleLine([], ['Evelina', 'Sample Friend'])).toBe('Evelina and Sample Friend');
+describe('tripPeopleLine (C1)', () => {
+  it('shows only profile members when all legacy names are converted or empty', () => {
+    expect(tripPeopleLine([{ name: 'Ana' }, { name: 'Misho' }], ['Ana', 'Misho'])).toBe(
+      'Ana and Misho',
+    );
+    expect(tripPeopleLine([{ name: 'Evelina' }], [])).toBe('Evelina');
+  });
+
+  it('shows profile members plus unconverted legacy names (partial conversion)', () => {
+    expect(
+      tripPeopleLine([{ name: 'Ana' }], ['Ana', 'Misho', 'Mitko']),
+    ).toBe('Ana, Misho and Mitko');
+  });
+
+  it('deduplicates case-insensitively and trims whitespace', () => {
+    expect(
+      tripPeopleLine(
+        [{ name: 'Ana' }],
+        ['  ana  ', '  Misho  ', 'misho', 'Mitko', '   '],
+      ),
+    ).toBe('Ana, Misho and Mitko');
+  });
+
+  it('shows all legacy names when no profiles are linked', () => {
+    expect(tripPeopleLine([], ['Evelina', 'Sample Friend'])).toBe(
+      'Evelina and Sample Friend',
+    );
     expect(tripPeopleLine([], [])).toBe('');
+  });
+
+  it('preserves multiple profiles even if they share display names', () => {
+    expect(
+      tripPeopleLine([{ name: 'Alex' }, { name: 'Alex' }], ['Alex', 'Bob']),
+    ).toBe('Alex, Alex and Bob');
   });
 });
 

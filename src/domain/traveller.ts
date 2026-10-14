@@ -69,14 +69,28 @@ export function legacyNames(
 }
 
 /**
- * Who a trip shows as going: its travellers when it has any, else the names typed before profiles
- * existed, so a trip from 0.5.1 reads as it did.
+ * Who a trip shows as going: its profile travellers, plus any remaining unconverted legacy
+ * names typed before profiles existed, deduplicated case-insensitively (C1).
  */
 export function tripPeopleLine(
   members: readonly Pick<Traveller, 'name'>[],
   typed: readonly string[],
 ): string {
-  return members.length > 0 ? namesLine(members) : namesLine(typed.map((name) => ({ name })));
+  const memberNames = members.map((m) => m.name.trim()).filter((n) => n !== '');
+  const seenLegacy: string[] = [];
+
+  const remainingLegacy = typed
+    .map((name) => name.trim())
+    .filter((name) => name !== '')
+    .filter((name) => !memberNames.some((m) => sameName(m, name)))
+    .filter((name) => {
+      if (seenLegacy.some((other) => sameName(other, name))) return false;
+      seenLegacy.push(name);
+      return true;
+    });
+
+  const allNames = [...memberNames, ...remainingLegacy].map((name) => ({ name }));
+  return namesLine(allNames);
 }
 
 /**
