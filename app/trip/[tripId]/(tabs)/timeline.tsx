@@ -17,8 +17,10 @@ import { formatDateRange, formatDayHeading } from '../../../../src/domain/format
 import { undatedConfirmed } from '../../../../src/domain/itinerary';
 import { groupResourcesByItem } from '../../../../src/domain/resource';
 import { buildTimeline } from '../../../../src/domain/timeline';
+import { dayKey } from '../../../../src/domain/time';
 import { deviceToday } from '../../../../src/domain/trip';
 import {
+  findStayForDay,
   findTimelineConnectors,
   findTripSavedPlaces,
   findTripStays,
@@ -256,7 +258,16 @@ export default function TimelineScreen() {
           destination={activeConnector.destination}
           initialOrigin={{ type: 'endpoint', endpoint: activeConnector.origin }}
           previousEndpoint={activeConnector.origin}
-          hotel={stays[0] ?? null}
+          hotel={
+            findStayForDay(
+              stays,
+              activeConnector.fromItem.start
+                ? dayKey(activeConnector.fromItem.start)
+                : activeConnector.toItem.start
+                  ? dayKey(activeConnector.toItem.start)
+                  : null,
+            )
+          }
           savedPlaces={savedPlaces}
         />
       ) : null}

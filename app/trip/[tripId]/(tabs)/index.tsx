@@ -399,7 +399,7 @@ export default function OverviewScreen() {
           visible={directionsTarget !== null}
           onClose={() => setDirectionsTarget(null)}
           destination={directionsTarget}
-          hotel={base ?? allStays[0] ?? null}
+          hotel={base}
           savedPlaces={savedPlaces}
         />
       ) : null}
@@ -433,7 +433,7 @@ function Lead({
   const eyebrow =
     reason === 'happening' ? LEAD_EYEBROW.happening : `${LEAD_EYEBROW[reason]} · ${day}`;
 
-  const destinationEndpoint = resolveItemEndpoint(item, 'destination');
+  const destinationEndpoint = resolveItemEndpoint(item, 'destination', entry.role);
 
   return (
     <LeadPanel

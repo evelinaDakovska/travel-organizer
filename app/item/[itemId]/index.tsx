@@ -12,6 +12,7 @@ import { pricingOf, pricingText } from '../../../src/domain/pricing';
 import { reminderLabel } from '../../../src/domain/reminders';
 import { statusActions } from '../../../src/domain/status';
 import { withZone } from '../../../src/domain/timezones';
+import { dayKey } from '../../../src/domain/time';
 import {
   kindLabel,
   routeLabel,
@@ -22,9 +23,11 @@ import {
 import { namesLine } from '../../../src/domain/traveller';
 import { zoneMismatches } from '../../../src/domain/zoneHints';
 import {
+  findStayForDay,
   findTripSavedPlaces,
   findTripStays,
   resolveItemEndpoint,
+  type DirectionEndpoint,
 } from '../../../src/domain/directions';
 import { DirectionsSheet } from '../../../src/features/directions/DirectionsSheet';
 import { JourneyEnds } from '../../../src/features/items/JourneyEnds';
@@ -109,12 +112,24 @@ export default function ItemDetail() {
   // Paid or not (F7), the journey's legs sharing the state of the one that holds the price.
   const payments = useMemo(() => paymentStatuses(item ? [item, ...legs] : []), [item, legs]);
 
-  const [directionsOpen, setDirectionsOpen] = useState(false);
-  const destinationEndpoint = useMemo(
-    () => (item ? resolveItemEndpoint(item, 'destination') : null),
+  const [directionsTarget, setDirectionsTarget] = useState<DirectionEndpoint | null>(null);
+  const departureEndpoint = useMemo(
+    () => (item?.kind === 'transport' ? resolveItemEndpoint(item, 'destination', 'start') : null),
+    [item],
+  );
+  const arrivalEndpoint = useMemo(
+    () => (item?.kind === 'transport' ? resolveItemEndpoint(item, 'destination', 'end') : null),
+    [item],
+  );
+  const defaultEndpoint = useMemo(
+    () => (item && item.kind !== 'transport' ? resolveItemEndpoint(item, 'destination') : null),
     [item],
   );
   const stays = useMemo(() => findTripStays(tripItems ?? []), [tripItems]);
+  const activeHotel = useMemo(
+    () => findStayForDay(stays, item?.start ? dayKey(item.start) : null),
+    [stays, item?.start],
+  );
   const savedPlaces = useMemo(() => findTripSavedPlaces(tripItems ?? []), [tripItems]);
 
   const itemView = queryView(itemQuery);
@@ -242,19 +257,43 @@ export default function ItemDetail() {
           {item.notes ? <Fact label="Notes" value={item.notes} selectable /> : null}
         </View>
 
-        {destinationEndpoint || maps ? (
+        {defaultEndpoint || departureEndpoint || arrivalEndpoint || maps ? (
           <View style={styles.locationActions}>
-            {destinationEndpoint ? (
+            {defaultEndpoint ? (
               <Button
                 label="How to get there"
                 variant="secondary"
-                onPress={() => setDirectionsOpen(true)}
+                onPress={() => setDirectionsTarget(defaultEndpoint)}
+              />
+            ) : null}
+            {departureEndpoint ? (
+              <Button
+                label={
+                  arrivalEndpoint
+                    ? `To departure: ${departureEndpoint.title}`
+                    : 'How to get to departure'
+                }
+                variant="secondary"
+                onPress={() => setDirectionsTarget(departureEndpoint)}
+              />
+            ) : null}
+            {arrivalEndpoint ? (
+              <Button
+                label={
+                  departureEndpoint
+                    ? `To arrival: ${arrivalEndpoint.title}`
+                    : 'How to get to arrival'
+                }
+                variant="secondary"
+                onPress={() => setDirectionsTarget(arrivalEndpoint)}
               />
             ) : null}
             {maps ? (
               <Button
                 label="Open in Maps"
-                variant={destinationEndpoint ? 'ghost' : 'secondary'}
+                variant={
+                  defaultEndpoint || departureEndpoint || arrivalEndpoint ? 'ghost' : 'secondary'
+                }
                 onPress={() => void openMaps(maps)}
               />
             ) : null}
@@ -342,12 +381,12 @@ export default function ItemDetail() {
         </View>
       </Sheet>
 
-      {destinationEndpoint ? (
+      {directionsTarget ? (
         <DirectionsSheet
-          visible={directionsOpen}
-          onClose={() => setDirectionsOpen(false)}
-          destination={destinationEndpoint}
-          hotel={stays[0] ?? null}
+          visible={directionsTarget !== null}
+          onClose={() => setDirectionsTarget(null)}
+          destination={directionsTarget}
+          hotel={activeHotel}
           savedPlaces={savedPlaces}
         />
       ) : null}

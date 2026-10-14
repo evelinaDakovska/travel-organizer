@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
-import { useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
   areEndpointsEqual,
@@ -61,8 +61,20 @@ export function DirectionsSheet({
   );
   const [mode, setMode] = useState<TravelMode | null>(null);
   const [pickingOrigin, setPickingOrigin] = useState(false);
+  const [showAllPlaces, setShowAllPlaces] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
 
-  // Sync state if initialOrigin changes or sheet reopens
+  // D6: Reset state whenever a new request opens or visible changes
+  useEffect(() => {
+    if (visible) {
+      setOrigin(initialOrigin ?? { type: 'current_location' });
+      setMode(null);
+      setPickingOrigin(false);
+      setShowAllPlaces(false);
+      setIsOpening(false);
+    }
+  }, [visible, destination, initialOrigin]);
+
   const hotelEndpoint = useMemo(() => {
     if (!hotel) return null;
     return resolveItemEndpoint(hotel, 'origin');
@@ -84,22 +96,46 @@ export function DirectionsSheet({
 
   const destinationAddress = destination.address ?? null;
 
-  const handleOpenMaps = async () => {
-    const url = buildGoogleMapsUrl({
-      origin,
-      destination,
-      travelMode: mode,
-    });
-
-    if (!url) {
-      Alert.alert(
-        'Missing location',
-        'Could not find a valid address or coordinates for this destination.',
-      );
-      return;
+  // D4: Deduplicate saved places and keep all of them accessible
+  const eligiblePlaces = useMemo(() => {
+    const seen = new Set<string>();
+    const list: DirectionEndpoint[] = [];
+    for (const place of savedPlaces) {
+      if (areEndpointsEqual(place, destination)) continue;
+      if (previousEndpoint && areEndpointsEqual(place, previousEndpoint)) continue;
+      if (hotelEndpoint && areEndpointsEqual(place, hotelEndpoint)) continue;
+      const key = formatEndpointQuery(place)?.toLowerCase().trim();
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        list.push(place);
+      }
     }
+    return list;
+  }, [savedPlaces, destination, previousEndpoint, hotelEndpoint]);
+
+  const visiblePlaces = showAllPlaces ? eligiblePlaces : eligiblePlaces.slice(0, 4);
+  const remainingPlacesCount = eligiblePlaces.length - 4;
+
+  const handleOpenMaps = async () => {
+    // D7: Guard against concurrent repeated external opens
+    if (isOpening) return;
+    setIsOpening(true);
 
     try {
+      const url = buildGoogleMapsUrl({
+        origin,
+        destination,
+        travelMode: mode,
+      });
+
+      if (!url) {
+        Alert.alert(
+          'Missing location',
+          'Could not find a valid address or coordinates for this destination.',
+        );
+        return;
+      }
+
       await Linking.openURL(url);
       onClose();
     } catch (error) {
@@ -113,18 +149,28 @@ export function DirectionsSheet({
           {
             text: 'Copy address',
             onPress: () => {
-              void Clipboard.setStringAsync(query);
+              void Clipboard.setStringAsync(query).catch((e) => {
+                console.warn('Clipboard set failed', e);
+              });
             },
           },
         ],
       );
+    } finally {
+      setIsOpening(false);
     }
   };
 
   const copyDestinationText = async () => {
-    const text = formatEndpointQuery(destination) ?? destination.title;
-    await Clipboard.setStringAsync(text);
-    Alert.alert('Copied', 'Destination copied to clipboard.');
+    // D7: Handle copy failures gracefully
+    try {
+      const text = formatEndpointQuery(destination) ?? destination.title;
+      await Clipboard.setStringAsync(text);
+      Alert.alert('Copied', 'Destination copied to clipboard.');
+    } catch (error) {
+      console.warn('Copy destination failed', error);
+      Alert.alert('Could not copy', 'Could not copy destination to clipboard.');
+    }
   };
 
   return (
@@ -171,131 +217,164 @@ export function DirectionsSheet({
               ) : null}
             </>
           ) : (
-            <View style={styles.optionsList}>
-              {/* Option: Current Location */}
-              <Pressable
-                onPress={() => {
-                  setOrigin({ type: 'current_location' });
-                  setPickingOrigin(false);
-                }}
-                style={({ pressed }) => [
-                  styles.optionRow,
-                  origin.type === 'current_location' && { backgroundColor: c.surface },
-                  pressed && { opacity: 0.7 },
-                ]}>
-                <View style={styles.optionContent}>
-                  <Text style={[type.bodyStrong, { color: c.text }]}>Current location</Text>
-                  <Text style={[type.caption, { color: c.textMuted }]}>
-                    Resolved by Google Maps
-                  </Text>
-                </View>
-                {origin.type === 'current_location' ? (
-                  <Icon name="check" size={18} color={c.accentText} />
-                ) : null}
-              </Pressable>
-
-              {/* Option: Previous Stop (if available and distinct from destination) */}
-              {previousEndpoint && !areEndpointsEqual(previousEndpoint, destination) ? (
+            <ScrollView style={styles.optionsScroll} nestedScrollEnabled>
+              <View style={styles.optionsList}>
+                {/* Option: Current Location */}
                 <Pressable
                   onPress={() => {
-                    setOrigin({ type: 'endpoint', endpoint: previousEndpoint });
+                    setOrigin({ type: 'current_location' });
                     setPickingOrigin(false);
                   }}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: origin.type === 'current_location' }}
+                  accessibilityLabel="Current location, resolved by Google Maps"
                   style={({ pressed }) => [
                     styles.optionRow,
-                    origin.type === 'endpoint' &&
-                      areEndpointsEqual(origin.endpoint, previousEndpoint) && {
-                        backgroundColor: c.surface,
-                      },
+                    origin.type === 'current_location' && { backgroundColor: c.surface },
                     pressed && { opacity: 0.7 },
                   ]}>
                   <View style={styles.optionContent}>
-                    <Text style={[type.bodyStrong, { color: c.text }]}>
-                      Previous stop: {previousEndpoint.title}
+                    <Text style={[type.bodyStrong, { color: c.text }]}>Current location</Text>
+                    <Text style={[type.caption, { color: c.textMuted }]}>
+                      Resolved by Google Maps
                     </Text>
-                    {previousEndpoint.address ? (
-                      <Text style={[type.caption, { color: c.textMuted }]} numberOfLines={1}>
-                        {previousEndpoint.address}
-                      </Text>
-                    ) : null}
                   </View>
-                  {origin.type === 'endpoint' &&
-                  areEndpointsEqual(origin.endpoint, previousEndpoint) ? (
+                  {origin.type === 'current_location' ? (
                     <Icon name="check" size={18} color={c.accentText} />
                   ) : null}
                 </Pressable>
-              ) : null}
 
-              {/* Option: Hotel / Base (if available and distinct from destination) */}
-              {hotelEndpoint && !areEndpointsEqual(hotelEndpoint, destination) ? (
-                <Pressable
-                  onPress={() => {
-                    setOrigin({ type: 'endpoint', endpoint: hotelEndpoint });
-                    setPickingOrigin(false);
-                  }}
-                  style={({ pressed }) => [
-                    styles.optionRow,
-                    origin.type === 'endpoint' &&
-                      areEndpointsEqual(origin.endpoint, hotelEndpoint) && {
-                        backgroundColor: c.surface,
-                      },
-                    pressed && { opacity: 0.7 },
-                  ]}>
-                  <View style={styles.optionContent}>
-                    <Text style={[type.bodyStrong, { color: c.text }]}>
-                      Hotel: {hotelEndpoint.title}
-                    </Text>
-                    {hotelEndpoint.address ? (
-                      <Text style={[type.caption, { color: c.textMuted }]} numberOfLines={1}>
-                        {hotelEndpoint.address}
-                      </Text>
-                    ) : null}
-                  </View>
-                  {origin.type === 'endpoint' &&
-                  areEndpointsEqual(origin.endpoint, hotelEndpoint) ? (
-                    <Icon name="check" size={18} color={c.accentText} />
-                  ) : null}
-                </Pressable>
-              ) : null}
-
-              {/* Option: Other saved places */}
-              {savedPlaces
-                .filter(
-                  (sp) =>
-                    !areEndpointsEqual(sp, destination) &&
-                    (!previousEndpoint || !areEndpointsEqual(sp, previousEndpoint)) &&
-                    (!hotelEndpoint || !areEndpointsEqual(sp, hotelEndpoint)),
-                )
-                .slice(0, 4)
-                .map((place, idx) => (
+                {/* Option: Previous Stop (if available and distinct from destination) */}
+                {previousEndpoint && !areEndpointsEqual(previousEndpoint, destination) ? (
                   <Pressable
-                    key={idx}
                     onPress={() => {
-                      setOrigin({ type: 'endpoint', endpoint: place });
+                      setOrigin({ type: 'endpoint', endpoint: previousEndpoint });
                       setPickingOrigin(false);
                     }}
+                    accessibilityRole="radio"
+                    accessibilityState={{
+                      selected:
+                        origin.type === 'endpoint' &&
+                        areEndpointsEqual(origin.endpoint, previousEndpoint),
+                    }}
+                    accessibilityLabel={`Previous stop: ${previousEndpoint.title}${previousEndpoint.address ? ', ' + previousEndpoint.address : ''}`}
                     style={({ pressed }) => [
                       styles.optionRow,
                       origin.type === 'endpoint' &&
-                        areEndpointsEqual(origin.endpoint, place) && {
+                        areEndpointsEqual(origin.endpoint, previousEndpoint) && {
                           backgroundColor: c.surface,
                         },
                       pressed && { opacity: 0.7 },
                     ]}>
                     <View style={styles.optionContent}>
-                      <Text style={[type.bodyStrong, { color: c.text }]}>{place.title}</Text>
-                      {place.address ? (
+                      <Text style={[type.bodyStrong, { color: c.text }]}>
+                        Previous stop: {previousEndpoint.title}
+                      </Text>
+                      {previousEndpoint.address ? (
                         <Text style={[type.caption, { color: c.textMuted }]} numberOfLines={1}>
-                          {place.address}
+                          {previousEndpoint.address}
                         </Text>
                       ) : null}
                     </View>
-                    {origin.type === 'endpoint' && areEndpointsEqual(origin.endpoint, place) ? (
+                    {origin.type === 'endpoint' &&
+                    areEndpointsEqual(origin.endpoint, previousEndpoint) ? (
                       <Icon name="check" size={18} color={c.accentText} />
                     ) : null}
                   </Pressable>
-                ))}
-            </View>
+                ) : null}
+
+                {/* Option: Hotel / Base (if available and distinct from destination) */}
+                {hotelEndpoint && !areEndpointsEqual(hotelEndpoint, destination) ? (
+                  <Pressable
+                    onPress={() => {
+                      setOrigin({ type: 'endpoint', endpoint: hotelEndpoint });
+                      setPickingOrigin(false);
+                    }}
+                    accessibilityRole="radio"
+                    accessibilityState={{
+                      selected:
+                        origin.type === 'endpoint' &&
+                        areEndpointsEqual(origin.endpoint, hotelEndpoint),
+                    }}
+                    accessibilityLabel={`Hotel: ${hotelEndpoint.title}${hotelEndpoint.address ? ', ' + hotelEndpoint.address : ''}`}
+                    style={({ pressed }) => [
+                      styles.optionRow,
+                      origin.type === 'endpoint' &&
+                        areEndpointsEqual(origin.endpoint, hotelEndpoint) && {
+                          backgroundColor: c.surface,
+                        },
+                      pressed && { opacity: 0.7 },
+                    ]}>
+                    <View style={styles.optionContent}>
+                      <Text style={[type.bodyStrong, { color: c.text }]}>
+                        Hotel: {hotelEndpoint.title}
+                      </Text>
+                      {hotelEndpoint.address ? (
+                        <Text style={[type.caption, { color: c.textMuted }]} numberOfLines={1}>
+                          {hotelEndpoint.address}
+                        </Text>
+                      ) : null}
+                    </View>
+                    {origin.type === 'endpoint' &&
+                    areEndpointsEqual(origin.endpoint, hotelEndpoint) ? (
+                      <Icon name="check" size={18} color={c.accentText} />
+                    ) : null}
+                  </Pressable>
+                ) : null}
+
+                {/* Option: Saved places (D4) */}
+                {visiblePlaces.map((place) => {
+                  const isSelected =
+                    origin.type === 'endpoint' && areEndpointsEqual(origin.endpoint, place);
+                  const stableKey = `${place.title}:${place.address ?? ''}:${place.latitude ?? ''}:${place.longitude ?? ''}`;
+                  const fullLabel = [place.title, place.address].filter(Boolean).join(', ');
+
+                  return (
+                    <Pressable
+                      key={stableKey}
+                      onPress={() => {
+                        setOrigin({ type: 'endpoint', endpoint: place });
+                        setPickingOrigin(false);
+                      }}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: isSelected }}
+                      accessibilityLabel={fullLabel}
+                      style={({ pressed }) => [
+                        styles.optionRow,
+                        isSelected && { backgroundColor: c.surface },
+                        pressed && { opacity: 0.7 },
+                      ]}>
+                      <View style={styles.optionContent}>
+                        <Text style={[type.bodyStrong, { color: c.text }]}>{place.title}</Text>
+                        {place.address ? (
+                          <Text style={[type.caption, { color: c.textMuted }]} numberOfLines={1}>
+                            {place.address}
+                          </Text>
+                        ) : null}
+                      </View>
+                      {isSelected ? <Icon name="check" size={18} color={c.accentText} /> : null}
+                    </Pressable>
+                  );
+                })}
+
+                {/* Choose another place button when > 4 places exist */}
+                {!showAllPlaces && remainingPlacesCount > 0 ? (
+                  <Pressable
+                    onPress={() => setShowAllPlaces(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Choose another place, ${remainingPlacesCount} more available`}
+                    style={({ pressed }) => [
+                      styles.optionRow,
+                      styles.moreRow,
+                      pressed && { opacity: 0.7 },
+                    ]}>
+                    <Text style={[type.label, { color: c.accentText }]}>
+                      Choose another place ({remainingPlacesCount} more)
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </ScrollView>
           )}
         </View>
 
@@ -360,6 +439,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 2,
   },
+  optionsScroll: {
+    maxHeight: 240,
+  },
   optionsList: {
     gap: spacing.xs,
     marginTop: spacing.xs,
@@ -372,6 +454,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     borderRadius: radius.sm,
     minHeight: touchTarget,
+  },
+  moreRow: {
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
   },
   optionContent: {
     flex: 1,
