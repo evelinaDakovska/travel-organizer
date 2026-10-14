@@ -91,7 +91,10 @@ export function baseTonight<T extends TimelineItem>(items: readonly T[], today: 
   });
   covering.sort(
     (a, b) =>
-      dayKey(b.start!).localeCompare(dayKey(a.start!)) || a.title.localeCompare(b.title),
+      toInstant(b.start!).localeCompare(toInstant(a.start!)) ||
+      (b.end ? toInstant(b.end) : '').localeCompare(a.end ? toInstant(a.end) : '') ||
+      a.title.localeCompare(b.title) ||
+      a.id.localeCompare(b.id),
   );
   return covering[0] ?? null;
 }

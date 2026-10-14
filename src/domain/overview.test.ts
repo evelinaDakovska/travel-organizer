@@ -86,6 +86,30 @@ describe('baseTonight', () => {
     expect(baseTonight([hotel, cabin], '2026-11-21')?.id).toBe('cabin');
   });
 
+  it('takes the latest started hotel on the same date regardless of alphabetical title (C2)', () => {
+    const hotelA = {
+      ...item('a-hotel', { kind: 'stay', start: at('2026-11-21T10:00'), end: at('2026-11-24T11:00') }),
+      title: 'A Hotel',
+    };
+    const hotelZ = {
+      ...item('z-hotel', { kind: 'stay', start: at('2026-11-21T16:00'), end: at('2026-11-24T11:00') }),
+      title: 'Z Hotel',
+    };
+    expect(baseTonight([hotelA, hotelZ], '2026-11-21')?.id).toBe('z-hotel');
+  });
+
+  it('breaks ties on identical start dates with end instant then title', () => {
+    const stayShort = {
+      ...item('stay-short', { kind: 'stay', start: at('2026-11-21'), end: at('2026-11-22') }),
+      title: 'Short Stay',
+    };
+    const stayLong = {
+      ...item('stay-long', { kind: 'stay', start: at('2026-11-21'), end: at('2026-11-24') }),
+      title: 'Long Stay',
+    };
+    expect(baseTonight([stayShort, stayLong], '2026-11-21')?.id).toBe('stay-long');
+  });
+
   it('covers one night for a stay with no end, and none for an undated, idea or cancelled one', () => {
     const night = item('night', { kind: 'stay', start: at('2026-11-20') });
     expect(baseTonight([night], '2026-11-20')?.id).toBe('night');
