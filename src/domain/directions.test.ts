@@ -1,6 +1,7 @@
 import {
   areEndpointsEqual,
   buildGoogleMapsUrl,
+  findStayForDay,
   findTimelineConnectors,
   findTripSavedPlaces,
   findTripStays,
@@ -10,7 +11,7 @@ import {
   type DirectionEndpoint,
   type DirectionsRequest,
 } from './directions';
-import type { TimelineEntry } from './timeline';
+import { timelineEntries, type TimelineEntry } from './timeline';
 import type { TripItem } from './tripItem';
 
 describe('validateCoordinates', () => {
@@ -201,6 +202,43 @@ describe('buildGoogleMapsUrl', () => {
     };
     expect(buildGoogleMapsUrl(req)).toBeNull();
   });
+
+  it('rejects invalid explicit origins instead of silently converting them to current location (D5)', () => {
+    // Blank title and address in endpoint
+    const blankOriginReq: DirectionsRequest = {
+      origin: { type: 'endpoint', endpoint: { title: '', address: null } },
+      destination: { title: 'SantaPark' },
+    };
+    expect(buildGoogleMapsUrl(blankOriginReq)).toBeNull();
+
+    // Whitespace only
+    const whitespaceReq: DirectionsRequest = {
+      origin: { type: 'endpoint', endpoint: { title: '   ' } },
+      destination: { title: 'SantaPark' },
+    };
+    expect(buildGoogleMapsUrl(whitespaceReq)).toBeNull();
+  });
+
+  it('correctly formats coordinates including zero (0,0 / Null Island) (D5)', () => {
+    const zeroCoordsReq: DirectionsRequest = {
+      origin: { type: 'endpoint', endpoint: { title: 'Null Island', latitude: 0, longitude: 0 } },
+      destination: { title: 'Greenwich', latitude: 51.48, longitude: 0 },
+    };
+    const url = buildGoogleMapsUrl(zeroCoordsReq);
+    expect(url).toBeDefined();
+    const parsed = new URL(url!);
+    expect(parsed.searchParams.get('origin')).toBe('0,0');
+    expect(parsed.searchParams.get('destination')).toBe('51.48,0');
+  });
+
+  it('rejects URLs that exceed the 2048 character limit (D5)', () => {
+    const longTitle = 'A'.repeat(2500);
+    const longReq: DirectionsRequest = {
+      origin: { type: 'current_location' },
+      destination: { title: longTitle },
+    };
+    expect(buildGoogleMapsUrl(longReq)).toBeNull();
+  });
 });
 
 describe('resolveItemEndpoint', () => {
@@ -241,7 +279,7 @@ describe('resolveItemEndpoint', () => {
     });
   });
 
-  it('resolves transport departure as destination (incoming)', () => {
+  it('resolves transport departure as destination (incoming) for full journey', () => {
     const flight: TripItem = {
       ...dummyItem,
       id: 'flight-1',
@@ -250,11 +288,11 @@ describe('resolveItemEndpoint', () => {
       title: 'Sofia to Munich',
       details: { from: 'Sofia Airport', to: 'Munich Airport' },
     };
-    const incoming = resolveItemEndpoint(flight, 'destination');
+    const incoming = resolveItemEndpoint(flight, 'destination', 'full');
     expect(incoming?.title).toBe('Sofia Airport');
   });
 
-  it('resolves transport arrival as origin (outgoing)', () => {
+  it('resolves transport arrival as origin (outgoing) for full journey', () => {
     const flight: TripItem = {
       ...dummyItem,
       id: 'flight-1',
@@ -263,8 +301,54 @@ describe('resolveItemEndpoint', () => {
       title: 'Sofia to Munich',
       details: { from: 'Sofia Airport', to: 'Munich Airport' },
     };
-    const outgoing = resolveItemEndpoint(flight, 'origin');
+    const outgoing = resolveItemEndpoint(flight, 'origin', 'full');
     expect(outgoing?.title).toBe('Munich Airport');
+  });
+
+  it('resolves overnight transport correctly based on timeline entry role (D1)', () => {
+    const sleeperTrain: TripItem = {
+      ...dummyItem,
+      id: 'train-1',
+      kind: 'transport',
+      subkind: 'train',
+      title: 'Santa Claus Express',
+      details: { from: 'Helsinki Central Station', to: 'Rovaniemi Railway Station' },
+    };
+
+    // Day 2 arrival entry: approaching arrival should resolve to Rovaniemi, NOT Helsinki!
+    const approachingArrival = resolveItemEndpoint(sleeperTrain, 'destination', 'end');
+    expect(approachingArrival?.title).toBe('Rovaniemi Railway Station');
+
+    // Day 2 arrival entry: departing from arrival
+    const leavingArrival = resolveItemEndpoint(sleeperTrain, 'origin', 'end');
+    expect(leavingArrival?.title).toBe('Rovaniemi Railway Station');
+
+    // Day 1 departure entry: approaching departure resolves to Helsinki
+    const approachingDeparture = resolveItemEndpoint(sleeperTrain, 'destination', 'start');
+    expect(approachingDeparture?.title).toBe('Helsinki Central Station');
+
+    // Day 1 departure entry: departing from departure
+    const leavingDeparture = resolveItemEndpoint(sleeperTrain, 'origin', 'start');
+    expect(leavingDeparture?.title).toBe('Helsinki Central Station');
+  });
+
+  it('resolves car rental pickup and return based on timeline entry role (D1)', () => {
+    const carRental: TripItem = {
+      ...dummyItem,
+      id: 'car-1',
+      kind: 'transport',
+      subkind: 'car',
+      title: 'Europcar Rental',
+      details: { from: 'Rovaniemi Airport Pickup', to: 'Rovaniemi Downtown Drop-off' },
+    };
+
+    // Pickup entry
+    const pickup = resolveItemEndpoint(carRental, 'destination', 'start');
+    expect(pickup?.title).toBe('Rovaniemi Airport Pickup');
+
+    // Return entry
+    const returnEndpoint = resolveItemEndpoint(carRental, 'destination', 'end');
+    expect(returnEndpoint?.title).toBe('Rovaniemi Downtown Drop-off');
   });
 
   it('returns null when item has no location at all', () => {
@@ -274,6 +358,7 @@ describe('resolveItemEndpoint', () => {
       address: null,
       latitude: null,
       longitude: null,
+      details: null,
     };
     expect(resolveItemEndpoint(itemWithoutLoc, 'destination')).toBeNull();
   });
@@ -474,9 +559,176 @@ describe('findTimelineConnectors', () => {
 
     expect(findTimelineConnectors(entries)).toHaveLength(0);
   });
+
+  it('allows connectors after multi-day hotel check-in on the same day (D2)', () => {
+    // Hotel check-in 21 Nov 15:00, checkout 24 Nov 11:00
+    const hotelCheckIn: TripItem = {
+      ...baseItem,
+      id: 'hotel-1',
+      kind: 'stay',
+      subkind: 'hotel',
+      title: 'Arctic TreeHouse Hotel',
+      locationName: 'Arctic TreeHouse Hotel',
+      latitude: 66.54,
+      longitude: 25.84,
+      start: { local: '2026-11-21T15:00', precision: 'time', tz: 'Europe/Helsinki' },
+      end: { local: '2026-11-24T11:00', precision: 'time', tz: 'Europe/Helsinki' },
+    };
+    // Dinner 21 Nov 19:00
+    const dinner: TripItem = {
+      ...baseItem,
+      id: 'dinner-1',
+      kind: 'food',
+      subkind: 'restaurant',
+      title: 'Restaurant Nili',
+      locationName: 'Restaurant Nili',
+      latitude: 66.50,
+      longitude: 25.73,
+      start: { local: '2026-11-21T19:00', precision: 'time', tz: 'Europe/Helsinki' },
+      end: { local: '2026-11-21T21:00', precision: 'time', tz: 'Europe/Helsinki' },
+    };
+
+    const entries = [
+      {
+        key: 'hotel-1',
+        item: hotelCheckIn,
+        role: 'start' as const,
+        moment: hotelCheckIn.start!,
+        instant: '2026-11-21T13:00:00Z',
+        time: '15:00',
+      },
+      {
+        key: 'dinner-1',
+        item: dinner,
+        role: 'full' as const,
+        moment: dinner.start!,
+        instant: '2026-11-21T17:00:00Z',
+        time: '19:00',
+      },
+    ];
+
+    const connectors = findTimelineConnectors(entries);
+    expect(connectors).toHaveLength(1);
+    expect(connectors[0].fromItem.id).toBe('hotel-1');
+    expect(connectors[0].toItem.id).toBe('dinner-1');
+    expect(connectors[0].origin.title).toBe('Arctic TreeHouse Hotel');
+    expect(connectors[0].destination.title).toBe('Restaurant Nili');
+  });
+
+  it('allows connectors after car rental pickup to next activity (D2)', () => {
+    // Car rental 21 Nov 08:00 to 24 Nov 18:00
+    const carRental: TripItem = {
+      ...baseItem,
+      id: 'car-1',
+      kind: 'transport',
+      subkind: 'car',
+      title: 'Rental Car',
+      details: { from: 'Rovaniemi Airport', to: 'Rovaniemi Airport' },
+      start: { local: '2026-11-21T08:00', precision: 'time', tz: 'Europe/Helsinki' },
+      end: { local: '2026-11-24T18:00', precision: 'time', tz: 'Europe/Helsinki' },
+    };
+    const safari: TripItem = {
+      ...baseItem,
+      id: 'safari-1',
+      kind: 'activity',
+      title: 'Husky Safari',
+      locationName: 'Bearhill Husky',
+      latitude: 66.6,
+      longitude: 25.9,
+      start: { local: '2026-11-21T10:00', precision: 'time', tz: 'Europe/Helsinki' },
+      end: { local: '2026-11-21T12:00', precision: 'time', tz: 'Europe/Helsinki' },
+    };
+
+    const entries = [
+      {
+        key: 'car-1',
+        item: carRental,
+        role: 'start' as const,
+        moment: carRental.start!,
+        instant: '2026-11-21T06:00:00Z',
+        time: '08:00',
+      },
+      {
+        key: 'safari-1',
+        item: safari,
+        role: 'full' as const,
+        moment: safari.start!,
+        instant: '2026-11-21T08:00:00Z',
+        time: '10:00',
+      },
+    ];
+
+    const connectors = findTimelineConnectors(entries);
+    expect(connectors).toHaveLength(1);
+    expect(connectors[0].origin.title).toBe('Rovaniemi Airport');
+    expect(connectors[0].destination.title).toBe('Bearhill Husky');
+  });
+
+  it('connects overnight train arrival to next stop using real timelineEntries (D1 & D2)', () => {
+    const sleeperTrain: TripItem = {
+      ...baseItem,
+      id: 'train-1',
+      kind: 'transport',
+      subkind: 'train',
+      title: 'Overnight Sleeper',
+      details: { from: 'Helsinki Central Station', to: 'Rovaniemi Railway Station' },
+      start: { local: '2026-11-20T19:27', precision: 'time', tz: 'Europe/Helsinki' },
+      end: { local: '2026-11-21T07:40', precision: 'time', tz: 'Europe/Helsinki' },
+    };
+    const breakfast: TripItem = {
+      ...baseItem,
+      id: 'breakfast-1',
+      kind: 'food',
+      title: 'Cafe Rovaniemi',
+      locationName: 'Cafe Rovaniemi',
+      start: { local: '2026-11-21T08:30', precision: 'time', tz: 'Europe/Helsinki' },
+      end: { local: '2026-11-21T09:30', precision: 'time', tz: 'Europe/Helsinki' },
+    };
+
+    // Use real timelineEntries() output
+    const allEntries = timelineEntries([sleeperTrain, breakfast]);
+    // Filter to day 2 (2026-11-21)
+    const day2Entries = allEntries.filter((e) => e.moment.local.startsWith('2026-11-21'));
+
+    const connectors = findTimelineConnectors(day2Entries);
+    expect(connectors).toHaveLength(1);
+    expect(connectors[0].origin.title).toBe('Rovaniemi Railway Station');
+    expect(connectors[0].destination.title).toBe('Cafe Rovaniemi');
+  });
+
+  it('connects preceding activity to arrival location using real timelineEntries (D1)', () => {
+    const earlyWalk: TripItem = {
+      ...baseItem,
+      id: 'walk-1',
+      kind: 'activity',
+      title: 'Sunrise Walk',
+      locationName: 'Lainio River Bridge',
+      start: { local: '2026-11-21T06:30', precision: 'time', tz: 'Europe/Helsinki' },
+      end: { local: '2026-11-21T07:15', precision: 'time', tz: 'Europe/Helsinki' },
+    };
+    const sleeperTrain: TripItem = {
+      ...baseItem,
+      id: 'train-1',
+      kind: 'transport',
+      subkind: 'train',
+      title: 'Overnight Sleeper',
+      details: { from: 'Helsinki Central Station', to: 'Rovaniemi Railway Station' },
+      start: { local: '2026-11-20T19:27', precision: 'time', tz: 'Europe/Helsinki' },
+      end: { local: '2026-11-21T07:40', precision: 'time', tz: 'Europe/Helsinki' },
+    };
+
+    const allEntries = timelineEntries([earlyWalk, sleeperTrain]);
+    const day2Entries = allEntries.filter((e) => e.moment.local.startsWith('2026-11-21'));
+
+    const connectors = findTimelineConnectors(day2Entries);
+    expect(connectors).toHaveLength(1);
+    expect(connectors[0].origin.title).toBe('Lainio River Bridge');
+    // Destination must resolve to Rovaniemi, NOT Helsinki!
+    expect(connectors[0].destination.title).toBe('Rovaniemi Railway Station');
+  });
 });
 
-describe('findTripStays and findTripSavedPlaces', () => {
+describe('findTripStays, findStayForDay and findTripSavedPlaces', () => {
   const stayItem: TripItem = {
     id: 'stay-1',
     tripId: 't1',
@@ -485,8 +737,8 @@ describe('findTripStays and findTripSavedPlaces', () => {
     status: 'confirmed',
     priority: null,
     title: 'Hotel Sky Ounasvaara',
-    start: null,
-    end: null,
+    start: { local: '2026-11-20T15:00', precision: 'time', tz: 'Europe/Helsinki' },
+    end: { local: '2026-11-22T11:00', precision: 'time', tz: 'Europe/Helsinki' },
     startTzOverride: null,
     endTzOverride: null,
     completedAt: null,
@@ -515,10 +767,49 @@ describe('findTripStays and findTripSavedPlaces', () => {
     longitude: 25.84,
   };
 
-  it('finds confirmed stays with locations', () => {
-    const stays = findTripStays([stayItem, activityItem]);
-    expect(stays).toHaveLength(1);
-    expect(stays[0].id).toBe('stay-1');
+  it('finds confirmed stays with locations, including coordinate-only stays (D3)', () => {
+    const coordOnlyStay: TripItem = {
+      ...stayItem,
+      id: 'coord-stay',
+      locationName: null,
+      address: null,
+      latitude: 66.51,
+      longitude: 25.71,
+    };
+    const stays = findTripStays([stayItem, activityItem, coordOnlyStay]);
+    expect(stays).toHaveLength(2);
+    expect(stays.map((s) => s.id)).toEqual(['stay-1', 'coord-stay']);
+  });
+
+  it('resolves stay matching route day in multi-city trip and transition day (D3)', () => {
+    const hotelHelsinki: TripItem = {
+      ...stayItem,
+      id: 'hotel-helsinki',
+      title: 'Hotel Helsinki',
+      start: { local: '2026-11-20T15:00', precision: 'time', tz: 'Europe/Helsinki' },
+      end: { local: '2026-11-22T11:00', precision: 'time', tz: 'Europe/Helsinki' },
+    };
+    const hotelRovaniemi: TripItem = {
+      ...stayItem,
+      id: 'hotel-rovaniemi',
+      title: 'Hotel Rovaniemi',
+      start: { local: '2026-11-22T15:00', precision: 'time', tz: 'Europe/Helsinki' },
+      end: { local: '2026-11-25T11:00', precision: 'time', tz: 'Europe/Helsinki' },
+    };
+    const stays = [hotelHelsinki, hotelRovaniemi];
+
+    // Day 21 Nov: Hotel Helsinki
+    expect(findStayForDay(stays, '2026-11-21')?.id).toBe('hotel-helsinki');
+
+    // Day 22 Nov: Check-out Helsinki / Check-in Rovaniemi transition -> Rovaniemi takes precedence
+    expect(findStayForDay(stays, '2026-11-22')?.id).toBe('hotel-rovaniemi');
+
+    // Day 23 Nov: Hotel Rovaniemi
+    expect(findStayForDay(stays, '2026-11-23')?.id).toBe('hotel-rovaniemi');
+
+    // Before or after trip
+    expect(findStayForDay(stays, '2026-11-19')).toBeNull();
+    expect(findStayForDay(stays, '2026-11-26')).toBeNull();
   });
 
   it('finds unique saved places across trip', () => {
