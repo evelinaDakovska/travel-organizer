@@ -330,6 +330,75 @@ describe('the backup round trip', () => {
     expect(await readAll(target)).toEqual(await readAll(source));
   });
 
+  it('still imports a format-3 backup, defaulting missing classification to unspecified', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    const current = JSON.parse(JSON.stringify(await documentFrom(source)));
+
+    // Strip classification from travellers and tripTravellers as in format 3
+    const formatThreeTables = {
+      ...current.tables,
+      travellers: current.tables.travellers.map(
+        ({ classification: _c, ...rest }: Record<string, unknown>) => rest,
+      ),
+      tripTravellers: current.tables.tripTravellers.map(
+        ({ classification: _c, ...rest }: Record<string, unknown>) => rest,
+      ),
+    };
+
+    const parsed = parseExportDocument({ ...current, formatVersion: 3, tables: formatThreeTables });
+    if (!parsed.ok) throw new Error(parsed.reason);
+    const target = fresh();
+    await applyImport(target, planImport(parsed.document, [], 'merge', ['media/r1.pdf']));
+
+    const targetTables = await readAll(target);
+    expect(targetTables.travellers.every((t: any) => t.classification === 'unspecified')).toBe(true);
+    expect(targetTables.tripTravellers.every((tt: any) => tt.classification === 'unspecified')).toBe(true);
+  });
+
+  it('preserves classification and trip overrides in a format-4 backup round trip', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+
+    // Set specific classifications: ev is adult, mia is child
+    run(source, `UPDATE travellers SET classification = 'adult' WHERE id = 'ev'`);
+    run(source, `UPDATE travellers SET classification = 'child' WHERE id = 'mia'`);
+    // And on trip t1, mia has an override to adult (e.g. booked as adult ticket)
+    run(source, `UPDATE trip_travellers SET classification = 'adult' WHERE trip_id = 't1' AND traveller_id = 'mia'`);
+
+    const target = fresh();
+    await restoreInto(target, source, 'merge');
+
+    const targetTables = await readAll(target);
+    expect(targetTables.travellers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'ev', classification: 'adult' }),
+        expect.objectContaining({ id: 'mia', classification: 'child' }),
+      ]),
+    );
+    expect(targetTables.tripTravellers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ trip_id: 't1', traveller_id: 'ev', classification: 'unspecified' }),
+        expect.objectContaining({ trip_id: 't1', traveller_id: 'mia', classification: 'adult' }),
+      ]),
+    );
+  });
+
+  it('rejects a backup from a future format with a clear message', async () => {
+    const source = fresh();
+    seed(source);
+    const current = JSON.parse(JSON.stringify(await documentFrom(source)));
+    const futureDoc = { ...current, formatVersion: 5 };
+
+    const parsed = parseExportDocument(futureDoc);
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) {
+      expect(parsed.reason).toContain('newer version');
+    }
+  });
+
   it('survives being restored twice, leaving one copy rather than two', async () => {
     const source = fresh();
     seed(source);

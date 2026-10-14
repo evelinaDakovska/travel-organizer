@@ -6,13 +6,14 @@
 import { z } from 'zod';
 
 import { isStoredPath, missingFiles } from './resource';
+import { travellerClassificationSchema } from './traveller';
 
 /**
  * 2 added expenses, payments and `resources.expense_id` (N5); 3 added travellers, lists and
- * templates (Fieldbook, migration 003). Formats 1 and 2 still import: their missing tables are
- * empty.
+ * templates (Fieldbook, migration 003); 4 added traveller classification (migration 004). Formats
+ * 1, 2 and 3 still import: their missing tables or columns default safely.
  */
-export const EXPORT_FORMAT_VERSION = 3;
+export const EXPORT_FORMAT_VERSION = 4;
 export const EXPORT_APP = 'travel-organizer';
 
 const nullableString = z.string().nullable();
@@ -126,12 +127,14 @@ const travellerRowSchema = z.object({
   sort_order: z.number(),
   created_at: z.string(),
   updated_at: z.string(),
+  classification: travellerClassificationSchema.default('unspecified'),
 });
 
 const tripTravellerRowSchema = z.object({
   trip_id: z.string().min(1),
   traveller_id: z.string().min(1),
   sort_order: z.number(),
+  classification: travellerClassificationSchema.default('unspecified'),
 });
 
 const itemParticipantRowSchema = z.object({

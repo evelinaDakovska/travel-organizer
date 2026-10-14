@@ -313,12 +313,16 @@ SELECT * FROM travellers ORDER BY sort_order, name
 `;
 
 export const INSERT_TRAVELLER = `
-INSERT INTO travellers (id, name, sort_order, created_at, updated_at)
-VALUES ($id, $name, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM travellers), $now, $now)
+INSERT INTO travellers (id, name, sort_order, classification, created_at, updated_at)
+VALUES ($id, $name, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM travellers), COALESCE($classification, 'unspecified'), $now, $now)
 `;
 
 export const RENAME_TRAVELLER = `
 UPDATE travellers SET name = $name, updated_at = $now WHERE id = $id
+`;
+
+export const UPDATE_TRAVELLER_CLASSIFICATION = `
+UPDATE travellers SET classification = $classification, updated_at = $now WHERE id = $id
 `;
 
 /** Where a profile is used: the trips it goes on, and how many items list it. */
@@ -332,15 +336,21 @@ SELECT COUNT(*) AS n FROM item_participants WHERE traveller_id = $id
 `;
 
 export const SELECT_TRIP_TRAVELLERS = `
-SELECT p.* FROM trip_travellers tt JOIN travellers p ON p.id = tt.traveller_id
+SELECT p.id, p.name, tt.sort_order, tt.classification, p.created_at, p.updated_at
+  FROM trip_travellers tt JOIN travellers p ON p.id = tt.traveller_id
  WHERE tt.trip_id = $tripId ORDER BY tt.sort_order, p.name
 `;
 
 export const INSERT_TRIP_TRAVELLER = `
-INSERT INTO trip_travellers (trip_id, traveller_id, sort_order)
+INSERT INTO trip_travellers (trip_id, traveller_id, sort_order, classification)
 VALUES ($tripId, $travellerId,
-        (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM trip_travellers WHERE trip_id = $tripId))
+        (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM trip_travellers WHERE trip_id = $tripId),
+        COALESCE($classification, (SELECT classification FROM travellers WHERE id = $travellerId), 'unspecified'))
 ON CONFLICT (trip_id, traveller_id) DO NOTHING
+`;
+
+export const UPDATE_TRIP_TRAVELLER_CLASSIFICATION = `
+UPDATE trip_travellers SET classification = $classification WHERE trip_id = $tripId AND traveller_id = $travellerId
 `;
 
 /** Leaving a trip takes them off its items too: otherwise the profile could never be deleted. */
@@ -460,9 +470,9 @@ export const EXPORT_COLUMNS = {
              'paid_by', 'split', 'created_at', 'updated_at'],
   payments: ['id', 'trip_id', 'from_name', 'to_name', 'amount', 'currency', 'created_at'],
   settings: ['key', 'value'],
-  // Format 3 (Fieldbook, migration 003).
-  travellers: ['id', 'name', 'sort_order', 'created_at', 'updated_at'],
-  trip_travellers: ['trip_id', 'traveller_id', 'sort_order'],
+  // Format 3 (Fieldbook, migration 003). Format 4 adds classification (migration 004).
+  travellers: ['id', 'name', 'sort_order', 'created_at', 'updated_at', 'classification'],
+  trip_travellers: ['trip_id', 'traveller_id', 'sort_order', 'classification'],
   item_participants: ['item_id', 'traveller_id'],
   lists: ['id', 'trip_id', 'kind', 'name', 'source_list_id', 'sort_order', 'created_at',
           'updated_at'],

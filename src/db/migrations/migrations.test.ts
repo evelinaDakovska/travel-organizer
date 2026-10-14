@@ -213,4 +213,37 @@ describe('CHECK constraints', () => {
       ).run(tripId, now, now),
     ).not.toThrow();
   });
+
+  it('defaults classification to unspecified and enforces CHECK on travellers', () => {
+    db.prepare(
+      `INSERT INTO travellers (id, name, created_at, updated_at) VALUES ('tr-1', 'Alice', ?, ?)`,
+    ).run(now, now);
+    const row = db.prepare(`SELECT classification FROM travellers WHERE id = 'tr-1'`).get() as any;
+    expect(row.classification).toBe('unspecified');
+
+    db.prepare(`UPDATE travellers SET classification = 'adult' WHERE id = 'tr-1'`).run();
+    db.prepare(`UPDATE travellers SET classification = 'child' WHERE id = 'tr-1'`).run();
+
+    expect(() =>
+      db.prepare(`UPDATE travellers SET classification = 'teen' WHERE id = 'tr-1'`).run(),
+    ).toThrow(/CHECK constraint failed/);
+  });
+
+  it('defaults classification to unspecified and enforces CHECK on trip_travellers', () => {
+    db.prepare(
+      `INSERT INTO travellers (id, name, created_at, updated_at) VALUES ('tr-2', 'Bob', ?, ?)`,
+    ).run(now, now);
+    db.prepare(
+      `INSERT INTO trip_travellers (trip_id, traveller_id) VALUES (?, 'tr-2')`,
+    ).run(tripId);
+    const row = db.prepare(`SELECT classification FROM trip_travellers WHERE trip_id = ? AND traveller_id = 'tr-2'`).get(tripId) as any;
+    expect(row.classification).toBe('unspecified');
+
+    db.prepare(`UPDATE trip_travellers SET classification = 'adult' WHERE trip_id = ? AND traveller_id = 'tr-2'`).run(tripId);
+    db.prepare(`UPDATE trip_travellers SET classification = 'child' WHERE trip_id = ? AND traveller_id = 'tr-2'`).run(tripId);
+
+    expect(() =>
+      db.prepare(`UPDATE trip_travellers SET classification = 'invalid' WHERE trip_id = ? AND traveller_id = 'tr-2'`).run(tripId),
+    ).toThrow(/CHECK constraint failed/);
+  });
 });

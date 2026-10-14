@@ -8,7 +8,12 @@ import {
   type Traveller,
 } from './traveller';
 
-const profile = (id: string, name: string): Traveller => ({ id, name, sortOrder: 0 });
+const profile = (id: string, name: string): Traveller => ({
+  id,
+  name,
+  sortOrder: 0,
+  classification: 'unspecified',
+});
 
 describe('namesLine', () => {
   it('reads like a sentence', () => {
@@ -87,7 +92,7 @@ describe('tripPeopleLine (C1)', () => {
 });
 
 describe('parseTravellerRow', () => {
-  it('keeps the name exactly as stored', () => {
+  it('keeps the name and classification as stored', () => {
     expect(
       parseTravellerRow({
         id: 'p1',
@@ -96,7 +101,29 @@ describe('parseTravellerRow', () => {
         created_at: 'x',
         updated_at: 'x',
       }),
-    ).toEqual({ id: 'p1', name: 'Мия', sortOrder: 2 });
+    ).toEqual({ id: 'p1', name: 'Мия', sortOrder: 2, classification: 'unspecified' });
+
+    expect(
+      parseTravellerRow({
+        id: 'p2',
+        name: 'Adult Person',
+        sort_order: 0,
+        classification: 'adult',
+        created_at: 'x',
+        updated_at: 'x',
+      }),
+    ).toEqual({ id: 'p2', name: 'Adult Person', sortOrder: 0, classification: 'adult' });
+
+    expect(
+      parseTravellerRow({
+        id: 'p3',
+        name: 'Child Person',
+        sort_order: 1,
+        classification: 'child',
+        created_at: 'x',
+        updated_at: 'x',
+      }),
+    ).toEqual({ id: 'p3', name: 'Child Person', sortOrder: 1, classification: 'child' });
   });
 });
 

@@ -8,7 +8,17 @@ import { z } from 'zod';
 
 import { listPhrase } from './format';
 
-export type Traveller = { id: string; name: string; sortOrder: number };
+export const TRAVELLER_CLASSIFICATIONS = ['adult', 'child', 'unspecified'] as const;
+export type TravellerClassification = (typeof TRAVELLER_CLASSIFICATIONS)[number];
+
+export const travellerClassificationSchema = z.enum(TRAVELLER_CLASSIFICATIONS);
+
+export type Traveller = {
+  id: string;
+  name: string;
+  sortOrder: number;
+  classification: TravellerClassification;
+};
 
 export type TravellerRow = {
   id: string;
@@ -16,10 +26,15 @@ export type TravellerRow = {
   sort_order: number;
   created_at: string;
   updated_at: string;
+  classification?: string | null;
 };
 
 export function parseTravellerRow(row: TravellerRow): Traveller {
-  return { id: row.id, name: row.name, sortOrder: row.sort_order };
+  const classification =
+    row.classification === 'adult' || row.classification === 'child'
+      ? row.classification
+      : 'unspecified';
+  return { id: row.id, name: row.name, sortOrder: row.sort_order, classification };
 }
 
 export const travellerNameSchema = z

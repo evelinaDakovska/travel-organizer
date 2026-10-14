@@ -14,8 +14,15 @@ import {
   SELECT_TRAVELLER_TRIPS,
   SELECT_TRAVELLERS,
   SELECT_TRIP_TRAVELLERS,
+  UPDATE_TRAVELLER_CLASSIFICATION,
+  UPDATE_TRIP_TRAVELLER_CLASSIFICATION,
 } from '../db/queries';
-import { parseTravellerRow, type Traveller, type TravellerRow } from '../domain/traveller';
+import {
+  parseTravellerRow,
+  type Traveller,
+  type TravellerClassification,
+  type TravellerRow,
+} from '../domain/traveller';
 
 export const TRAVELLER_TABLES = ['travellers', 'trip_travellers', 'item_participants'] as const;
 
@@ -24,10 +31,31 @@ export async function listTravellers(db: SQLiteDatabase): Promise<Traveller[]> {
   return rows.map(parseTravellerRow);
 }
 
-export async function createTraveller(db: SQLiteDatabase, name: string): Promise<string> {
+export async function createTraveller(
+  db: SQLiteDatabase,
+  name: string,
+  classification: TravellerClassification = 'unspecified',
+): Promise<string> {
   const id = randomUUID();
-  await db.runAsync(INSERT_TRAVELLER, { $id: id, $name: name, $now: new Date().toISOString() });
+  await db.runAsync(INSERT_TRAVELLER, {
+    $id: id,
+    $name: name,
+    $classification: classification,
+    $now: new Date().toISOString(),
+  });
   return id;
+}
+
+export async function updateTravellerClassification(
+  db: SQLiteDatabase,
+  id: string,
+  classification: TravellerClassification,
+): Promise<void> {
+  await db.runAsync(UPDATE_TRAVELLER_CLASSIFICATION, {
+    $id: id,
+    $classification: classification,
+    $now: new Date().toISOString(),
+  });
 }
 
 /** A rename reads everywhere the profile is linked; no price or item text changes (FB-13). */
@@ -68,8 +96,26 @@ export async function addTripTraveller(
   db: SQLiteDatabase,
   tripId: string,
   travellerId: string,
+  classification?: TravellerClassification,
 ): Promise<void> {
-  await db.runAsync(INSERT_TRIP_TRAVELLER, { $tripId: tripId, $travellerId: travellerId });
+  await db.runAsync(INSERT_TRIP_TRAVELLER, {
+    $tripId: tripId,
+    $travellerId: travellerId,
+    $classification: classification ?? null,
+  });
+}
+
+export async function updateTripTravellerClassification(
+  db: SQLiteDatabase,
+  tripId: string,
+  travellerId: string,
+  classification: TravellerClassification,
+): Promise<void> {
+  await db.runAsync(UPDATE_TRIP_TRAVELLER_CLASSIFICATION, {
+    $tripId: tripId,
+    $travellerId: travellerId,
+    $classification: classification,
+  });
 }
 
 /** A new profile, going on this trip: both or neither. */
@@ -77,11 +123,12 @@ export async function createTripTraveller(
   db: SQLiteDatabase,
   tripId: string,
   name: string,
+  classification: TravellerClassification = 'unspecified',
 ): Promise<string> {
   let id = '';
   await db.withTransactionAsync(async () => {
-    id = await createTraveller(db, name);
-    await addTripTraveller(db, tripId, id);
+    id = await createTraveller(db, name, classification);
+    await addTripTraveller(db, tripId, id, classification);
   });
   return id;
 }

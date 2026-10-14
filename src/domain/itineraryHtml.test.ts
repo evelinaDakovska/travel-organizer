@@ -81,7 +81,7 @@ const input = (over: Partial<ItineraryInput> = {}): ItineraryInput => ({
     item({ id: 'h', title: 'Husky <safari> & “tea”', start: at('2026-11-22T09:00'), status: 'idea' }),
     item({ id: 'k', kind: 'task', title: 'Pack', start: at('2026-11-19') }),
   ],
-  travellers: [{ id: 'p', name: 'Мия', sortOrder: 0 }],
+  travellers: [{ id: 'p', name: 'Мия', sortOrder: 0, classification: 'unspecified' }],
   documents: new Map([['f', [boardingPass]]]),
   lists: [],
   generatedAt: new Date(2026, 9, 13, 9, 42),

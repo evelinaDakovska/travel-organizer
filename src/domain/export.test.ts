@@ -297,7 +297,14 @@ describe('exportFileName', () => {
 
 describe('format 3: travellers and lists', () => {
   const at = '2026-10-13T00:00:00.000Z';
-  const traveller = (id: string) => ({ id, name: id, sort_order: 0, created_at: at, updated_at: at });
+  const traveller = (id: string) => ({
+    id,
+    name: id,
+    sort_order: 0,
+    classification: 'unspecified' as const,
+    created_at: at,
+    updated_at: at,
+  });
   const list = (id: string, tripId: string | null) => ({
     id,
     trip_id: tripId,
@@ -325,7 +332,7 @@ describe('format 3: travellers and lists', () => {
   const withLists = (): ExportTables => ({
     ...tables(),
     travellers: [traveller('ev'), traveller('mia'), traveller('other')],
-    tripTravellers: [{ trip_id: 't1', traveller_id: 'ev', sort_order: 0 }],
+    tripTravellers: [{ trip_id: 't1', traveller_id: 'ev', sort_order: 0, classification: 'unspecified' as const }],
     itemParticipants: [{ item_id: 'i1', traveller_id: 'ev' }],
     lists: [list('master', null), list('t1-pack', 't1'), list('t2-pack', 't2')],
     listItems: [listItem('a', 'master'), listItem('b', 't1-pack', 'mia'), listItem('c', 't2-pack')],
