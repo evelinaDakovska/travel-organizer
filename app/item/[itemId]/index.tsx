@@ -178,6 +178,28 @@ export default function ItemDetail() {
     });
   };
 
+  const removeTask = async () => {
+    setMoreOpen(false);
+    const files = await countItemOwnFiles(db, item.id);
+    Alert.alert(
+      `Remove “${item.title}”?`,
+      files > 0
+        ? `This task will be removed from this trip. This also deletes ${files} file${files === 1 ? '' : 's'} saved on this phone that are not attached anywhere else. It cannot be undone.`
+        : 'This task will be removed from this trip. It cannot be undone.',
+      [
+        { text: 'Keep task', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteTripItem(db, item.id);
+            router.back();
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <Screen>
       <ScreenHeader
@@ -365,41 +387,47 @@ export default function ItemDetail() {
       {/* Moving an item between states lives one tap away, never beside the ticket (B4). */}
       <Sheet visible={moreOpen} title={item.title} onClose={() => setMoreOpen(false)}>
         <View style={styles.sheetActions}>
-          {actions.promote ? (
-            <Button
-              label="Add to itinerary"
-              onPress={() => {
-                setMoreOpen(false);
-                router.push(`/item/${item.id}/schedule`);
-              }}
-            />
-          ) : null}
-          {actions.cancel ? (
-            <Button
-              label="Mark as cancelled"
-              variant="secondary"
-              onPress={() => {
-                setMoreOpen(false);
-                confirmCancel(item, () => setTripItemStatus(db, item.id, 'cancelled'));
-              }}
-            />
-          ) : null}
-          {actions.restore ? (
-            <Button
-              label="Restore to the itinerary"
-              variant="secondary"
-              onPress={() => {
-                setMoreOpen(false);
-                void setTripItemStatus(db, item.id, 'confirmed');
-              }}
-            />
-          ) : null}
-          {actions.delete ? (
-            <Button label="Delete" variant="danger" onPress={() => void remove()} />
+          {item.kind === 'task' ? (
+            <Button label="Remove task" variant="danger" onPress={() => void removeTask()} />
           ) : (
-            <Text style={[type.caption, { color: c.textMuted }]}>
-              To delete it, mark it as cancelled first — its tickets may be the only copies.
-            </Text>
+            <>
+              {actions.promote ? (
+                <Button
+                  label="Add to itinerary"
+                  onPress={() => {
+                    setMoreOpen(false);
+                    router.push(`/item/${item.id}/schedule`);
+                  }}
+                />
+              ) : null}
+              {actions.cancel ? (
+                <Button
+                  label="Mark as cancelled"
+                  variant="secondary"
+                  onPress={() => {
+                    setMoreOpen(false);
+                    confirmCancel(item, () => setTripItemStatus(db, item.id, 'cancelled'));
+                  }}
+                />
+              ) : null}
+              {actions.restore ? (
+                <Button
+                  label="Restore to the itinerary"
+                  variant="secondary"
+                  onPress={() => {
+                    setMoreOpen(false);
+                    void setTripItemStatus(db, item.id, 'confirmed');
+                  }}
+                />
+              ) : null}
+              {actions.delete ? (
+                <Button label="Delete" variant="danger" onPress={() => void remove()} />
+              ) : (
+                <Text style={[type.caption, { color: c.textMuted }]}>
+                  To delete it, mark it as cancelled first — its tickets may be the only copies.
+                </Text>
+              )}
+            </>
           )}
         </View>
       </Sheet>

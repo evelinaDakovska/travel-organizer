@@ -135,17 +135,23 @@ function ItemForm({ item, list, people }: { item: ListItem; list: List; people: 
   };
 
   const confirmDelete = () =>
-    Alert.alert(`Remove “${item.label}”?`, undefined, [
-      { text: 'Keep it', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteListItem(db, item.id);
-          router.back();
+    Alert.alert(
+      `Remove “${item.label}”?`,
+      list.tripId
+        ? 'This removes it from this trip only. Any reusable master list is not changed.'
+        : 'This removes it from this reusable list. Lists already copied into trips are not changed.',
+      [
+        { text: 'Keep item', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteListItem(db, item.id);
+            router.back();
+          },
         },
-      },
-    ]);
+      ],
+    );
 
   return (
     <FormScroll footer={<Button label="Save" busy={busy} onPress={() => void save()} />}>
@@ -226,7 +232,7 @@ function ItemForm({ item, list, people }: { item: ListItem; list: List; people: 
         />
       ) : null}
 
-      <Button label="Remove from the list" variant="danger" onPress={confirmDelete} />
+      <Button label="Remove item" variant="danger" onPress={confirmDelete} />
     </FormScroll>
   );
 }
