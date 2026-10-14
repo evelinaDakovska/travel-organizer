@@ -55,32 +55,41 @@ export type LegacyName = {
   name: string;
   /** A profile with exactly this name, offered — never applied — as the same person. */
   match: Traveller | null;
+  /** All profiles matching this name. */
+  matches: Traveller[];
 };
 
 /**
  * The names typed into a trip's old free-text Travellers field that are not yet one of its
- * travellers (FB-12). Each can become a profile by an explicit tap: the existing profile with the
- * same name, or a new one. Nothing is matched by anything looser than the whole name.
+ * travellers (FB-12) and have not yet been converted. Each can become a profile by an explicit
+ * tap: the existing profile with the same name, or a new one. Nothing is matched by anything
+ * looser than the whole name.
  */
 export function legacyNames(
   typed: readonly string[],
   members: readonly Pick<Traveller, 'name'>[],
   profiles: readonly Traveller[],
+  converted: readonly string[] = [],
 ): LegacyName[] {
   const seen: string[] = [];
   return typed
     .map((name) => name.trim())
     .filter((name) => name !== '')
+    .filter((name) => !converted.some((c) => sameName(c, name)))
     .filter((name) => !members.some((member) => sameName(member.name, name)))
     .filter((name) => {
       if (seen.some((other) => sameName(other, name))) return false;
       seen.push(name);
       return true;
     })
-    .map((name) => ({
-      name,
-      match: profiles.find((profile) => sameName(profile.name, name)) ?? null,
-    }));
+    .map((name) => {
+      const matches = profiles.filter((profile) => sameName(profile.name, name));
+      return {
+        name,
+        match: matches[0] ?? null,
+        matches,
+      };
+    });
 }
 
 /**
@@ -90,6 +99,7 @@ export function legacyNames(
 export function tripPeopleLine(
   members: readonly Pick<Traveller, 'name'>[],
   typed: readonly string[],
+  converted: readonly string[] = [],
 ): string {
   const memberNames = members.map((m) => m.name.trim()).filter((n) => n !== '');
   const seenLegacy: string[] = [];
@@ -97,6 +107,7 @@ export function tripPeopleLine(
   const remainingLegacy = typed
     .map((name) => name.trim())
     .filter((name) => name !== '')
+    .filter((name) => !converted.some((c) => sameName(c, name)))
     .filter((name) => !memberNames.some((m) => sameName(m, name)))
     .filter((name) => {
       if (seenLegacy.some((other) => sameName(other, name))) return false;

@@ -28,6 +28,7 @@ const trip: Trip = {
   notes: null,
   travellerCount: null,
   travellers: [],
+  convertedTravellers: [],
   createdAt: '',
   updatedAt: '',
 };

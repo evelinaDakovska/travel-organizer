@@ -11,11 +11,14 @@ import {
   listItemParticipants,
   listTravellers,
   listTripTravellers,
+  markLegacyTravellerConverted,
   removeTripTraveller,
   renameTraveller,
   updateTravellerClassification,
   updateTripTravellerClassification,
 } from './travellers';
+import { getTrip } from './trips';
+import { legacyNames } from '../domain/traveller';
 import { createTripItem, createTripItems, updateTripItem } from './tripItems';
 
 jest.mock('expo-crypto', () => ({ randomUUID: () => crypto.randomUUID() }));
@@ -161,5 +164,55 @@ describe('items with participants', () => {
 
     await updateTripItem(db, id, input('Sauna, renamed'), []);
     expect(await listItemParticipants(db, id)).toEqual([]);
+  });
+});
+
+describe('legacy conversion lifecycle', () => {
+  it('records converted legacy names and ensures they never reappear even if profile removed', async () => {
+    const { raw, db } = setup();
+    // Simulate a trip with legacy typed travellers
+    raw
+      .prepare(`UPDATE trips SET travellers = ? WHERE id = 'lapland'`)
+      .run(JSON.stringify(['Alice', 'Bob']));
+
+    const tripBefore = await getTrip(db, 'lapland');
+    expect(tripBefore?.convertedTravellers).toEqual([]);
+
+    // Convert Alice to a profile
+    const aliceId = await createTripTraveller(db, 'lapland', 'Alice');
+    await markLegacyTravellerConverted(db, 'lapland', 'Alice');
+
+    const tripAfter = await getTrip(db, 'lapland');
+    expect(tripAfter?.convertedTravellers).toEqual(['Alice']);
+
+    // Check legacyNames: only Bob remains
+    const members = await listTripTravellers(db, 'lapland');
+    const profiles = await listTravellers(db);
+    const unres = legacyNames(
+      tripAfter?.travellers ?? [],
+      members,
+      profiles,
+      tripAfter?.convertedTravellers ?? [],
+    );
+    expect(unres.map((u) => u.name)).toEqual(['Bob']);
+
+    // Now remove Alice from the trip
+    await removeTripTraveller(db, 'lapland', aliceId);
+
+    // Alice must NOT reappear in legacyNames even though she is no longer a member!
+    const membersAfterRemove = await listTripTravellers(db, 'lapland');
+    const unresAfterRemove = legacyNames(
+      tripAfter?.travellers ?? [],
+      membersAfterRemove,
+      profiles,
+      tripAfter?.convertedTravellers ?? [],
+    );
+    expect(unresAfterRemove.map((u) => u.name)).toEqual(['Bob']);
+
+    // Converting Bob case-insensitively appends without duplication
+    await markLegacyTravellerConverted(db, 'lapland', 'bob');
+    await markLegacyTravellerConverted(db, 'lapland', 'Bob');
+    const tripFinal = await getTrip(db, 'lapland');
+    expect(tripFinal?.convertedTravellers).toEqual(['Alice', 'bob']);
   });
 });

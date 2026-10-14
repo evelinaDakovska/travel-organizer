@@ -454,7 +454,7 @@ SELECT $newId, $toListId, label, quantity, unit, category, note, traveller_id, N
 /** Column order for the backup. Append only — a restore binds by name, but order documents it. */
 export const EXPORT_COLUMNS = {
   trips: ['id', 'name', 'destination', 'start_date', 'end_date', 'default_tz', 'cover_path',
-          'notes', 'traveller_count', 'travellers', 'created_at', 'updated_at'],
+          'notes', 'traveller_count', 'travellers', 'created_at', 'updated_at', 'converted_travellers'],
   trip_items: ['id', 'trip_id', 'kind', 'subkind', 'status', 'priority', 'title',
                'start_local', 'start_tz', 'start_precision', 'start_utc',
                'end_local', 'end_tz', 'end_precision', 'end_utc', 'completed_at',

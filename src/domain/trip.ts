@@ -15,6 +15,7 @@ export type Trip = {
   notes: string | null;
   travellerCount: number | null;
   travellers: string[];
+  convertedTravellers: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -30,6 +31,7 @@ export const tripInputSchema = z
     defaultTz: z.string().refine(isResolvableTimezone, 'Not a valid timezone'),
     travellerCount: z.number().int().min(1).max(50).optional(),
     travellers: z.array(z.string().trim().min(1)).max(50).optional(),
+    convertedTravellers: z.array(z.string().trim().min(1)).optional(),
     notes: z.string().trim().optional(),
   })
   .refine((t) => t.endDate >= t.startDate, {
@@ -50,6 +52,7 @@ export type TripRow = {
   notes: string | null;
   traveller_count: number | null;
   travellers: string | null;
+  converted_travellers?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -66,6 +69,7 @@ export function parseTripRow(row: TripRow): Trip {
     notes: row.notes,
     travellerCount: row.traveller_count,
     travellers: parseTravellers(row.travellers),
+    convertedTravellers: parseTravellers(row.converted_travellers ?? null),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

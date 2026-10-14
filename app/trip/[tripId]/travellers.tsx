@@ -16,6 +16,7 @@ import {
   createTripTraveller,
   listTravellers,
   listTripTravellers,
+  markLegacyTravellerConverted,
   removeTripTraveller,
   updateTripTravellerClassification,
   TRAVELLER_TABLES,
@@ -68,12 +69,38 @@ export default function TripTravellersScreen() {
 
   const members = useMemo(() => membersQuery.data ?? [], [membersQuery.data]);
   const profiles = useMemo(() => profilesQuery.data ?? [], [profilesQuery.data]);
-  const others = profiles.filter((profile) => !members.some((member) => member.id === profile.id));
   const trip = tripQuery.data;
   const [editingMember, setEditingMember] = useState<Traveller | null>(null);
+
   const typed = useMemo(
-    () => legacyNames(trip?.travellers ?? [], members, profiles),
+    () =>
+      legacyNames(
+        trip?.travellers ?? [],
+        members,
+        profiles,
+        trip?.convertedTravellers ?? [],
+      ),
     [trip, members, profiles],
+  );
+
+  const legacyMatchedProfileIds = useMemo(
+    () =>
+      new Set(
+        typed.flatMap((item) =>
+          item.match ? [item.match.id] : item.matches.map((m) => m.id),
+        ),
+      ),
+    [typed],
+  );
+
+  const others = useMemo(
+    () =>
+      profiles.filter(
+        (profile) =>
+          !members.some((member) => member.id === profile.id) &&
+          !legacyMatchedProfileIds.has(profile.id),
+      ),
+    [profiles, members, legacyMatchedProfileIds],
   );
 
   const tripView = queryView(tripQuery);
@@ -94,6 +121,44 @@ export default function TripTravellersScreen() {
     const name = travellerNameSchema.safeParse(text);
     if (!name.success) return name.error.issues[0]?.message;
     await createTripTraveller(db, trip.id, name.data);
+  };
+
+  const handleLegacyConvert = (name: string, matches: Traveller[]) => {
+    if (matches.length > 1) {
+      Alert.alert(
+        `Link “${name}” to which profile?`,
+        'Multiple profiles share this name. Choose one or create a new profile.',
+        [
+          ...matches.map((m) => ({
+            text: `Link to ${m.name} (${CLASSIFICATION_LABELS[m.classification]})`,
+            onPress: async () => {
+              await addTripTraveller(db, trip.id, m.id);
+              await markLegacyTravellerConverted(db, trip.id, name);
+            },
+          })),
+          {
+            text: 'Create new profile',
+            onPress: async () => {
+              await createTripTraveller(db, trip.id, name);
+              await markLegacyTravellerConverted(db, trip.id, name);
+            },
+          },
+          { text: 'Cancel', style: 'cancel' },
+        ],
+      );
+      return;
+    }
+    if (matches.length === 1) {
+      void (async () => {
+        await addTripTraveller(db, trip.id, matches[0].id);
+        await markLegacyTravellerConverted(db, trip.id, name);
+      })();
+      return;
+    }
+    void (async () => {
+      await createTripTraveller(db, trip.id, name);
+      await markLegacyTravellerConverted(db, trip.id, name);
+    })();
   };
 
   const confirmRemove = (member: Traveller) =>
@@ -153,24 +218,33 @@ export default function TripTravellersScreen() {
 
         {typed.length > 0 ? (
           <View style={styles.section}>
-            <SectionLabel>Names typed before</SectionLabel>
+            <SectionLabel>Names from older trip notes</SectionLabel>
             <Text style={[type.caption, { color: c.textMuted }]}>
-              From this trip’s Travellers field. Make each a traveller to choose them for bookings;
-              the field itself is left as it is.
+              From this trip’s original notes. Turn each into a profile to choose them for bookings
+              and pricing; the original notes stay as they are.
             </Text>
             <Rows>
-              {typed.map(({ name, match }) => (
+              {typed.map(({ name, match, matches }) => (
                 <ListRow
                   key={name}
                   title={name}
+                  subtitle={
+                    matches.length > 1
+                      ? `${matches.length} matching profiles`
+                      : match
+                        ? `Matches profile “${match.name}”`
+                        : undefined
+                  }
                   trailing={
                     <HeaderAction
-                      label={match ? `Use “${match.name}”` : 'Make a traveller'}
-                      onPress={() =>
-                        void (match
-                          ? addTripTraveller(db, trip.id, match.id)
-                          : createTripTraveller(db, trip.id, name))
+                      label={
+                        matches.length > 1
+                          ? 'Choose profile'
+                          : match
+                            ? `Link to ${match.name}`
+                            : 'Create traveller profile'
                       }
+                      onPress={() => handleLegacyConvert(name, matches)}
                     />
                   }
                 />

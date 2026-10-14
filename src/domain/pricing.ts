@@ -115,7 +115,6 @@ export type SuggestedLine = {
  */
 export function suggestPricingLines({
   participants,
-  currentTotal,
 }: PricingSuggestionInput): SuggestedLine[] {
   const adults = participants.filter((p) => p.classification === 'adult').length;
   const children = participants.filter((p) => p.classification === 'child').length;
@@ -133,18 +132,7 @@ export function suggestPricingLines({
   }
 
   if (lines.length === 0) {
-    const qty = Math.max(1, participants.length);
-    const even =
-      currentTotal !== undefined && Number.isFinite(currentTotal) && currentTotal % qty === 0
-        ? currentTotal / qty
-        : undefined;
-    return [{ label: '', quantity: qty, unitAmount: even }];
-  }
-
-  if (lines.length === 1 && currentTotal !== undefined && Number.isFinite(currentTotal)) {
-    if (currentTotal % lines[0].quantity === 0) {
-      lines[0].unitAmount = currentTotal / lines[0].quantity;
-    }
+    return [{ label: '', quantity: Math.max(1, participants.length), unitAmount: undefined }];
   }
 
   return lines;

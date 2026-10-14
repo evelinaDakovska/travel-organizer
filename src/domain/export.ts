@@ -10,10 +10,11 @@ import { travellerClassificationSchema } from './traveller';
 
 /**
  * 2 added expenses, payments and `resources.expense_id` (N5); 3 added travellers, lists and
- * templates (Fieldbook, migration 003); 4 added traveller classification (migration 004). Formats
- * 1, 2 and 3 still import: their missing tables or columns default safely.
+ * templates (Fieldbook, migration 003); 4 added traveller classification (migration 004); 5 added
+ * converted_travellers (migration 005). Formats 1, 2, 3 and 4 still import: their missing tables or
+ * columns default safely.
  */
-export const EXPORT_FORMAT_VERSION = 4;
+export const EXPORT_FORMAT_VERSION = 5;
 export const EXPORT_APP = 'travel-organizer';
 
 const nullableString = z.string().nullable();
@@ -32,6 +33,7 @@ const tripRowSchema = z.object({
   travellers: nullableString,
   created_at: z.string(),
   updated_at: z.string(),
+  converted_travellers: z.string().default('[]'),
 });
 
 const tripItemRowSchema = z.object({

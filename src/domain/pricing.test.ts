@@ -132,7 +132,7 @@ describe('suggestPricingLines', () => {
       currentTotal: 4000,
     });
     expect(lines).toEqual([
-      { label: '', quantity: 2, unitAmount: 2000 },
+      { label: '', quantity: 2, unitAmount: undefined },
     ]);
   });
 
@@ -142,7 +142,7 @@ describe('suggestPricingLines', () => {
       currentTotal: 5000,
     });
     expect(lines).toEqual([
-      { label: '', quantity: 1, unitAmount: 5000 },
+      { label: '', quantity: 1, unitAmount: undefined },
     ]);
   });
 });

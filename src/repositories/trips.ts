@@ -95,3 +95,33 @@ export async function countTripContents(
 function serialiseTravellers(names: string[] | undefined): string | null {
   return names && names.length > 0 ? JSON.stringify(names) : null;
 }
+
+export async function markLegacyTravellerConverted(
+  db: SQLiteDatabase,
+  tripId: string,
+  legacyName: string,
+): Promise<void> {
+  const row = await db.getFirstAsync<{ converted_travellers: string | null }>(
+    `SELECT converted_travellers FROM trips WHERE id = ?`,
+    tripId,
+  );
+  let converted: string[] = [];
+  if (row?.converted_travellers) {
+    try {
+      const parsed: unknown = JSON.parse(row.converted_travellers);
+      if (Array.isArray(parsed)) {
+        converted = parsed.filter((n): n is string => typeof n === 'string');
+      }
+    } catch {}
+  }
+  const trimmed = legacyName.trim();
+  if (!converted.some((n) => n.trim().toLowerCase() === trimmed.toLowerCase())) {
+    converted.push(trimmed);
+  }
+  await db.runAsync(
+    `UPDATE trips SET converted_travellers = ?, updated_at = ? WHERE id = ?`,
+    JSON.stringify(converted),
+    new Date().toISOString(),
+    tripId,
+  );
+}

@@ -98,10 +98,21 @@ export async function addTripTraveller(
   travellerId: string,
   classification?: TravellerClassification,
 ): Promise<void> {
+  let resolved = classification;
+  if (!resolved) {
+    const row = await db.getFirstAsync<{ classification: string | null }>(
+      `SELECT classification FROM travellers WHERE id = ?`,
+      travellerId,
+    );
+    resolved =
+      row?.classification === 'adult' || row?.classification === 'child'
+        ? row.classification
+        : 'unspecified';
+  }
   await db.runAsync(INSERT_TRIP_TRAVELLER, {
     $tripId: tripId,
     $travellerId: travellerId,
-    $classification: classification ?? null,
+    $classification: resolved,
   });
 }
 
@@ -168,3 +179,5 @@ export async function writeItemParticipants(
     await db.runAsync(INSERT_ITEM_PARTICIPANT, { $itemId: itemId, $travellerId: travellerId });
   }
 }
+
+export { markLegacyTravellerConverted } from './trips';

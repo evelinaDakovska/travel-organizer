@@ -24,6 +24,7 @@ const trip = (id: string) => ({
   notes: null,
   traveller_count: null,
   travellers: null,
+  converted_travellers: '[]',
   created_at: now,
   updated_at: now,
 });
@@ -385,5 +386,61 @@ describe('format 3: travellers and lists', () => {
       files: [],
     });
     expect(parsed.ok && parsed.document.tables.lists).toEqual([]);
+  });
+
+  it('reads format-1 through format-4 backups, safely defaulting converted_travellers', () => {
+    for (const v of [1, 2, 3, 4]) {
+      const parsed = parseExportDocument({
+        formatVersion: v,
+        app: 'travel-organizer',
+        exportedAt: at,
+        tables: {
+          trips: [trip('t1')],
+          tripItems: [],
+          tripNotes: [],
+          resources: [],
+          settings: [],
+        },
+        files: [],
+      });
+      expect(parsed.ok).toBe(true);
+      if (parsed.ok) {
+        expect(parsed.document.tables.trips[0].converted_travellers).toBe('[]');
+      }
+    }
+  });
+
+  it('round-trips format 5 with converted_travellers preserved', () => {
+    const t5Tables = {
+      ...emptyExportTables(),
+      trips: [{ ...trip('t1'), converted_travellers: '["Legacy Alice"]' }],
+    };
+    const doc = buildExportDocument(t5Tables, { exportedAt: at });
+    expect(doc.formatVersion).toBe(5);
+    const parsed = parseExportDocument(doc);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.document.tables.trips[0].converted_travellers).toBe('["Legacy Alice"]');
+    }
+  });
+
+  it('rejects format 6 (newer version) rather than silently dropping newer columns', () => {
+    const parsed = parseExportDocument({
+      formatVersion: 6,
+      app: 'travel-organizer',
+      exportedAt: at,
+      tables: {
+        trips: [],
+        tripItems: [],
+        tripNotes: [],
+        resources: [],
+        settings: [],
+      },
+      files: [],
+    });
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) {
+      expect(parsed.reason).toMatch(/newer version \(format 6\)/);
+    }
   });
 });

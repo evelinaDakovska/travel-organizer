@@ -246,4 +246,9 @@ describe('CHECK constraints', () => {
       db.prepare(`UPDATE trip_travellers SET classification = 'invalid' WHERE trip_id = ? AND traveller_id = 'tr-2'`).run(tripId),
     ).toThrow(/CHECK constraint failed/);
   });
+
+  it('defaults converted_travellers to empty array on trips', () => {
+    const row = db.prepare(`SELECT converted_travellers FROM trips WHERE id = ?`).get(tripId) as any;
+    expect(row.converted_travellers).toBe('[]');
+  });
 });

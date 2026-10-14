@@ -39,17 +39,31 @@ describe('legacyNames (FB-12)', () => {
 
   it('offers the profile with exactly the same name, ignoring case and spaces', () => {
     expect(legacyNames([' evelina '], [], profiles)).toEqual([
-      { name: 'evelina', match: profiles[0] },
+      { name: 'evelina', match: profiles[0], matches: [profiles[0]] },
     ]);
   });
 
   it('never matches on part of a name', () => {
-    expect(legacyNames(['Ana'], [], profiles)).toEqual([{ name: 'Ana', match: null }]);
+    expect(legacyNames(['Ana'], [], profiles)).toEqual([{ name: 'Ana', match: null, matches: [] }]);
   });
 
   it('leaves out names already among the trip’s travellers, blanks and repeats', () => {
     expect(legacyNames(['Evelina', '', 'Mia', 'mia'], [{ name: 'Evelina' }], profiles)).toEqual([
-      { name: 'Mia', match: null },
+      { name: 'Mia', match: null, matches: [] },
+    ]);
+  });
+
+  it('excludes names that were already converted even if member was removed', () => {
+    expect(legacyNames(['Evelina', 'Mia'], [], profiles, ['Evelina'])).toEqual([
+      { name: 'Mia', match: null, matches: [] },
+    ]);
+  });
+
+  it('provides all matching profiles when multiple share the same name', () => {
+    const dupes = [profile('p1', 'Alex'), profile('p2', 'Alex')];
+    const res = legacyNames(['Alex'], [], dupes);
+    expect(res).toEqual([
+      { name: 'Alex', match: dupes[0], matches: dupes },
     ]);
   });
 });
@@ -60,6 +74,10 @@ describe('tripPeopleLine (C1)', () => {
       'Ana and Misho',
     );
     expect(tripPeopleLine([{ name: 'Evelina' }], [])).toBe('Evelina');
+  });
+
+  it('excludes converted names even if they are not in current members', () => {
+    expect(tripPeopleLine([], ['Ana', 'Misho'], ['Ana'])).toBe('Misho');
   });
 
   it('shows profile members plus unconverted legacy names (partial conversion)', () => {

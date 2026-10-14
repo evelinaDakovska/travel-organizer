@@ -4,14 +4,22 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 type Params = Record<string, unknown> | unknown[] | string | number | null;
 
 /** expo-sqlite names bindings `$id`; better-sqlite3 wants the bare name. Positional pass through. */
-function bindings(params: Params = {}): unknown[] {
-  if (params === null || typeof params !== 'object') return [params];
-  if (Array.isArray(params)) return params;
-  return [
-    Object.fromEntries(
-      Object.entries(params).map(([key, value]) => [key.replace(/^\$/, ''), value]),
-    ),
-  ];
+function bindings(params: unknown[]): unknown[] {
+  if (params.length === 0) return [];
+  if (params.length === 1) {
+    const first = params[0];
+    if (first === null || typeof first !== 'object') return [first];
+    if (Array.isArray(first)) return first;
+    return [
+      Object.fromEntries(
+        Object.entries(first as Record<string, unknown>).map(([key, value]) => [
+          key.replace(/^\$/, ''),
+          value,
+        ]),
+      ),
+    ];
+  }
+  return params;
 }
 
 type Options = {
@@ -31,14 +39,14 @@ export function asyncDatabase(db: Database.Database, options: Options = {}): SQL
     async execAsync(sql: string) {
       db.exec(sql);
     },
-    async runAsync(sql: string, params?: Params) {
+    async runAsync(sql: string, ...params: unknown[]) {
       const { changes, lastInsertRowid } = db.prepare(sql).run(...bindings(params));
       return { changes, lastInsertRowId: Number(lastInsertRowid) };
     },
-    async getFirstAsync(sql: string, params?: Params) {
+    async getFirstAsync(sql: string, ...params: unknown[]) {
       return db.prepare(sql).get(...bindings(params)) ?? null;
     },
-    async getAllAsync(sql: string, params?: Params) {
+    async getAllAsync(sql: string, ...params: unknown[]) {
       return db.prepare(sql).all(...bindings(params));
     },
     async withTransactionAsync(task: () => Promise<void>) {

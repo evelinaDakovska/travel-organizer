@@ -390,7 +390,7 @@ describe('the backup round trip', () => {
     const source = fresh();
     seed(source);
     const current = JSON.parse(JSON.stringify(await documentFrom(source)));
-    const futureDoc = { ...current, formatVersion: 5 };
+    const futureDoc = { ...current, formatVersion: 6 };
 
     const parsed = parseExportDocument(futureDoc);
     expect(parsed.ok).toBe(false);

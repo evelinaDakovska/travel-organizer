@@ -66,6 +66,7 @@ export function PriceSection({
   });
   // Keys are counted here, not in the module, so they stay unique however the module reloads.
   const keys = useRef(0);
+  const previousTotalRef = useRef<number | undefined>(getValues('priceAmount'));
   const newLine = (quantity: number, unitAmount?: number, label = ''): DraftLine => ({
     key: keys.current++,
     label,
@@ -111,15 +112,23 @@ export function PriceSection({
 
   const switchTo = (mode: 'total' | 'perPerson') => {
     if (mode === 'total') {
-      // The total stays; only the breakdown goes.
+      // Switching to total: preserve breakdown removal and restore prior total if currently cleared
       setLines([]);
       setValue('details', withPricing(getValues('details'), null), { shouldDirty: true });
+      const current = getValues('priceAmount');
+      if (current === undefined && previousTotalRef.current !== undefined) {
+        setValue('priceAmount', previousTotalRef.current, { shouldDirty: true });
+      }
       return;
+    }
+    // Switching to perPerson: save prior total
+    const current = getValues('priceAmount');
+    if (current !== undefined) {
+      previousTotalRef.current = current;
     }
     // Never touch existing/saved lines when switching
     if (lines.length > 0) return;
 
-    const current = getValues('priceAmount');
     const inputParticipants =
       participants && participants.length > 0
         ? participants
@@ -128,9 +137,8 @@ export function PriceSection({
           }));
     const suggested = suggestPricingLines({
       participants: inputParticipants,
-      currentTotal: current,
     });
-    applyLines(suggested.map((s) => newLine(s.quantity, s.unitAmount, s.label)));
+    applyLines(suggested.map((s) => newLine(s.quantity, undefined, s.label)));
   };
 
   const updateLine = (index: number, change: Partial<DraftLine>) =>
