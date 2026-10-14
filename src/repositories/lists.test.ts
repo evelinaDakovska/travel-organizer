@@ -10,6 +10,7 @@ import {
   countTripCopies,
   createList,
   deleteList,
+  deleteListItem,
   getListItem,
   listListItems,
   listReusableLists,
@@ -81,6 +82,25 @@ describe('copying a reusable list into trips (the review’s acceptance check)',
       ['Wool socks', 3, null],
       ['Mittens', null, null],
     ]);
+  });
+
+  it('master copied to 2 QA trips: modifying or deleting in one trip never affects master or second trip', async () => {
+    const { db } = setup();
+    const master = await winterMaster(db);
+    const laplandCopy = await copyListToTrip(db, master, 'lapland');
+    const alpsCopy = await copyListToTrip(db, master, 'alps');
+
+    expect(laplandCopy).not.toBe(alpsCopy);
+    expect(laplandCopy).not.toBe(master);
+
+    // Delete an item from laplandCopy
+    const [laplandFirst] = await listListItems(db, laplandCopy);
+    await deleteListItem(db, laplandFirst.id);
+
+    // Alps and master still have all 3 items
+    expect(await listListItems(db, laplandCopy)).toHaveLength(2);
+    expect(await listListItems(db, alpsCopy)).toHaveLength(3);
+    expect(await listListItems(db, master)).toHaveLength(3);
   });
 
   it('starts a copy with every tick cleared, and counts copies for the warning', async () => {

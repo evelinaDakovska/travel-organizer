@@ -32,12 +32,13 @@ import {
   listTripTravellers,
   TRAVELLER_TABLES,
 } from '../../src/repositories/travellers';
-import { getTrip, TRIP_TABLES } from '../../src/repositories/trips';
+import { getTrip, listTrips, TRIP_TABLES } from '../../src/repositories/trips';
+import { CopyListPreviewSheet } from '../../src/features/lists/CopyListPreviewSheet';
 import { AddByName } from '../../src/ui/components/AddByName';
 import { Button } from '../../src/ui/components/Button';
 import { Field, Input } from '../../src/ui/components/Field';
 import { HeaderAction } from '../../src/ui/components/HeaderAction';
-import { Rows } from '../../src/ui/components/ListRow';
+import { ListRow, Rows } from '../../src/ui/components/ListRow';
 import { LoadFailed, QueryScreen, StaleNotice } from '../../src/ui/components/QueryStates';
 import { Screen } from '../../src/ui/components/Screen';
 import { ScreenHeader } from '../../src/ui/components/ScreenHeader';
@@ -59,6 +60,9 @@ export default function ListScreen() {
   const [renaming, setRenaming] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const [undo, setUndo] = useState<{ message: string; itemId: string } | null>(null);
+  const [pickingTrip, setPickingTrip] = useState(false);
+  const [selectedTrip, setSelectedTrip] = useState<{ id: string; name: string } | null>(null);
+  const { data: allTrips } = useLiveQuery(listTrips, TRIP_TABLES);
 
   const listQuery = useLiveQuery(
     useCallback((database) => getList(database, listId), [listId]),
@@ -208,10 +212,18 @@ export default function ListScreen() {
             {progressText(list.kind, progress)}
           </Text>
         ) : (
-          <Text style={[type.caption, { color: c.textMuted }]}>
-            Copy it into a trip from the trip’s Notes & lists; the copy is ticked there, this list
-            never is.
-          </Text>
+          <View style={[styles.reusableBanner, { backgroundColor: c.surfaceSunken }]}>
+            <Text style={[type.caption, { color: c.textMuted, flex: 1 }]}>
+              Master list for all trips. Copy it into a trip to tick off items; this list stays
+              unticked.
+            </Text>
+            <Button
+              label="Use in a trip"
+              variant="secondary"
+              compact
+              onPress={() => setPickingTrip(true)}
+            />
+          </View>
         )}
 
         <AddByName placeholder="Add an item" onAdd={add} />
@@ -256,6 +268,16 @@ export default function ListScreen() {
 
       <Sheet visible={moreOpen} title={list.name} onClose={closeMore}>
         <View style={styles.actions}>
+          {!forTrip ? (
+            <Button
+              label="Use in a trip"
+              variant="secondary"
+              onPress={() => {
+                closeMore();
+                setPickingTrip(true);
+              }}
+            />
+          ) : null}
           <Button
             label="Rename"
             variant="secondary"
@@ -281,6 +303,42 @@ export default function ListScreen() {
           <Button label="Delete list" variant="danger" onPress={confirmDelete} />
         </View>
       </Sheet>
+
+      <Sheet visible={pickingTrip} title="Use in a trip" onClose={() => setPickingTrip(false)}>
+        <View style={styles.actions}>
+          {(allTrips ?? []).length > 0 ? (
+            <Rows>
+              {(allTrips ?? []).map((t) => (
+                <ListRow
+                  key={t.id}
+                  title={t.name}
+                  subtitle={[t.startDate, t.endDate].filter(Boolean).join(' → ')}
+                  onPress={() => {
+                    setPickingTrip(false);
+                    setSelectedTrip({ id: t.id, name: t.name });
+                  }}
+                />
+              ))}
+            </Rows>
+          ) : (
+            <Text style={[type.body, { color: c.textMuted }]}>
+              No trips found. Create a trip first to copy this list into it.
+            </Text>
+          )}
+        </View>
+      </Sheet>
+
+      <CopyListPreviewSheet
+        visible={selectedTrip !== null}
+        listId={list.id}
+        tripId={selectedTrip?.id ?? null}
+        tripName={selectedTrip?.name}
+        onClose={() => setSelectedTrip(null)}
+        onCopied={(newListId) => {
+          setSelectedTrip(null);
+          router.push({ pathname: '/list/[listId]', params: { listId: newListId } });
+        }}
+      />
 
       <RenameSheet
         visible={renaming}
@@ -336,4 +394,9 @@ const styles = StyleSheet.create({
   section: { gap: spacing.xs },
   actions: { gap: spacing.sm, paddingBottom: spacing.sm },
   allDone: { borderRadius: radius.lg, padding: spacing.lg },
+  reusableBanner: {
+    borderRadius: radius.md,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
 });

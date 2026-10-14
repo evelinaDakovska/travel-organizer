@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -11,6 +12,7 @@ import { useTripId } from '../../../../src/features/trips/TripContext';
 import { queryView, type QueryState } from '../../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../../src/hooks/useLiveQuery';
 import {
+  createList,
   LIST_TABLES,
   listReusableLists,
   listTripLists,
@@ -46,9 +48,10 @@ type Query<T> = QueryState<T> & { refetch: () => void };
  */
 export default function NotesScreen() {
   const router = useRouter();
+  const db = useSQLiteContext();
   const tripId = useTripId();
   const [section, setSection] = useState<Section>('notes');
-  const [addingList, setAddingList] = useState(false);
+  const [addMode, setAddMode] = useState<'all' | 'saved' | null>(null);
 
   const { data: trip } = useLiveQuery(
     useCallback((database) => getTrip(database, tripId), [tripId]),
@@ -68,6 +71,12 @@ export default function NotesScreen() {
   const { data: reusable } = useLiveQuery(listReusableLists, LIST_TABLES);
 
   const addNote = () => router.push({ pathname: '/note/new', params: { tripId } });
+  const createBlankList = async () => {
+    if (section === 'notes') return;
+    const name = section === 'packing' ? 'Packing' : 'Shopping';
+    const id = await createList(db, { tripId, kind: section, name });
+    router.push({ pathname: '/list/[listId]', params: { listId: id } });
+  };
 
   return (
     <Screen>
@@ -81,7 +90,7 @@ export default function NotesScreen() {
               icon="add"
               label="Add"
               accessibilityLabel={section === 'notes' ? 'Add a note' : `Add a ${section} list`}
-              onPress={() => (section === 'notes' ? addNote() : setAddingList(true))}
+              onPress={() => (section === 'notes' ? addNote() : setAddMode('all'))}
             />
           </View>
         }
@@ -108,7 +117,8 @@ export default function NotesScreen() {
           <ListsSection
             query={listsQuery}
             kind={section}
-            onAdd={() => setAddingList(true)}
+            onUseSaved={() => setAddMode('saved')}
+            onNewBlank={() => void createBlankList()}
             onOpen={(list) =>
               router.push({ pathname: '/list/[listId]', params: { listId: list.id } })
             }
@@ -118,8 +128,9 @@ export default function NotesScreen() {
 
       {section !== 'notes' ? (
         <AddListSheet
-          visible={addingList}
-          onClose={() => setAddingList(false)}
+          visible={addMode !== null}
+          mode={addMode ?? 'all'}
+          onClose={() => setAddMode(null)}
           tripId={tripId}
           kind={section}
           reusable={(reusable ?? []).filter((list) => list.kind === section)}
@@ -182,12 +193,14 @@ function NotesSection({
 function ListsSection({
   query,
   kind,
-  onAdd,
+  onUseSaved,
+  onNewBlank,
   onOpen,
 }: {
   query: Query<ListSummary[]>;
   kind: ListKind;
-  onAdd: () => void;
+  onUseSaved: () => void;
+  onNewBlank: () => void;
   onOpen: (list: ListSummary) => void;
 }) {
   const c = useColors();
@@ -203,17 +216,27 @@ function ListsSection({
       ) : view === 'loading' ? (
         <Text style={[type.body, { color: c.textMuted }]}>Loading…</Text>
       ) : lists.length > 0 ? (
-        <Rows>
-          {lists.map((list) => (
-            <ListRow
-              key={list.id}
-              title={list.name}
-              subtitle={progressText(list.kind, list)}
-              leading={<Icon name={icon} color={c.accentText} />}
-              onPress={() => onOpen(list)}
-            />
-          ))}
-        </Rows>
+        <View style={styles.section}>
+          <Rows>
+            {lists.map((list) => (
+              <ListRow
+                key={list.id}
+                title={list.name}
+                subtitle={progressText(list.kind, list)}
+                leading={<Icon name={icon} color={c.accentText} />}
+                onPress={() => onOpen(list)}
+              />
+            ))}
+          </Rows>
+          <View style={styles.actionRow}>
+            <View style={styles.grow}>
+              <Button label="Use a saved list" variant="secondary" compact onPress={onUseSaved} />
+            </View>
+            <View style={styles.grow}>
+              <Button label="New blank list" variant="secondary" compact onPress={onNewBlank} />
+            </View>
+          </View>
+        </View>
       ) : (
         <View style={[styles.empty, { backgroundColor: c.surfaceSunken }]}>
           <Text style={[type.body, { color: c.textMuted }]}>
@@ -221,11 +244,14 @@ function ListsSection({
               ? 'What to take, ticked as it goes in the bag.'
               : 'What to get before you go, ticked as it is bought.'}
           </Text>
-          <Button
-            label={`Add a ${listKindLabel(kind).toLowerCase()}`}
-            variant="secondary"
-            onPress={onAdd}
-          />
+          <View style={styles.actionRow}>
+            <View style={styles.grow}>
+              <Button label="Use a saved list" variant="secondary" onPress={onUseSaved} />
+            </View>
+            <View style={styles.grow}>
+              <Button label="New blank list" variant="secondary" onPress={onNewBlank} />
+            </View>
+          </View>
         </View>
       )}
     </>
@@ -243,4 +269,6 @@ const styles = StyleSheet.create({
   },
   section: { gap: spacing.xs },
   empty: { borderRadius: radius.lg, padding: spacing.lg, gap: spacing.md },
+  actionRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
+  grow: { flex: 1 },
 });
