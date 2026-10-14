@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -13,10 +13,10 @@ import { queryView } from '../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import {
   addTripTraveller,
+  convertLegacyTraveller,
   createTripTraveller,
   listTravellers,
   listTripTravellers,
-  markLegacyTravellerConverted,
   removeTripTraveller,
   updateTripTravellerClassification,
   TRAVELLER_TABLES,
@@ -117,13 +117,43 @@ export default function TripTravellersScreen() {
   }
   const failed = queryView(membersQuery) === 'failed' || queryView(profilesQuery) === 'failed';
 
+  const convertingRef = useRef(false);
+  const [convertingName, setConvertingName] = useState<string | null>(null);
+
+  const executeConvert = async (name: string, existingTravellerId?: string) => {
+    if (convertingRef.current) return;
+    convertingRef.current = true;
+    setConvertingName(name);
+    try {
+      await convertLegacyTraveller(db, {
+        tripId: trip.id,
+        legacyName: name,
+        existingTravellerId,
+      });
+      tripQuery.refetch();
+      membersQuery.refetch();
+      profilesQuery.refetch();
+    } catch {
+      Alert.alert(
+        'Could not convert traveller',
+        'Something went wrong while linking this traveller to your trip. Please try again.',
+      );
+    } finally {
+      convertingRef.current = false;
+      setConvertingName(null);
+    }
+  };
+
   const addNew = async (text: string) => {
+    if (convertingRef.current) return;
     const name = travellerNameSchema.safeParse(text);
     if (!name.success) return name.error.issues[0]?.message;
     await createTripTraveller(db, trip.id, name.data);
   };
 
   const handleLegacyConvert = (name: string, matches: Traveller[]) => {
+    if (convertingRef.current) return;
+
     if (matches.length > 1) {
       Alert.alert(
         `Link “${name}” to which profile?`,
@@ -131,16 +161,14 @@ export default function TripTravellersScreen() {
         [
           ...matches.map((m) => ({
             text: `Link to ${m.name} (${CLASSIFICATION_LABELS[m.classification]})`,
-            onPress: async () => {
-              await addTripTraveller(db, trip.id, m.id);
-              await markLegacyTravellerConverted(db, trip.id, name);
+            onPress: () => {
+              void executeConvert(name, m.id);
             },
           })),
           {
             text: 'Create new profile',
-            onPress: async () => {
-              await createTripTraveller(db, trip.id, name);
-              await markLegacyTravellerConverted(db, trip.id, name);
+            onPress: () => {
+              void executeConvert(name);
             },
           },
           { text: 'Cancel', style: 'cancel' },
@@ -149,19 +177,14 @@ export default function TripTravellersScreen() {
       return;
     }
     if (matches.length === 1) {
-      void (async () => {
-        await addTripTraveller(db, trip.id, matches[0].id);
-        await markLegacyTravellerConverted(db, trip.id, name);
-      })();
+      void executeConvert(name, matches[0].id);
       return;
     }
-    void (async () => {
-      await createTripTraveller(db, trip.id, name);
-      await markLegacyTravellerConverted(db, trip.id, name);
-    })();
+    void executeConvert(name);
   };
 
-  const confirmRemove = (member: Traveller) =>
+  const confirmRemove = (member: Traveller) => {
+    if (convertingRef.current) return;
     Alert.alert(
       `Remove ${member.name} from ${trip.name}?`,
       'They will be removed from this trip and unlinked from its bookings. Their reusable traveller profile will remain safe.',
@@ -170,10 +193,22 @@ export default function TripTravellersScreen() {
         {
           text: 'Remove from trip',
           style: 'destructive',
-          onPress: () => void removeTripTraveller(db, trip.id, member.id),
+          onPress: async () => {
+            if (convertingRef.current) return;
+            try {
+              await removeTripTraveller(db, trip.id, member.id);
+              membersQuery.refetch();
+            } catch {
+              Alert.alert(
+                'Could not remove traveller',
+                'Something went wrong while removing this traveller from the trip. Please try again.',
+              );
+            }
+          },
         },
       ],
     );
+  };
 
   return (
     <Screen>
@@ -204,6 +239,7 @@ export default function TripTravellersScreen() {
                     <HeaderAction
                       label="Remove"
                       accessibilityLabel={`Remove ${member.name} from ${trip.name}`}
+                      disabled={convertingName !== null}
                       onPress={() => confirmRemove(member)}
                     />
                   }
@@ -224,31 +260,47 @@ export default function TripTravellersScreen() {
               and pricing; the original notes stay as they are.
             </Text>
             <Rows>
-              {typed.map(({ name, match, matches }) => (
-                <ListRow
-                  key={name}
-                  title={name}
-                  subtitle={
-                    matches.length > 1
-                      ? `${matches.length} matching profiles`
-                      : match
-                        ? `Matches profile “${match.name}”`
-                        : undefined
-                  }
-                  trailing={
-                    <HeaderAction
-                      label={
-                        matches.length > 1
-                          ? 'Choose profile'
-                          : match
-                            ? `Link to ${match.name}`
-                            : 'Create traveller profile'
-                      }
-                      onPress={() => handleLegacyConvert(name, matches)}
-                    />
-                  }
-                />
-              ))}
+              {typed.map(({ name, match, matches }) => {
+                const isConvertingThis = convertingName === name;
+                const isAnyConverting = convertingName !== null;
+                return (
+                  <ListRow
+                    key={name}
+                    title={name}
+                    subtitle={
+                      matches.length > 1
+                        ? `${matches.length} matching profiles`
+                        : match
+                          ? `Matches profile “${match.name}”`
+                          : undefined
+                    }
+                    trailing={
+                      <HeaderAction
+                        disabled={isAnyConverting}
+                        label={
+                          isConvertingThis
+                            ? 'Adding…'
+                            : matches.length > 1
+                              ? 'Choose profile'
+                              : match
+                                ? `Link to ${match.name}`
+                                : 'Create traveller profile'
+                        }
+                        accessibilityLabel={
+                          isConvertingThis
+                            ? `Adding ${name}`
+                            : matches.length > 1
+                              ? `Choose profile for ${name}`
+                              : match
+                                ? `Link ${name} to ${match.name}`
+                                : `Create traveller profile for ${name}`
+                        }
+                        onPress={() => handleLegacyConvert(name, matches)}
+                      />
+                    }
+                  />
+                );
+              })}
             </Rows>
           </View>
         ) : null}
@@ -266,7 +318,21 @@ export default function TripTravellersScreen() {
                       icon="add"
                       label="Add"
                       accessibilityLabel={`Add ${profile.name} to ${trip.name}`}
-                      onPress={() => void addTripTraveller(db, trip.id, profile.id)}
+                      disabled={convertingName !== null}
+                      onPress={() => {
+                        if (convertingRef.current) return;
+                        void (async () => {
+                          try {
+                            await addTripTraveller(db, trip.id, profile.id);
+                            membersQuery.refetch();
+                          } catch {
+                            Alert.alert(
+                              'Could not add traveller',
+                              'Something went wrong while adding this traveller to the trip. Please try again.',
+                            );
+                          }
+                        })();
+                      }}
                     />
                   }
                 />

@@ -1,6 +1,8 @@
 import { randomUUID } from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { markLegacyTravellerConverted } from './trips';
+
 import {
   COUNT_TRAVELLER_ITEMS,
   DELETE_ITEM_PARTICIPANTS,
@@ -178,6 +180,74 @@ export async function writeItemParticipants(
   for (const travellerId of new Set(travellerIds)) {
     await db.runAsync(INSERT_ITEM_PARTICIPANT, { $itemId: itemId, $travellerId: travellerId });
   }
+}
+
+export type ConvertLegacyTravellerOptions = {
+  tripId: string;
+  legacyName: string;
+  existingTravellerId?: string;
+  newProfileName?: string;
+  classification?: TravellerClassification;
+};
+
+/**
+ * Converts a legacy trip traveller name to a profile membership atomically.
+ * Links an explicitly selected existing profile or creates a new one, snapshots the classification,
+ * and records the legacy name in `converted_travellers` within a single database transaction.
+ * Preserves the original `trips.travellers` array.
+ */
+export async function convertLegacyTraveller(
+  db: SQLiteDatabase,
+  options: ConvertLegacyTravellerOptions,
+): Promise<{ travellerId: string; created: boolean }> {
+  const { tripId, legacyName, existingTravellerId, newProfileName, classification } = options;
+  let travellerId = existingTravellerId;
+  let created = false;
+
+  await db.withTransactionAsync(async () => {
+    if (travellerId) {
+      const profile = await db.getFirstAsync<{ id: string; classification: string | null }>(
+        `SELECT id, classification FROM travellers WHERE id = ?`,
+        travellerId,
+      );
+      if (!profile) {
+        throw new Error('Traveller profile not found');
+      }
+      const resolvedClassification =
+        classification ??
+        (profile.classification === 'adult' || profile.classification === 'child'
+          ? profile.classification
+          : 'unspecified');
+
+      await db.runAsync(INSERT_TRIP_TRAVELLER, {
+        $tripId: tripId,
+        $travellerId: travellerId,
+        $classification: resolvedClassification,
+      });
+    } else {
+      created = true;
+      const name = (newProfileName ?? legacyName).trim();
+      const resolvedClassification = classification ?? 'unspecified';
+      const newId = randomUUID();
+      await db.runAsync(INSERT_TRAVELLER, {
+        $id: newId,
+        $name: name,
+        $classification: resolvedClassification,
+        $now: new Date().toISOString(),
+      });
+      travellerId = newId;
+
+      await db.runAsync(INSERT_TRIP_TRAVELLER, {
+        $tripId: tripId,
+        $travellerId: newId,
+        $classification: resolvedClassification,
+      });
+    }
+
+    await markLegacyTravellerConverted(db, tripId, legacyName);
+  });
+
+  return { travellerId: travellerId!, created };
 }
 
 export { markLegacyTravellerConverted } from './trips';

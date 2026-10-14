@@ -5,6 +5,7 @@ import { asyncDatabase } from '../db/testing/asyncDatabase';
 import { tripItemInputSchema } from '../domain/tripItem';
 import {
   addTripTraveller,
+  convertLegacyTraveller,
   createTraveller,
   createTripTraveller,
   deleteTraveller,
@@ -170,7 +171,6 @@ describe('items with participants', () => {
 describe('legacy conversion lifecycle', () => {
   it('records converted legacy names and ensures they never reappear even if profile removed', async () => {
     const { raw, db } = setup();
-    // Simulate a trip with legacy typed travellers
     raw
       .prepare(`UPDATE trips SET travellers = ? WHERE id = 'lapland'`)
       .run(JSON.stringify(['Alice', 'Bob']));
@@ -214,5 +214,281 @@ describe('legacy conversion lifecycle', () => {
     await markLegacyTravellerConverted(db, 'lapland', 'Bob');
     const tripFinal = await getTrip(db, 'lapland');
     expect(tripFinal?.convertedTravellers).toEqual(['Alice', 'bob']);
+  });
+
+  it('atomically links an explicitly selected existing profile, snapshots classification, and records conversion marker', async () => {
+    const { raw, db } = setup();
+    raw
+      .prepare(`UPDATE trips SET travellers = ? WHERE id = 'lapland'`)
+      .run(JSON.stringify(['Alice', 'Bob']));
+
+    const aliceId = await createTraveller(db, 'Alice', 'adult');
+
+    const result = await convertLegacyTraveller(db, {
+      tripId: 'lapland',
+      legacyName: 'Alice',
+      existingTravellerId: aliceId,
+    });
+
+    expect(result).toEqual({ travellerId: aliceId, created: false });
+
+    // Membership created with adult snapshot
+    const members = await listTripTravellers(db, 'lapland');
+    expect(members).toHaveLength(1);
+    expect(members[0]).toMatchObject({ id: aliceId, name: 'Alice', classification: 'adult' });
+
+    // Conversion marker saved on trip
+    const trip = await getTrip(db, 'lapland');
+    expect(trip?.convertedTravellers).toEqual(['Alice']);
+
+    // Original trip.travellers preserved!
+    expect(trip?.travellers).toEqual(['Alice', 'Bob']);
+
+    // legacyNames excludes Alice
+    const profiles = await listTravellers(db);
+    const unres = legacyNames(
+      trip?.travellers ?? [],
+      members,
+      profiles,
+      trip?.convertedTravellers ?? [],
+    );
+    expect(unres.map((u) => u.name)).toEqual(['Bob']);
+  });
+
+  it('atomically creates a new profile, saves membership with classification, and records conversion marker', async () => {
+    const { raw, db } = setup();
+    raw
+      .prepare(`UPDATE trips SET travellers = ? WHERE id = 'lapland'`)
+      .run(JSON.stringify(['Bob']));
+
+    const result = await convertLegacyTraveller(db, {
+      tripId: 'lapland',
+      legacyName: 'Bob',
+    });
+
+    expect(result.created).toBe(true);
+    expect(result.travellerId).toBeDefined();
+
+    // Profile created
+    const profiles = await listTravellers(db);
+    expect(profiles).toHaveLength(1);
+    expect(profiles[0]).toMatchObject({
+      id: result.travellerId,
+      name: 'Bob',
+      classification: 'unspecified',
+    });
+
+    // Membership created
+    const members = await listTripTravellers(db, 'lapland');
+    expect(members).toHaveLength(1);
+    expect(members[0]).toMatchObject({
+      id: result.travellerId,
+      name: 'Bob',
+      classification: 'unspecified',
+    });
+
+    // Conversion marker recorded on trip
+    const trip = await getTrip(db, 'lapland');
+    expect(trip?.convertedTravellers).toEqual(['Bob']);
+
+    // Original trip.travellers preserved!
+    expect(trip?.travellers).toEqual(['Bob']);
+
+    // legacyNames is empty
+    const unres = legacyNames(
+      trip?.travellers ?? [],
+      members,
+      profiles,
+      trip?.convertedTravellers ?? [],
+    );
+    expect(unres).toHaveLength(0);
+  });
+
+  it('rolls back all writes including newly created profile when saving conversion marker fails', async () => {
+    const { raw, db } = setup();
+    raw
+      .prepare(`UPDATE trips SET travellers = ? WHERE id = 'lapland'`)
+      .run(JSON.stringify(['Charlie']));
+
+    // Trigger failure on updating trips.converted_travellers
+    raw.exec(`
+      CREATE TRIGGER fail_marker_save
+      BEFORE UPDATE OF converted_travellers ON trips
+      BEGIN
+        SELECT RAISE(ABORT, 'Simulated conversion marker save failure');
+      END;
+    `);
+
+    await expect(
+      convertLegacyTraveller(db, {
+        tripId: 'lapland',
+        legacyName: 'Charlie',
+      }),
+    ).rejects.toThrow(/Simulated conversion marker save failure/);
+
+    // Profile must NOT exist (rolled back)
+    const profiles = await listTravellers(db);
+    expect(profiles.find((p) => p.name === 'Charlie')).toBeUndefined();
+
+    // Trip membership must NOT exist (rolled back)
+    const members = await listTripTravellers(db, 'lapland');
+    expect(members).toHaveLength(0);
+
+    // Trip conversion marker must NOT be updated
+    const trip = await getTrip(db, 'lapland');
+    expect(trip?.convertedTravellers).toEqual([]);
+
+    // legacyNames still offers Charlie
+    const unres = legacyNames(
+      trip?.travellers ?? [],
+      members,
+      profiles,
+      trip?.convertedTravellers ?? [],
+    );
+    expect(unres.map((u) => u.name)).toEqual(['Charlie']);
+  });
+
+  it('succeeds on retry after failure without duplicates', async () => {
+    const { raw, db } = setup();
+    raw
+      .prepare(`UPDATE trips SET travellers = ? WHERE id = 'lapland'`)
+      .run(JSON.stringify(['Charlie']));
+
+    // 1. Injected failure
+    raw.exec(`
+      CREATE TRIGGER fail_marker_save
+      BEFORE UPDATE OF converted_travellers ON trips
+      BEGIN
+        SELECT RAISE(ABORT, 'Simulated failure');
+      END;
+    `);
+
+    await expect(
+      convertLegacyTraveller(db, {
+        tripId: 'lapland',
+        legacyName: 'Charlie',
+      }),
+    ).rejects.toThrow();
+
+    // 2. Remove failure trigger
+    raw.exec(`DROP TRIGGER fail_marker_save;`);
+
+    // 3. Retry conversion
+    const result = await convertLegacyTraveller(db, {
+      tripId: 'lapland',
+      legacyName: 'Charlie',
+    });
+
+    expect(result.created).toBe(true);
+
+    // Exactly 1 profile
+    const profiles = await listTravellers(db);
+    expect(profiles.filter((p) => p.name === 'Charlie')).toHaveLength(1);
+
+    // Exactly 1 member
+    const members = await listTripTravellers(db, 'lapland');
+    expect(members.filter((m) => m.name === 'Charlie')).toHaveLength(1);
+
+    // Exactly 1 conversion marker
+    const trip = await getTrip(db, 'lapland');
+    expect(trip?.convertedTravellers).toEqual(['Charlie']);
+  });
+
+  it('repeated submissions do not create duplicate records', async () => {
+    const { raw, db } = setup();
+    raw
+      .prepare(`UPDATE trips SET travellers = ? WHERE id = 'lapland'`)
+      .run(JSON.stringify(['Dana']));
+
+    const danaId = await createTraveller(db, 'Dana', 'child');
+
+    // First submission
+    const res1 = await convertLegacyTraveller(db, {
+      tripId: 'lapland',
+      legacyName: 'Dana',
+      existingTravellerId: danaId,
+    });
+    expect(res1.travellerId).toBe(danaId);
+
+    // Repeated submission (e.g. quick tap or retry)
+    const res2 = await convertLegacyTraveller(db, {
+      tripId: 'lapland',
+      legacyName: 'Dana',
+      existingTravellerId: danaId,
+    });
+    expect(res2.travellerId).toBe(danaId);
+
+    // Membership: exactly 1
+    const members = await listTripTravellers(db, 'lapland');
+    expect(members.filter((m) => m.id === danaId)).toHaveLength(1);
+
+    // Conversion marker: exactly 1
+    const trip = await getTrip(db, 'lapland');
+    expect(trip?.convertedTravellers).toEqual(['Dana']);
+  });
+
+  it('removing traveller after successful conversion does not resurrect legacy suggestion', async () => {
+    const { raw, db } = setup();
+    raw
+      .prepare(`UPDATE trips SET travellers = ? WHERE id = 'lapland'`)
+      .run(JSON.stringify(['Eve']));
+
+    const res = await convertLegacyTraveller(db, {
+      tripId: 'lapland',
+      legacyName: 'Eve',
+    });
+
+    // Remove Eve from lapland
+    await removeTripTraveller(db, 'lapland', res.travellerId);
+
+    const members = await listTripTravellers(db, 'lapland');
+    expect(members).toHaveLength(0);
+
+    const profiles = await listTravellers(db);
+    expect(profiles.filter((p) => p.name === 'Eve')).toHaveLength(1);
+
+    const trip = await getTrip(db, 'lapland');
+    const unres = legacyNames(
+      trip?.travellers ?? [],
+      members,
+      profiles,
+      trip?.convertedTravellers ?? [],
+    );
+    // Eve does NOT reappear in legacy suggestions!
+    expect(unres).toHaveLength(0);
+  });
+
+  it('multiple profiles require explicit selection without auto-merging', async () => {
+    const { raw, db } = setup();
+    raw
+      .prepare(`UPDATE trips SET travellers = ? WHERE id = 'lapland'`)
+      .run(JSON.stringify(['Frank']));
+
+    const frank1 = await createTraveller(db, 'Frank', 'adult');
+    const frank2 = await createTraveller(db, 'Frank', 'child');
+
+    const profiles = await listTravellers(db);
+    const trip = await getTrip(db, 'lapland');
+    const unres = legacyNames(trip?.travellers ?? [], [], profiles, trip?.convertedTravellers ?? []);
+
+    expect(unres).toHaveLength(1);
+    expect(unres[0].matches).toHaveLength(2);
+    // When matches.length > 1, the UI displays "Choose profile" and requires an explicit user choice
+
+    // Explicit choice of frank2 (child)
+    await convertLegacyTraveller(db, {
+      tripId: 'lapland',
+      legacyName: 'Frank',
+      existingTravellerId: frank2,
+    });
+
+    const members = await listTripTravellers(db, 'lapland');
+    expect(members).toHaveLength(1);
+    expect(members[0].id).toBe(frank2);
+    expect(members[0].classification).toBe('child');
+
+    // frank1 remains safe in profiles
+    const allProfiles = await listTravellers(db);
+    expect(allProfiles.map((p) => p.id)).toContain(frank1);
   });
 });

@@ -9,21 +9,27 @@ type Props = {
   icon?: IconName;
   onPress: () => void;
   accessibilityLabel?: string;
+  disabled?: boolean;
 };
 
 /**
  * A header button (B2): Add, Edit, Today, Search. Labelled where there is room, so nothing is an
  * unexplained glyph, and never smaller than a 48 dp target.
  */
-export function HeaderAction({ label, icon, onPress, accessibilityLabel }: Props) {
+export function HeaderAction({ label, icon, onPress, accessibilityLabel, disabled }: Props) {
   const c = useColors();
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
       accessibilityLabel={accessibilityLabel ?? label}
       hitSlop={4}
-      style={({ pressed }) => [styles.action, { opacity: pressed ? opacity.pressed : 1 }]}>
+      style={({ pressed }) => [
+        styles.action,
+        { opacity: disabled ? 0.4 : pressed ? opacity.pressed : 1 },
+      ]}>
       {icon ? <Icon name={icon} size={20} color={c.accentText} strokeWidth={2.4} /> : null}
       {label ? (
         <Text style={[type.label, { color: c.accentText }]} numberOfLines={1}>

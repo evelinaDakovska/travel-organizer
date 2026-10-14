@@ -105,8 +105,11 @@ export async function markLegacyTravellerConverted(
     `SELECT converted_travellers FROM trips WHERE id = ?`,
     tripId,
   );
+  if (!row) {
+    throw new Error('Trip not found');
+  }
   let converted: string[] = [];
-  if (row?.converted_travellers) {
+  if (row.converted_travellers) {
     try {
       const parsed: unknown = JSON.parse(row.converted_travellers);
       if (Array.isArray(parsed)) {
