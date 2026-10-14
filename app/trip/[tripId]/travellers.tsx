@@ -71,6 +71,8 @@ export default function TripTravellersScreen() {
   const profiles = useMemo(() => profilesQuery.data ?? [], [profilesQuery.data]);
   const trip = tripQuery.data;
   const [editingMember, setEditingMember] = useState<Traveller | null>(null);
+  const convertingRef = useRef(false);
+  const [convertingName, setConvertingName] = useState<string | null>(null);
 
   const typed = useMemo(
     () =>
@@ -117,11 +119,8 @@ export default function TripTravellersScreen() {
   }
   const failed = queryView(membersQuery) === 'failed' || queryView(profilesQuery) === 'failed';
 
-  const convertingRef = useRef(false);
-  const [convertingName, setConvertingName] = useState<string | null>(null);
-
   const executeConvert = async (name: string, existingTravellerId?: string) => {
-    if (convertingRef.current) return;
+    if (convertingRef.current || !trip) return;
     convertingRef.current = true;
     setConvertingName(name);
     try {

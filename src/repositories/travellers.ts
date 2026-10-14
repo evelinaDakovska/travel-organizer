@@ -190,21 +190,58 @@ export type ConvertLegacyTravellerOptions = {
   classification?: TravellerClassification;
 };
 
+export type ConvertLegacyTravellerResult = {
+  travellerId: string | null;
+  created: boolean;
+  alreadyConverted: boolean;
+};
+
 /**
  * Converts a legacy trip traveller name to a profile membership atomically.
  * Links an explicitly selected existing profile or creates a new one, snapshots the classification,
  * and records the legacy name in `converted_travellers` within a single database transaction.
  * Preserves the original `trips.travellers` array.
+ *
+ * Idempotent: Checks `converted_travellers` inside the transaction before creating or linking.
+ * If already converted, produces a defined no-op outcome without creating another profile,
+ * modifying membership/classification, or re-adding a traveller previously removed from the trip.
  */
 export async function convertLegacyTraveller(
   db: SQLiteDatabase,
   options: ConvertLegacyTravellerOptions,
-): Promise<{ travellerId: string; created: boolean }> {
+): Promise<ConvertLegacyTravellerResult> {
   const { tripId, legacyName, existingTravellerId, newProfileName, classification } = options;
-  let travellerId = existingTravellerId;
+  let travellerId = existingTravellerId ?? null;
   let created = false;
+  let alreadyConverted = false;
 
   await db.withTransactionAsync(async () => {
+    // 1. Check the converted marker inside the transaction before creating or linking anything
+    const tripRow = await db.getFirstAsync<{ converted_travellers: string | null }>(
+      `SELECT converted_travellers FROM trips WHERE id = ?`,
+      tripId,
+    );
+    if (!tripRow) {
+      throw new Error('Trip not found');
+    }
+
+    let converted: string[] = [];
+    if (tripRow.converted_travellers) {
+      try {
+        const parsed: unknown = JSON.parse(tripRow.converted_travellers);
+        if (Array.isArray(parsed)) {
+          converted = parsed.filter((n): n is string => typeof n === 'string');
+        }
+      } catch {}
+    }
+
+    const trimmed = legacyName.trim();
+    if (converted.some((n) => n.trim().toLowerCase() === trimmed.toLowerCase())) {
+      alreadyConverted = true;
+      return;
+    }
+
+    // 2. Perform the conversion write operations
     if (travellerId) {
       const profile = await db.getFirstAsync<{ id: string; classification: string | null }>(
         `SELECT id, classification FROM travellers WHERE id = ?`,
@@ -244,10 +281,17 @@ export async function convertLegacyTraveller(
       });
     }
 
-    await markLegacyTravellerConverted(db, tripId, legacyName);
+    // 3. Record conversion marker in converted_travellers
+    converted.push(trimmed);
+    await db.runAsync(
+      `UPDATE trips SET converted_travellers = ?, updated_at = ? WHERE id = ?`,
+      JSON.stringify(converted),
+      new Date().toISOString(),
+      tripId,
+    );
   });
 
-  return { travellerId: travellerId!, created };
+  return { travellerId, created, alreadyConverted };
 }
 
 export { markLegacyTravellerConverted } from './trips';

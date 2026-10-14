@@ -230,7 +230,7 @@ describe('legacy conversion lifecycle', () => {
       existingTravellerId: aliceId,
     });
 
-    expect(result).toEqual({ travellerId: aliceId, created: false });
+    expect(result).toEqual({ travellerId: aliceId, created: false, alreadyConverted: false });
 
     // Membership created with adult snapshot
     const members = await listTripTravellers(db, 'lapland');
@@ -267,6 +267,7 @@ describe('legacy conversion lifecycle', () => {
     });
 
     expect(result.created).toBe(true);
+    expect(result.alreadyConverted).toBe(false);
     expect(result.travellerId).toBeDefined();
 
     // Profile created
@@ -394,7 +395,7 @@ describe('legacy conversion lifecycle', () => {
     expect(trip?.convertedTravellers).toEqual(['Charlie']);
   });
 
-  it('repeated submissions do not create duplicate records', async () => {
+  it('repeated conversion using an existing profile is a no-op and does not duplicate memberships', async () => {
     const { raw, db } = setup();
     raw
       .prepare(`UPDATE trips SET travellers = ? WHERE id = 'lapland'`)
@@ -409,6 +410,8 @@ describe('legacy conversion lifecycle', () => {
       existingTravellerId: danaId,
     });
     expect(res1.travellerId).toBe(danaId);
+    expect(res1.created).toBe(false);
+    expect(res1.alreadyConverted).toBe(false);
 
     // Repeated submission (e.g. quick tap or retry)
     const res2 = await convertLegacyTraveller(db, {
@@ -417,6 +420,8 @@ describe('legacy conversion lifecycle', () => {
       existingTravellerId: danaId,
     });
     expect(res2.travellerId).toBe(danaId);
+    expect(res2.created).toBe(false);
+    expect(res2.alreadyConverted).toBe(true);
 
     // Membership: exactly 1
     const members = await listTripTravellers(db, 'lapland');
@@ -425,6 +430,66 @@ describe('legacy conversion lifecycle', () => {
     // Conversion marker: exactly 1
     const trip = await getTrip(db, 'lapland');
     expect(trip?.convertedTravellers).toEqual(['Dana']);
+  });
+
+  it('repeated conversion using the new-profile path is a no-op and does not create duplicate profiles or re-add removed travellers', async () => {
+    const { raw, db } = setup();
+    raw
+      .prepare(`UPDATE trips SET travellers = ? WHERE id = 'lapland'`)
+      .run(JSON.stringify(['George']));
+
+    // 1. First conversion via new-profile path (no existingTravellerId)
+    const first = await convertLegacyTraveller(db, {
+      tripId: 'lapland',
+      legacyName: 'George',
+    });
+
+    expect(first.created).toBe(true);
+    expect(first.alreadyConverted).toBe(false);
+    expect(first.travellerId).toBeDefined();
+
+    // 2. Second conversion attempt with the same legacy name (e.g. repeated tap or re-submission)
+    const second = await convertLegacyTraveller(db, {
+      tripId: 'lapland',
+      legacyName: 'George',
+    });
+
+    expect(second.created).toBe(false);
+    expect(second.alreadyConverted).toBe(true);
+
+    // Exactly 1 profile in travellers table
+    const profiles = await listTravellers(db);
+    expect(profiles.filter((p) => p.name === 'George')).toHaveLength(1);
+
+    // Exactly 1 membership for this trip
+    const members = await listTripTravellers(db, 'lapland');
+    expect(members.filter((m) => m.name === 'George')).toHaveLength(1);
+
+    // Exactly 1 conversion marker
+    const trip = await getTrip(db, 'lapland');
+    expect(trip?.convertedTravellers).toEqual(['George']);
+
+    // 3. Remove George from the trip
+    await removeTripTraveller(db, 'lapland', first.travellerId!);
+    const membersAfterRemove = await listTripTravellers(db, 'lapland');
+    expect(membersAfterRemove).toHaveLength(0);
+
+    // 4. Repeated conversion attempt AFTER removal must NOT re-add them to the trip or create a new profile
+    const third = await convertLegacyTraveller(db, {
+      tripId: 'lapland',
+      legacyName: 'George',
+    });
+
+    expect(third.alreadyConverted).toBe(true);
+    expect(third.created).toBe(false);
+
+    // Members must still be empty (not re-added!)
+    const membersStillEmpty = await listTripTravellers(db, 'lapland');
+    expect(membersStillEmpty).toHaveLength(0);
+
+    // Profiles count unchanged
+    const profilesAfter = await listTravellers(db);
+    expect(profilesAfter.filter((p) => p.name === 'George')).toHaveLength(1);
   });
 
   it('removing traveller after successful conversion does not resurrect legacy suggestion', async () => {
@@ -439,7 +504,7 @@ describe('legacy conversion lifecycle', () => {
     });
 
     // Remove Eve from lapland
-    await removeTripTraveller(db, 'lapland', res.travellerId);
+    await removeTripTraveller(db, 'lapland', res.travellerId!);
 
     const members = await listTripTravellers(db, 'lapland');
     expect(members).toHaveLength(0);
