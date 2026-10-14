@@ -58,7 +58,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
-                    android:text="• Native search finds results; it does not guarantee opening one exact email.\n• Account selection is not guaranteed: you may need to switch accounts in Gmail.\n• A web link opens a browser and may require Google sign-in.\n• Isolated build: cannot access or modify production Travel Organizer data."
+                    android:text="• Native search opens Gmail's search interface; it does not guarantee finding or opening an exact email.\n• Multi-account support remains unverified: you may need to switch accounts manually in Gmail.\n• Web link requires HTTPS with exact host mail.google.com; lookalikes/userinfo rejected.\n• Isolated sandbox: checks blocking of /data/data/com.evelinadakovska.travelorganizer directory path."
                     android:textColor="@color/text_main"
                     android:textSize="12sp" />
             </LinearLayout>

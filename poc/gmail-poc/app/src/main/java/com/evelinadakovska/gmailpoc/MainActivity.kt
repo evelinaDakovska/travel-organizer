@@ -54,7 +54,7 @@ class MainActivity : AppCompatActivity() {
     private fun handleFindInGmail() {
         val query = etSearchQuery.text.toString().trim()
         if (query.isEmpty()) {
-            appendLog("Find in Gmail: Aborted (query field is empty).")
+            appendLog("Find in Gmail: Aborted (search field is empty).")
             return
         }
 
@@ -67,7 +67,7 @@ class MainActivity : AppCompatActivity() {
 
             if (intent.resolveActivity(packageManager) != null) {
                 startActivity(intent)
-                appendLog("Find in Gmail: Launched ACTION_SEARCH intent targeting $gmailPackage.")
+                appendLog("Find in Gmail: Launched native search interface (active account search; finding emails depends on mailbox).")
             } else {
                 // Fallback: try targeting Gmail main activity directly if resolve returned null
                 val fallbackIntent = Intent(Intent.ACTION_SEARCH).apply {
@@ -76,10 +76,11 @@ class MainActivity : AppCompatActivity() {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
                 startActivity(fallbackIntent)
-                appendLog("Find in Gmail: Launched via fallback MailActivityGmail.")
+                appendLog("Find in Gmail: Launched native search interface via fallback component.")
             }
-        } catch (e: Exception) {
-            appendLog("Find in Gmail: Failed to launch intent (${e.javaClass.simpleName}: ${e.message}).")
+        } catch (_: Exception) {
+            // Sanitize: do not log raw exception message, stack trace, query text, or PII
+            appendLog("Find in Gmail: Failed to launch intent (operation failed).")
         }
     }
 
@@ -100,18 +101,36 @@ class MainActivity : AppCompatActivity() {
             if (launchIntent != null) {
                 launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 startActivity(launchIntent)
-                appendLog("Copy & Open: Launched Gmail app ($gmailPackage).")
+                appendLog("Copy & Open: Opened Gmail application.")
             } else {
-                appendLog("Copy & Open: Gmail app ($gmailPackage) is not installed on this device.")
+                appendLog("Copy & Open: Gmail app is not installed on this device.")
             }
-        } catch (e: Exception) {
-            appendLog("Copy & Open: Error (${e.javaClass.simpleName}: ${e.message}).")
+        } catch (_: Exception) {
+            // Sanitize: no raw exception messages or PII
+            appendLog("Copy & Open: Failed to open Gmail app (operation failed).")
+        }
+    }
+
+    /**
+     * Validates that the URL uses HTTPS with the exact host mail.google.com.
+     * Rejects userinfo tricks, lookalikes, unsupported schemes, and non-standard ports.
+     */
+    private fun validateGmailWebUrl(rawUrl: String): Boolean {
+        return try {
+            val uri = Uri.parse(rawUrl)
+            uri.scheme?.equals("https", ignoreCase = true) == true &&
+                uri.host?.equals("mail.google.com", ignoreCase = true) == true &&
+                uri.userInfo == null &&
+                (uri.port == -1 || uri.port == 443)
+        } catch (_: Exception) {
+            false
         }
     }
 
     /**
      * Action 3: Open Gmail Web Link
      * Tests a web URL explicitly entered by the user.
+     * Accepts ONLY HTTPS URLs with the exact host mail.google.com.
      */
     private fun handleOpenWebLink() {
         val rawUrl = etWebUrl.text.toString().trim()
@@ -120,37 +139,36 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val url = if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
-            "https://$rawUrl"
-        } else {
-            rawUrl
+        if (!validateGmailWebUrl(rawUrl)) {
+            appendLog("Web link: Rejected (URL must be HTTPS with exact host mail.google.com; userinfo, lookalikes and other schemes rejected).")
+            return
         }
 
         try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(rawUrl)).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
 
             if (intent.resolveActivity(packageManager) != null) {
                 startActivity(intent)
-                appendLog("Web link: Opened browser intent for web URL.")
+                appendLog("Web link: Launched browser for verified mail.google.com URL.")
             } else {
                 appendLog("Web link: No browser application found on this device.")
             }
-        } catch (e: Exception) {
-            appendLog("Web link: Failed to open URL (${e.javaClass.simpleName}: ${e.message}).")
+        } catch (_: Exception) {
+            // Sanitize: no URL, exception message, or PII
+            appendLog("Web link: Failed to launch browser (operation failed).")
         }
     }
 
     /**
      * Verifies that the PoC is running in its own isolated Linux sandbox
-     * and confirms it has NO read or write access to production Travel Organizer data.
+     * and confirms it has NO read or write access to the production Travel Organizer specific directory path.
      */
     private fun logDiagnosticsOnStart() {
-        val time = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())
         val isGmailInstalled = packageManager.getLaunchIntentForPackage(gmailPackage) != null
 
-        // Check isolation against production app's private sandbox
+        // Check isolation against production app's specific directory path (not a general security audit)
         val prodDataDir = File("/data/data/$productionPackage")
         val canAccessProdData = try {
             prodDataDir.exists() && (prodDataDir.canRead() || prodDataDir.list() != null)
@@ -158,10 +176,11 @@ class MainActivity : AppCompatActivity() {
             false
         }
 
-        appendLog("[$time] Initialized isolated PoC:")
+        appendLog("Initialized isolated PoC:")
         appendLog(" • Package ID: $packageName")
         appendLog(" • Gmail installed: $isGmailInstalled")
-        appendLog(" • Prod sandbox access: ${if (canAccessProdData) "LEAK DETECTED" else "STRICTLY ISOLATED (blocked)"}")
+        appendLog(" • Specific path check (/data/data/$productionPackage): ${if (canAccessProdData) "ACCESSIBLE (UNEXPECTED)" else "BLOCKED (expected Linux sandbox isolation)"}")
+        appendLog(" • Note: search interface confirmed on emulator; actual email finding and multi-account switching remain unverified on this device.")
     }
 
     private fun appendLog(message: String) {
@@ -170,3 +189,4 @@ class MainActivity : AppCompatActivity() {
         tvStatusLog.text = logHistory.toString().trim()
     }
 }
+
