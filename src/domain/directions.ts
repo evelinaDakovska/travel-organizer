@@ -28,6 +28,7 @@ export type DirectionsRequest = {
 
 export type TimelineConnector = {
   id: string;
+  day: string;
   fromItem: TripItem;
   toItem: TripItem;
   origin: DirectionEndpoint;
@@ -271,7 +272,8 @@ export function findTimelineConnectors(
     }
 
     connectors.push({
-      id: `${curr.item.id}->${next.item.id}`,
+      id: `${curr.key}->${next.key}`,
+      day: dayKey(curr.moment),
       fromItem: curr.item,
       toItem: next.item,
       origin,
@@ -347,4 +349,40 @@ export function findTripSavedPlaces(items: readonly TripItem[]): DirectionEndpoi
   }
 
   return endpoints;
+}
+
+/**
+ * Resolves the target day (YYYY-MM-DD) for directions from/to an item endpoint.
+ * - Transport arrival ('end'): uses arrival date (item.end ?? item.start).
+ * - Transport departure ('start') or non-transport: uses departure/activity date (item.start ?? item.end).
+ */
+export function resolveItemDirectionsDay(
+  item: TripItem,
+  entryRole?: EntryRole | null,
+): string | null {
+  if (entryRole === 'end') {
+    const moment = item.end ?? item.start;
+    return moment ? dayKey(moment) : null;
+  }
+  const moment = item.start ?? item.end;
+  return moment ? dayKey(moment) : null;
+}
+
+/**
+ * Computes a stable identifier for a directions request.
+ * Prevents unnecessary sheet resets during parent component re-renders.
+ */
+export function computeDirectionsRequestKey(
+  destination: DirectionEndpoint,
+  initialOrigin?: OriginChoice,
+  requestKey?: string,
+): string {
+  if (requestKey) return requestKey;
+  const destKey = formatEndpointQuery(destination) ?? destination.title;
+  const origKey = initialOrigin
+    ? initialOrigin.type === 'current_location'
+      ? 'current_location'
+      : (formatEndpointQuery(initialOrigin.endpoint) ?? initialOrigin.endpoint.title)
+    : 'current_location';
+  return `${destKey}<-${origKey}`;
 }

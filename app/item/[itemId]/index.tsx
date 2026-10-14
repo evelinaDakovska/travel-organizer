@@ -26,6 +26,7 @@ import {
   findStayForDay,
   findTripSavedPlaces,
   findTripStays,
+  resolveItemDirectionsDay,
   resolveItemEndpoint,
   type DirectionEndpoint,
 } from '../../../src/domain/directions';
@@ -112,7 +113,11 @@ export default function ItemDetail() {
   // Paid or not (F7), the journey's legs sharing the state of the one that holds the price.
   const payments = useMemo(() => paymentStatuses(item ? [item, ...legs] : []), [item, legs]);
 
-  const [directionsTarget, setDirectionsTarget] = useState<DirectionEndpoint | null>(null);
+  const [directionsTarget, setDirectionsTarget] = useState<{
+    endpoint: DirectionEndpoint;
+    targetDay: string | null;
+    requestKey: string;
+  } | null>(null);
   const departureEndpoint = useMemo(
     () => (item?.kind === 'transport' ? resolveItemEndpoint(item, 'destination', 'start') : null),
     [item],
@@ -127,8 +132,8 @@ export default function ItemDetail() {
   );
   const stays = useMemo(() => findTripStays(tripItems ?? []), [tripItems]);
   const activeHotel = useMemo(
-    () => findStayForDay(stays, item?.start ? dayKey(item.start) : null),
-    [stays, item?.start],
+    () => findStayForDay(stays, directionsTarget?.targetDay),
+    [stays, directionsTarget?.targetDay],
   );
   const savedPlaces = useMemo(() => findTripSavedPlaces(tripItems ?? []), [tripItems]);
 
@@ -263,7 +268,13 @@ export default function ItemDetail() {
               <Button
                 label="How to get there"
                 variant="secondary"
-                onPress={() => setDirectionsTarget(defaultEndpoint)}
+                onPress={() =>
+                  setDirectionsTarget({
+                    endpoint: defaultEndpoint,
+                    targetDay: resolveItemDirectionsDay(item),
+                    requestKey: `${item.id}:default`,
+                  })
+                }
               />
             ) : null}
             {departureEndpoint ? (
@@ -274,7 +285,13 @@ export default function ItemDetail() {
                     : 'How to get to departure'
                 }
                 variant="secondary"
-                onPress={() => setDirectionsTarget(departureEndpoint)}
+                onPress={() =>
+                  setDirectionsTarget({
+                    endpoint: departureEndpoint,
+                    targetDay: resolveItemDirectionsDay(item, 'start'),
+                    requestKey: `${item.id}:departure`,
+                  })
+                }
               />
             ) : null}
             {arrivalEndpoint ? (
@@ -285,7 +302,13 @@ export default function ItemDetail() {
                     : 'How to get to arrival'
                 }
                 variant="secondary"
-                onPress={() => setDirectionsTarget(arrivalEndpoint)}
+                onPress={() =>
+                  setDirectionsTarget({
+                    endpoint: arrivalEndpoint,
+                    targetDay: resolveItemDirectionsDay(item, 'end'),
+                    requestKey: `${item.id}:arrival`,
+                  })
+                }
               />
             ) : null}
             {maps ? (
@@ -385,9 +408,10 @@ export default function ItemDetail() {
         <DirectionsSheet
           visible={directionsTarget !== null}
           onClose={() => setDirectionsTarget(null)}
-          destination={directionsTarget}
+          destination={directionsTarget.endpoint}
           hotel={activeHotel}
           savedPlaces={savedPlaces}
+          requestKey={directionsTarget.requestKey}
         />
       ) : null}
     </Screen>

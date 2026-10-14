@@ -258,17 +258,9 @@ export default function TimelineScreen() {
           destination={activeConnector.destination}
           initialOrigin={{ type: 'endpoint', endpoint: activeConnector.origin }}
           previousEndpoint={activeConnector.origin}
-          hotel={
-            findStayForDay(
-              stays,
-              activeConnector.fromItem.start
-                ? dayKey(activeConnector.fromItem.start)
-                : activeConnector.toItem.start
-                  ? dayKey(activeConnector.toItem.start)
-                  : null,
-            )
-          }
+          hotel={findStayForDay(stays, activeConnector.day)}
           savedPlaces={savedPlaces}
+          requestKey={activeConnector.id}
         />
       ) : null}
     </Screen>

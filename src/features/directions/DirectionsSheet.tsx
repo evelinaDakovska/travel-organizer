@@ -1,11 +1,12 @@
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
   areEndpointsEqual,
   buildGoogleMapsUrl,
+  computeDirectionsRequestKey,
   formatEndpointQuery,
   resolveItemEndpoint,
   type DirectionEndpoint,
@@ -26,6 +27,7 @@ type Props = {
   previousEndpoint?: DirectionEndpoint | null;
   hotel?: TripItem | null;
   savedPlaces?: readonly DirectionEndpoint[];
+  requestKey?: string;
 };
 
 type ModeOption = {
@@ -53,6 +55,7 @@ export function DirectionsSheet({
   previousEndpoint,
   hotel,
   savedPlaces = [],
+  requestKey,
 }: Props) {
   const c = useColors();
 
@@ -64,16 +67,34 @@ export function DirectionsSheet({
   const [showAllPlaces, setShowAllPlaces] = useState(false);
   const [isOpening, setIsOpening] = useState(false);
 
-  // D6: Reset state whenever a new request opens or visible changes
+  const lastVisibleRef = useRef(false);
+  const lastRequestKeyRef = useRef<string | null>(null);
+
+  const effectiveRequestKey = useMemo(
+    () => computeDirectionsRequestKey(destination, initialOrigin, requestKey),
+    [destination, initialOrigin, requestKey],
+  );
+
+  // D6: Reset state only when intentionally opening or when the request identity changes.
+  // Preserves user selections across unrelated parent re-renders (clock tick, live query updates).
   useEffect(() => {
-    if (visible) {
+    const isOpeningSheet = visible && !lastVisibleRef.current;
+    const keyChanged = visible && lastRequestKeyRef.current !== effectiveRequestKey;
+
+    if (isOpeningSheet || keyChanged) {
       setOrigin(initialOrigin ?? { type: 'current_location' });
       setMode(null);
       setPickingOrigin(false);
       setShowAllPlaces(false);
       setIsOpening(false);
+      lastRequestKeyRef.current = effectiveRequestKey;
     }
-  }, [visible, destination, initialOrigin]);
+
+    if (!visible) {
+      lastRequestKeyRef.current = null;
+    }
+    lastVisibleRef.current = visible;
+  }, [visible, effectiveRequestKey, initialOrigin]);
 
   const hotelEndpoint = useMemo(() => {
     if (!hotel) return null;

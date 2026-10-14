@@ -50,7 +50,8 @@ export type DirectionsRequest = {
 };
 
 export type TimelineConnector = {
-  id: string; // e.g. `${fromId}->${toId}`
+  id: string; // e.g. `${fromKey}->${toKey}`
+  day: string; // 'YYYY-MM-DD' calendar day of connector moment
   fromItem: TripItem;
   toItem: TripItem;
   origin: DirectionEndpoint;
@@ -87,6 +88,16 @@ export type TimelineConnector = {
      - Resolves `origin` from `i-1` and `destination` from `i`.
      - If middle item has missing location, connector is suppressed (avoids misleading shortcut routes).
      - If `areEndpointsEqual(origin, destination)`, connector is suppressed.
+     - Assigns `day` from `curr.moment` so overnight arrivals match arrival day hotel.
+7. `resolveItemDirectionsDay(item: TripItem, role?: 'start' | 'end' | null): string | null`
+   - Resolves target calendar day for item directions:
+     - Transport arrival (`'end'`): uses arrival date (`item.end ?? item.start`).
+     - Transport departure (`'start'`) or general items: uses departure/activity date (`item.start ?? item.end`).
+8. `findStayForDay(stays: readonly TripItem[], targetDay?: string | null): TripItem | null`
+   - Selects the active stay covering `targetDay` (checkin <= targetDay < checkout).
+   - In transitions or overlapping stays, prioritizes latest check-in instant, then latest checkout.
+9. `computeDirectionsRequestKey(destination, initialOrigin, requestKey?): string`
+   - Computes stable request identity to prevent resetting sheet state on parent re-renders.
 
 ---
 
@@ -105,11 +116,14 @@ export type TimelineConnector = {
 - Radio / chips for:
   - Current location (resolved by Google Maps)
   - Previous stop (if available)
-  - Hotel / Base (if available from trip stays)
+  - Hotel / Base (if available from trip stays for that route day)
   - Another saved place (picker/sheet list)
 - Mode picker: [Any, Walking, Driving, Transit].
 - Action: "Open in Google Maps".
 - Failure handling: Alerts user with "Could not open Maps" and provides "Copy address" action.
+- Reset behavior:
+  - Preserves user origin/mode choices while the sheet remains open across parent refreshes and clock ticks.
+  - Resets to defaults only on intentional sheet opening or when request identity (`requestKey`) changes.
 
 ---
 

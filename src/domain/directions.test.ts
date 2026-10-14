@@ -1,11 +1,13 @@
 import {
   areEndpointsEqual,
   buildGoogleMapsUrl,
+  computeDirectionsRequestKey,
   findStayForDay,
   findTimelineConnectors,
   findTripSavedPlaces,
   findTripStays,
   formatEndpointQuery,
+  resolveItemDirectionsDay,
   resolveItemEndpoint,
   validateCoordinates,
   type DirectionEndpoint,
@@ -819,3 +821,222 @@ describe('findTripStays, findStayForDay and findTripSavedPlaces', () => {
     expect(places.map((p) => p.title)).toContain('SantaPark');
   });
 });
+
+describe('Route-day hotel selection and item detail directions', () => {
+  const baseStay: TripItem = {
+    id: 'base-stay',
+    tripId: 't1',
+    kind: 'stay',
+    subkind: 'hotel',
+    status: 'confirmed',
+    priority: null,
+    title: 'Base Hotel',
+    start: { local: '2026-11-20T15:00', precision: 'time', tz: 'Europe/Helsinki' },
+    end: { local: '2026-11-21T11:00', precision: 'time', tz: 'Europe/Helsinki' },
+    startTzOverride: null,
+    endTzOverride: null,
+    completedAt: null,
+    locationName: 'Base Hotel',
+    address: 'Base Address',
+    latitude: 60.1,
+    longitude: 24.9,
+    confirmationCode: null,
+    notes: null,
+    details: null,
+    priceAmount: null,
+    priceCurrency: null,
+    isPaid: false,
+    createdAt: '2026-10-13T10:00:00Z',
+    updatedAt: '2026-10-13T10:00:00Z',
+  };
+
+  const hotelHelsinki: TripItem = {
+    ...baseStay,
+    id: 'hotel-helsinki',
+    title: 'Hotel Helsinki',
+    start: { local: '2026-11-20T15:00', precision: 'time', tz: 'Europe/Helsinki' },
+    end: { local: '2026-11-21T11:00', precision: 'time', tz: 'Europe/Helsinki' },
+  };
+
+  const hotelRovaniemi: TripItem = {
+    ...baseStay,
+    id: 'hotel-rovaniemi',
+    title: 'Hotel Rovaniemi',
+    start: { local: '2026-11-21T15:00', precision: 'time', tz: 'Europe/Helsinki' },
+    end: { local: '2026-11-22T11:00', precision: 'time', tz: 'Europe/Helsinki' },
+  };
+
+  const hotelIvalo: TripItem = {
+    ...baseStay,
+    id: 'hotel-ivalo',
+    title: 'Hotel Ivalo',
+    start: { local: '2026-11-22T15:00', precision: 'time', tz: 'Europe/Helsinki' },
+    end: { local: '2026-11-23T11:00', precision: 'time', tz: 'Europe/Helsinki' },
+  };
+
+  const stays = [hotelHelsinki, hotelRovaniemi, hotelIvalo];
+
+  it('selects arrival-day hotel for connector following overnight train arrival (Overnight arrival -> next activity)', () => {
+    const sleeperTrain: TripItem = {
+      ...baseStay,
+      id: 'train-overnight',
+      kind: 'transport',
+      subkind: 'train',
+      title: 'Santa Claus Express',
+      details: { from: 'Helsinki Central', to: 'Rovaniemi Railway Station' },
+      start: { local: '2026-11-20T19:27', precision: 'time', tz: 'Europe/Helsinki' },
+      end: { local: '2026-11-21T07:40', precision: 'time', tz: 'Europe/Helsinki' },
+    };
+
+    const nextActivity: TripItem = {
+      ...baseStay,
+      id: 'act-santapark',
+      kind: 'activity',
+      title: 'SantaPark',
+      locationName: 'SantaPark',
+      address: 'Tarvantie 1',
+      start: { local: '2026-11-21T09:30', precision: 'time', tz: 'Europe/Helsinki' },
+      end: { local: '2026-11-21T12:00', precision: 'time', tz: 'Europe/Helsinki' },
+    };
+
+    const entries = timelineEntries([sleeperTrain, nextActivity]);
+    const day21Entries = entries.filter((e) => e.moment.local.startsWith('2026-11-21'));
+
+    const connectors = findTimelineConnectors(day21Entries);
+    expect(connectors).toHaveLength(1);
+    expect(connectors[0].day).toBe('2026-11-21');
+    expect(connectors[0].origin.title).toBe('Rovaniemi Railway Station');
+    expect(connectors[0].destination.title).toBe('SantaPark');
+
+    // Crucial check: hotel for this connector MUST be Hotel Rovaniemi (Nov 21), NOT Hotel Helsinki (Nov 20 departure)
+    const activeHotel = findStayForDay(stays, connectors[0].day);
+    expect(activeHotel?.id).toBe('hotel-rovaniemi');
+    expect(activeHotel?.title).toBe('Hotel Rovaniemi');
+  });
+
+  it('resolves distinct dates for departure vs arrival on different dates', () => {
+    const overnightFlight: TripItem = {
+      ...baseStay,
+      id: 'flight-1',
+      kind: 'transport',
+      subkind: 'flight',
+      title: 'Red-eye Flight',
+      details: { from: 'HEL', to: 'RVN' },
+      start: { local: '2026-11-20T23:30', precision: 'time', tz: 'Europe/Helsinki' },
+      end: { local: '2026-11-21T01:30', precision: 'time', tz: 'Europe/Helsinki' },
+    };
+
+    const departureDay = resolveItemDirectionsDay(overnightFlight, 'start');
+    const arrivalDay = resolveItemDirectionsDay(overnightFlight, 'end');
+    const defaultDay = resolveItemDirectionsDay(overnightFlight);
+
+    expect(departureDay).toBe('2026-11-20');
+    expect(arrivalDay).toBe('2026-11-21');
+    expect(defaultDay).toBe('2026-11-20');
+  });
+
+  it('resolves correct hotel across consecutive days with different hotels', () => {
+    expect(findStayForDay(stays, '2026-11-20')?.id).toBe('hotel-helsinki');
+    expect(findStayForDay(stays, '2026-11-21')?.id).toBe('hotel-rovaniemi');
+    expect(findStayForDay(stays, '2026-11-22')?.id).toBe('hotel-ivalo');
+  });
+
+  it('chooses departure hotel vs arrival hotel appropriately in item detail', () => {
+    const overnightTrain: TripItem = {
+      ...baseStay,
+      id: 'train-multi-day',
+      kind: 'transport',
+      subkind: 'train',
+      title: 'Overnight Train',
+      details: { from: 'Helsinki Central', to: 'Rovaniemi Railway Station' },
+      start: { local: '2026-11-20T19:27', precision: 'time', tz: 'Europe/Helsinki' },
+      end: { local: '2026-11-21T07:40', precision: 'time', tz: 'Europe/Helsinki' },
+    };
+
+    // When user requests "To departure": uses departure day (Nov 20) -> Helsinki hotel
+    const departureDay = resolveItemDirectionsDay(overnightTrain, 'start');
+    const departureHotel = findStayForDay(stays, departureDay);
+    expect(departureHotel?.id).toBe('hotel-helsinki');
+
+    // When user requests "To arrival": uses arrival day (Nov 21) -> Rovaniemi hotel, NOT departure hotel!
+    const arrivalDay = resolveItemDirectionsDay(overnightTrain, 'end');
+    const arrivalHotel = findStayForDay(stays, arrivalDay);
+    expect(arrivalHotel?.id).toBe('hotel-rovaniemi');
+  });
+
+  it('handles no suitable hotel and overlapping stays with priority rules', () => {
+    // No suitable hotel
+    expect(findStayForDay([], '2026-11-21')).toBeNull();
+    expect(findStayForDay(stays, '2026-11-15')).toBeNull();
+    expect(findStayForDay(stays, null)).toBeNull();
+
+    // Overlapping stays on the same day: later check-in instant takes precedence
+    const longStay: TripItem = {
+      ...baseStay,
+      id: 'long-stay',
+      title: 'Long Stay Chalet',
+      start: { local: '2026-11-20T10:00', precision: 'time', tz: 'Europe/Helsinki' },
+      end: { local: '2026-11-25T11:00', precision: 'time', tz: 'Europe/Helsinki' },
+    };
+    const specialStay: TripItem = {
+      ...baseStay,
+      id: 'special-stay',
+      title: 'Aurora Glass Igloo',
+      start: { local: '2026-11-21T16:00', precision: 'time', tz: 'Europe/Helsinki' },
+      end: { local: '2026-11-22T10:00', precision: 'time', tz: 'Europe/Helsinki' },
+    };
+
+    const overlappingStays = [longStay, specialStay];
+    // On Nov 21, both overlap, but specialStay has later check-in (16:00 vs 10:00 on Nov 20)
+    expect(findStayForDay(overlappingStays, '2026-11-21')?.id).toBe('special-stay');
+
+    // If starts are identical, later end takes precedence
+    const staySameStartEarlierEnd: TripItem = {
+      ...baseStay,
+      id: 'stay-early-end',
+      title: 'Stay A',
+      start: { local: '2026-11-20T15:00', precision: 'time', tz: 'Europe/Helsinki' },
+      end: { local: '2026-11-22T10:00', precision: 'time', tz: 'Europe/Helsinki' },
+    };
+    const staySameStartLaterEnd: TripItem = {
+      ...baseStay,
+      id: 'stay-late-end',
+      title: 'Stay B',
+      start: { local: '2026-11-20T15:00', precision: 'time', tz: 'Europe/Helsinki' },
+      end: { local: '2026-11-23T10:00', precision: 'time', tz: 'Europe/Helsinki' },
+    };
+    expect(
+      findStayForDay([staySameStartEarlierEnd, staySameStartLaterEnd], '2026-11-21')?.id,
+    ).toBe('stay-late-end');
+  });
+});
+
+describe('DirectionsSheet stable requestKey generation', () => {
+  it('uses explicit requestKey when provided', () => {
+    const key = computeDirectionsRequestKey(
+      { title: 'SantaPark' },
+      { type: 'current_location' },
+      'custom-request-key-123',
+    );
+    expect(key).toBe('custom-request-key-123');
+  });
+
+  it('computes stable fallback key from destination and origin', () => {
+    const dest = { title: 'SantaPark', latitude: 66.54, longitude: 25.84 };
+    const origin1 = {
+      type: 'endpoint' as const,
+      endpoint: { title: 'Hotel Sky', latitude: 66.5, longitude: 25.7 },
+    };
+    const origin2 = {
+      type: 'endpoint' as const,
+      endpoint: { title: 'Hotel Sky', latitude: 66.5, longitude: 25.7 },
+    };
+
+    const key1 = computeDirectionsRequestKey(dest, origin1);
+    const key2 = computeDirectionsRequestKey(dest, origin2);
+
+    expect(key1).toBe('66.54,25.84<-66.5,25.7');
+    expect(key1).toBe(key2);
+  });
+});
+
