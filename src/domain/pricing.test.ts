@@ -5,6 +5,7 @@ import {
   pricingSchema,
   pricingText,
   pricingTotal,
+  suggestPricingLines,
   withPricing,
   type Pricing,
 } from './pricing';
@@ -89,5 +90,59 @@ describe('pricingMatches', () => {
     expect(pricingMatches({ pricing: family }, 24001)).toBe(false);
     expect(pricingMatches({ pricing: family }, undefined)).toBe(false);
     expect(pricingMatches({ pricing: { mode: 'other' } }, 24000)).toBe(false);
+  });
+});
+
+describe('suggestPricingLines', () => {
+  it('generates Adult and Child lines when classifications are known, with undefined unit prices', () => {
+    const lines = suggestPricingLines({
+      participants: [
+        { classification: 'adult' },
+        { classification: 'adult' },
+        { classification: 'child' },
+      ],
+      currentTotal: 3000,
+    });
+    expect(lines).toEqual([
+      { label: 'Adult', quantity: 2, unitAmount: undefined },
+      { label: 'Child', quantity: 1, unitAmount: undefined },
+    ]);
+  });
+
+  it('treats unspecified distinctly, never assuming Adult or inventing unit price', () => {
+    const lines = suggestPricingLines({
+      participants: [
+        { classification: 'adult' },
+        { classification: 'unspecified' },
+      ],
+      currentTotal: 2000,
+    });
+    expect(lines).toEqual([
+      { label: 'Adult', quantity: 1, unitAmount: undefined },
+      { label: '', quantity: 1, unitAmount: undefined },
+    ]);
+  });
+
+  it('returns a single unlabelled line when all participants are unspecified', () => {
+    const lines = suggestPricingLines({
+      participants: [
+        { classification: 'unspecified' },
+        { classification: 'unspecified' },
+      ],
+      currentTotal: 4000,
+    });
+    expect(lines).toEqual([
+      { label: '', quantity: 2, unitAmount: 2000 },
+    ]);
+  });
+
+  it('handles empty participants gracefully', () => {
+    const lines = suggestPricingLines({
+      participants: [],
+      currentTotal: 5000,
+    });
+    expect(lines).toEqual([
+      { label: '', quantity: 1, unitAmount: 5000 },
+    ]);
   });
 });

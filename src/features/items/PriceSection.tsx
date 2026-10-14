@@ -11,7 +11,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { refundableOf, withRefundable } from '../../domain/bookingCosts';
 import { formatMoney } from '../../domain/format';
-import { pricingOf, pricingTotal, withPricing, type DraftPricing } from '../../domain/pricing';
+import {
+  pricingOf,
+  pricingTotal,
+  suggestPricingLines,
+  withPricing,
+  type DraftPricing,
+} from '../../domain/pricing';
 import type { TripItemFormValues } from '../../domain/tripItem';
 import { ChoiceField } from '../../ui/components/ChoiceField';
 import { Disclosure } from '../../ui/components/Disclosure';
@@ -29,6 +35,8 @@ type Props = {
   initiallyOpen: boolean;
   /** People ticked as going (C2): a per-person price starts priced for them. */
   goingCount: number;
+  /** Participants going on this item with their classifications, for non-destructive rate suggestions. */
+  participants?: readonly { classification: 'adult' | 'child' | 'unspecified' }[];
 };
 
 /**
@@ -49,6 +57,7 @@ export function PriceSection({
   getValues,
   initiallyOpen,
   goingCount,
+  participants,
 }: Props) {
   const c = useColors();
   const [priceAmount, priceCurrency, isPaid, details] = useWatch({
@@ -107,14 +116,21 @@ export function PriceSection({
       setValue('details', withPricing(getValues('details'), null), { shouldDirty: true });
       return;
     }
-    const people = Math.max(1, goingCount);
+    // Never touch existing/saved lines when switching
+    if (lines.length > 0) return;
+
     const current = getValues('priceAmount');
-    // A total that divides evenly becomes the rate; otherwise the rate is left to type.
-    const even =
-      current !== undefined && Number.isFinite(current) && current % people === 0
-        ? current / people
-        : undefined;
-    applyLines([newLine(people, even)]);
+    const inputParticipants =
+      participants && participants.length > 0
+        ? participants
+        : Array.from({ length: Math.max(1, goingCount) }, () => ({
+            classification: 'unspecified' as const,
+          }));
+    const suggested = suggestPricingLines({
+      participants: inputParticipants,
+      currentTotal: current,
+    });
+    applyLines(suggested.map((s) => newLine(s.quantity, s.unitAmount, s.label)));
   };
 
   const updateLine = (index: number, change: Partial<DraftLine>) =>

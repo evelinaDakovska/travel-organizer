@@ -93,3 +93,59 @@ export function pricingMatches(details: Details, priceAmount: number | undefined
   const pricing = pricingOf(details);
   return pricing !== null && pricingTotal(pricing.lines) === priceAmount;
 }
+
+export type PricingSuggestionInput = {
+  participants: readonly { classification: 'adult' | 'child' | 'unspecified' }[];
+  currentTotal?: number;
+};
+
+export type SuggestedLine = {
+  label: string;
+  quantity: number;
+  unitAmount: number | undefined;
+};
+
+/**
+ * Suggests default lines when creating a new per-person pricing breakdown.
+ * Non-destructive rules:
+ * - If participants have adult/child classifications, generates corresponding labelled lines.
+ * - 'unspecified' participants are treated distinctly: never assumed to be Adult, never given an 'Adult' label.
+ * - When all participants are unspecified or no participants are provided, returns a single unlabelled line.
+ * - Unit price is never invented: only populated if a single line evenly divides currentTotal.
+ */
+export function suggestPricingLines({
+  participants,
+  currentTotal,
+}: PricingSuggestionInput): SuggestedLine[] {
+  const adults = participants.filter((p) => p.classification === 'adult').length;
+  const children = participants.filter((p) => p.classification === 'child').length;
+  const unspecified = participants.filter((p) => p.classification === 'unspecified').length;
+
+  const lines: SuggestedLine[] = [];
+  if (adults > 0) {
+    lines.push({ label: 'Adult', quantity: adults, unitAmount: undefined });
+  }
+  if (children > 0) {
+    lines.push({ label: 'Child', quantity: children, unitAmount: undefined });
+  }
+  if (unspecified > 0) {
+    lines.push({ label: '', quantity: unspecified, unitAmount: undefined });
+  }
+
+  if (lines.length === 0) {
+    const qty = Math.max(1, participants.length);
+    const even =
+      currentTotal !== undefined && Number.isFinite(currentTotal) && currentTotal % qty === 0
+        ? currentTotal / qty
+        : undefined;
+    return [{ label: '', quantity: qty, unitAmount: even }];
+  }
+
+  if (lines.length === 1 && currentTotal !== undefined && Number.isFinite(currentTotal)) {
+    if (currentTotal % lines[0].quantity === 0) {
+      lines[0].unitAmount = currentTotal / lines[0].quantity;
+    }
+  }
+
+  return lines;
+}

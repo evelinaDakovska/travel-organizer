@@ -166,6 +166,10 @@ export function ItemForm({
   const [participants, setParticipants] = useState<string[]>(() =>
     defaultParticipants.filter((id) => travellers.some((traveller) => traveller.id === id)),
   );
+  const selectedParticipants = useMemo(
+    () => travellers.filter((traveller) => participants.includes(traveller.id)),
+    [travellers, participants],
+  );
   // Null is the ordinary form; a journey replaces its When and route with a list of legs.
   const [journey, setJourney] = useState<Journey | null>(null);
   const [problems, setProblems] = useState<LegProblem[]>([]);
@@ -589,6 +593,7 @@ export function ItemForm({
         getValues={getValues}
         initiallyOpen={defaultValues.priceAmount !== undefined || defaultValues.isPaid === true}
         goingCount={participants.length}
+        participants={selectedParticipants}
       />
 
       {status === 'confirmed' && (

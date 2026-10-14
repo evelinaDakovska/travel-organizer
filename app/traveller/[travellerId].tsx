@@ -1,9 +1,13 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { travellerNameSchema, usesText } from '../../src/domain/traveller';
+import {
+  travellerNameSchema,
+  usesText,
+  type TravellerClassification,
+} from '../../src/domain/traveller';
 import { queryView } from '../../src/hooks/queryView';
 import { useBusy } from '../../src/hooks/useBusy';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
@@ -11,6 +15,7 @@ import {
   deleteTraveller,
   listTravellers,
   renameTraveller,
+  updateTravellerClassification,
   TRAVELLER_TABLES,
   travellerUses,
   type TravellerUses,
@@ -21,7 +26,7 @@ import { FormScroll } from '../../src/ui/components/FormScroll';
 import { QueryScreen } from '../../src/ui/components/QueryStates';
 import { Screen } from '../../src/ui/components/Screen';
 import { ScreenHeader } from '../../src/ui/components/ScreenHeader';
-import { spacing, type, useColors } from '../../src/ui/tokens';
+import { radius, spacing, touchTarget, type, useColors } from '../../src/ui/tokens';
 
 /** One profile: its name, where it is used, and Delete when nothing uses it. */
 export default function TravellerScreen() {
@@ -81,13 +86,15 @@ export default function TravellerScreen() {
   return (
     <Screen>
       <ScreenHeader title={traveller.name} />
-      {/* Keyed by the name: a rename saved elsewhere starts the field afresh. */}
+      {/* Keyed by the name and classification: a save elsewhere starts the field afresh. */}
       <NameForm
-        key={traveller.name}
+        key={`${traveller.name}:${traveller.classification}`}
         name={traveller.name}
+        initialClassification={traveller.classification}
         uses={usesQuery.data ?? null}
-        onSave={async (name) => {
+        onSave={async (name, classification) => {
           await renameTraveller(db, traveller.id, name);
+          await updateTravellerClassification(db, traveller.id, classification);
           router.back();
         }}
         onDelete={confirmDelete}
@@ -96,19 +103,29 @@ export default function TravellerScreen() {
   );
 }
 
+const CLASSIFICATION_OPTIONS: { value: TravellerClassification; label: string }[] = [
+  { value: 'adult', label: 'Adult' },
+  { value: 'child', label: 'Child' },
+  { value: 'unspecified', label: 'Not specified' },
+];
+
 function NameForm({
   name,
+  initialClassification,
   uses,
   onSave,
   onDelete,
 }: {
   name: string;
+  initialClassification: TravellerClassification;
   uses: { trips: string[]; items: number } | null;
-  onSave: (name: string) => Promise<void>;
+  onSave: (name: string, classification: TravellerClassification) => Promise<void>;
   onDelete: () => void;
 }) {
   const c = useColors();
   const [text, setText] = useState(name);
+  const [classification, setClassification] =
+    useState<TravellerClassification>(initialClassification);
   const where = uses ? usesText(uses) : null;
   const [error, setError] = useState<string | null>(null);
   const [busy, run] = useBusy();
@@ -116,13 +133,48 @@ function NameForm({
   const save = async () => {
     const parsed = travellerNameSchema.safeParse(text);
     if (!parsed.success) setError(parsed.error.issues[0]?.message ?? 'Check the name');
-    else await run(() => onSave(parsed.data));
+    else await run(() => onSave(parsed.data, classification));
   };
 
   return (
     <FormScroll footer={<Button label="Save" busy={busy} onPress={() => void save()} />}>
       <Field label="Name" error={error ?? undefined} hint="A new name shows wherever they are listed">
         <Input value={text} onChangeText={setText} invalid={!!error} autoFocus={false} />
+      </Field>
+      <Field
+        label="Default classification"
+        hint="Copied when adding to a new trip. Existing trips are not changed.">
+        <View style={styles.pillRow}>
+          {CLASSIFICATION_OPTIONS.map((opt) => {
+            const selected = classification === opt.value;
+            return (
+              <Pressable
+                key={opt.value}
+                onPress={() => setClassification(opt.value)}
+                accessibilityRole="button"
+                accessibilityLabel={`Default classification: ${opt.label}`}
+                accessibilityState={{ selected }}
+                style={[
+                  styles.pill,
+                  {
+                    backgroundColor: selected ? c.accentSoft : c.surface,
+                    borderColor: selected ? c.accent : c.border,
+                  },
+                ]}>
+                <Text
+                  style={[
+                    type.caption,
+                    {
+                      color: selected ? c.accentText : c.text,
+                      fontWeight: selected ? '600' : 'normal',
+                    },
+                  ]}>
+                  {opt.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </Field>
       {where ? <Text style={[type.body, { color: c.textMuted }]}>{where}.</Text> : null}
       <View style={styles.danger}>
@@ -133,5 +185,19 @@ function NameForm({
 }
 
 const styles = StyleSheet.create({
+  pillRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  pill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    minHeight: touchTarget,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   danger: { marginTop: spacing.lg },
 });

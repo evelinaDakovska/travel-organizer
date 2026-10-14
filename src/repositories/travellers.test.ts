@@ -13,6 +13,8 @@ import {
   listTripTravellers,
   removeTripTraveller,
   renameTraveller,
+  updateTravellerClassification,
+  updateTripTravellerClassification,
 } from './travellers';
 import { createTripItem, createTripItems, updateTripItem } from './tripItems';
 
@@ -60,18 +62,48 @@ describe('traveller profiles', () => {
     expect(await deleteTraveller(db, ev)).toEqual({ deleted: true });
     expect(await listTravellers(db)).toEqual([]);
   });
+
+  it('updates profile default classification', async () => {
+    const { db } = setup();
+    const id = await createTraveller(db, 'Evelina');
+    expect((await listTravellers(db))[0].classification).toBe('unspecified');
+
+    await updateTravellerClassification(db, id, 'adult');
+    expect((await listTravellers(db))[0].classification).toBe('adult');
+  });
 });
 
 describe('a trip’s travellers', () => {
   it('keeps the order they were chosen, and adding twice is harmless', async () => {
     const { db } = setup();
-    const ana = await createTraveller(db, 'Ana');
-    const ev = await createTraveller(db, 'Evelina');
+    const ana = await createTraveller(db, 'Ana', 'child');
+    const ev = await createTraveller(db, 'Evelina', 'adult');
     await addTripTraveller(db, 'lapland', ev);
     await addTripTraveller(db, 'lapland', ana);
     await addTripTraveller(db, 'lapland', ev);
     expect(names(await listTripTravellers(db, 'lapland'))).toEqual(['Evelina', 'Ana']);
+    expect(await listTripTravellers(db, 'lapland')).toEqual([
+      expect.objectContaining({ name: 'Evelina', classification: 'adult' }),
+      expect.objectContaining({ name: 'Ana', classification: 'child' }),
+    ]);
     expect(await listTripTravellers(db, 'milan')).toEqual([]);
+  });
+
+  it('overriding classification for one trip does not affect profile default or another trip', async () => {
+    const { db } = setup();
+    const ev = await createTraveller(db, 'Evelina', 'adult');
+    await addTripTraveller(db, 'lapland', ev);
+    await addTripTraveller(db, 'milan', ev);
+
+    await updateTripTravellerClassification(db, 'lapland', ev, 'child');
+
+    const laplandMembers = await listTripTravellers(db, 'lapland');
+    const milanMembers = await listTripTravellers(db, 'milan');
+    const profiles = await listTravellers(db);
+
+    expect(laplandMembers[0].classification).toBe('child');
+    expect(milanMembers[0].classification).toBe('adult');
+    expect(profiles[0].classification).toBe('adult');
   });
 
   it('taking someone off a trip takes them off its items, not off another trip’s', async () => {
