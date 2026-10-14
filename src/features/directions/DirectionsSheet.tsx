@@ -197,47 +197,38 @@ export function DirectionsSheet({
   return (
     <Sheet visible={visible} title="Get directions" onClose={onClose} closeLabel="Cancel">
       <View style={styles.container}>
-        {/* Destination (To) */}
-        <View style={[styles.card, { backgroundColor: c.surfaceSunken, borderColor: c.border }]}>
-          <View style={styles.cardHeader}>
-            <Text style={[type.overline, { color: c.textMuted }]}>TO</Text>
-            <Pressable
-              onPress={() => void copyDestinationText()}
-              accessibilityRole="button"
-              accessibilityLabel="Copy destination"
-              hitSlop={8}>
-              <Text style={[type.caption, { color: c.accentText }]}>Copy</Text>
-            </Pressable>
-          </View>
-          <Text style={[type.heading, { color: c.text }]}>{destination.title}</Text>
-          {destinationAddress ? (
-            <Text style={[type.caption, { color: c.textMuted }]}>{destinationAddress}</Text>
-          ) : null}
-        </View>
-
-        {/* Origin (From) */}
-        <View style={[styles.card, { backgroundColor: c.surfaceSunken, borderColor: c.border }]}>
-          <View style={styles.cardHeader}>
-            <Text style={[type.overline, { color: c.textMuted }]}>FROM</Text>
-            <Pressable
-              onPress={() => setPickingOrigin(!pickingOrigin)}
-              accessibilityRole="button"
-              accessibilityLabel={pickingOrigin ? 'Done changing origin' : 'Change starting point'}
-              hitSlop={8}>
-              <Text style={[type.caption, { color: c.accentText }]}>
-                {pickingOrigin ? 'Done' : 'Change'}
-              </Text>
-            </Pressable>
-          </View>
-
-          {!pickingOrigin ? (
-            <>
-              <Text style={[type.heading, { color: c.text }]}>{originDisplay.title}</Text>
-              {originDisplay.subtitle ? (
-                <Text style={[type.caption, { color: c.textMuted }]}>{originDisplay.subtitle}</Text>
-              ) : null}
-            </>
-          ) : (
+        {/* Origin (From) - Above To */}
+        {!pickingOrigin ? (
+          <Pressable
+            onPress={() => setPickingOrigin(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Starting point: ${originDisplay.title}${originDisplay.subtitle ? ', ' + originDisplay.subtitle : ''}. Tap to change.`}
+            style={({ pressed }) => [
+              styles.card,
+              { backgroundColor: c.surfaceSunken, borderColor: c.border },
+              pressed && { opacity: 0.8 },
+            ]}>
+            <View style={styles.cardHeader}>
+              <Text style={[type.overline, { color: c.textMuted }]}>FROM</Text>
+              <Text style={[type.caption, { color: c.accentText }]}>Change</Text>
+            </View>
+            <Text style={[type.heading, { color: c.text }]}>{originDisplay.title}</Text>
+            {originDisplay.subtitle ? (
+              <Text style={[type.caption, { color: c.textMuted }]}>{originDisplay.subtitle}</Text>
+            ) : null}
+          </Pressable>
+        ) : (
+          <View style={[styles.card, { backgroundColor: c.surfaceSunken, borderColor: c.border }]}>
+            <View style={styles.cardHeader}>
+              <Text style={[type.overline, { color: c.textMuted }]}>FROM</Text>
+              <Pressable
+                onPress={() => setPickingOrigin(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Done changing starting point"
+                hitSlop={8}>
+                <Text style={[type.caption, { color: c.accentText }]}>Done</Text>
+              </Pressable>
+            </View>
             <ScrollView style={styles.optionsScroll} nestedScrollEnabled>
               <View style={styles.optionsList}>
                 {/* Option: Current Location */}
@@ -396,7 +387,25 @@ export function DirectionsSheet({
                 ) : null}
               </View>
             </ScrollView>
-          )}
+          </View>
+        )}
+
+        {/* Destination (To) - Below From */}
+        <View style={[styles.card, { backgroundColor: c.surfaceSunken, borderColor: c.border }]}>
+          <View style={styles.cardHeader}>
+            <Text style={[type.overline, { color: c.textMuted }]}>TO</Text>
+            <Pressable
+              onPress={() => void copyDestinationText()}
+              accessibilityRole="button"
+              accessibilityLabel="Copy destination"
+              hitSlop={8}>
+              <Text style={[type.caption, { color: c.accentText }]}>Copy</Text>
+            </Pressable>
+          </View>
+          <Text style={[type.heading, { color: c.text }]}>{destination.title}</Text>
+          {destinationAddress ? (
+            <Text style={[type.caption, { color: c.textMuted }]}>{destinationAddress}</Text>
+          ) : null}
         </View>
 
         {/* Travel Mode Selector */}

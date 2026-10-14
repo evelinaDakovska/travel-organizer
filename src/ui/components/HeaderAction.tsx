@@ -25,7 +25,11 @@ export function HeaderAction({ label, icon, onPress, accessibilityLabel }: Props
       hitSlop={4}
       style={({ pressed }) => [styles.action, { opacity: pressed ? opacity.pressed : 1 }]}>
       {icon ? <Icon name={icon} size={20} color={c.accentText} strokeWidth={2.4} /> : null}
-      {label ? <Text style={[type.label, { color: c.accentText }]}>{label}</Text> : null}
+      {label ? (
+        <Text style={[type.label, { color: c.accentText }]} numberOfLines={1}>
+          {label}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -34,6 +38,7 @@ const styles = StyleSheet.create({
   action: {
     minWidth: touchTarget,
     minHeight: touchTarget,
+    flexShrink: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

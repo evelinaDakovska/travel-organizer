@@ -77,12 +77,12 @@ export default function TripTravellersScreen() {
 
   const confirmRemove = (member: Traveller) =>
     Alert.alert(
-      `Take ${member.name} off ${trip.name}?`,
-      'They are taken off its bookings too. Their profile stays.',
+      `Remove ${member.name} from ${trip.name}?`,
+      'They will be removed from this trip and unlinked from its bookings. Their reusable traveller profile will remain safe.',
       [
         { text: 'Keep', style: 'cancel' },
         {
-          text: 'Take off',
+          text: 'Remove from trip',
           style: 'destructive',
           onPress: () => void removeTripTraveller(db, trip.id, member.id),
         },
@@ -114,8 +114,8 @@ export default function TripTravellersScreen() {
                   title={member.name}
                   trailing={
                     <HeaderAction
-                      label="Take off"
-                      accessibilityLabel={`Take ${member.name} off this trip`}
+                      label="Remove"
+                      accessibilityLabel={`Remove ${member.name} from ${trip.name}`}
                       onPress={() => confirmRemove(member)}
                     />
                   }
@@ -168,7 +168,7 @@ export default function TripTravellersScreen() {
                     <HeaderAction
                       icon="add"
                       label="Add"
-                      accessibilityLabel={`Add ${profile.name} to this trip`}
+                      accessibilityLabel={`Add ${profile.name} to ${trip.name}`}
                       onPress={() => void addTripTraveller(db, trip.id, profile.id)}
                     />
                   }

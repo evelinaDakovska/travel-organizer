@@ -289,13 +289,15 @@ export default function OverviewScreen() {
           payments={payments}
           noteFor={(item) => happeningNote(item, now)}
         />
-        <EntrySection
-          label={plan.lead ? 'After that' : 'Coming up'}
-          entries={plan.next}
-          byItem={byItem}
-          payments={payments}
-          showDate
-        />
+        {!plan.lead && plan.next.length > 0 ? (
+          <EntrySection
+            label="Coming up"
+            entries={plan.next}
+            byItem={byItem}
+            payments={payments}
+            showDate
+          />
+        ) : null}
 
         {during && base ? (
           <View style={styles.section}>

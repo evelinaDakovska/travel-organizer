@@ -60,7 +60,7 @@ export function ListRow({
         ) : null}
         {footer}
       </View>
-      {trailing}
+      {trailing ? <View style={styles.trailing}>{trailing}</View> : null}
       {onPress ? <Icon name="forward" size={20} color={c.textMuted} /> : null}
     </>
   );
@@ -104,7 +104,8 @@ const styles = StyleSheet.create({
     minHeight: 64,
     paddingVertical: spacing.md,
   },
-  text: { flex: 1, gap: 2 },
+  text: { flex: 1, minWidth: 0, gap: 2 },
+  trailing: { flexShrink: 0 },
   struck: { textDecorationLine: 'line-through' },
   rule: { height: StyleSheet.hairlineWidth },
 });
