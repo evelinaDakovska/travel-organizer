@@ -1,7 +1,8 @@
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import type { ResourceInput } from '../../domain/resource';
 import {
   categoryLabel,
   EXPENSE_CATEGORIES,
@@ -9,6 +10,9 @@ import {
 } from '../../domain/spending';
 import { deviceToday } from '../../domain/trip';
 import { DEFAULT_CURRENCY } from '../../domain/tripItem';
+import { absoluteUriFor, deleteStoredFile } from '../../files/storage';
+import { pickAndImport, type PickerKind } from '../resources/attach';
+import { alertAttachError, alertIfSomeFailed } from '../resources/attachAlerts';
 import { createExpense } from '../../repositories/expenses';
 import { Button } from '../../ui/components/Button';
 import { ChoiceField } from '../../ui/components/ChoiceField';
@@ -42,10 +46,28 @@ export function QuickExpenseSheet({
   const [label, setLabel] = useState('');
   const [spentOn, setSpentOn] = useState(() => deviceToday());
   const [showMore, setShowMore] = useState(false);
+  const [receipts, setReceipts] = useState<ResourceInput[]>([]);
+  const [busyPicker, setBusyPicker] = useState<PickerKind | null>(null);
 
   const [amountError, setAmountError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Track pending receipts so uncommitted files can be cleaned up if closed/unmounted
+  const pendingReceiptsRef = useRef(receipts);
+  pendingReceiptsRef.current = receipts;
+  const savedRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (savedRef.current) return;
+      for (const receipt of pendingReceiptsRef.current) {
+        if (receipt.kind === 'file') {
+          deleteStoredFile(receipt.storedPath);
+        }
+      }
+    };
+  }, []);
 
   // Sync default currency when opened
   useEffect(() => {
@@ -54,10 +76,23 @@ export function QuickExpenseSheet({
       setSpentOn(deviceToday());
       setErrorMessage(null);
       setAmountError(null);
+      savedRef.current = false;
     }
   }, [visible, defaultCurrency]);
 
-  const resetForm = () => {
+  const discardUnsavedReceipts = () => {
+    for (const receipt of receipts) {
+      if (receipt.kind === 'file') {
+        deleteStoredFile(receipt.storedPath);
+      }
+    }
+    setReceipts([]);
+    pendingReceiptsRef.current = [];
+  };
+
+  const resetFormFields = () => {
+    setReceipts([]);
+    pendingReceiptsRef.current = [];
     setAmount(undefined);
     setNotes('');
     setLabel('');
@@ -68,8 +103,38 @@ export function QuickExpenseSheet({
 
   const handleClose = () => {
     if (submitting) return;
-    resetForm();
+    discardUnsavedReceipts();
+    resetFormFields();
     onClose();
+  };
+
+  const removeReceipt = (index: number) => {
+    const receipt = receipts[index];
+    const updated = receipts.filter((_, i) => i !== index);
+    setReceipts(updated);
+    pendingReceiptsRef.current = updated;
+    if (receipt && receipt.kind === 'file') {
+      deleteStoredFile(receipt.storedPath);
+    }
+  };
+
+  const handlePick = async (kind: PickerKind) => {
+    setBusyPicker(kind);
+    try {
+      const { inputs, failed } = await pickAndImport(kind);
+      if (inputs.length > 0) {
+        setReceipts((prev) => {
+          const updated = [...prev, ...inputs];
+          pendingReceiptsRef.current = updated;
+          return updated;
+        });
+      }
+      alertIfSomeFailed(inputs.length, failed);
+    } catch (error) {
+      alertAttachError(error);
+    } finally {
+      setBusyPicker(null);
+    }
   };
 
   const handleSave = async () => {
@@ -89,6 +154,7 @@ export function QuickExpenseSheet({
 
     setSubmitting(true);
     setErrorMessage(null);
+    savedRef.current = true;
 
     try {
       await createExpense(
@@ -102,11 +168,12 @@ export function QuickExpenseSheet({
           label: label.trim() || undefined,
           notes: notes.trim() || undefined,
         },
-        [],
+        receipts,
       );
-      resetForm();
+      resetFormFields();
       onClose();
     } catch (error) {
+      savedRef.current = false;
       setErrorMessage(error instanceof Error ? error.message : 'Could not save expense');
     } finally {
       setSubmitting(false);
@@ -114,8 +181,9 @@ export function QuickExpenseSheet({
   };
 
   return (
-    <Sheet visible={visible} title="Add expense" onClose={handleClose}>
+    <Sheet visible={visible} title="Add expense" onClose={handleClose} scroll={false}>
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled">
         {errorMessage ? (
@@ -169,6 +237,83 @@ export function QuickExpenseSheet({
           />
         </Field>
 
+        {/* Receipt Photos */}
+        <View style={styles.receiptSection}>
+          <View style={styles.receiptHeader}>
+            <Text style={[type.label, { color: c.textMuted }]}>Receipt (optional)</Text>
+            {receipts.length > 0 ? (
+              <Text style={[type.caption, { color: c.textMuted }]}>
+                {receipts.length} photo{receipts.length === 1 ? '' : 's'}
+              </Text>
+            ) : null}
+          </View>
+
+          {receipts.length > 0 ? (
+            <View style={styles.receiptList}>
+              {receipts.map((receipt, index) => {
+                const uri = receipt.kind === 'file' ? absoluteUriFor(receipt.storedPath) : null;
+                return (
+                  <View
+                    key={index}
+                    style={[
+                      styles.receiptCard,
+                      { backgroundColor: c.surface, borderColor: c.border },
+                    ]}>
+                    {uri ? (
+                      <Image
+                        source={{ uri }}
+                        style={styles.receiptThumb}
+                        resizeMode="cover"
+                        accessibilityIgnoresInvertColors
+                      />
+                    ) : (
+                      <View style={[styles.receiptThumbPlaceholder, { backgroundColor: c.accentSoft }]}>
+                        <Icon name="receipt" size={20} color={c.accentText} />
+                      </View>
+                    )}
+                    <Text
+                      style={[type.body, styles.receiptLabel, { color: c.text }]}
+                      numberOfLines={1}>
+                      {receipt.label}
+                    </Text>
+                    <Pressable
+                      onPress={() => removeReceipt(index)}
+                      hitSlop={12}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove ${receipt.label}`}
+                      style={styles.removeBtn}>
+                      <Icon name="close" size={18} color={c.textMuted} />
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
+
+          <View style={styles.photoActions}>
+            <View style={styles.actionCol}>
+              <Button
+                label="Take photo"
+                variant="secondary"
+                compact
+                busy={busyPicker === 'camera'}
+                disabled={busyPicker !== null || submitting}
+                onPress={() => void handlePick('camera')}
+              />
+            </View>
+            <View style={styles.actionCol}>
+              <Button
+                label="Choose photo"
+                variant="secondary"
+                compact
+                busy={busyPicker === 'photo'}
+                disabled={busyPicker !== null || submitting}
+                onPress={() => void handlePick('photo')}
+              />
+            </View>
+          </View>
+        </View>
+
         {!showMore ? (
           <Pressable
             onPress={() => setShowMore(true)}
@@ -207,6 +352,9 @@ export function QuickExpenseSheet({
 }
 
 const styles = StyleSheet.create({
+  scroll: {
+    maxHeight: 520,
+  },
   content: {
     gap: spacing.lg,
     paddingBottom: spacing.xl,
@@ -225,6 +373,50 @@ const styles = StyleSheet.create({
   },
   currency: {
     width: 100,
+  },
+  receiptSection: {
+    gap: spacing.sm,
+  },
+  receiptHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  receiptList: {
+    gap: spacing.xs,
+  },
+  receiptCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    padding: spacing.sm,
+  },
+  receiptThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.sm,
+  },
+  receiptThumbPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  receiptLabel: {
+    flex: 1,
+  },
+  removeBtn: {
+    padding: spacing.xs,
+  },
+  photoActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  actionCol: {
+    flex: 1,
   },
   moreToggle: {
     flexDirection: 'row',

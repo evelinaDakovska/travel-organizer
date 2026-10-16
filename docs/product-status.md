@@ -48,38 +48,49 @@
   - Inbound receiving of PDFs, images, and URLs shared from external apps (browsers, email clients, WhatsApp) directly into trips.
 - **Paid / Not Paid Tracking**:
   - Marking items as paid or unpaid, currency selection, and total cost tracking per currency.
+- **Places Browsing View (Financial Privacy)**:
+  - Removed prices, payment totals, and paid/unpaid badges from list rows in the Places tab (`showFinancials={false}` in `ItemRow`).
+  - Retained place/activity name, location, scheduled date/time, idea vs. scheduled status, and Google Maps directions link.
+  - Financial details remain strictly accessible inside item details and the Expenses tab.
+  - Verified on Samsung Galaxy S26 Ultra in actual use.
+- **Traveller Profile Multi-Select Picker**:
+  - Replaced free-text entry in New Trip and Edit Trip with a reusable traveller profile picker.
+  - Shows traveller classification badges: `Adult`, `Child`, or `Not specified`.
+  - Distinguishes travellers sharing the same name by unique UUIDs.
+  - Allows inline "Add new traveller" creation without abandoning trip flow.
+  - Persists memberships via atomic snapshots in `trip_travellers` without modifying legacy free-text fields.
+  - Verified on Samsung Galaxy S26 Ultra in actual use.
+- **Ongoing-Trip Overview Experience**:
+  - Dynamic stage adaptation:
+    - **Upcoming**: Countdown days, departure highlights, trip preparation notes.
+    - **Ongoing**:
+      - **Now / Up next**: Prominently highlights the currently active event or next scheduled departure. Isolates multi-day hotel stays into the stay card so they never obscure upcoming flights or transfers.
+      - **Your stay**: Dedicated accommodation tracking (checked in, check-in today, next stay, or overnight transport) with one-tap directions and attached confirmations.
+      - Direct "+ Add expense" quick action reachable immediately at the top of Overview.
+    - **Past**: Calm summary showing total places visited and total expenditure breakdown by currency, removing misleading future countdowns.
+  - Verified on Samsung Galaxy S26 Ultra in actual use.
+- **Per-Item Travellers Assignment**:
+  - Assign specific traveller profiles to individual TripItems (`item_participants`).
+  - Distinguishes profiles with identical names via classification indicators.
+  - Verified on Samsung Galaxy S26 Ultra in actual use.
 
 ---
 
-### Implemented, Awaiting Physical-Phone Verification
-*Implemented, passed all automated unit tests (883 tests across 53 suites), clean TypeScript verification, and verified end-to-end on Android emulator (`Pixel_10_Pro`), but awaiting owner test on actual phone.*
+### Implemented, Prepared for Friends-Only Beta (v0.7.2)
+*Fully implemented, covered by automated test suite (895 tests across 54 suites), typecheck clean, verified end-to-end on clean emulator install and ready for in-place release.*
 
-1. **Places Browsing View (Financial Privacy)**:
-   - Removed prices, payment totals, and paid/unpaid badges from list rows in the Places tab (`showFinancials={false}` in `ItemRow`).
-   - Retained place/activity name, location, scheduled date/time, idea vs. scheduled status, and Google Maps directions link.
-   - Financial details remain strictly accessible inside item details and the Expenses tab.
-2. **Traveller Profile Multi-Select Picker**:
-   - Replaced free-text entry in New Trip and Edit Trip with a reusable traveller profile picker.
-   - Shows traveller classification badges: `Adult`, `Child`, or `Not specified`.
-   - Distinguishes travellers sharing the same name by unique UUIDs.
-   - Allows inline "Add new traveller" creation without abandoning trip flow.
-   - Persists memberships via atomic snapshots in `trip_travellers` without modifying legacy free-text fields.
-3. **Ongoing-Trip Overview Experience**:
-   - Dynamic stage adaptation:
-     - **Upcoming**: Countdown days, departure highlights, trip preparation notes.
-     - **Ongoing**:
-       - **Now / Up next**: Prominently highlights the currently active event or next scheduled departure. Isolates multi-day hotel stays into the stay card so they never obscure upcoming flights or transfers.
-       - **Your stay**: Dedicated accommodation tracking (checked in, check-in today, next stay, or overnight transport) with one-tap directions and attached confirmations.
-       - Direct "+ Add expense" quick action reachable immediately at the top of Overview.
-     - **Past**: Calm summary showing total places visited and total expenditure breakdown by currency, removing misleading future countdowns.
-4. **Quick Expense Entry**:
+1. **Quick Expense Entry with Receipt Photos**:
    - Fast modal/bottom-sheet accessible directly from Overview without navigating to the Expenses tab.
-   - Amount, category, trip currency default, optional description/note, and double-submit prevention.
-5. **Per-Item Travellers Assignment**:
-   - Assign specific traveller profiles to individual TripItems (`item_participants`).
-   - Distinguishes profiles with identical names via classification indicators.
-6. **Expense Isolation & Accounting Verification**:
-   - Verified that ordinary spending records update spending totals independently from booking costs without double counting (`src/domain/spending.ts` vs `src/domain/bookingCosts.ts`).
+   - Supports optional receipt image capture (`Take photo` via device camera) and gallery selection (`Choose photo` via system photo picker).
+   - In-sheet image preview thumbnail and instant remove action.
+   - Uncommitted receipts are automatically cleaned up if the sheet is dismissed or closed without saving.
+   - Saved atomically via `createExpense(db, tripId, input, receipts)`.
+   - Stored in persistent app document storage (`storageDirectory`), associated with `expense_id`, accessible from Expense Details, and backed up in standard ZIP exports.
+   - Deletion of expenses cascades to associated receipt files.
+2. **Spending Calculations & Accounting Verification**:
+   - Automated tests and verification confirming that newly saved quick expenses appear under the correct trip.
+   - Ordinary spending totals update cleanly without altering or double-counting booking costs (`src/domain/spending.ts` vs `src/domain/bookingCosts.ts`).
+   - Attaching receipt photos does not alter financial totals or currency handling.
 
 ---
 

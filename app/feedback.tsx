@@ -58,8 +58,8 @@ function FeedbackScreenContent() {
 
   latestStateRef.current = { name, message, idempotencyKey };
 
-  const appVersion = Constants.expoConfig?.version ?? '0.7.1';
-  const appBuild = String(Constants.expoConfig?.android?.versionCode ?? '11');
+  const appVersion = Constants.expoConfig?.version ?? '0.7.2';
+  const appBuild = String(Constants.expoConfig?.android?.versionCode ?? '12');
   const androidVersion =
     Platform.OS === 'android'
       ? `Android ${Platform.Version}`

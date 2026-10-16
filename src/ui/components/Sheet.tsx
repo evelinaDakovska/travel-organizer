@@ -12,13 +12,22 @@ type Props = {
   children: ReactNode;
   /** The button at the bottom. 'Close' unless said otherwise. */
   closeLabel?: string;
+  /** Whether to wrap children in a ScrollView. Defaults to true. */
+  scroll?: boolean;
 };
 
 /**
  * A bottom sheet over the screen, for a short choice: which document to open, what to add, the
  * actions behind More. Tapping outside or Back closes it.
  */
-export function Sheet({ visible, title, onClose, children, closeLabel = 'Close' }: Props) {
+export function Sheet({
+  visible,
+  title,
+  onClose,
+  children,
+  closeLabel = 'Close',
+  scroll = true,
+}: Props) {
   const c = useColors();
   const insets = useSafeAreaInsets();
 
@@ -51,9 +60,13 @@ export function Sheet({ visible, title, onClose, children, closeLabel = 'Close' 
         <Text style={[type.section, { color: c.text }]} accessibilityRole="header">
           {title}
         </Text>
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-          {children}
-        </ScrollView>
+        {scroll ? (
+          <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+            {children}
+          </ScrollView>
+        ) : (
+          children
+        )}
         <Button label={closeLabel} variant="secondary" onPress={onClose} />
       </View>
     </Modal>

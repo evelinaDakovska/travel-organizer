@@ -220,4 +220,39 @@ describe('receipts', () => {
 
     expect(db.prepare(SELECT_ALL_STORED_PATHS).all()).toEqual([{ stored_path: 'media/rc2.jpg' }]);
   });
+
+  it('ensures a newly saved expense appears strictly in its designated trip', () => {
+    const { db, addExpense, addReceipt } = setup();
+    // Add second trip
+    db.prepare(
+      `INSERT INTO trips (id, name, start_date, end_date, default_tz, created_at, updated_at)
+       VALUES ('t2', 'Lapland', '2026-11-20', '2026-11-25', 'Europe/Helsinki', ?, ?)`,
+    ).run(now, now);
+
+    // Save expense in Trip 1
+    addExpense('e-munich', { tripId: 't1', amount: 1500, label: 'Pretzel' });
+    addReceipt('rc-munich', 'e-munich');
+
+    // Save expense in Trip 2
+    addExpense('e-lapland', { tripId: 't2', amount: 2500, label: 'Snowshoe rental' });
+    addReceipt('rc-lapland', 'e-lapland');
+
+    // Query Trip 1 expenses
+    const t1Expenses = db.prepare(SELECT_EXPENSES_FOR_TRIP).all({ tripId: 't1' }) as ExpenseRow[];
+    expect(t1Expenses.map((e) => e.id)).toEqual(['e-munich']);
+    expect(t1Expenses[0].label).toBe('Pretzel');
+
+    // Query Trip 2 expenses
+    const t2Expenses = db.prepare(SELECT_EXPENSES_FOR_TRIP).all({ tripId: 't2' }) as ExpenseRow[];
+    expect(t2Expenses.map((e) => e.id)).toEqual(['e-lapland']);
+    expect(t2Expenses[0].label).toBe('Snowshoe rental');
+
+    // Verify receipts are strictly partitioned
+    expect(db.prepare(COUNT_RECEIPTS_FOR_TRIP).all({ tripId: 't1' })).toEqual([
+      { expense_id: 'e-munich', n: 1 },
+    ]);
+    expect(db.prepare(COUNT_RECEIPTS_FOR_TRIP).all({ tripId: 't2' })).toEqual([
+      { expense_id: 'e-lapland', n: 1 },
+    ]);
+  });
 });

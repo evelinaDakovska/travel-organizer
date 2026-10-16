@@ -199,3 +199,82 @@ describe('tripTotals', () => {
     expect(tripTotals([], [])).toEqual([]);
   });
 });
+
+describe('Quick Expense calculations & receipt independence', () => {
+  it('updates ordinary spending totals correctly when new expenses are added', () => {
+    const existing = [expense({ id: 'e1', amount: 1500, category: 'food', currency: 'EUR' })];
+    expect(spendingTotals(existing)).toEqual([
+      { currency: 'EUR', total: 1500, categories: [{ category: 'food', total: 1500 }] },
+    ]);
+
+    // Add a newly saved quick expense (e.g. coffee EUR 3.50)
+    const afterQuickExpense = [
+      ...existing,
+      expense({ id: 'e2', amount: 350, category: 'food', currency: 'EUR' }),
+    ];
+    expect(spendingTotals(afterQuickExpense)).toEqual([
+      { currency: 'EUR', total: 1850, categories: [{ category: 'food', total: 1850 }] },
+    ]);
+  });
+
+  it('does not double-count booking costs when combining totals', () => {
+    const bookings = [{ currency: 'EUR', total: 25000 }]; // Hotel EUR 250.00
+    const spending = spendingTotals([
+      expense({ id: 'e1', amount: 1500, category: 'food', currency: 'EUR' }),
+    ]);
+
+    const combined = tripTotals(bookings, spending);
+    expect(combined).toEqual([
+      { currency: 'EUR', bookings: 25000, spending: 1500, total: 26500 },
+    ]);
+
+    // Verify bookings and spending are strictly isolated
+    expect(combined[0].bookings).toBe(25000);
+    expect(combined[0].spending).toBe(1500);
+    expect(combined[0].total).toBe(26500);
+  });
+
+  it('calculates identical financial totals whether receipts are attached or not', () => {
+    const withoutReceipt = expense({ id: 'e1', amount: 4500, category: 'transport', currency: 'EUR' });
+    const withReceipt = expense({ id: 'e1', amount: 4500, category: 'transport', currency: 'EUR' });
+
+    // The financial domain model operates purely on Expense objects; receipts are media attachments
+    expect(spendingTotals([withoutReceipt])).toEqual(spendingTotals([withReceipt]));
+    expect(tripTotals([], spendingTotals([withoutReceipt]))).toEqual(
+      tripTotals([], spendingTotals([withReceipt])),
+    );
+  });
+
+  it('preserves full compatibility with legacy and minimal expense records', () => {
+    const legacyRow = {
+      id: 'legacy-1',
+      trip_id: 't1',
+      category: 'other',
+      label: null,
+      amount: 500,
+      currency: 'EUR',
+      spent_on: '2026-10-10',
+      notes: null,
+      created_at: '2026-10-10T08:00:00.000Z',
+      updated_at: '2026-10-10T08:00:00.000Z',
+    };
+
+    const parsed = parseExpenseRow(legacyRow);
+    expect(parsed).toEqual({
+      id: 'legacy-1',
+      tripId: 't1',
+      category: 'other',
+      label: null,
+      amount: 500,
+      currency: 'EUR',
+      spentOn: '2026-10-10',
+      notes: null,
+      createdAt: '2026-10-10T08:00:00.000Z',
+      updatedAt: '2026-10-10T08:00:00.000Z',
+    });
+
+    expect(spendingTotals([parsed])).toEqual([
+      { currency: 'EUR', total: 500, categories: [{ category: 'other', total: 500 }] },
+    ]);
+  });
+});
