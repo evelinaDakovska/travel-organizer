@@ -27,13 +27,24 @@ type Props = {
    * leaves out *Idea*, its priority and its payment pill rather than repeat them.
    */
   headingSays?: boolean;
+  /**
+   * Whether to display financial info (price and payment status tags).
+   * Default true. Places browsing cards set this to false.
+   */
+  showFinancials?: boolean;
 };
 
 /**
  * An item as a row (B2): what it is, where, and when, with its price at the end. Status is only
  * named when it is not the usual one for a list — an idea, a cancellation; confirmed is implied.
  */
-export function ItemRow({ item, onPress, payment = paymentStatus(item), headingSays = false }: Props) {
+export function ItemRow({
+  item,
+  onPress,
+  payment = paymentStatus(item),
+  headingSays = false,
+  showFinancials = true,
+}: Props) {
   const c = useColors();
   const where = routeLabel(transportDetails(item)) ?? item.locationName;
   const done = item.kind === 'task' && item.completedAt !== null;
@@ -44,7 +55,7 @@ export function ItemRow({ item, onPress, payment = paymentStatus(item), headingS
   // A cancellation always says so: no heading implies it.
   const showStatus =
     item.status === 'cancelled' || (item.status === 'idea' && !headingSays);
-  const shownPayment = headingSays ? null : payment;
+  const shownPayment = headingSays || !showFinancials ? null : payment;
 
   return (
     <ListRow
@@ -53,7 +64,7 @@ export function ItemRow({ item, onPress, payment = paymentStatus(item), headingS
       detail={detail}
       leading={<KindTile kind={item.kind} subkind={item.subkind} size={36} />}
       trailing={
-        item.priceAmount !== null && item.priceCurrency ? (
+        showFinancials && item.priceAmount !== null && item.priceCurrency ? (
           <Text style={[type.figure, { color: c.text }]}>
             {formatMoney(item.priceAmount, item.priceCurrency)}
           </Text>
@@ -63,7 +74,7 @@ export function ItemRow({ item, onPress, payment = paymentStatus(item), headingS
         showStatus || shownPayment ? (
           <View style={styles.tags}>
             {showStatus ? <StatusTag status={item.status} /> : null}
-            <PaymentTag status={shownPayment} />
+            {shownPayment ? <PaymentTag status={shownPayment} /> : null}
           </View>
         ) : null
       }

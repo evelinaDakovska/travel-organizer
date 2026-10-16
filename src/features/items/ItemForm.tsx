@@ -41,7 +41,7 @@ import {
   type TripItemKind,
   type TripItemStatus,
 } from '../../domain/tripItem';
-import type { Traveller } from '../../domain/traveller';
+import { CLASSIFICATION_LABELS, type Traveller } from '../../domain/traveller';
 import { followPlace, lastKnownPlace } from '../../domain/zoneHints';
 import { Button } from '../../ui/components/Button';
 import { ChoiceField } from '../../ui/components/ChoiceField';
@@ -416,7 +416,13 @@ export function ItemForm({
               : `${participants.length} of ${travellers.length}`
           }>
           <MultiChoiceField
-            options={travellers.map((traveller) => ({ id: traveller.id, label: traveller.name }))}
+            options={travellers.map((traveller) => ({
+              id: traveller.id,
+              label:
+                traveller.classification !== 'unspecified'
+                  ? `${traveller.name} (${CLASSIFICATION_LABELS[traveller.classification]})`
+                  : traveller.name,
+            }))}
             selected={participants}
             onChange={setParticipants}
           />

@@ -4,8 +4,9 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { COUNT_TRIP_CONTENTS } from '../db/queries';
 import { parseTripRow, type Trip, type TripInput, type TripRow } from '../domain/trip';
 import { recomputeTripInstants } from './tripItems';
+import { addTripTraveller, listTripTravellers, removeTripTraveller } from './travellers';
 
-export const TRIP_TABLES = ['trips'] as const;
+export const TRIP_TABLES = ['trips', 'trip_travellers'] as const;
 
 const SELECT = `SELECT * FROM trips`;
 
@@ -42,6 +43,22 @@ export async function createTrip(db: SQLiteDatabase, input: TripInput): Promise<
   return id;
 }
 
+/** Creates a trip and links selected traveller profile memberships atomically. */
+export async function createTripWithMembers(
+  db: SQLiteDatabase,
+  input: TripInput,
+  travellerIds: readonly string[] = [],
+): Promise<string> {
+  let id = '';
+  await db.withTransactionAsync(async () => {
+    id = await createTrip(db, input);
+    for (const travellerId of travellerIds) {
+      await addTripTraveller(db, id, travellerId);
+    }
+  });
+  return id;
+}
+
 export async function updateTrip(
   db: SQLiteDatabase,
   id: string,
@@ -75,6 +92,33 @@ export async function updateTrip(
 
     if (zoneChanged) await recomputeTripInstants(db, id);
   });
+}
+
+/** Updates trip fields and synchronises traveller memberships preserving classification overrides. */
+export async function updateTripWithMembers(
+  db: SQLiteDatabase,
+  tripId: string,
+  input: TripInput,
+  newTravellerIds: readonly string[],
+): Promise<void> {
+  await updateTrip(db, tripId, input);
+  const currentMembers = await listTripTravellers(db, tripId);
+  const currentMemberMap = new Map(currentMembers.map((m) => [m.id, m]));
+  const newIdSet = new Set(newTravellerIds);
+
+  // Remove members who were unselected
+  for (const member of currentMembers) {
+    if (!newIdSet.has(member.id)) {
+      await removeTripTraveller(db, tripId, member.id);
+    }
+  }
+
+  // Add newly selected members (snapshots current profile classification)
+  for (const travellerId of newTravellerIds) {
+    if (!currentMemberMap.has(travellerId)) {
+      await addTripTraveller(db, tripId, travellerId);
+    }
+  }
 }
 
 /** Rows cascade. Files on disk are reclaimed by the GC sweep, not here. */

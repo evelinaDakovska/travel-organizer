@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
+  CLASSIFICATION_LABELS,
   legacyNames,
   travellerNameSchema,
   type Traveller,
@@ -32,12 +33,6 @@ import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../../../src/ui/components/SectionLabel';
 import { Sheet } from '../../../src/ui/components/Sheet';
 import { gutter, radius, spacing, touchTarget, type, useColors } from '../../../src/ui/tokens';
-
-const CLASSIFICATION_LABELS: Record<TravellerClassification, string> = {
-  adult: 'Adult',
-  child: 'Child',
-  unspecified: 'Not specified',
-};
 
 const CLASSIFICATION_OPTIONS: { value: TravellerClassification; label: string }[] = [
   { value: 'adult', label: 'Adult' },

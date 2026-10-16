@@ -1,9 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { ReactNode } from 'react';
+import { useSQLiteContext } from 'expo-sqlite';
+import { useState, type ReactNode } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet } from 'react-native';
 
 import { tripInputSchema, type TripInput } from '../../domain/trip';
+import { TravellerPicker } from '../travellers/TravellerPicker';
+import { useLiveQuery } from '../../hooks/useLiveQuery';
+import { createTraveller, listTravellers, TRAVELLER_TABLES } from '../../repositories/travellers';
 import { Button } from '../../ui/components/Button';
 import { DateRangeField } from '../../ui/components/DateRangeField';
 import { Field, Input } from '../../ui/components/Field';
@@ -12,8 +16,9 @@ import { TimezoneField } from '../../ui/components/TimezoneField';
 
 type Props = {
   defaultValues: TripInput;
+  defaultTravellerIds?: string[];
   submitLabel: string;
-  onSubmit: (input: TripInput) => Promise<void>;
+  onSubmit: (input: TripInput, selectedTravellerIds: string[]) => Promise<void>;
   /**
    * After the fields, in the scroll — a destructive action such as Delete, kept away from the
    * Save button pinned below.
@@ -21,7 +26,19 @@ type Props = {
   secondaryActions?: ReactNode;
 };
 
-export function TripForm({ defaultValues, submitLabel, onSubmit, secondaryActions }: Props) {
+export function TripForm({
+  defaultValues,
+  defaultTravellerIds,
+  submitLabel,
+  onSubmit,
+  secondaryActions,
+}: Props) {
+  const db = useSQLiteContext();
+  const { data: profiles = [] } = useLiveQuery(listTravellers, TRAVELLER_TABLES);
+  const [selectedTravellerIds, setSelectedTravellerIds] = useState<string[]>(
+    defaultTravellerIds ?? [],
+  );
+
   const {
     control,
     watch,
@@ -41,7 +58,7 @@ export function TripForm({ defaultValues, submitLabel, onSubmit, secondaryAction
           label={submitLabel}
           busy={isSubmitting}
           onPress={handleSubmit(async (values) => {
-            await onSubmit(values);
+            await onSubmit(values, selectedTravellerIds);
           })}
         />
       }>
@@ -107,26 +124,25 @@ export function TripForm({ defaultValues, submitLabel, onSubmit, secondaryAction
         )}
       />
 
-      <Controller
-        control={control}
-        name="travellers"
-        render={({ field }) => (
-          <Field label="Travelling with" hint="Comma separated. Optional">
-            <Input
-              defaultValue={(field.value ?? []).join(', ')}
-              onChangeText={(text) => {
-                const names = text
-                  .split(',')
-                  .map((n) => n.trim())
-                  .filter(Boolean);
-                field.onChange(names.length > 0 ? names : undefined);
-              }}
-              onBlur={field.onBlur}
-              placeholder="Sam, Alex"
-            />
-          </Field>
-        )}
-      />
+      <Field
+        label="Travelling with"
+        hint={
+          selectedTravellerIds.length > 0
+            ? `${selectedTravellerIds.length} ${
+                selectedTravellerIds.length === 1 ? 'person' : 'people'
+              } selected`
+            : 'Select saved profiles or add travellers'
+        }>
+        <TravellerPicker
+          profiles={profiles}
+          selectedIds={selectedTravellerIds}
+          onChange={setSelectedTravellerIds}
+          onAddNewProfile={async (name, classification) => {
+            return await createTraveller(db, name, classification);
+          }}
+          legacyNames={defaultValues.travellers ?? []}
+        />
+      </Field>
 
       <Controller
         control={control}

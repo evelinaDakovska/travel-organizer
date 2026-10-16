@@ -29,7 +29,8 @@ export type OverviewPlan<T extends TimelineItem> = {
 /**
  * Before the trip, the lead is the first journey still to come — the one to get to the airport
  * for — even if an activity is booked earlier. During and after it, what is on now, else what is
- * next. `limit` caps the rows of what comes next.
+ * next (excluding stays, which have their own dedicated accommodation section).
+ * `limit` caps the rows of what comes next.
  */
 export function overviewPlan<T extends TimelineItem & { subkind?: string | null }>(
   items: readonly T[],
@@ -37,19 +38,36 @@ export function overviewPlan<T extends TimelineItem & { subkind?: string | null 
   now: Date = new Date(),
   limit = 4,
 ): OverviewPlan<T> {
-  const sections = nowSections(items, now, limit + 1);
+  const sections = nowSections(items, now, limit + 2);
 
   let lead: OverviewPlan<T>['lead'] = null;
-  if (deviceToday(now) < trip.startDate) {
-    const departure = firstDeparture(items, now);
-    if (departure) lead = { entry: departure, reason: 'firstDeparture' };
-  }
-  if (!lead && sections.happening.length > 0) {
-    lead = { entry: sections.happening[0], reason: 'happening' };
-  }
-  if (!lead && sections.upNext.length > 0) lead = { entry: sections.upNext[0], reason: 'next' };
+  const isBefore = deviceToday(now) < trip.startDate;
 
-  const notLead = (entry: TimelineEntry<T>) => entry.key !== lead?.entry.key;
+  if (isBefore) {
+    const departure = firstDeparture(items, now);
+    if (departure) {
+      lead = { entry: departure, reason: 'firstDeparture' };
+    } else {
+      const firstEntry = sections.upNext.find((e) => e.item.kind !== 'stay');
+      if (firstEntry) lead = { entry: firstEntry, reason: 'next' };
+    }
+  } else {
+    // Ongoing trip:
+    // 1. Current event on now (non-stay)
+    const happeningEntry = sections.happening.find((e) => e.item.kind !== 'stay');
+    if (happeningEntry) {
+      lead = { entry: happeningEntry, reason: 'happening' };
+    } else {
+      // 2. Next scheduled confirmed event (non-stay)
+      const nextEntry = sections.upNext.find((e) => e.item.kind !== 'stay');
+      if (nextEntry) {
+        lead = { entry: nextEntry, reason: 'next' };
+      }
+    }
+  }
+
+  const notLead = (entry: TimelineEntry<T>) =>
+    entry.key !== lead?.entry.key && entry.item.kind !== 'stay';
   return {
     lead,
     alsoHappening: sections.happening.filter(notLead),
@@ -143,4 +161,128 @@ export function leadNote<T extends NoteItem>(
       ? `${zoneName(end.tz, routePlace(item, 'end'))} time`
       : null;
   return [`${label} ${when}`, time ? zone : null].filter(Boolean).join(' · ');
+}
+
+export type OverviewStayResolution<T extends TimelineItem> =
+  | {
+      type: 'current';
+      stay: T;
+      status: 'checked_in' | 'checkin_today';
+      checkinTime: string | null;
+    }
+  | {
+      type: 'upcoming';
+      stay: T;
+      status: 'checkin_today' | 'next_stay';
+      checkinDay: string;
+      checkinTime: string | null;
+    }
+  | {
+      type: 'overnight_transport';
+      transport: T;
+    }
+  | {
+      type: 'none';
+    };
+
+/**
+ * Resolves accommodation for an ongoing trip:
+ * - Tonight's current stay (distinguishing checked in vs check-in later today)
+ * - Overnight transport (train/flight) if covering tonight
+ * - Next upcoming stay if there is a gap or before the first check-in
+ * - None if no stays exist
+ */
+export function resolveStayForOverview<T extends TimelineItem>(
+  items: readonly T[],
+  today: string,
+  now: Date = new Date(),
+): OverviewStayResolution<T> {
+  const current = baseTonight(items, today);
+  if (current && current.start) {
+    const checkin = dayKey(current.start);
+    const time = timeOfDay(current.start);
+    if (checkin === today && current.start.precision === 'time') {
+      const isPast = Date.parse(toInstant(current.start)) <= now.getTime();
+      return {
+        type: 'current',
+        stay: current,
+        status: isPast ? 'checked_in' : 'checkin_today',
+        checkinTime: time,
+      };
+    }
+    return {
+      type: 'current',
+      stay: current,
+      status: 'checked_in',
+      checkinTime: time,
+    };
+  }
+
+  // Check if tonight is spent on an overnight transport
+  const overnightTransport = items.find(
+    (item) =>
+      item.status === 'confirmed' &&
+      item.kind === 'transport' &&
+      item.start &&
+      item.end &&
+      dayKey(item.start) <= today &&
+      dayKey(item.end) > today,
+  );
+  if (overnightTransport) {
+    return {
+      type: 'overnight_transport',
+      transport: overnightTransport,
+    };
+  }
+
+  // If no current stay and no overnight transport, check for upcoming stays
+  const upcomingStays = items
+    .filter(
+      (item) =>
+        item.status === 'confirmed' &&
+        item.kind === 'stay' &&
+        item.start &&
+        dayKey(item.start) >= today,
+    )
+    .sort((a, b) => toInstant(a.start!).localeCompare(toInstant(b.start!)));
+
+  if (upcomingStays.length > 0) {
+    const nextStay = upcomingStays[0];
+    const checkinDay = dayKey(nextStay.start!);
+    const time = timeOfDay(nextStay.start!);
+    return {
+      type: 'upcoming',
+      stay: nextStay,
+      status: checkinDay === today ? 'checkin_today' : 'next_stay',
+      checkinDay,
+      checkinTime: time,
+    };
+  }
+
+  return { type: 'none' };
+}
+
+export type PastTripSummary = {
+  placesCount: number;
+  totalSpentByCurrency: Record<string, number>;
+};
+
+/** Computes clean summary figures for an ended trip. */
+export function pastTripSummary<T extends { kind: string; status: string }>(
+  items: readonly T[],
+  expenses: readonly { amount: number; currency: string }[],
+): PastTripSummary {
+  const placesCount = items.filter(
+    (item) => item.status === 'confirmed' && item.kind !== 'task',
+  ).length;
+
+  const totalSpentByCurrency: Record<string, number> = {};
+  for (const exp of expenses) {
+    totalSpentByCurrency[exp.currency] = (totalSpentByCurrency[exp.currency] ?? 0) + exp.amount;
+  }
+
+  return {
+    placesCount,
+    totalSpentByCurrency,
+  };
 }

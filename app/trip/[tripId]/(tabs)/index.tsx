@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { paymentStatuses, type PaymentStatus } from '../../../../src/domain/bookingCosts';
-import { formatDateRange, formatShortDate } from '../../../../src/domain/format';
+import { formatDateRange, formatMoney, formatShortDate } from '../../../../src/domain/format';
 import {
   doneTasks,
   entryRoleLabel,
@@ -17,9 +17,12 @@ import {
   baseTonight,
   leadNote,
   overviewPlan,
+  pastTripSummary,
+  resolveStayForOverview,
   staysAndRentals,
   type LeadReason,
 } from '../../../../src/domain/overview';
+import { nextCurrency } from '../../../../src/domain/spending';
 import { groupResourcesByItem, type Resource } from '../../../../src/domain/resource';
 import { dayKey } from '../../../../src/domain/time';
 import type { TimelineEntry } from '../../../../src/domain/timeline';
@@ -50,12 +53,17 @@ import { LIST_TABLES, listTripLists } from '../../../../src/repositories/lists';
 import { listTripTravellers, TRAVELLER_TABLES } from '../../../../src/repositories/travellers';
 import { getTrip, TRIP_TABLES } from '../../../../src/repositories/trips';
 import {
+  EXPENSE_TABLES,
+  listExpenses,
+} from '../../../../src/repositories/expenses';
+import {
   findTripSavedPlaces,
   findTripStays,
   resolveItemEndpoint,
   type DirectionEndpoint,
 } from '../../../../src/domain/directions';
 import { DirectionsSheet } from '../../../../src/features/directions/DirectionsSheet';
+import { QuickExpenseSheet } from '../../../../src/features/expenses/QuickExpenseSheet';
 import { Button } from '../../../../src/ui/components/Button';
 import { HeaderAction } from '../../../../src/ui/components/HeaderAction';
 import { Icon, type IconName } from '../../../../src/ui/components/Icon';
@@ -70,7 +78,7 @@ import { ScreenHeader } from '../../../../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../../../../src/ui/components/SectionLabel';
 import { Sheet } from '../../../../src/ui/components/Sheet';
 import { UndoToast } from '../../../../src/ui/components/UndoToast';
-import { gutter, spacing, type, useColors } from '../../../../src/ui/tokens';
+import { gutter, radius, spacing, type, useColors } from '../../../../src/ui/tokens';
 
 /** The trip's own actions, behind More in the header. */
 const MORE_ACTIONS: readonly {
@@ -166,6 +174,30 @@ export default function OverviewScreen() {
   const allStays = useMemo(() => findTripStays(items ?? []), [items]);
   const savedPlaces = useMemo(() => findTripSavedPlaces(items ?? []), [items]);
   const [directionsTarget, setDirectionsTarget] = useState<DirectionEndpoint | null>(null);
+  const [quickExpenseOpen, setQuickExpenseOpen] = useState(false);
+
+  const expensesQuery = useLiveQuery(
+    useCallback((database) => listExpenses(database, tripId), [tripId]),
+    EXPENSE_TABLES,
+    [tripId],
+  );
+  const expenses = expensesQuery.data ?? [];
+
+  const stayResolution = useMemo(
+    () => resolveStayForOverview(items ?? [], today, now),
+    [items, today, now],
+  );
+  const summary = useMemo(
+    () => pastTripSummary(items ?? [], expenses),
+    [items, expenses],
+  );
+  const spendingText = useMemo(
+    () =>
+      Object.entries(summary.totalSpentByCurrency)
+        .map(([cur, amt]) => formatMoney(amt, cur))
+        .join(', '),
+    [summary],
+  );
 
   const tripView = queryView(tripQuery);
   if (tripView !== 'ready' || !trip || !plan) {
@@ -186,6 +218,8 @@ export default function OverviewScreen() {
 
   const phase = tripPhase(trip, now);
   const during = phase.phase === 'during';
+  const isPast = phase.phase === 'after';
+
   // The trip's travellers, or the names typed before there were profiles (FB-12).
   const people = tripPeopleLine(members ?? [], trip.travellers);
   const meta = [`${timezoneLabel(trip.defaultTz)} time`, people].filter(Boolean).join(' · ');
@@ -218,7 +252,9 @@ export default function OverviewScreen() {
         subtitle={
           during
             ? `${trip.name} · ${tripPhaseLabel(phase)}`
-            : `${formatDateRange(trip.startDate, trip.endDate)} · ${tripPhaseLabel(phase)}`
+            : isPast
+              ? `${formatDateRange(trip.startDate, trip.endDate)} · Ended`
+              : `${formatDateRange(trip.startDate, trip.endDate)} · ${tripPhaseLabel(phase)}`
         }
         action={
           <View style={styles.headerActions}>
@@ -239,142 +275,351 @@ export default function OverviewScreen() {
       />
 
       <ScrollView contentContainerStyle={styles.content}>
-        <StaleNotice queries={[tripQuery, itemsQuery, attachmentsQuery]} />
+        <StaleNotice queries={[tripQuery, itemsQuery, attachmentsQuery, expensesQuery]} />
         {itemsFailed ? <LoadFailed what="this trip's plans" onRetry={itemsQuery.refetch} /> : null}
         {/* Without them every Open button would silently vanish, as if nothing were attached. */}
         {queryView(attachmentsQuery) === 'failed' ? (
           <LoadFailed what="the attachments" onRetry={attachmentsQuery.refetch} />
         ) : null}
 
-        <View style={styles.metaRow}>
-          <Text style={[type.caption, styles.grow, { color: c.textMuted }]}>{meta}</Text>
-          <HeaderAction
-            label="Full itinerary"
-            onPress={() => router.push(`/trip/${trip.id}/timeline`)}
-          />
-        </View>
+        {isPast ? (
+          <>
+            <View style={styles.metaRow}>
+              <Text style={[type.caption, styles.grow, { color: c.textMuted }]}>{meta}</Text>
+            </View>
 
-        {plan.lead ? (
-          <Lead
-            entry={plan.lead.entry}
-            reason={plan.lead.reason}
-            now={now}
-            resources={byItem.get(plan.lead.entry.item.id) ?? []}
-            payment={payments.get(plan.lead.entry.item.id) ?? null}
-            onOpen={() => open(plan.lead!.entry.item.id)}
-            onDirections={setDirectionsTarget}
-          />
-        ) : null}
-
-        {/* Before the trip, getting ready comes before the rest of the plans (B5). */}
-        {during ? null : tasksSection}
-
-        <EntrySection
-          label="Today, no fixed time"
-          entries={plan.today}
-          byItem={byItem}
-          payments={payments}
-          noteFor={(item) => todayNote(item, now)}
-        />
-        <EntrySection
-          label="Maybe today"
-          entries={plan.maybeToday}
-          byItem={byItem}
-          payments={payments}
-          noteFor={(item) => todayNote(item, now)}
-        />
-        <EntrySection
-          label="Also on now"
-          entries={plan.alsoHappening}
-          byItem={byItem}
-          payments={payments}
-          noteFor={(item) => happeningNote(item, now)}
-        />
-        {!plan.lead && plan.next.length > 0 ? (
-          <EntrySection
-            label="Coming up"
-            entries={plan.next}
-            byItem={byItem}
-            payments={payments}
-            showDate
-          />
-        ) : null}
-
-        {during && base ? (
-          <View style={styles.section}>
-            <SectionLabel>Your base tonight</SectionLabel>
-            <ItemRow
-              item={base}
-              payment={payments.get(base.id) ?? null}
-              onPress={() => open(base.id)}
+            <LeadPanel
+              eyebrow="Trip ended"
+              title={trip.name}
+              lines={[
+                formatDateRange(trip.startDate, trip.endDate),
+                `${summary.placesCount} confirmed ${summary.placesCount === 1 ? 'item' : 'items'}`,
+                spendingText ? `Total spent: ${spendingText}` : 'No recorded expenses',
+              ]}
+              onPress={() => router.push(`/trip/${trip.id}/timeline`)}
             />
-          </View>
-        ) : null}
 
-        {during ? tasksSection : null}
-
-        {!during && stays.length > 0 ? (
-          <View style={styles.section}>
-            <SectionLabel>Stay & transport</SectionLabel>
             <Rows>
-              {stays.map((stay) => (
-                <ItemRow
-                  key={stay.id}
-                  item={stay}
-                  payment={payments.get(stay.id) ?? null}
-                  onPress={() => open(stay.id)}
-                />
-              ))}
-            </Rows>
-          </View>
-        ) : null}
-
-        {/* Getting ready includes the lists: how far along each is, one tap away (C1). */}
-        {lists && lists.length > 0 ? (
-          <View style={styles.section}>
-            <SectionLabel>Lists</SectionLabel>
-            <Rows>
-              {lists.map((list) => (
+              <ListRow
+                title="Itinerary"
+                subtitle="Full day by day timeline"
+                leading={<IconTile name="timeline" size={36} />}
+                onPress={() => router.push(`/trip/${trip.id}/timeline`)}
+              />
+              <ListRow
+                title="Expenses"
+                subtitle={spendingText ? `Total: ${spendingText}` : 'View recorded expenses'}
+                leading={<IconTile name="receipt" size={36} />}
+                onPress={() => router.push(`/trip/${trip.id}/expenses`)}
+              />
+              <ListRow
+                title="Travellers"
+                subtitle={people || 'Who went'}
+                leading={<IconTile name="travellers" size={36} />}
+                onPress={() => router.push(`/trip/${trip.id}/travellers`)}
+              />
+              <ListRow
+                title="Trip documents"
+                subtitle="Tickets, bookings and files"
+                leading={<IconTile name="file" size={36} />}
+                onPress={() => router.push(`/trip/${trip.id}/documents`)}
+              />
+              {trip.notes ? (
                 <ListRow
-                  key={list.id}
-                  title={list.name}
-                  subtitle={progressText(list.kind, list)}
-                  leading={
-                    <IconTile
-                      name={list.kind === 'packing' ? 'packing' : 'shoppingList'}
-                      size={36}
-                    />
-                  }
-                  onPress={() =>
-                    router.push({ pathname: '/list/[listId]', params: { listId: list.id } })
-                  }
+                  title="Trip notes"
+                  subtitle={trip.notes}
+                  leading={<IconTile name="lists" size={36} />}
                 />
-              ))}
+              ) : null}
             </Rows>
-          </View>
-        ) : null}
+          </>
+        ) : during ? (
+          <>
+            <View style={styles.quickBar}>
+              <Button
+                label="+ Add expense"
+                variant="secondary"
+                onPress={() => setQuickExpenseOpen(true)}
+              />
+            </View>
 
-        <Rows>
-          <ListRow
-            title="Travellers"
-            subtitle={people || 'Who is going'}
-            leading={<IconTile name="travellers" size={36} />}
-            onPress={() => router.push(`/trip/${trip.id}/travellers`)}
-          />
-          <ListRow
-            title="Trip documents"
-            subtitle="Tickets, bookings and insurance — on this phone and as links"
-            leading={<IconTile name="file" size={36} />}
-            onPress={() => router.push(`/trip/${trip.id}/documents`)}
-          />
-          {trip.notes ? (
-            <ListRow
-              title="Trip notes"
-              subtitle={trip.notes}
-              leading={<IconTile name="lists" size={36} />}
+            <View style={styles.metaRow}>
+              <Text style={[type.caption, styles.grow, { color: c.textMuted }]}>{meta}</Text>
+              <HeaderAction
+                label="Full itinerary"
+                onPress={() => router.push(`/trip/${trip.id}/timeline`)}
+              />
+            </View>
+
+            {plan.lead ? (
+              <Lead
+                entry={plan.lead.entry}
+                reason={plan.lead.reason}
+                now={now}
+                resources={byItem.get(plan.lead.entry.item.id) ?? []}
+                payment={payments.get(plan.lead.entry.item.id) ?? null}
+                onOpen={() => open(plan.lead!.entry.item.id)}
+                onDirections={setDirectionsTarget}
+              />
+            ) : (
+              <View
+                style={[
+                  styles.emptyLead,
+                  { backgroundColor: c.surfaceSunken, borderColor: c.border },
+                ]}>
+                <Text style={[type.heading, { color: c.text }]}>No scheduled events right now</Text>
+                <Text style={[type.caption, { color: c.textMuted }]}>
+                  Check your timeline or add a plan to today.
+                </Text>
+                <Button label="Add an event" variant="secondary" onPress={() => setAdding(true)} />
+              </View>
+            )}
+
+            {stayResolution.type === 'current' ? (
+              <View style={styles.section}>
+                <SectionLabel>Your stay</SectionLabel>
+                <StayCard
+                  stay={stayResolution.stay}
+                  eyebrow={
+                    stayResolution.status === 'checkin_today'
+                      ? `Check-in today${stayResolution.checkinTime ? ` · ${stayResolution.checkinTime}` : ''}`
+                      : 'Stay tonight'
+                  }
+                  resources={byItem.get(stayResolution.stay.id) ?? []}
+                  payment={payments.get(stayResolution.stay.id) ?? null}
+                  onOpen={() => open(stayResolution.stay.id)}
+                  onDirections={setDirectionsTarget}
+                />
+              </View>
+            ) : stayResolution.type === 'upcoming' ? (
+              <View style={styles.section}>
+                <SectionLabel>Your stay</SectionLabel>
+                <StayCard
+                  stay={stayResolution.stay}
+                  eyebrow={
+                    stayResolution.status === 'checkin_today'
+                      ? `Check-in today${stayResolution.checkinTime ? ` · ${stayResolution.checkinTime}` : ''}`
+                      : `Next stay · Check in ${formatShortDate(stayResolution.checkinDay)}${
+                          stayResolution.checkinTime ? ` · ${stayResolution.checkinTime}` : ''
+                        }`
+                  }
+                  resources={byItem.get(stayResolution.stay.id) ?? []}
+                  payment={payments.get(stayResolution.stay.id) ?? null}
+                  onOpen={() => open(stayResolution.stay.id)}
+                  onDirections={setDirectionsTarget}
+                />
+              </View>
+            ) : stayResolution.type === 'overnight_transport' ? (
+              <View style={styles.section}>
+                <SectionLabel>Your stay</SectionLabel>
+                <StayCard
+                  stay={stayResolution.transport}
+                  eyebrow="Tonight · Overnight transport"
+                  resources={byItem.get(stayResolution.transport.id) ?? []}
+                  payment={payments.get(stayResolution.transport.id) ?? null}
+                  onOpen={() => open(stayResolution.transport.id)}
+                  onDirections={setDirectionsTarget}
+                />
+              </View>
+            ) : null}
+
+            <EntrySection
+              label="Today, no fixed time"
+              entries={plan.today}
+              byItem={byItem}
+              payments={payments}
+              noteFor={(item) => todayNote(item, now)}
             />
-          ) : null}
-        </Rows>
+            <EntrySection
+              label="Maybe today"
+              entries={plan.maybeToday}
+              byItem={byItem}
+              payments={payments}
+              noteFor={(item) => todayNote(item, now)}
+            />
+            <EntrySection
+              label="Also on now"
+              entries={plan.alsoHappening}
+              byItem={byItem}
+              payments={payments}
+              noteFor={(item) => happeningNote(item, now)}
+            />
+            {!plan.lead && plan.next.length > 0 ? (
+              <EntrySection
+                label="Coming up"
+                entries={plan.next}
+                byItem={byItem}
+                payments={payments}
+                showDate
+              />
+            ) : null}
+
+            {tasksSection}
+
+            {lists && lists.length > 0 ? (
+              <View style={styles.section}>
+                <SectionLabel>Lists</SectionLabel>
+                <Rows>
+                  {lists.map((list) => (
+                    <ListRow
+                      key={list.id}
+                      title={list.name}
+                      subtitle={progressText(list.kind, list)}
+                      leading={
+                        <IconTile
+                          name={list.kind === 'packing' ? 'packing' : 'shoppingList'}
+                          size={36}
+                        />
+                      }
+                      onPress={() =>
+                        router.push({ pathname: '/list/[listId]', params: { listId: list.id } })
+                      }
+                    />
+                  ))}
+                </Rows>
+              </View>
+            ) : null}
+
+            <Rows>
+              <ListRow
+                title="Travellers"
+                subtitle={people || 'Who is going'}
+                leading={<IconTile name="travellers" size={36} />}
+                onPress={() => router.push(`/trip/${trip.id}/travellers`)}
+              />
+              <ListRow
+                title="Trip documents"
+                subtitle="Tickets, bookings and insurance — on this phone and as links"
+                leading={<IconTile name="file" size={36} />}
+                onPress={() => router.push(`/trip/${trip.id}/documents`)}
+              />
+              {trip.notes ? (
+                <ListRow
+                  title="Trip notes"
+                  subtitle={trip.notes}
+                  leading={<IconTile name="lists" size={36} />}
+                />
+              ) : null}
+            </Rows>
+          </>
+        ) : (
+          <>
+            <View style={styles.metaRow}>
+              <Text style={[type.caption, styles.grow, { color: c.textMuted }]}>{meta}</Text>
+              <HeaderAction
+                label="Full itinerary"
+                onPress={() => router.push(`/trip/${trip.id}/timeline`)}
+              />
+            </View>
+
+            {plan.lead ? (
+              <Lead
+                entry={plan.lead.entry}
+                reason={plan.lead.reason}
+                now={now}
+                resources={byItem.get(plan.lead.entry.item.id) ?? []}
+                payment={payments.get(plan.lead.entry.item.id) ?? null}
+                onOpen={() => open(plan.lead!.entry.item.id)}
+                onDirections={setDirectionsTarget}
+              />
+            ) : null}
+
+            {tasksSection}
+
+            <EntrySection
+              label="Today, no fixed time"
+              entries={plan.today}
+              byItem={byItem}
+              payments={payments}
+              noteFor={(item) => todayNote(item, now)}
+            />
+            <EntrySection
+              label="Maybe today"
+              entries={plan.maybeToday}
+              byItem={byItem}
+              payments={payments}
+              noteFor={(item) => todayNote(item, now)}
+            />
+            <EntrySection
+              label="Also on now"
+              entries={plan.alsoHappening}
+              byItem={byItem}
+              payments={payments}
+              noteFor={(item) => happeningNote(item, now)}
+            />
+            {!plan.lead && plan.next.length > 0 ? (
+              <EntrySection
+                label="Coming up"
+                entries={plan.next}
+                byItem={byItem}
+                payments={payments}
+                showDate
+              />
+            ) : null}
+
+            {stays.length > 0 ? (
+              <View style={styles.section}>
+                <SectionLabel>Stay & transport</SectionLabel>
+                <Rows>
+                  {stays.map((stay) => (
+                    <ItemRow
+                      key={stay.id}
+                      item={stay}
+                      payment={payments.get(stay.id) ?? null}
+                      onPress={() => open(stay.id)}
+                    />
+                  ))}
+                </Rows>
+              </View>
+            ) : null}
+
+            {lists && lists.length > 0 ? (
+              <View style={styles.section}>
+                <SectionLabel>Lists</SectionLabel>
+                <Rows>
+                  {lists.map((list) => (
+                    <ListRow
+                      key={list.id}
+                      title={list.name}
+                      subtitle={progressText(list.kind, list)}
+                      leading={
+                        <IconTile
+                          name={list.kind === 'packing' ? 'packing' : 'shoppingList'}
+                          size={36}
+                        />
+                      }
+                      onPress={() =>
+                        router.push({ pathname: '/list/[listId]', params: { listId: list.id } })
+                      }
+                    />
+                  ))}
+                </Rows>
+              </View>
+            ) : null}
+
+            <Rows>
+              <ListRow
+                title="Travellers"
+                subtitle={people || 'Who is going'}
+                leading={<IconTile name="travellers" size={36} />}
+                onPress={() => router.push(`/trip/${trip.id}/travellers`)}
+              />
+              <ListRow
+                title="Trip documents"
+                subtitle="Tickets, bookings and insurance — on this phone and as links"
+                leading={<IconTile name="file" size={36} />}
+                onPress={() => router.push(`/trip/${trip.id}/documents`)}
+              />
+              {trip.notes ? (
+                <ListRow
+                  title="Trip notes"
+                  subtitle={trip.notes}
+                  leading={<IconTile name="lists" size={36} />}
+                />
+              ) : null}
+            </Rows>
+          </>
+        )}
       </ScrollView>
 
       <UndoToast
@@ -412,6 +657,13 @@ export default function OverviewScreen() {
           savedPlaces={savedPlaces}
         />
       ) : null}
+
+      <QuickExpenseSheet
+        visible={quickExpenseOpen}
+        onClose={() => setQuickExpenseOpen(false)}
+        tripId={trip.id}
+        defaultCurrency={nextCurrency(expenses)}
+      />
     </Screen>
   );
 }
@@ -451,6 +703,50 @@ function Lead({
       title={role ? `${role} · ${item.title}` : item.title}
       lines={[where, zone ? `${zone} time` : null]}
       note={leadNote(entry, reason, now)}
+      tags={payment ? <PaymentTag status={payment} /> : null}
+      onPress={onOpen}
+      actions={
+        resources.length > 0 || (destinationEndpoint && onDirections) ? (
+          <View style={styles.leadActions}>
+            {resources.length > 0 ? <OpenResource resources={resources} /> : null}
+            {destinationEndpoint && onDirections ? (
+              <Button
+                label="Directions"
+                variant={resources.length > 0 ? 'secondary' : 'primary'}
+                onPress={() => onDirections(destinationEndpoint)}
+              />
+            ) : null}
+          </View>
+        ) : null
+      }
+    />
+  );
+}
+
+/** Accommodation card for the current night or next stay. */
+function StayCard({
+  stay,
+  eyebrow,
+  resources,
+  payment,
+  onOpen,
+  onDirections,
+}: {
+  stay: TripItem;
+  eyebrow: string;
+  resources: readonly Resource[];
+  payment: PaymentStatus | null;
+  onOpen: () => void;
+  onDirections?: (endpoint: DirectionEndpoint) => void;
+}) {
+  const where = routeLabel(transportDetails(stay)) ?? stay.address ?? stay.locationName;
+  const destinationEndpoint = resolveItemEndpoint(stay, 'destination');
+
+  return (
+    <LeadPanel
+      eyebrow={eyebrow}
+      title={stay.title}
+      lines={[where].filter(Boolean)}
       tags={payment ? <PaymentTag status={payment} /> : null}
       onPress={onOpen}
       actions={
@@ -593,4 +889,14 @@ const styles = StyleSheet.create({
   section: { gap: spacing.xs },
   sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   leadActions: { gap: spacing.sm },
+  quickBar: {
+    paddingTop: spacing.xs,
+  },
+  emptyLead: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    padding: spacing.lg,
+    gap: spacing.md,
+    alignItems: 'flex-start',
+  },
 });

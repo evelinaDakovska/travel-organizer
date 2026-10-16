@@ -12,8 +12,9 @@ import {
   deleteTrip,
   getTrip,
   TRIP_TABLES,
-  updateTrip,
+  updateTripWithMembers,
 } from '../../../src/repositories/trips';
+import { listTripTravellers, TRAVELLER_TABLES } from '../../../src/repositories/travellers';
 import { Button } from '../../../src/ui/components/Button';
 import { QueryScreen } from '../../../src/ui/components/QueryStates';
 import { Screen } from '../../../src/ui/components/Screen';
@@ -30,8 +31,14 @@ export default function EditTrip() {
     TRIP_TABLES,
     [tripId],
   );
+  const membersQuery = useLiveQuery(
+    useCallback((database) => listTripTravellers(database, tripId), [tripId]),
+    TRAVELLER_TABLES,
+    [tripId],
+  );
 
   const trip = tripQuery.data;
+  const members = membersQuery.data ?? [];
   /** Names the blast radius — these files may be the only copies. */
   const confirmDelete = useCallback(async () => {
     const { items, files, expenses } = await countTripContents(db, tripId);
@@ -78,6 +85,7 @@ export default function EditTrip() {
       <ScreenHeader title="Edit trip" />
       <TripForm
         submitLabel="Save changes"
+        defaultTravellerIds={members.map((m) => m.id)}
         defaultValues={{
           name: trip.name,
           destination: trip.destination ?? undefined,
@@ -88,8 +96,8 @@ export default function EditTrip() {
           travellerCount: trip.travellerCount ?? undefined,
           notes: trip.notes ?? undefined,
         }}
-        onSubmit={async (input) => {
-          await updateTrip(db, trip.id, input);
+        onSubmit={async (input, selectedTravellerIds) => {
+          await updateTripWithMembers(db, trip.id, input, selectedTravellerIds);
           router.back();
         }}
         secondaryActions={<Button label="Delete trip" variant="danger" onPress={confirmDelete} />}

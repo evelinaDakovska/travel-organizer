@@ -106,6 +106,7 @@ export default function PlacesScreen() {
                       key={place.id}
                       item={place}
                       headingSays
+                      showFinancials={false}
                       onPress={() => open(place.id)}
                     />
                   ))}
@@ -123,7 +124,12 @@ export default function PlacesScreen() {
         ) : booked.length > 0 ? (
           <Rows>
             {booked.map((item) => (
-              <ItemRow key={item.id} item={item} onPress={() => open(item.id)} />
+              <ItemRow
+                key={item.id}
+                item={item}
+                showFinancials={false}
+                onPress={() => open(item.id)}
+              />
             ))}
           </Rows>
         ) : (

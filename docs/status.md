@@ -3,14 +3,14 @@
 **The** status board. `CLAUDE.md` and `plan.md` link here rather than repeat it, so there is one
 place to update and nothing can drift.
 
-Verified against the repo on 2026-10-13, on Windows: **784 tests passing, typecheck clean.** All features verified on the Android emulator (`Pixel_10_Pro`) with release build **0.7.0**.
+Verified against the repo on 2026-10-16, on Windows: **851 tests passing, typecheck clean.** All features verified on the Android emulator (`Pixel_10_Pro`) with release build **0.7.1**.
 
-> **Release build 0.7.0** (versionCode 10), built 2026-10-13. Delivers **Google Maps Directions & A → B**
-> (`travel-organizer-directions-spec.md`): pure domain directions builder, quiet timeline connector rows
-> with 48dp hit targets between consecutive located stops, item detail "How to get there", overview lead card
-> directions, bottom sheet modal with origin switcher (Current location, previous stop, stays, saved places),
-> travel mode chips (Any, Walking, Driving, Transit), Google Maps deep linking with fallback and address copy.
-> Verified end-to-end on emulator with sample Milan and Lapland trips, native Google Maps handoff, and return.
+> **Release build 0.7.1** (versionCode 11), built 2026-10-16. Delivers product and UX corrections from real-phone testing:
+> 1. **Places Browsing View**: Removed prices, payment totals, and paid/unpaid badges from list rows (`showFinancials={false}` in `ItemRow`); full financial records and payments preserved in item details and Expenses.
+> 2. **Traveller Profile Multi-Select Picker**: Replaced free-text entry in New Trip and Edit Trip with reusable profile selector displaying Adult/Child/Not specified classifications, inline profile creation, strict ID-based selection distinguishing duplicate names, and atomic trip membership snapshots (`trip_travellers`).
+> 3. **Ongoing-Trip Overview Experience**: Automatically adapts Overview for trips starting today, ongoing, or past. For ongoing trips: prominent "+ Add expense" quick action bar, "Now / Up next" highlighting currently happening or next event (with accommodation isolated to prevent multi-day stays from obscuring activities/flights), dedicated "Your stay" card tracking check-in status (checked in, check-in today, next stay, overnight transport), and untimed date-only plans. Past trips display a calm summary with places count and total spend by currency without misleading upcoming labels.
+> 4. **Quick Expense Entry**: Compact bottom sheet directly on Overview with amount, category, currency default, optional note, progressive reveal for dates/labels, double-submit protection, and atomic rollback on cancel.
+> 5. **Per-Item Travellers**: Distinguishes same-name travellers in `ItemForm` with classification badges (`Adult`, `Child`, `Not specified`) and saves through `item_participants`.
 
 ---
 
@@ -823,7 +823,7 @@ re-registered after a restart.
 | # | Question | Needed by |
 |---|---|---|
 | ~~1~~ | ~~Multi-day stays render as derived check-in/check-out — confirm the visual treatment~~ **Resolved in S3: each end is its own card on its own day, titled *Check in* / *Check out* for a stay, *Departs* / *Arrives* for a journey, *Starts* / *Ends* otherwise (`entryRoleLabel`). Nothing is drawn on the days in between. Cheap to change if it reads wrong on a real trip.** | — |
-| 2 | Per-item travellers (only 2 of 3 going to one thing) — needed, or notes? **Still open: S1 shipped without it.** Adding it is a new column, so a migration | later |
+| ~~2~~ | ~~Per-item travellers (only 2 of 3 going to one thing) — needed, or notes?~~ **Resolved in C2 / 0.7.1: implemented via `item_participants` join table. Item form allows ticking participating travellers; distinct profile selection with classifications (Adult/Child/Not specified).** | — |
 | ~~3~~ | ~~Trip-level resources: their own screen, or a section on Overview?~~ **Resolved in S2: a "Trip documents" section, built from the same `ResourceList` as item detail. Now at the bottom of the Now tab.** | — |
 | ~~4~~ | ~~Notification default lead time, and whether it is per-item configurable~~ **Resolved in S6: by kind, with an on/off switch per item (decision log D23).** | — |
 | ~~5~~ | ~~Export format: one zip per trip, or one for everything?~~ **Resolved in C5: one archive for everything; `filterTablesForTrip` keeps a per-trip export available with no format change.** | — |

@@ -11,6 +11,12 @@ import { listPhrase } from './format';
 export const TRAVELLER_CLASSIFICATIONS = ['adult', 'child', 'unspecified'] as const;
 export type TravellerClassification = (typeof TRAVELLER_CLASSIFICATIONS)[number];
 
+export const CLASSIFICATION_LABELS: Record<TravellerClassification, string> = {
+  adult: 'Adult',
+  child: 'Child',
+  unspecified: 'Not specified',
+};
+
 export const travellerClassificationSchema = z.enum(TRAVELLER_CLASSIFICATIONS);
 
 export type Traveller = {

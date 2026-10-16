@@ -18,7 +18,7 @@ import {
   updateTravellerClassification,
   updateTripTravellerClassification,
 } from './travellers';
-import { getTrip } from './trips';
+import { createTripWithMembers, getTrip, updateTripWithMembers } from './trips';
 import { legacyNames } from '../domain/traveller';
 import { createTripItem, createTripItems, updateTripItem } from './tripItems';
 
@@ -555,5 +555,118 @@ describe('legacy conversion lifecycle', () => {
     // frank1 remains safe in profiles
     const allProfiles = await listTravellers(db);
     expect(allProfiles.map((p) => p.id)).toContain(frank1);
+  });
+});
+
+describe('createTripWithMembers and updateTripWithMembers', () => {
+  it('creates trip and links selected profile memberships with classification snapshots without writing legacy names', async () => {
+    const { db } = setup();
+    const aliceId = await createTraveller(db, 'Alice', 'adult');
+    const bobId = await createTraveller(db, 'Bob', 'child');
+
+    const tripId = await createTripWithMembers(
+      db,
+      {
+        name: 'Iceland',
+        startDate: '2026-12-01',
+        endDate: '2026-12-05',
+        defaultTz: 'Atlantic/Reykjavik',
+      },
+      [aliceId, bobId],
+    );
+
+    const trip = await getTrip(db, tripId);
+    expect(trip?.name).toBe('Iceland');
+    // Legacy free-text field remains empty
+    expect(trip?.travellers).toEqual([]);
+
+    const members = await listTripTravellers(db, tripId);
+    expect(members).toHaveLength(2);
+    const aliceMember = members.find((m) => m.id === aliceId);
+    const bobMember = members.find((m) => m.id === bobId);
+    expect(aliceMember?.classification).toBe('adult');
+    expect(bobMember?.classification).toBe('child');
+  });
+
+  it('keeps different profiles with the same name distinguishable and independently selectable', async () => {
+    const { db } = setup();
+    const alexAdult = await createTraveller(db, 'Alex', 'adult');
+    const alexChild = await createTraveller(db, 'Alex', 'child');
+
+    // Create trip with only the child Alex
+    const tripId = await createTripWithMembers(
+      db,
+      {
+        name: 'Norway',
+        startDate: '2026-12-10',
+        endDate: '2026-12-15',
+        defaultTz: 'Europe/Oslo',
+      },
+      [alexChild],
+    );
+
+    const members = await listTripTravellers(db, tripId);
+    expect(members).toHaveLength(1);
+    expect(members[0].id).toBe(alexChild);
+    expect(members[0].classification).toBe('child');
+  });
+
+  it('updates trip memberships preserving classification overrides and removing unselected profiles', async () => {
+    const { db } = setup();
+    const aliceId = await createTraveller(db, 'Alice', 'adult');
+    const bobId = await createTraveller(db, 'Bob', 'child');
+    const charlieId = await createTraveller(db, 'Charlie', 'unspecified');
+
+    const tripId = await createTripWithMembers(
+      db,
+      {
+        name: 'Alps',
+        startDate: '2027-01-10',
+        endDate: '2027-01-15',
+        defaultTz: 'Europe/Zurich',
+      },
+      [aliceId, bobId],
+    );
+
+    // Override Alice's classification on this trip
+    await updateTripTravellerClassification(db, tripId, aliceId, 'child');
+
+    // Update trip: keep Alice, remove Bob, add Charlie
+    await updateTripWithMembers(
+      db,
+      tripId,
+      {
+        name: 'Alps Skiing',
+        startDate: '2027-01-10',
+        endDate: '2027-01-16',
+        defaultTz: 'Europe/Zurich',
+      },
+      [aliceId, charlieId],
+    );
+
+    const updatedTrip = await getTrip(db, tripId);
+    expect(updatedTrip?.name).toBe('Alps Skiing');
+
+    const members = await listTripTravellers(db, tripId);
+    expect(members).toHaveLength(2);
+    const alice = members.find((m) => m.id === aliceId);
+    const charlie = members.find((m) => m.id === charlieId);
+    expect(alice?.classification).toBe('child'); // preserved override!
+    expect(charlie?.classification).toBe('unspecified');
+    expect(members.find((m) => m.id === bobId)).toBeUndefined(); // removed!
+  });
+
+  it('preserves deliberately created profile if trip creation is cancelled', async () => {
+    const { db } = setup();
+    // User creates a profile in the flow
+    const newProfileId = await createTraveller(db, 'Daisy', 'adult');
+
+    // But trip creation is cancelled/not called
+    const allProfiles = await listTravellers(db);
+    expect(allProfiles.map((p) => p.id)).toContain(newProfileId);
+
+    // No orphan trip or membership was created
+    const laplandMembers = await listTripTravellers(db, 'lapland');
+    expect(laplandMembers.map((m) => m.id)).not.toContain(newProfileId);
   });
 });

@@ -1,4 +1,11 @@
-import { baseTonight, leadNote, overviewPlan, staysAndRentals } from './overview';
+import {
+  baseTonight,
+  leadNote,
+  overviewPlan,
+  pastTripSummary,
+  resolveStayForOverview,
+  staysAndRentals,
+} from './overview';
 import type { LocalMoment } from './time';
 import type { TimelineItem } from './timeline';
 
@@ -176,5 +183,147 @@ describe('leadNote', () => {
     expect(leadNote(lead(tour), 'next')).toBe('Until 11:15');
     expect(leadNote(lead({ start: at('2026-11-22T09:00') }), 'next')).toBeNull();
     expect(leadNote(lead(tour, 'end'), 'next')).toBeNull();
+  });
+});
+
+describe('ongoing trip prioritization & date-only plans', () => {
+  it('does not let a multi-day hotel stay obscure the next flight, activity, or transfer', () => {
+    const hotel = item('hotel', {
+      kind: 'stay',
+      start: at('2026-11-20T14:00'),
+      end: at('2026-11-25T11:00'),
+    });
+    const flight = item('flight', {
+      kind: 'transport',
+      start: at('2026-11-20T16:00'),
+      end: at('2026-11-20T18:00'),
+    });
+    const safari = item('safari', {
+      kind: 'activity',
+      start: at('2026-11-21T10:00'),
+      end: at('2026-11-21T13:00'),
+    });
+
+    // On ongoing trip before flight: flight is the lead, NOT hotel
+    const plan = overviewPlan([hotel, flight, safari], trip, helsinki('2026-11-20T12:00'));
+    expect(plan.lead?.entry.key).toBe('flight');
+    expect(plan.lead?.reason).toBe('next');
+
+    // Neither hotel check-in nor check-out is in plan.next
+    expect(plan.next.map((e) => e.item.kind)).not.toContain('stay');
+  });
+
+  it('handles an ongoing trip with only date-only plans cleanly', () => {
+    const dateOnlyActivity = item('walk', {
+      kind: 'activity',
+      start: at('2026-11-20'),
+      end: at('2026-11-20'),
+    });
+
+    const plan = overviewPlan([dateOnlyActivity], trip, helsinki('2026-11-20T10:00'));
+    expect(plan.lead).toBeNull();
+    expect(plan.today).toHaveLength(1);
+    expect(plan.today[0].item.id).toBe('walk');
+  });
+
+  it('handles an ongoing trip with empty itinerary without crashing', () => {
+    const plan = overviewPlan([], trip, helsinki('2026-11-20T10:00'));
+    expect(plan.lead).toBeNull();
+    expect(plan.next).toEqual([]);
+    expect(plan.today).toEqual([]);
+  });
+});
+
+describe('resolveStayForOverview', () => {
+  it('distinguishes check-in today (future time) from checked-in (past time)', () => {
+    const stay = item('hotel', {
+      kind: 'stay',
+      start: at('2026-11-20T15:00'),
+      end: at('2026-11-24T11:00'),
+    });
+
+    // At 10:00 AM on check-in day: not checked in yet!
+    const beforeCheckin = resolveStayForOverview([stay], '2026-11-20', helsinki('2026-11-20T10:00'));
+    expect(beforeCheckin).toMatchObject({
+      type: 'current',
+      status: 'checkin_today',
+      checkinTime: '15:00',
+    });
+
+    // At 16:00 on check-in day: checked in!
+    const afterCheckin = resolveStayForOverview([stay], '2026-11-20', helsinki('2026-11-20T16:00'));
+    expect(afterCheckin).toMatchObject({
+      type: 'current',
+      status: 'checked_in',
+    });
+  });
+
+  it('marks middle of stay as checked_in', () => {
+    const stay = item('hotel', {
+      kind: 'stay',
+      start: at('2026-11-20T15:00'),
+      end: at('2026-11-24T11:00'),
+    });
+
+    const day2 = resolveStayForOverview([stay], '2026-11-21', helsinki('2026-11-21T12:00'));
+    expect(day2).toMatchObject({
+      type: 'current',
+      status: 'checked_in',
+    });
+  });
+
+  it('detects upcoming stay when there is a gap between stays', () => {
+    const upcomingHotel = item('cabin', {
+      kind: 'stay',
+      start: at('2026-11-22T14:00'),
+      end: at('2026-11-24T10:00'),
+    });
+
+    const gapDay = resolveStayForOverview([upcomingHotel], '2026-11-21', helsinki('2026-11-21T12:00'));
+    expect(gapDay).toMatchObject({
+      type: 'upcoming',
+      status: 'next_stay',
+      checkinDay: '2026-11-22',
+      checkinTime: '14:00',
+    });
+  });
+
+  it('detects overnight transport covering tonight', () => {
+    const overnightTrain = item('sleeper', {
+      kind: 'transport',
+      start: at('2026-11-20T20:00'),
+      end: at('2026-11-21T07:00'),
+    });
+
+    const res = resolveStayForOverview([overnightTrain], '2026-11-20', helsinki('2026-11-20T21:00'));
+    expect(res).toMatchObject({
+      type: 'overnight_transport',
+      transport: { id: 'sleeper' },
+    });
+  });
+
+  it('returns type: none when no stays or overnight transport exist', () => {
+    const res = resolveStayForOverview([], '2026-11-20', helsinki('2026-11-20T12:00'));
+    expect(res).toEqual({ type: 'none' });
+  });
+});
+
+describe('pastTripSummary', () => {
+  it('computes places count and spending totals by currency', () => {
+    const items = [
+      item('hotel', { kind: 'stay', status: 'confirmed' }),
+      item('museum', { kind: 'activity', status: 'confirmed' }),
+      item('task', { kind: 'task', status: 'confirmed' }),
+      item('cancelled', { kind: 'activity', status: 'cancelled' }),
+    ];
+    const expenses = [
+      { amount: 1500, currency: 'EUR' },
+      { amount: 2500, currency: 'EUR' },
+      { amount: 5000, currency: 'SEK' },
+    ];
+
+    const summary = pastTripSummary(items, expenses);
+    expect(summary.placesCount).toBe(2);
+    expect(summary.totalSpentByCurrency).toEqual({ EUR: 4000, SEK: 5000 });
   });
 });
