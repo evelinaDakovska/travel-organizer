@@ -1,0 +1,57 @@
+import type { IconName } from '../ui/components/Icon';
+
+/**
+ * Feature flags for the application.
+ * Centralized, typed, and defaulting to false for beta safety.
+ */
+export const FEATURE_FEEDBACK_ENABLED: boolean =
+  process.env.EXPO_PUBLIC_FEATURE_FEEDBACK_ENABLED === 'true';
+
+export type TripMoreAction = {
+  title: string;
+  subtitle: string;
+  icon: IconName;
+  path: 'edit' | 'itinerary-pdf' | 'use-template' | 'save-template' | 'feedback';
+};
+
+/**
+ * Returns available actions for the Trip Overview "More" menu.
+ * When feedback is disabled, the feedback item is omitted without leaving
+ * empty gaps or broken dividers.
+ */
+export function getTripMoreActions(
+  feedbackEnabled: boolean = FEATURE_FEEDBACK_ENABLED,
+): TripMoreAction[] {
+  const actions: TripMoreAction[] = [
+    { title: 'Edit trip', subtitle: 'Name, dates, time zone, notes', icon: 'settings', path: 'edit' },
+    {
+      title: 'Share as PDF',
+      subtitle: 'The itinerary, day by day, to send or print',
+      icon: 'pdf',
+      path: 'itinerary-pdf',
+    },
+    {
+      title: 'Use a template',
+      subtitle: 'Add saved tasks, notes and lists',
+      icon: 'lists',
+      path: 'use-template',
+    },
+    {
+      title: 'Save as template',
+      subtitle: 'Keep this preparation for next time',
+      icon: 'lists',
+      path: 'save-template',
+    },
+  ];
+
+  if (feedbackEnabled) {
+    actions.push({
+      title: 'Feedback',
+      subtitle: 'Notes and suggestions for the app',
+      icon: 'addNote',
+      path: 'feedback',
+    });
+  }
+
+  return actions;
+}

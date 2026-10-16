@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { FEATURE_FEEDBACK_ENABLED } from '../src/config/features';
 import { formatDateRange, formatDuration } from '../src/domain/format';
 import { singleActiveTrip } from '../src/domain/itinerary';
 import { groupTrips, outboundRoute, tripDurationDays, type Trip } from '../src/domain/trip';
@@ -104,11 +105,13 @@ export default function Home() {
             variant="ghost"
             onPress={() => router.push('/backup')}
           />
-          <Button
-            label="Feedback"
-            variant="ghost"
-            onPress={() => router.push('/feedback')}
-          />
+          {FEATURE_FEEDBACK_ENABLED ? (
+            <Button
+              label="Feedback"
+              variant="ghost"
+              onPress={() => router.push('/feedback')}
+            />
+          ) : null}
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
@@ -150,12 +153,14 @@ export default function Home() {
                 leading={<Icon name="backup" color={c.accentText} />}
                 onPress={() => router.push('/backup')}
               />
-              <ListRow
-                title="Feedback"
-                subtitle="Notes and suggestions for the app"
-                leading={<Icon name="addNote" color={c.accentText} />}
-                onPress={() => router.push('/feedback')}
-              />
+              {FEATURE_FEEDBACK_ENABLED ? (
+                <ListRow
+                  title="Feedback"
+                  subtitle="Notes and suggestions for the app"
+                  leading={<Icon name="addNote" color={c.accentText} />}
+                  onPress={() => router.push('/feedback')}
+                />
+              ) : null}
             </Rows>
           </View>
         </ScrollView>

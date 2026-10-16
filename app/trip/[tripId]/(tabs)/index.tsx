@@ -3,6 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { getTripMoreActions } from '../../../../src/config/features';
 import { paymentStatuses, type PaymentStatus } from '../../../../src/domain/bookingCosts';
 import { formatDateRange, formatMoney, formatShortDate } from '../../../../src/domain/format';
 import {
@@ -80,39 +81,6 @@ import { Sheet } from '../../../../src/ui/components/Sheet';
 import { UndoToast } from '../../../../src/ui/components/UndoToast';
 import { gutter, radius, spacing, type, useColors } from '../../../../src/ui/tokens';
 
-/** The trip's own actions, behind More in the header. */
-const MORE_ACTIONS: readonly {
-  title: string;
-  subtitle: string;
-  icon: IconName;
-  path: 'edit' | 'itinerary-pdf' | 'use-template' | 'save-template' | 'feedback';
-}[] = [
-  { title: 'Edit trip', subtitle: 'Name, dates, time zone, notes', icon: 'settings', path: 'edit' },
-  {
-    title: 'Share as PDF',
-    subtitle: 'The itinerary, day by day, to send or print',
-    icon: 'pdf',
-    path: 'itinerary-pdf',
-  },
-  {
-    title: 'Use a template',
-    subtitle: 'Add saved tasks, notes and lists',
-    icon: 'lists',
-    path: 'use-template',
-  },
-  {
-    title: 'Save as template',
-    subtitle: 'Keep this preparation for next time',
-    icon: 'lists',
-    path: 'save-template',
-  },
-  {
-    title: 'Feedback',
-    subtitle: 'Notes and suggestions for the app',
-    icon: 'addNote',
-    path: 'feedback',
-  },
-];
 
 const LEAD_EYEBROW: Record<LeadReason, string> = {
   happening: 'Happening now',
@@ -179,6 +147,7 @@ export default function OverviewScreen() {
   const stays = useMemo(() => staysAndRentals(items ?? [], now), [items, now]);
   const allStays = useMemo(() => findTripStays(items ?? []), [items]);
   const savedPlaces = useMemo(() => findTripSavedPlaces(items ?? []), [items]);
+  const moreActions = useMemo(() => getTripMoreActions(), []);
   const [directionsTarget, setDirectionsTarget] = useState<DirectionEndpoint | null>(null);
   const [quickExpenseOpen, setQuickExpenseOpen] = useState(false);
 
@@ -639,7 +608,7 @@ export default function OverviewScreen() {
       <AddSheet visible={adding} onClose={() => setAdding(false)} tripId={trip.id} />
       <Sheet visible={moreOpen} title={trip.name} onClose={() => setMoreOpen(false)}>
         <Rows>
-          {MORE_ACTIONS.map(({ title, subtitle, icon, path }) => (
+          {moreActions.map(({ title, subtitle, icon, path }) => (
             <ListRow
               key={path}
               title={title}

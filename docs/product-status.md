@@ -12,7 +12,8 @@
 |---|---|
 | **Implemented** | Built, unit-tested, and verified on physical hardware by the owner during actual trip use. (Most core features have been explored by the owner and appear good; edge cases remain subject to real-world travel conditions). |
 | **Implemented, awaiting physical-phone verification** | Fully implemented, unit-tested, and verified on the Android emulator (`Pixel_10_Pro`), but awaiting physical phone verification by the product owner. |
-| **In progress** | Currently implemented and under test (e.g. In-App Feedback Notebook & endpoint). |
+| **Implemented, feature-flagged OFF for beta** | Fully built, persistence and tests verified, but temporarily disabled via centralized flag (`FEATURE_FEEDBACK_ENABLED = false`) pending backend infrastructure configuration. |
+| **In progress** | Active development items. |
 | **Deferred** | Explicitly out of scope for the upcoming friends-only test release; evaluated and postponed with clear rationales. |
 | **Future Scope** | Long-term roadmap items not required for private or friends-only testing. |
 
@@ -82,16 +83,22 @@
 
 ---
 
-### In Progress
-*Active development during this sprint preparation for the friends-only test build.*
+### Implemented, Feature-Flagged OFF for Friends-Only Beta
+*Fully implemented, persistent local drafts verified, worker code and automated tests passing, but temporarily disabled via centralized flag (`FEATURE_FEEDBACK_ENABLED = false`) pending backend worker deployment and Resend API key setup.*
 
 - **In-App Feedback Notebook**:
-  - **Product**: Self-contained minimal feedback form inside the app (no external mail composer, no mailto link, no Gmail credentials required).
-  - **Fields**: Name (optional), Message (required, bounded to 5,000 characters).
-  - **Local Persistence**: Debounced auto-save (400ms) to device storage (`feedback_draft.json`), restored automatically upon reopening or app restart, flushed on backgrounding, with subtle "Draft saved on this device" indicator and a discreet "Clear draft" confirmation. Retains name on successful submission; clears message only after verified server acceptance.
-  - **Entry Points**: Accessible from Home screen ("Your data" → "Feedback") and within any trip (Overview header More menu → "Feedback"), accessing the same unified app-wide draft.
-  - **Direct Delivery**: Serverless backend worker (`server/feedback-worker/`) delivering feedback directly to `evelina.dakovska@gmail.com` via Resend API, with 24h idempotency deduplication, client rate-limiting, and CRLF/HTML sanitization.
-  - **Diagnostics Notice**: Includes app version, build code, and Android OS version with explicit tester disclosure; strictly collects zero trip content, notes, receipts, or personal credentials.
+  - **Status**: Implemented, tested, and feature-flagged OFF (`FEATURE_FEEDBACK_ENABLED = false` in `src/config/features.ts`).
+  - **Behavior when disabled**:
+    - Home screen: "Your data → Feedback" row is hidden without leaving empty rows.
+    - Home screen empty-state: "Feedback" button is hidden.
+    - Trip Overview: "More (···) → Feedback" sheet item is hidden via `getTripMoreActions()`.
+    - Route `/feedback`: Guarded; direct navigation or intent triggers a safe `<Redirect href="/" />` to Home.
+  - **Preserved implementation**:
+    - Form UI (`app/feedback.tsx`) with Name (optional) and Message (required, bounded to 5,000 characters).
+    - Local draft persistence (`src/repositories/feedbackDraft.ts`) saving debounced drafts to app document storage (`feedback_draft.json`) isolated from trip backups.
+    - Direct delivery client (`src/services/feedback.ts`) with 15s timeout, idempotency key header, and draft preservation on failure.
+    - Serverless backend worker (`server/feedback-worker/`) with Resend API integration, fixed recipient `evelina.dakovska@gmail.com`, 24h KV deduplication, and rate limiting.
+    - Diagnostics notice informing testers that app build and Android OS version accompany submissions without collecting any trip contents, bookings, notes, or receipts.
 
 ---
 

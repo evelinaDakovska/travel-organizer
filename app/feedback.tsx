@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 
+import { FEATURE_FEEDBACK_ENABLED } from '../src/config/features';
 import {
   MAX_MESSAGE_LENGTH,
   MAX_NAME_LENGTH,
@@ -31,6 +32,13 @@ import { ScreenHeader } from '../src/ui/components/ScreenHeader';
 import { radius, spacing, type, useColors } from '../src/ui/tokens';
 
 export default function FeedbackScreen() {
+  if (!FEATURE_FEEDBACK_ENABLED) {
+    return <Redirect href="/" />;
+  }
+  return <FeedbackScreenContent />;
+}
+
+function FeedbackScreenContent() {
   const c = useColors();
   const router = useRouter();
 

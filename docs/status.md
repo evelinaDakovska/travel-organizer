@@ -2,10 +2,10 @@
 
 **The** engineering status board. See [`docs/product-status.md`](product-status.md) for the authoritative product readiness and feature status reference across all platforms and test stages.
 
-Verified against the repo on 2026-10-16, on Windows: **883 tests passing across 53 suites, typecheck clean.**release build **0.7.1**.
+Verified against the repo on 2026-10-16, on Windows: **890 tests passing across 54 suites, typecheck clean.** Release build **0.7.1**.
 
-> **Release build 0.7.1** (versionCode 11), built 2026-10-16. Delivers product and UX corrections from real-phone testing and the In-App Feedback Notebook:
-> 1. **In-App Feedback Notebook**: Self-contained in-app feedback notebook saving persistent drafts locally (`feedback_draft.json`), debounced auto-save, flush on background, and direct delivery to `evelina.dakovska@gmail.com` via Cloudflare Worker (`server/feedback-worker/`).
+> **Release build 0.7.1** (versionCode 11), built 2026-10-16. Delivers product and UX corrections from real-phone testing and the In-App Feedback Notebook (feature-flagged OFF for beta):
+> 1. **In-App Feedback Notebook**: Self-contained in-app feedback notebook saving persistent drafts locally (`feedback_draft.json`), debounced auto-save, flush on background, and direct delivery to `evelina.dakovska@gmail.com` via Cloudflare Worker (`server/feedback-worker/`). Feature-flagged OFF (`FEATURE_FEEDBACK_ENABLED = false`) for the first friends-only beta.
 > 2. **Places Browsing View**: Removed prices, payment totals, and paid/unpaid badges from list rows (`showFinancials={false}` in `ItemRow`); full financial records and payments preserved in item details and Expenses.
 > 3. **Traveller Profile Multi-Select Picker**: Replaced free-text entry in New Trip and Edit Trip with reusable profile selector displaying Adult/Child/Not specified classifications, inline profile creation, strict ID-based selection distinguishing duplicate names, and atomic trip membership snapshots (`trip_travellers`).
 > 4. **Ongoing-Trip Overview Experience**: Automatically adapts Overview for trips starting today, ongoing, or past. For ongoing trips: prominent "+ Add expense" quick action bar, "Now / Up next" highlighting currently happening or next event (with accommodation isolated to prevent multi-day stays from obscuring activities/flights), dedicated "Your stay" card tracking check-in status (checked in, check-in today, next stay, overnight transport), and untimed date-only plans. Past trips display a calm summary with places count and total spend by currency without misleading upcoming labels.
