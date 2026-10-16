@@ -85,7 +85,7 @@ const MORE_ACTIONS: readonly {
   title: string;
   subtitle: string;
   icon: IconName;
-  path: 'edit' | 'itinerary-pdf' | 'use-template' | 'save-template';
+  path: 'edit' | 'itinerary-pdf' | 'use-template' | 'save-template' | 'feedback';
 }[] = [
   { title: 'Edit trip', subtitle: 'Name, dates, time zone, notes', icon: 'settings', path: 'edit' },
   {
@@ -105,6 +105,12 @@ const MORE_ACTIONS: readonly {
     subtitle: 'Keep this preparation for next time',
     icon: 'lists',
     path: 'save-template',
+  },
+  {
+    title: 'Feedback',
+    subtitle: 'Notes and suggestions for the app',
+    icon: 'addNote',
+    path: 'feedback',
   },
 ];
 
@@ -641,7 +647,11 @@ export default function OverviewScreen() {
               leading={<Icon name={icon} color={c.accentText} />}
               onPress={() => {
                 setMoreOpen(false);
-                router.push(`/trip/${trip.id}/${path}`);
+                if (path === 'feedback') {
+                  router.push('/feedback');
+                } else {
+                  router.push(`/trip/${trip.id}/${path}`);
+                }
               }}
             />
           ))}

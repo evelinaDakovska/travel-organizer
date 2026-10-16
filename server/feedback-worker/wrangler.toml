@@ -1,0 +1,7 @@
+name = "travel-organizer-feedback"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+
+[vars]
+FEEDBACK_RECIPIENT_EMAIL = "evelina.dakovska@gmail.com"
+FEEDBACK_FROM_EMAIL = "Travel Organizer Feedback <onboarding@resend.dev>"

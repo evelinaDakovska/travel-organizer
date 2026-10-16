@@ -6,8 +6,9 @@ what is still open, and the conventions to follow.
 | Doc | Role |
 |---|---|
 | **`CLAUDE.md`** (this file) | Authoritative summary. Decisions, terminology, conventions |
+| `docs/product-status.md` | **Product status & feature matrix** — authoritative product readiness and platform verification state |
 | `docs/session-handoff.md` | **Starting fresh? Read after this file.** How the work goes: decisions in context, the machine, driving a device, what bit us |
-| `docs/status.md` | **Status board** — milestones, C, S and N tasks, open questions. The one place status lives |
+| `docs/status.md` | **Engineering status board** — milestones, C, S and N tasks, open questions |
 | `docs/technical-reference.md` | **Single source of truth** for schema, time model, file storage, queries |
 | `docs/plan.md` | Step-by-step implementation plan and current position |
 | `docs/review-plan.md` | R1–R11 from the independent review (done) |

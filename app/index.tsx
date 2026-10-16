@@ -104,6 +104,11 @@ export default function Home() {
             variant="ghost"
             onPress={() => router.push('/backup')}
           />
+          <Button
+            label="Feedback"
+            variant="ghost"
+            onPress={() => router.push('/feedback')}
+          />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
@@ -144,6 +149,12 @@ export default function Home() {
                 subtitle="Everything lives only on this phone. Save a copy before each trip."
                 leading={<Icon name="backup" color={c.accentText} />}
                 onPress={() => router.push('/backup')}
+              />
+              <ListRow
+                title="Feedback"
+                subtitle="Notes and suggestions for the app"
+                leading={<Icon name="addNote" color={c.accentText} />}
+                onPress={() => router.push('/feedback')}
               />
             </Rows>
           </View>

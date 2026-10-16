@@ -1,16 +1,16 @@
 # Status
 
-**The** status board. `CLAUDE.md` and `plan.md` link here rather than repeat it, so there is one
-place to update and nothing can drift.
+**The** engineering status board. See [`docs/product-status.md`](product-status.md) for the authoritative product readiness and feature status reference across all platforms and test stages.
 
-Verified against the repo on 2026-10-16, on Windows: **851 tests passing, typecheck clean.** All features verified on the Android emulator (`Pixel_10_Pro`) with release build **0.7.1**.
+Verified against the repo on 2026-10-16, on Windows: **883 tests passing across 53 suites, typecheck clean.**release build **0.7.1**.
 
-> **Release build 0.7.1** (versionCode 11), built 2026-10-16. Delivers product and UX corrections from real-phone testing:
-> 1. **Places Browsing View**: Removed prices, payment totals, and paid/unpaid badges from list rows (`showFinancials={false}` in `ItemRow`); full financial records and payments preserved in item details and Expenses.
-> 2. **Traveller Profile Multi-Select Picker**: Replaced free-text entry in New Trip and Edit Trip with reusable profile selector displaying Adult/Child/Not specified classifications, inline profile creation, strict ID-based selection distinguishing duplicate names, and atomic trip membership snapshots (`trip_travellers`).
-> 3. **Ongoing-Trip Overview Experience**: Automatically adapts Overview for trips starting today, ongoing, or past. For ongoing trips: prominent "+ Add expense" quick action bar, "Now / Up next" highlighting currently happening or next event (with accommodation isolated to prevent multi-day stays from obscuring activities/flights), dedicated "Your stay" card tracking check-in status (checked in, check-in today, next stay, overnight transport), and untimed date-only plans. Past trips display a calm summary with places count and total spend by currency without misleading upcoming labels.
-> 4. **Quick Expense Entry**: Compact bottom sheet directly on Overview with amount, category, currency default, optional note, progressive reveal for dates/labels, double-submit protection, and atomic rollback on cancel.
-> 5. **Per-Item Travellers**: Distinguishes same-name travellers in `ItemForm` with classification badges (`Adult`, `Child`, `Not specified`) and saves through `item_participants`.
+> **Release build 0.7.1** (versionCode 11), built 2026-10-16. Delivers product and UX corrections from real-phone testing and the In-App Feedback Notebook:
+> 1. **In-App Feedback Notebook**: Self-contained in-app feedback notebook saving persistent drafts locally (`feedback_draft.json`), debounced auto-save, flush on background, and direct delivery to `evelina.dakovska@gmail.com` via Cloudflare Worker (`server/feedback-worker/`).
+> 2. **Places Browsing View**: Removed prices, payment totals, and paid/unpaid badges from list rows (`showFinancials={false}` in `ItemRow`); full financial records and payments preserved in item details and Expenses.
+> 3. **Traveller Profile Multi-Select Picker**: Replaced free-text entry in New Trip and Edit Trip with reusable profile selector displaying Adult/Child/Not specified classifications, inline profile creation, strict ID-based selection distinguishing duplicate names, and atomic trip membership snapshots (`trip_travellers`).
+> 4. **Ongoing-Trip Overview Experience**: Automatically adapts Overview for trips starting today, ongoing, or past. For ongoing trips: prominent "+ Add expense" quick action bar, "Now / Up next" highlighting currently happening or next event (with accommodation isolated to prevent multi-day stays from obscuring activities/flights), dedicated "Your stay" card tracking check-in status (checked in, check-in today, next stay, overnight transport), and untimed date-only plans. Past trips display a calm summary with places count and total spend by currency without misleading upcoming labels.
+> 5. **Quick Expense Entry**: Compact bottom sheet directly on Overview with amount, category, currency default, optional note, progressive reveal for dates/labels, double-submit protection, and atomic rollback on cancel.
+> 6. **Per-Item Travellers**: Distinguishes same-name travellers in `ItemForm` with classification badges (`Adult`, `Child`, `Not specified`) and saves through `item_participants`.
 
 ---
 
