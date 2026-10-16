@@ -76,10 +76,18 @@
 
 ---
 
-### Implemented, Prepared for Friends-Only Beta (v0.7.2)
-*Fully implemented, covered by automated test suite (895 tests across 54 suites), typecheck clean, verified end-to-end on clean emulator install and ready for in-place release.*
+### Implemented, Prepared for Friends-Only Beta (v0.7.3)
+*Fully implemented, covered by automated test suite (895 tests across 54 suites), typecheck clean, verified end-to-end on clean emulator install (`Pixel_10_Pro`, <= 4 GB RAM) and ready for friends-only test distribution.*
 
-1. **Quick Expense Entry with Receipt Photos**:
+1. **Official App Icon (Design B — Travel Journal)**:
+   - Officially selected and approved Design B: deep teal notebook with mountain illustration, warm orange sun, mustard elastic band, and cream `#FBF6EB` background.
+   - Generated full suite of Android adaptive icon assets:
+     - Foreground: Isolated notebook silhouette with smooth anti-aliased transparency, scaled to 230 px within the 432 px canvas to guarantee full fit inside the 66.6% (72 dp) circular and squircle safe zones without clipping or awkward margins.
+     - Background: Full-bleed `#FBF6EB` cream background canvas and color resource.
+     - Monochrome: High-contrast white silhouette on transparent canvas for Android 13+ Material You themed icons.
+     - Legacy: Generated all density mipmaps (`mdpi` through `xxxhdpi`) for standard and round launcher icons.
+   - Tested on Android launcher with adaptive circular mask and Samsung One UI masking.
+2. **Quick Expense Entry with Receipt Photos**:
    - Fast modal/bottom-sheet accessible directly from Overview without navigating to the Expenses tab.
    - Supports optional receipt image capture (`Take photo` via device camera) and gallery selection (`Choose photo` via system photo picker).
    - In-sheet image preview thumbnail and instant remove action.
@@ -87,10 +95,14 @@
    - Saved atomically via `createExpense(db, tripId, input, receipts)`.
    - Stored in persistent app document storage (`storageDirectory`), associated with `expense_id`, accessible from Expense Details, and backed up in standard ZIP exports.
    - Deletion of expenses cascades to associated receipt files.
-2. **Spending Calculations & Accounting Verification**:
+3. **Spending Calculations & Accounting Verification**:
    - Automated tests and verification confirming that newly saved quick expenses appear under the correct trip.
    - Ordinary spending totals update cleanly without altering or double-counting booking costs (`src/domain/spending.ts` vs `src/domain/bookingCosts.ts`).
    - Attaching receipt photos does not alter financial totals or currency handling.
+4. **Offline Export & Low-Memory Performance**:
+   - Offline itinerary PDF generation and share sheet integration verified.
+   - Complete ZIP backup export verified.
+   - Cold startup, smooth navigation, and low-memory performance verified on Android 16 emulator configured with <= 4 GB RAM.
 
 ---
 

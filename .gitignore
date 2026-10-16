@@ -41,3 +41,6 @@ coverage/
 # Output of scripts/sample-backup.mjs
 sample-backup.zip
 backups/
+release/
+*.apk
+

@@ -2,13 +2,14 @@
 
 **The** engineering status board. See [`docs/product-status.md`](product-status.md) for the authoritative product readiness and feature status reference across all platforms and test stages.
 
-Verified against the repo on 2026-10-16, on Windows: **895 tests passing across 54 suites, typecheck clean.** Release build **0.7.2**.
-
-> **Release build 0.7.2** (versionCode 12), built 2026-10-16. Prepared for friends-only Android release with Quick Expense receipt photos and physical-phone UX verifications:
-> 1. **Quick Expense Receipt Photos**: Integrated camera capture ("Take photo") and gallery photo picker ("Choose photo") directly inside the compact Quick Expense sheet, with thumbnail previews, remove actions, uncommitted photo cleanup on dismiss, and persistent local storage included in ZIP backups.
-> 2. **Financial Accounting & Spending Isolation**: Verified through automated tests and device QA that Quick Expenses update ordinary spending totals accurately, keep booking costs strictly isolated (no double-counting), and partition correctly by trip.
-> 3. **Physical-Phone Verified UX (Samsung Galaxy S26 Ultra)**: In-place update preserving all real trip data, offline PDF documents, traveller profile multi-select picker with Adult/Child badges, ongoing trip overview adaptation, and financial privacy in the Places browsing view.
-> 4. **In-App Feedback Notebook**: Implemented, persistent local drafts verified, and feature-flagged OFF (`FEATURE_FEEDBACK_ENABLED = false`) for the first friends-only beta release.
+Verified against the repo on 2026-10-16, on Windows: **895 tests passing across 54 suites, typecheck clean.** Release build **0.7.3**.
+ 
+> **Release build 0.7.3** (versionCode 13), built 2026-10-16. Prepared for friends-only Android release with approved Design B app icon, Quick Expense receipt photos, and physical-phone UX verifications:
+> 1. **Official App Icon (Design B — Travel Journal)**: Implemented the approved deep teal journal with mountain illustration, warm orange sun, mustard elastic band, and cream `#FBF6EB` background. Complete Android adaptive icon resource set generated (isolated transparent foreground sized within 66.6% safe zone, solid cream background, monochrome silhouette for Material You dynamic theming, and multi-density mipmaps). Verified with launcher masking and Samsung One UI.
+> 2. **Quick Expense Receipt Photos**: Integrated camera capture ("Take photo") and gallery photo picker ("Choose photo") directly inside the compact Quick Expense sheet, with thumbnail previews, remove actions, uncommitted photo cleanup on dismiss, and persistent local storage included in ZIP backups.
+> 3. **Financial Accounting & Spending Isolation**: Verified through automated tests and device QA that Quick Expenses update ordinary spending totals accurately, keep booking costs strictly isolated (no double-counting), and partition correctly by trip.
+> 4. **Physical-Phone & Emulator QA**: Preserved real trip data and PDF documents on Samsung Galaxy S26 Ultra in-place update; verified cold startup, offline PDF export, and full ZIP backup on Android emulator (<= 4 GB RAM).
+> 5. **In-App Feedback Notebook**: Implemented, persistent local drafts verified, and feature-flagged OFF (`FEATURE_FEEDBACK_ENABLED = false`) for the first friends-only beta release.
 
 ---
 
