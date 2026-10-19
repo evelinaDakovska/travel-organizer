@@ -88,6 +88,12 @@ UPDATE trip_items SET completed_at = $completedAt, updated_at = $now
  * Only rows that lean on the trip's default zone need new instants when it changes.
  * A row with its own `*_tz` is unaffected.
  */
+/** Every dated item of a trip: an imported trip's instants are all rebuilt, not trusted (2B). */
+export const SELECT_TRIP_ITEM_MOMENTS = `
+SELECT id, start_local, start_precision, start_tz, end_local, end_precision, end_tz
+  FROM trip_items WHERE trip_id = $tripId
+`;
+
 export const SELECT_ITEMS_WITH_DEFAULT_TZ = `
 SELECT i.id, i.start_local, i.start_precision, i.start_tz,
        i.end_local, i.end_precision, i.end_tz
@@ -100,6 +106,11 @@ SELECT i.id, i.start_local, i.start_precision, i.start_tz,
 export const UPDATE_ITEM_INSTANTS = `
 UPDATE trip_items SET start_utc = $startUtc, end_utc = $endUtc, updated_at = $now
  WHERE id = $id
+`;
+
+/** The caches only: an imported item keeps the `updated_at` it was exported with (2B). */
+export const SET_ITEM_INSTANTS = `
+UPDATE trip_items SET start_utc = $startUtc, end_utc = $endUtc WHERE id = $id
 `;
 
 /** Trip-level and item-level resources are the same table, distinguished by which id is set. */

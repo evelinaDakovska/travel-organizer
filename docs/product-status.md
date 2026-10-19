@@ -88,6 +88,14 @@
 
 ---
 
+### Built in 0.9.0 (roadmap 2B) — verified on emulators, not yet on a phone
+
+- **Export trip** (Overview → More): one trip as a file — complete, or without attachments (then
+  marked partial) — to import on another phone. Never contains other trips, settings or "Me".
+- **Import a trip** (Backup & restore): added as a new, independent trip after a preview; travellers
+  become new profiles unless linked by choice; a repeat import is recognised and warned about;
+  damaged or hostile files are refused or named before anything is written.
+
 ### Built in 0.8.0 (roadmap 2B-0) — verified on the emulator, not yet on a phone
 
 - **Me**: one traveller profile marked as you on this phone — linked to an existing profile or

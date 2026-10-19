@@ -190,6 +190,26 @@ const templateUseRowSchema = z.object({
   applied_at: z.string(),
 });
 
+/**
+ * The raw row schemas, shared with the single-trip archive (2B), which carries the same rows so it
+ * needs no second definition of any table.
+ */
+export const ROW_SCHEMAS = {
+  trips: tripRowSchema,
+  tripItems: tripItemRowSchema,
+  tripNotes: noteRowSchema,
+  resources: resourceRowSchema,
+  expenses: expenseRowSchema,
+  payments: paymentRowSchema,
+  travellers: travellerRowSchema,
+  tripTravellers: tripTravellerRowSchema,
+  itemParticipants: itemParticipantRowSchema,
+  lists: listRowSchema,
+  listItems: listItemRowSchema,
+  listItemRecipients: listItemRecipientRowSchema,
+  templateUses: templateUseRowSchema,
+} as const;
+
 export type TripExportRow = z.infer<typeof tripRowSchema>;
 export type TripItemExportRow = z.infer<typeof tripItemRowSchema>;
 export type NoteExportRow = z.infer<typeof noteRowSchema>;

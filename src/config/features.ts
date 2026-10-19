@@ -11,7 +11,7 @@ export type TripMoreAction = {
   title: string;
   subtitle: string;
   icon: IconName;
-  path: 'edit' | 'itinerary-pdf' | 'use-template' | 'save-template' | 'feedback';
+  path: 'edit' | 'itinerary-pdf' | 'export-trip' | 'use-template' | 'save-template' | 'feedback';
 };
 
 /**
@@ -29,6 +29,12 @@ export function getTripMoreActions(
       subtitle: 'The itinerary, day by day, to send or print',
       icon: 'pdf',
       path: 'itinerary-pdf',
+    },
+    {
+      title: 'Export trip',
+      subtitle: 'This trip as a file, to import on another phone',
+      icon: 'share',
+      path: 'export-trip',
     },
     {
       title: 'Use a template',

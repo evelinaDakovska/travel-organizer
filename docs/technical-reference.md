@@ -1305,3 +1305,76 @@ reusable list it offers every profile, and adding creates a profile only. `recip
 (`domain/lists.ts`) gives *Evelina, Misho*, or *Everyone* when the trip has two or more travellers
 and all are chosen — a summary, never stored. The itinerary PDF and templates do not include
 recipients.
+
+---
+
+## 17. Single-trip archive (2B, 0.9.0)
+
+Rationale: D34. Plan and audit: `docs/phase2-plan.md`. Code: `domain/tripArchive.ts` (pure, all
+rules), `repositories/tripImport.ts` (the transaction), `files/tripArchiveFiles.ts` (bytes, hashing,
+staging), screens `app/trip/[tripId]/export-trip.tsx` and `app/import-trip.tsx`.
+
+### Format
+
+```
+<Trip>-trip-YYYY-MM-DD-HHMM.zip
+  manifest.json   { kind: "travel-organizer-trip", formatVersion: 1, rowFormat: 6, schemaVersion: 6,
+                    app {name, version}, exportId, exportedAt, sourceTripId,
+                    trip {name, destination, startDate, endDate},
+                    attachments: "included" | "excluded", partial,
+                    data {name: "trip.json", sizeBytes, sha256},
+                    files [{name, status: included|excluded|missing, sizeBytes, sha256, mimeType}] }
+  trip.json       { kind, tables: trips(1), tripItems, tripNotes, resources, expenses, payments,
+                    travellers (only those the trip uses), tripTravellers, itemParticipants,
+                    lists (trip copies), listItems, listItemRecipients, templateUses }
+  files/NNN.ext   each distinct file once; resource rows point at these names
+```
+
+**Versioning rules.** `formatVersion` versions the layout; `rowFormat` is the backup's
+`EXPORT_FORMAT_VERSION` the rows follow; `schemaVersion` is the exporting database's
+`user_version`. An archive with any of them newer than this app reads is refused (*made by a newer
+version — update the app first*), never partly imported. A future change to row shapes bumps
+`rowFormat` with the backup format; a change to the layout or manifest bumps `formatVersion`. Never
+in an archive: settings (so not Me), templates, reusable lists, other trips, other travellers.
+
+### Limits (`TRIP_ARCHIVE_LIMITS`)
+
+Archive 500 MB (checked before reading); 2,000 entries; 200 MB per file and 20 MB per JSON document;
+600 MB unpacked in total — all from the zip's directory, before inflating. The archive is read and
+built in memory, as the full backup is; a 120 MB attachment imported on the 4 GB emulator.
+
+### Import
+
+`openTripArchive` (untrusted input): size → directory pass (`unzipSync` with a `filter` that only
+records; refuses `backup.json`, repeated names, any name but `manifest.json`, `trip.json` and
+`files/<plain name>`, unknown compression, oversize entries) → inflate → manifest (`kind`, versions,
+Zod) → data size + SHA-256 → rows (the backup's Zod schemas) → `checkTripArchive` (one trip, ids
+unique, every owner and reference inside the archive, no duplicate pairs) → files (any present must
+be listed `included`; each `included` checked for size and SHA-256 — a mismatch or absence is
+`damaged`, and the screen asks before importing without it).
+
+`planTripImport`: new UUID for the trip and every row; foreign keys through one map per table;
+travellers new unless chosen `existing` (two archive travellers linked to one profile collapse to one
+membership/participant/recipient); a new stored path per distinct file
+(`media/<first row's new id>.<ext>`), shared again by every row that shared it; a file that did not
+arrive leaves its row pointing at a path that does not exist (*Missing — attach again*);
+`details.journeyId` remapped per journey; `lists.source_list_id` and `listItems.traveller_id`
+cleared; `templateUses` kept with the new trip id. `uniqueTripName` adds *(2)*, *(3)*.
+
+`importTripArchive`: write each file (target must not exist), read it back, check size + SHA-256 →
+`applyTripImport` (one `withTransactionAsync`: travellers → trip → … → template uses,
+`rebuildAllTripInstants` — caches only, `updated_at` kept — and the `trip_imports` record) → on any
+failure: rollback + delete the files written → after commit `verifyTripImport` (row counts per
+table) and file existence; a shortfall is reported, not undone.
+
+**Crash window:** between the first file write and the commit, a kill leaves new unreferenced files;
+the launch sweep (`useMediaSweep`) deletes them. Rows are written last, so no row can point at a file
+that was not written. Verified on the emulator (E2E I4/I5).
+
+**Duplicates:** `earlierImport(manifest, settings.trip_imports, trip ids)` → same export, another
+export of the same trip, or the original on this phone (only imports whose trip still exists count).
+The record lives in `settings` (no migration), so a full backup carries it.
+
+**Known limitations:** archives are built and read in memory (the limits above bound it); exported
+zips stay in the app cache until Android reclaims it; when the disk is full the message shows
+SQLite's secondary "cannot rollback" error rather than "storage full".

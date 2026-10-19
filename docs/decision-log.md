@@ -658,3 +658,40 @@ A reusable list names saved profiles (never trip-specific rows); copying a list,
 and *Add to packing list* carry the people with the item. *Everyone* is a display summary only —
 every current trip traveller chosen — and is never stored: someone joining the trip later is not
 added to old items. Recipients never change a quantity or a price.
+
+## D34 — Single-trip export/import (2B, 0.9.0)
+
+Plan: `docs/phase2-plan.md` (2A), answered by the 2B brief; as built: technical reference §17.
+
+**A trip archive is not a backup.** Its own document names (`manifest.json` + `trip.json`, never
+`backup.json`) and `kind`, so each importer refuses the other's file with a message saying where
+it goes. Import only ever **adds a new trip**: every id is new, every file gets a new name, nothing
+on the phone is updated, merged or overwritten. The full backup and restore are unchanged.
+
+**Same rows, new layout.** `trip.json` carries the backup's raw row shapes (row format 6) through the
+backup's own Zod schemas, so there is one definition of every table; the manifest carries what must
+be checked before believing them — format and schema versions, the source trip, every file with
+size and SHA-256, and whether the archive is partial.
+
+**Untrusted input, checked in order.** The zip's directory (names, repeats, count, declared sizes)
+before anything is inflated — fflate then never inflates past a declared size, so a zip bomb is
+refused unexpanded; the manifest before the data; the data's checksum before its rows; every
+reference inside the archive before any write. A file that arrives damaged does not refuse the
+whole trip, but the import asks before going on without it.
+
+**Travellers are mapped, never merged.** New profiles by default; a profile here is linked only by
+an explicit choice, with same-name profiles offered (and told apart by their trips), never assumed.
+Me is never carried and never changed.
+
+**Atomic where it can be, compensated where it cannot.** Files first under new names, each read back
+and hashed; then every row in one transaction; on any failure the transaction rolls back and the
+written files are deleted; a kill between the two leaves only unreferenced files, which the launch
+sweep removes (verified on the emulator, D34 E2E log). After the commit, rows and files are checked
+against the plan and a shortfall is reported, never repaired by deleting.
+
+**Provenance without a migration.** `settings.trip_imports` records `{exportId, sourceTripId,
+tripId}` per import, so a repeat is recognised by the export, by the trip, or by the original being
+on the phone — never by name. Importing again makes another independent copy after a warning.
+`templateUses` keep their template id (provenance, as in the full backup); `source_list_id` and the
+legacy `list_items.traveller_id` are cleared. Instants are rebuilt from the trip's zone without
+touching `updated_at`.

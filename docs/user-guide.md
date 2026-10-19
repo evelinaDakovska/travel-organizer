@@ -484,6 +484,21 @@ everything, so make a backup first if it ever comes to that.
 
 ---
 
+### One trip to another phone
+
+**Overview → More → Export trip** makes a file with just this trip: plans, bookings, notes, lists,
+travellers, expenses and — with **Complete trip** — every document and receipt photo. **Without
+attachments** leaves the files out; the documents are still listed and arrive as missing. Your other
+trips, your backups and which traveller is you are never in it. Anyone with the file can read the
+whole trip, so share it with care.
+
+On the other phone: **Your trips → Backup & restore → Import a trip**, choose the file, and look
+through the preview before anything is added. It always becomes a **new** trip — nothing already
+there changes. Each traveller in it becomes a new person unless you link them to someone saved
+(the app suggests people with the same name and shows their trips, but never links by itself).
+Importing the same trip again makes another copy, after a warning. A full backup is restored with
+**Import a backup** instead; each button tells you if you picked the other kind of file.
+
 ## 7. Checklist before you fly
 
 At home, on wifi, a day or two before:

@@ -10,6 +10,8 @@ import { listPhrase } from './format';
 import { isStoredPath } from './resource';
 
 export const BACKUP_DOCUMENT_NAME = 'backup.json';
+/** The single-trip archive's manifest (`tripArchive.ts`), recognised only to redirect it. */
+const TRIP_MANIFEST_NAME = 'manifest.json';
 
 /** How much of a file is read at once: far below any app's Java heap, large enough to be quick. */
 export const READ_CHUNK_BYTES = 4 * 1024 * 1024;
@@ -66,6 +68,14 @@ export function unpackBackup(bytes: Uint8Array): UnpackResult {
   }
 
   const json = entries[BACKUP_DOCUMENT_NAME];
+  // A single-trip archive (2B) is never restored as a backup: it would bring its rows back under
+  // their original ids. Say what it is and where it goes, rather than just "not a backup".
+  if (!json && entries[TRIP_MANIFEST_NAME]) {
+    return {
+      ok: false,
+      reason: 'This is a single trip, not a full backup. Use “Import a trip” to add it as a new trip.',
+    };
+  }
   if (!json) return { ok: false, reason: 'This zip has no backup.json, so it is not one of our backups.' };
 
   let value: unknown;

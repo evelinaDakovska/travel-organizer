@@ -7,7 +7,9 @@ export type SettingKey =
   | 'default_currency'
   | 'notification_lead_minutes'
   /** The traveller profile that is the person using the app on this phone (2B-0). */
-  | 'me_traveller_id';
+  | 'me_traveller_id'
+  /** Trips imported from single-trip archives, for spotting a repeat import (2B). */
+  | 'trip_imports';
 
 export async function getSetting(
   db: SQLiteDatabase,

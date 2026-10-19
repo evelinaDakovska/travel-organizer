@@ -10,6 +10,14 @@ the owner should make first.
 
 ---
 
+> **As built in 2B (0.9.0)** — technical reference §17 is authoritative; where this plan differs:
+> the archive is `manifest.json` + `trip.json` + `files/` (the manifest split out, per the 2B
+> brief); `templateUses` are kept (provenance, as in the full backup) rather than dropped; a file
+> that arrives damaged needs an explicit confirmation before the trip is imported without it; the
+> mapping sheet shows each saved profile's trips; instants are rebuilt without touching
+> `updated_at`. Decisions §10: 1 rows kept as *missing*; 2 new by default, link by choice;
+> 3 repeat allowed after a warning; 7 plain `.zip`. 4–6 belong to 2C/2D.
+
 ## 1. Current architecture — findings
 
 **Schema** (`src/db/migrations/001…005`, `PRAGMA user_version` = 5). Fourteen tables. Ids are

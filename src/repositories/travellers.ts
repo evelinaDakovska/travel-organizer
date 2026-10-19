@@ -136,6 +136,20 @@ export async function renameTraveller(db: SQLiteDatabase, id: string, name: stri
   await db.runAsync(RENAME_TRAVELLER, { $id: id, $name: name, $now: new Date().toISOString() });
 }
 
+/**
+ * Each profile's trips by name, soonest first — what tells two people of the same name apart when
+ * linking an imported traveller to someone here (2B).
+ */
+export async function travellerTripNames(db: SQLiteDatabase): Promise<Record<string, string[]>> {
+  const rows = await db.getAllAsync<{ traveller_id: string; name: string }>(
+    `SELECT tt.traveller_id, t.name FROM trip_travellers tt JOIN trips t ON t.id = tt.trip_id
+      ORDER BY t.start_date, t.name`,
+  );
+  const byTraveller: Record<string, string[]> = {};
+  for (const row of rows) (byTraveller[row.traveller_id] ??= []).push(row.name);
+  return byTraveller;
+}
+
 export type TravellerUses = { trips: string[]; items: number };
 
 export async function travellerUses(db: SQLiteDatabase, id: string): Promise<TravellerUses> {

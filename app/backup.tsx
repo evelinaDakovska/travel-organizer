@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -29,6 +30,7 @@ const MODE_HINTS: Record<ImportMode, string> = {
 /** The only copy of anything outside the phone. Export before every trip. */
 export default function Backup() {
   const c = useColors();
+  const router = useRouter();
   const db = useSQLiteContext();
   const [mode, setMode] = useState<ImportMode>('merge');
   const [busy, setBusy] = useState<'export' | 'import' | null>(null);
@@ -132,6 +134,21 @@ export default function Backup() {
             busy={busy === 'import'}
             disabled={busy !== null}
             onPress={() => void runImport()}
+          />
+        </View>
+
+        {/* A single trip is not a backup (2B): it is added as a new trip, never restored. */}
+        <View style={styles.section}>
+          <SectionLabel>One trip</SectionLabel>
+          <Text style={[type.caption, { color: c.textMuted }]}>
+            A trip someone exported with Export trip, added here as a new trip. Your trips are not
+            changed.
+          </Text>
+          <Button
+            label="Import a trip"
+            variant="secondary"
+            disabled={busy !== null}
+            onPress={() => router.push('/import-trip')}
           />
         </View>
 

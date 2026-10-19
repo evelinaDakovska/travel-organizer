@@ -8,6 +8,8 @@ import {
   SEARCH_TRIP_NOTES,
   SELECT_BOOKINGS,
   SELECT_ITEMS_WITH_DEFAULT_TZ,
+  SELECT_TRIP_ITEM_MOMENTS,
+  SET_ITEM_INSTANTS,
   SELECT_KNOWN_PLACES,
   SELECT_PLACES,
   SELECT_REMINDER_CANDIDATES,
@@ -183,6 +185,25 @@ export async function setTaskCompleted(
  * not nest them, and this has to commit together with the zone change that caused it.
  */
 export async function recomputeTripInstants(db: SQLiteDatabase, tripId: string): Promise<number> {
+  return rewriteInstants(db, tripId, SELECT_ITEMS_WITH_DEFAULT_TZ, true);
+}
+
+/**
+ * Every item's instants rebuilt from its wall-clock time and zone — for a trip that arrived from
+ * outside (2B), whose cached instants are not trusted. Same rule, same caller-owned transaction;
+ * `updated_at` is left as exported — rebuilding a cache is not an edit.
+ */
+export async function rebuildAllTripInstants(db: SQLiteDatabase, tripId: string): Promise<number> {
+  return rewriteInstants(db, tripId, SELECT_TRIP_ITEM_MOMENTS, false);
+}
+
+async function rewriteInstants(
+  db: SQLiteDatabase,
+  tripId: string,
+  select: string,
+  /** A zone change is an edit and stamps `updated_at`; rebuilding an import's caches is not. */
+  stampUpdated: boolean,
+): Promise<number> {
   const defaultTz = await tripDefaultTz(db, tripId);
   const rows = await db.getAllAsync<{
     id: string;
@@ -192,16 +213,17 @@ export async function recomputeTripInstants(db: SQLiteDatabase, tripId: string):
     end_local: string | null;
     end_precision: string | null;
     end_tz: string | null;
-  }>(SELECT_ITEMS_WITH_DEFAULT_TZ, { $tripId: tripId });
+  }>(select, { $tripId: tripId });
 
   const now = new Date().toISOString();
   for (const row of rows) {
-    await db.runAsync(UPDATE_ITEM_INSTANTS, {
+    const instants = {
       $id: row.id,
       $startUtc: instant(row.start_local, row.start_precision, row.start_tz, defaultTz),
       $endUtc: instant(row.end_local, row.end_precision, row.end_tz, defaultTz),
-      $now: now,
-    });
+    };
+    if (stampUpdated) await db.runAsync(UPDATE_ITEM_INSTANTS, { ...instants, $now: now });
+    else await db.runAsync(SET_ITEM_INSTANTS, instants);
   }
   return rows.length;
 }

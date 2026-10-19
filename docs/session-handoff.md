@@ -386,6 +386,17 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ### 11.0000 Latest (2026-10-19)
 
+- **Latest: 2B built as 0.9.0** (single-trip export/import, no migration, D34, technical reference
+  §17) and verified end to end — matrix and screenshots in
+  `%USERPROFILE%\Pictures\TravelOrganizer-0.9.0-2B-e2e`. APK
+  `%USERPROFILE%/.travel-organizer/travel-organizer-0.9.0.apk`, **not on any phone**.
+- A second emulator, **`TO_2B_Test`**, exists for isolated E2E (fresh, synthetic data, a debuggable
+  build so `run-as` can read the app's storage). To make that build: temporarily set the release
+  buildType to the debug signing config and `debuggable true` in the generated
+  `android/app/build.gradle`, build, copy the APK, restore the file — never commit or ship it.
+  `Pixel_10_Pro` holds the real release 0.9.0 over 0.8.0 with synthetic data.
+- **2C waits for the owner's approval.**
+
 - **Later the same day: 2B-0 built as 0.8.0** (Me + several people per list item; migration 006,
   backup format 6, D33) and rehearsed on the emulator as an update over 0.7.4 with synthetic
   format-5 data — details in status.md *P*. APK:

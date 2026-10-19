@@ -5,10 +5,10 @@
 Verified against the repo on 2026-10-19, on Windows: **895 tests passing across 54 suites, typecheck clean.**
 
 > **Where things are (2026-10-19)**
-> - **Latest release build: 0.8.0** (versionCode 15) — Phase 2B-0 (Me and several people per list
->   item; **migration 006**, backup format 6), rehearsed on the emulator as an update over 0.7.4,
->   **not installed on any phone**: `%USERPROFILE%/.travel-organizer/travel-organizer-0.8.0.apk`.
->   Before it, **0.7.4** (versionCode 14, Phase 1), also not on a phone.
+> - **Latest release build: 0.9.0** (versionCode 16) — Phase **2B**, single-trip export and import
+>   (no migration), verified end to end on emulators and as a release update over 0.8.0, **not
+>   installed on any phone**: `%USERPROFILE%/.travel-organizer/travel-organizer-0.9.0.apk`. Before
+>   it, **0.8.0** (2B-0, migration 006) and **0.7.4** (Phase 1), neither on a phone.
 >   Before it, **0.7.3** (versionCode 13) was the first **friends-only beta**
 >   (`release/TravelOrganizer-0.7.3-beta.apk`, gitignored), tested by friends on a second, smaller
 >   Android phone; their feedback became Phase 1.
@@ -18,8 +18,8 @@ Verified against the repo on 2026-10-19, on Windows: **895 tests passing across 
 >   so the phone holds **0.7.1 or later**. Confirm with the owner (with permission:
 >   `adb shell dumpsys package com.evelinadakovska.travelorganizer | grep versionName`) before
 >   rehearsing any update.
-> - **Next: the roadmap** ([`roadmap.md`](roadmap.md), section *P* below). Phase 1 (0.7.4) and
->   2B-0 (0.8.0) are done and wait for the owner's review; 2B waits for approval.
+> - **Next: the roadmap** ([`roadmap.md`](roadmap.md), section *P* below). Phase 1 (0.7.4), 2B-0
+>   (0.8.0) and 2B (0.9.0) are done and wait for the owner's review; 2C waits for approval.
 
 ---
 
@@ -605,6 +605,7 @@ only when the owner asks.
 |---|---|---|
 | **P1** | UI & navigation: trip context in tab headers, active bottom tab, *Notes & lists* label on small phones, bottom-sheet corners — **0.7.4**, emulator; not on a phone yet | ✅ |
 | **P2·2B-0** | "Me" — one traveller profile marked as the person using the app — and several people per packing/shopping item. **0.8.0**, emulator; not on a phone yet | ✅ |
+| **P2·2B** | Single-trip export and import: Export trip (complete or without attachments), Import a trip as a new trip, traveller mapping, duplicate detection, staged import with rollback. **0.9.0**, emulator E2E; not on a phone | ✅ |
 | **P2** | Single-trip import/export & AI JSON import — **2A** architecture and audit done ([`phase2-plan.md`](phase2-plan.md), 2026-10-19); **2B** single-trip archive, **2C** AI activity import, **2D** planning context wait for the owner's approval and the decisions in its §10 | ⬜ |
 | **P3** | Travellers, pricing & shared expenses (replaces N5b) | ⬜ |
 | **P4** | Currency conversion | ⬜ |
@@ -650,6 +651,41 @@ Back, after backgrounding, after leaving the trip and coming back; Back from a t
 Overview as before. Testing created one throwaway trip (*P1 Test Saariselka…*, a child traveller
 *Mia*) on the emulator; the existing test trip was not changed. **Not tested:** on a physical
 phone (neither phone was connected); three-button navigation.
+
+**2B, what was built (0.9.0, versionCode 16).** Decisions: D34. Technical: technical reference §17.
+No migration; full backup and restore unchanged apart from refusing a trip archive with a pointer.
+- **Export trip** (Overview → More): *Complete trip* (default) or *Without attachments*; a document
+  whose file is already missing is named first and the export goes ahead only if accepted; the
+  archive says when it is partial. `manifest.json` (format 1, row format 6, schema 6, export id,
+  source trip, SHA-256 and size of every file and of the data) + `trip.json` (the trip's rows only)
+  + `files/` (each distinct file once). Never in it: settings (so not Me), templates, reusable lists,
+  other trips or travellers.
+- **Import a trip** (Backup & restore → *One trip*): one screen — pick → check → preview (counts,
+  name it will get, unavailable files, *imported before* / *already on this phone*) → traveller
+  mapping (new by default; link to a saved profile only by choice; same-name profiles offered and
+  told apart by their trips; one profile cannot stand for two) → confirm (and confirm again for a
+  damaged file or a repeat) → staged import → *Open the trip*.
+- Untrusted input: directory checks before inflating (names, repeats, count, sizes — a zip bomb is
+  refused unexpanded), manifest, data checksum, rows through the backup's schemas, every reference
+  inside the archive. New ids for everything; files written under new names, read back and hashed,
+  then one transaction; failure rolls back and deletes the files written; a kill in between leaves
+  orphans the launch sweep removes. Repeats recognised through `settings.trip_imports`.
+
+**2B, how it was verified.** 992 tests (57 new: archive build/open/plan/limits/hostile zips,
+repository round trip into a database holding the original, rollback, provenance), typecheck clean.
+**End to end** on a dedicated emulator (`TO_2B_Test`, Android 17, fresh install, a debuggable build
+of the same code so storage could be inspected) with a synthetic two-trip fixture: scenarios A–K all
+**pass** — complete export checked outside the app; import into the same installation identical to
+the original value for value; traveller mapping incl. Me; attachments open and stay independent;
+partial export shows every document as missing; duplicate warning and cancel; ten invalid/hostile
+archives refused without writing anything; file-write failure, database failure, full storage, a kill
+during import and the restart after it; persistence; 360 dp, dark, font 1.3/2.0. Then the
+**release-signed** APK installed with `install -r` over 0.8.0 on `Pixel_10_Pro`: same key, data
+kept, export works, an archive from the other emulator imports and its PDF opens. Full matrix and 41
+screenshots: `%USERPROFILE%\Pictures\TravelOrganizer-0.9.0-2B-e2e\E2E-LOG.md`. Found and fixed
+during it: imported plans' `updated_at` was re-stamped; same-name profiles were indistinguishable in
+the mapping sheet; three wording/size issues. **Not tested:** a physical phone; three-button
+navigation.
 
 **2B-0, what was built (0.8.0, versionCode 15).** Decisions: D33. Technical: technical reference §16.
 - **Me:** `settings.me_traveller_id` names an existing traveller profile — no parallel traveller
