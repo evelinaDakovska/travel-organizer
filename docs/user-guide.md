@@ -265,17 +265,29 @@ the Timeline. Below it, one large panel shows the thing that matters most:
   its ticket one tap away. Then **Get ready** (your tasks), **Coming up**, **Stay & transport**
   (where you sleep and the car you hire), your **Lists** with how far along each is (*Packed 3 of
   12*), **Travellers** and **Trip documents**.
-- **During the trip**: **Happening now** — the tour you are five minutes late for, the train you
+- **During the trip**: **+ Add expense** right at the top (§4, *Quick expense*), then **Happening now** — the tour you are five minutes late for, the train you
   are on — or **Next**, with its ticket one tap away. A happening thing stays until **15 minutes
   after its end**, or **an hour after its start** if it has no end. Then **Today, no fixed time**
   (plans for today with only a date), **Maybe today** (ideas dated today), **Also on now**,
-  **After that**, **Your base tonight** (the stay you checked into and have not yet left) and **To
-  do**.
+  **After that**, **Your stay** (checked in, check-in today, the next stay, or a night on a train or
+  ferry — with its directions and confirmation) and **To do**. A hotel you are staying in never
+  takes the big panel away from the flight or tour that comes next.
+- **After the trip**: a calm summary — the places you went and what the trip cost, per currency —
+  with no countdown.
 
 It follows the items, not the trip's dates, so a flight the day before the trip shows up too.
 
 **More** (top right) holds **Edit trip**, **Share as PDF**, **Use a template** and **Save as
 template**.
+
+### Directions
+
+**How to get there** on an item's page, **Directions** on Overview's big panel, and the quiet
+*Directions to …* rows between two plans on the Timeline open a small sheet: **To** is the plan,
+**From** is your current location, the previous stop, the stay for that day, or another saved
+place; pick a **travel mode** if you like, then **Open in Google Maps**. Google Maps works out where
+you are — the app never asks for your location. If Maps cannot open, the app offers **Copy
+address**.
 
 ### Timeline
 
@@ -339,6 +351,11 @@ marks one with receipts. Tap an expense for its page: the amount, the date, the 
 its receipts (open them, or add more). **Edit** at the top changes it; **Delete expense** at the
 bottom removes it (it says how many receipts go with it).
 
+**Quick expense.** During the trip, Overview's **+ Add expense** opens a short sheet — amount,
+currency, category, date, an optional label — with **Take photo** and **Choose photo** for the
+receipt. Close it without saving and any photo you took is thrown away. A quick expense is an
+ordinary expense: it shows on the Expenses tab and in the backup.
+
 Receipts belong to their expense. They are **not** listed under Trip documents, and they are in
 the backup.
 
@@ -361,7 +378,8 @@ refund not specified — not counted above.* Open it and say *Refundable* or *No
 Amounts in different currencies are **never converted or added together**. A trip in euros with
 one forint taxi shows two totals, one per currency.
 
-*Splitting costs between people (who paid, who owes whom) is planned as a later version.*
+*Splitting costs between people (who paid, who owes whom) and converting to one currency are
+planned for later versions.*
 
 ---
 
@@ -376,7 +394,8 @@ with **Save a place**, and say **How much do you want it** (*Must*, *Want*, *May
 itinerary**: plans that have an address, so the whole map of the trip is in one list. When you decide
 on an idea, open it and tap **Add to itinerary**: give it a date (a day is enough) and it becomes
 a confirmed item.
-Nothing is copied; it is the same item.
+Nothing is copied; it is the same item. The list shows no prices or payment pills — those are on
+the item's page and in Expenses.
 
 ### Notes
 
@@ -494,8 +513,12 @@ Photograph receipts as you pay.
 
 ### Travellers
 
-The people you travel with are kept once, under **Your trips → Travellers**: a name, nothing else.
-On a trip, Overview → **Travellers** picks who is going, or adds someone new. Then each booking can
+The people you travel with are kept once, under **Your trips → Travellers**: a name, and whether
+they are an **Adult**, a **Child** or *Not specified* — no birth dates. When you create or edit a
+trip, tick who is going (two people with the same name are told apart by that badge), or **Add new
+traveller** without leaving the form. On a trip, Overview → **Travellers** changes who is going, and
+can mark someone differently for just this trip — a twelve-year-old on an adult ticket, say. A
+price per person then suggests one line for adults and one for children. Then each booking can
 say **Who's going** — tick a subset when not everyone goes. Renaming someone renames them
 everywhere. Someone still on a trip or a booking cannot be deleted; the app says where they are
 used.

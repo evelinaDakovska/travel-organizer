@@ -577,3 +577,52 @@ Anything that names a person or a booking reference stays out of a shared PDF un
 
 **Deferred:** passports (they need encryption at rest, which this app does not have), in-app
 feedback, and estimated prices on shopping items.
+
+## D31 — 0.7.x: directions, adult/child travellers, and a friends-only beta
+
+Built 2026-10-13 → 10-16 after 0.6.0, mostly from the owner's own use on the phone. Detail in
+`docs/status.md` (section *0.7.x*) and `docs/product-status.md`.
+
+**Directions hand off to Google Maps (0.7.0, `docs/directions-plan.md`).** An A → B link
+(`https://www.google.com/maps/dir/?api=1…`) built by a pure function, from the Timeline's
+connector rows, item detail and Overview. No API key, no location permission, no embedded map:
+Google Maps resolves *current location* itself. The rejected alternative — an embedded map — costs
+bundle size, a key and offline tiles, for little a trip needs (still true; a full-day map is now
+roadmap Phase 5, D32).
+
+**Adult / child is a classification, not an age (migrations 004, 005; backup formats 4 and 5).**
+A profile has a default (`adult`, `child`, `unspecified`), copied into the trip and overridable
+there, because the same child can travel on an adult ticket. No birth dates are stored. A typed
+name from an older trip, once converted to a profile, is remembered on the trip
+(`trips.converted_travellers`) so it never reappears as unconverted, even after the profile is
+renamed. Both migrations are additive columns with defaults; no existing row changes meaning.
+
+**A friends-only beta (0.7.3).** The app is now also sideloaded onto friends' phones. It stays
+local-first: each tester's data lives only on their phone. The signing key, application id and
+data-safety rules are unchanged.
+
+**One small backend, switched off.** The in-app feedback form posts to a Cloudflare Worker
+(`server/feedback-worker/`) that emails the owner through Resend — the one exception to "no
+backend" (CLAUDE.md §7). It sends the message, an optional name, the app build and the Android
+version; never trip data. It is **off** (`FEATURE_FEEDBACK_ENABLED`, read from
+`EXPO_PUBLIC_FEATURE_FEEDBACK_ENABLED` at build time) until the worker and its key are deployed;
+every entry point hides and `/feedback` redirects to Home.
+
+## D32 — The roadmap after the beta (2026-10-19)
+
+After friends tested 0.7.3 on a second, smaller phone, the owner set eight phases
+(`docs/roadmap.md`), done in order and each only when asked for.
+
+**What it reverses, on purpose:**
+- *Currencies are never converted* (U6, D25) → Phase 4 converts to a trip's reporting currency,
+  keeping the original amount, currency and the rate used — so nothing recorded is lost.
+- *No embedded maps* → Phase 5, a full-day map.
+- *No Google Calendar* → Phase 8, an `.ics` file; still no Google sign-in.
+- *Trip dates are mandatory* (CLAUDE.md §4) → Phase 6, trips without dates; a migration, agreed
+  before it is written.
+- *No AI features* is **kept for the app**: Phase 2 imports a JSON file an AI assistant wrote,
+  validated and previewed like any untrusted input. The app calls no AI service.
+
+**What it settles:** N5b (splitting) is replaced by Phase 3, which adds who is financially
+responsible for a child and keeps participation, responsibility and payment apart. Gmail
+integration stays out; a universal email import (forwarding, `.eml`) is future work.

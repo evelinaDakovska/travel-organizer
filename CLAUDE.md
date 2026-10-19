@@ -6,15 +6,17 @@ what is still open, and the conventions to follow.
 | Doc | Role |
 |---|---|
 | **`CLAUDE.md`** (this file) | Authoritative summary. Decisions, terminology, conventions |
-| `docs/product-status.md` | **Product status & feature matrix** — authoritative product readiness and platform verification state |
+| `docs/product-status.md` | **Product status & feature matrix** — readiness per feature and where it was verified (phone, beta phone, emulator) |
 | `docs/session-handoff.md` | **Starting fresh? Read after this file.** How the work goes: decisions in context, the machine, driving a device, what bit us |
-| `docs/status.md` | **Engineering status board** — milestones, C, S and N tasks, open questions |
+| `docs/status.md` | **Engineering status board** — what is done and how it was verified, task by task; open questions |
+| `docs/roadmap.md` | **The roadmap** (2026-10-19): Phases 1–8, done in order, each only when the owner asks |
 | `docs/technical-reference.md` | **Single source of truth** for schema, time model, file storage, queries |
 | `docs/plan.md` | Step-by-step implementation plan and current position |
 | `docs/review-plan.md` | R1–R11 from the independent review (done) |
 | `docs/feedback-plan.md` | F1–F6, feedback after showing the app (done; 0.5.0) |
 | `docs/paid-plan.md` | F7, paid or not at a glance (done; 0.5.1, on the phone) |
 | `docs/fieldbook-plan.md` | The design review of 0.5.1: fixes A1–A7, the Fieldbook redesign B1–B11, additions C1–C5, decisions FB-1… (0.6.0) |
+| `docs/directions-plan.md` | Google Maps directions and timeline connectors (0.7.0) |
 | `docs/decision-log.md` | *Why* things were decided. Rationale only — no authoritative detail |
 | `docs/windows-handoff.md` | **Continuing on Windows** — read this instead of `dev-setup.md` there |
 | `docs/dev-setup.md` | Machine setup for the macOS machine it was started on |
@@ -26,7 +28,8 @@ what is still open, and the conventions to follow.
 
 ## 1. What this is
 
-A personal, local-first **Android-only** app that holds everything already decided, booked or
+A local-first **Android-only** app, built for the owner and, since 0.7.3, shared as a sideloaded
+**friends-only beta**. It holds everything already decided, booked or
 saved for a trip: tickets, boarding passes, hotel confirmations, PDFs, reservation references,
 links, saved places and notes.
 
@@ -60,14 +63,18 @@ never exist. No enterprise patterns; this is a personal app that should still be
 ## 3. Current phase
 
 **Status board: [`docs/status.md`](docs/status.md) — the single source of truth for what is done.**
-Do not duplicate status anywhere else; update that one file.
+`docs/product-status.md` is the feature-level view of the same facts (what a tester can use, and
+where it was verified); keep the two in step, and when they disagree `status.md` wins.
+**What comes next: [`docs/roadmap.md`](docs/roadmap.md)** — Phases 1–8, one at a time; a phase
+starts only when the owner asks for it.
 
 Work is tracked by **task ID**, not milestone: **C1–C5** (core — domain, schema, repositories,
 files, export; no device needed), **S1–S8** (surface — screens and anything needing a device, done
 on a personal Windows machine, see `docs/windows-handoff.md`), **U1–U8** (the owner's list after
 real use, 2026-10-10), **N1–N6** (features), **R1–R11** (after an independent review,
 `docs/review-plan.md`) and **FB** — A1–A7, B1–B11, C1–C5 (the design review of 0.5.1,
-`docs/fieldbook-plan.md`). All in `docs/status.md`.
+`docs/fieldbook-plan.md`), **0.7.x** (directions, adult/child travellers, the beta) and **P1–P8**, the
+roadmap's phases. All in `docs/status.md`.
 
 The app is in daily use on the owner's phone as a signed release build, **holding a real trip**.
 **What is done and what is next lives only in `docs/status.md`**; where the last session stopped is
@@ -80,7 +87,7 @@ that file.
 | The user says | Do this |
 |---|---|
 | *"do the next C task"* / *"do the priority work"* | First unticked **C** in `docs/status.md` → finish → commit → tick it there. **Stop after C5** |
-| *"continue with the plan"* | First unticked task overall — every C and S is done, so that is a **U**, then an **N** |
+| *"continue with the plan"* / *"the next phase"* | The next phase in `docs/roadmap.md`, **only if the owner has asked for it** — never start the following phase on your own |
 
 **C before S on purpose.** Core mistakes ripple through every screen and migrations are painful;
 surface mistakes are visible immediately and cheap to fix. `src/domain/` imports nothing native,
@@ -147,7 +154,8 @@ This collapses Places, Bookings and Timeline into three queries over one table, 
 Plus `trips`, `trip_notes`, `resources`, `settings`, since migration 002 `expenses` and
 `payments` (N5; an expense is not a TripItem, D25), and since migration 003 `travellers`,
 `trip_travellers`, `item_participants`, `lists`, `list_items`, `templates`, `template_uses`
-(Fieldbook C1–C5). No per-kind tables.
+(Fieldbook C1–C5). Migration 004 adds adult/child `classification` to `travellers` and
+`trip_travellers`; 005 adds `trips.converted_travellers`. Backup format 5. No per-kind tables.
 Kind-specific extras live in a Zod-validated `details` JSON column.
 
 ### 5.3 Time: store wall-clock + IANA zone, derive the instant
@@ -215,18 +223,27 @@ Full list with per-dependency rationale in `docs/technical-reference.md` §8.
 
 ## 7. Constraints
 
-- **Android only.** Target device: Samsung Galaxy S26 Ultra. No iOS, no tablets, no older devices.
+- **Android only.** Target device: Samsung Galaxy S26 Ultra; the beta also runs on a smaller
+  Android phone, so layouts must hold on a narrow screen. No iOS, no tablets.
 - **No backend, no accounts, no auth, no sync, no telemetry.** Everything on-device.
 - **A custom dev client is required** (`expo prebuild` + `expo run:android`) because
   `expo-share-intent` needs native code. Expo Go cannot run this app.
-- **Development targets the emulator by default** (`Medium_Phone_API_36.1`). The physical phone is
+- **Development targets the emulator by default** (`Pixel_10_Pro`, 1280×2856). The physical phone is
   connected only when strictly necessary — see §9.
 - Offline access to stored documents is a **core requirement**, not a nice-to-have.
+- **One exception to "no backend"**: the in-app feedback form (0.7.x) posts to a small Cloudflare
+  Worker (`server/feedback-worker/`) that emails the owner. It is **off** behind
+  `FEATURE_FEEDBACK_ENABLED` (D31) and carries no trip data.
 
 ### Explicitly not building
-AI features · itinerary generation · flight/hotel search · booking APIs · Gmail integration ·
-Google Calendar · Google Wallet API · cloud backend · accounts · collaboration · weather ·
-currency conversion · embedded maps · automatic booking parsing.
+AI features in the app · itinerary generation · flight/hotel search · booking APIs · Gmail
+integration · Google Wallet API · cloud backend · accounts · collaboration · weather · automatic
+booking parsing.
+
+**Now on the roadmap** (2026-10-19, D32), each only when its phase is asked for: importing an
+AI-generated itinerary from JSON (Phase 2 — the app reads a file; it calls no AI), currency
+conversion (4), a full-day map (5), trips without dates (6), Google Maps place import (7) and an
+`.ics` calendar export (8).
 
 ## 8. Conventions
 

@@ -8,14 +8,14 @@ is a substitute for `CLAUDE.md` (the authoritative summary) or `docs/technical-r
 single source of truth for schema, time, files, queries). Read in this order:
 
 1. `CLAUDE.md` — product, terminology, conventions, "findings already paid for"
-2. `docs/status.md` — what is done, what is next, the open questions
+2. `docs/status.md` — what is done, what is next, the open questions; `docs/roadmap.md` — the
+   phases ahead
 3. this file — how the work actually goes, and the traps
 4. `docs/technical-reference.md` — when you touch schema, time, files, queries, native
-5. `docs/decision-log.md` — why, and what was rejected (D1–D29)
+5. `docs/decision-log.md` — why, and what was rejected (D1–D32)
 6. `docs/windows-handoff.md` — machine setup, release build, Windows specifics
 
-Last verified: **2026-10-13**, Google Maps Directions & Timeline Connectors (0.7.0, see `docs/status.md`), **784 tests**,
-typecheck clean.
+Last verified: **2026-10-19**, after 0.7.3 (the friends-only beta) — **895 tests**, typecheck clean.
 
 > **Starting fresh? Jump to §11 first** — it is the exact point the last session stopped, what is
 > waiting on the owner, and the next steps in order.
@@ -43,9 +43,11 @@ happens abroad, stressed, offline, in seconds, and may not be. Spend complexity 
 **binary files it does not own**. The PDF is the product; everything else is metadata to find it.
 File handling and offline access outrank the timeline.
 
-**Explicitly not building** (do not drift into these): AI features, itinerary generation, flight or
-hotel search, booking APIs, Gmail integration, Google Calendar, cloud backend, accounts, sync,
-collaboration, weather, currency conversion, embedded maps, automatic booking parsing.
+**Explicitly not building** (do not drift into these): AI features in the app, itinerary
+generation, flight or hotel search, booking APIs, Gmail integration, cloud backend, accounts, sync,
+collaboration, weather, automatic booking parsing. Since 2026-10-19 the roadmap does bring in an
+AI-written JSON import, currency conversion, a day map, undated trips and an `.ics` export — each
+only when its phase is asked for (D32).
 
 ---
 
@@ -204,7 +206,7 @@ Moving the repo to `C:\dev` is what fixed the first Windows build.
 
 ```bash
 npm install                 # postinstall applies the patches
-npm test                    # 582 tests, ~3s
+npm test                    # 895 tests, ~3s
 npx tsc --noEmit            # must be clean
 npx expo prebuild --platform android      # after any app.json or native change
 # EXPO_NO_GIT_STATUS=1 when the tree is dirty, or prebuild stops on a prompt
@@ -380,9 +382,29 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ---
 
-## 11. Where the last session stopped (2026-10-13) — read this first
+## 11. Where the last session stopped (2026-10-19) — read this first
 
-### 11.000 Latest (2026-10-13) — read this first
+### 11.0000 Latest (2026-10-19)
+
+- **0.7.0 → 0.7.3 were built on 2026-10-13 → 10-16** (directions, adult/child travellers with
+  migrations 004/005 and backup format 5, Overview by stage, Quick Expense with receipt photos,
+  the feedback form switched off, the new icon). Summary and commits: `docs/status.md` →
+  *0.7.x*; rationale D31. Those sessions kept no notes here; this entry closes the gap.
+- **0.7.3 is the first friends-only beta** (`release/TravelOrganizer-0.7.3-beta.apk`), tested by
+  friends on a smaller Android phone. **The owner's phone holds 0.7.1 or later — the exact version
+  is not recorded.** Find out (ask; with permission, `dumpsys package`) before building the next
+  update rehearsal, which must start from that exact APK.
+- **The roadmap (`docs/roadmap.md`, D32)** replaces the N list: Phases 1–8, one at a time, each
+  only when the owner asks. **Phase 1 (UI & navigation) is the current work**; Phase 2 waits.
+- **On this laptop:** a real phone backup in `backups/` (gitignored). CLAUDE.md §9 says the laptop
+  is not a safe store; the copy that counts is the owner's Drive one.
+- The owner's data-safety rules were restated with the roadmap: never uninstall or clear the app on
+  the primary Samsung phone, never install there without explicit permission, never change the
+  application id or the signing key, never touch production data; verify on the emulator or the
+  beta phone.
+
+
+### 11.000 Earlier (2026-10-13)
 
 - **0.6.0 is built and rehearsed, not on the phone.** The owner's design review of 0.5.1 —
   `docs/fieldbook-plan.md`: fixes A1–A7, the Fieldbook redesign B1–B11, additions C1–C5 (lists,

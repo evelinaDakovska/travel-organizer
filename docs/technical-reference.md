@@ -400,6 +400,16 @@ Migrations are tested from a database shaped like the phone's (`002-expenses.tes
 everything, awkward values, rows compared before/after, a failing batch leaves nothing). Before
 0.3.0 shipped, 002 was also run on a copy of the owner's real rows; all came through identical.
 
+| # | Release | What it adds |
+|---|---|---|
+| 001 | 0.1.0 | `trips`, `trip_items`, `trip_notes`, `resources`, `settings` |
+| 002 | 0.3.0 | `expenses`, `payments`, `resources.expense_id` (N5) |
+| 003 | 0.6.0 | `travellers`, `trip_travellers`, `item_participants`, `lists`, `list_items`, `templates`, `template_uses` (§14) |
+| 004 | 0.7.1 | `classification` on `travellers` and `trip_travellers` (§15) |
+| 005 | 0.7.1 | `trips.converted_travellers` (§15) |
+
+All five are additive: new tables, or new columns with defaults.
+
 ---
 
 ## 4. Time and timezones
@@ -785,7 +795,8 @@ unlike the gate.
 
 ### Maps
 
-`expo-linking` to a geo/Maps URL. No embedded map in MVP.
+`expo-linking` to a `geo:` URL (*Open in Maps*, U5) or a Google Maps directions URL (§15). No
+embedded map; a full-day map is roadmap Phase 5.
 
 ---
 
@@ -991,6 +1002,10 @@ payments → resources → lists → list_items → templates → template_uses 
 in `repositories/backup.ts`). A per-trip export (`filterTablesForTrip`) carries the travellers the
 trip uses.
 
+**Formats 4 and 5** (0.7.1) add `classification` on `travellers` / `trip_travellers` and
+`trips.converted_travellers`; the Zod schema defaults them (`'unspecified'`, `'[]'`), so formats
+1–4 still import. `EXPORT_FORMAT_VERSION` is **5**.
+
 **Export reads one snapshot (A4).** `readTables` runs inside `withExclusiveTransactionAsync`, whose
 second connection holds one WAL read snapshot for every table, so a write landing mid-export can
 not produce a backup with an item but not its trip. It only reads, so the change-listener caveat
@@ -1138,7 +1153,7 @@ its value is `undefined`, so rendering from the form value dropped a typed decim
 ## 14. Lists, travellers, prices per person, the itinerary PDF, templates (Fieldbook C)
 
 The design and every decision behind it: `docs/fieldbook-plan.md` §4 and §5 (FB-1…). Schema:
-migration 003 (§3). Backup: format 3 (§12). What follows is where things live.
+migration 003 (§3), plus 004/005 for adult/child (§15). Backup: format 3 (§12). What follows is where things live.
 
 ### Travellers (C2)
 
@@ -1190,3 +1205,52 @@ Android's WebView prints.
 `files/itineraryPdf.ts` prints it with `expo-print` (A4, 595 × 842 pt), copies the result to
 `cache/itinerary/<Trip>-itinerary-<date>-<time>.pdf`, deletes the printer's temporary file, and
 opens the share sheet. The cache is right for it: the PDF is a snapshot that can be made again.
+
+---
+
+## 15. 0.7.x — directions, adult/child travellers, Quick Expense, feature flags
+
+Release history and commits: `docs/status.md` → *0.7.x*. Rationale: D31.
+
+### Directions (0.7.0)
+
+`domain/directions.ts`, pure and tested; the plan is `docs/directions-plan.md`.
+`buildGoogleMapsUrl` makes `https://www.google.com/maps/dir/?api=1&destination=…[&origin=…][&travelmode=…]`:
+coordinates when valid (0,0 included), else the title and address as a query; *current location*
+omits `origin`, so Google Maps resolves it — the app holds no location permission and no API key.
+`resolveItemEndpoint` reads a journey as its arrival when it is the origin and its departure when
+it is the destination. `findTimelineConnectors` puts a connector between consecutive **timed,
+confirmed, located** entries on a day; it is suppressed for tasks, ideas, cancelled and date-only
+entries, overlapping times, a middle entry without a place, and two ends at the same place.
+`findStayForDay` picks the stay covering the route's day (latest check-in wins on overlap).
+`DirectionsSheet` keeps the chosen origin and mode across re-renders and resets only when
+`computeDirectionsRequestKey` changes.
+
+### Adult / child travellers (0.7.1, migrations 004 and 005)
+
+`classification` (`adult` | `child` | `unspecified`, CHECK-constrained, default `unspecified`) on
+`travellers` is the profile's default, copied into `trip_travellers.classification` when the
+traveller joins a trip; the trip's value can differ (`updateTripTravellerClassification`). Ages are
+not stored. `suggestPricingLines` (`domain/pricing.ts`) proposes per-person lines from a trip's
+adults and children; the saved price is still the computed total in `price_amount` (§14).
+`trips.converted_travellers` (005, a JSON array, default `'[]'`) lists the typed names already
+turned into profiles, so `legacyNames` never offers them again even after the profile is renamed or
+removed. `convertLegacyTraveller` does the conversion in one transaction and is idempotent.
+
+### Quick Expense (0.7.2)
+
+`features/expenses/QuickExpenseSheet.tsx`, opened from Overview's *+ Add expense*: amount,
+currency, category, date, an optional label and receipt photos (camera or gallery through
+`pickAndImport`). Receipts are copied in as soon as they are picked and deleted again if the sheet
+closes unsaved; the save is one `createExpense(db, tripId, input, receipts)`. It writes ordinary
+spending only — booking costs stay in `bookingCosts.ts`, never double-counted.
+
+### Feature flags and the feedback form (0.7.2)
+
+`src/config/features.ts`: `FEATURE_FEEDBACK_ENABLED` is read from
+`EXPO_PUBLIC_FEATURE_FEEDBACK_ENABLED` at build time and is **false** unless set to `'true'`. When
+off, Home and Overview's *More* hide the entry (`getTripMoreActions`) and `app/feedback.tsx`
+redirects to `/`. When on, the form keeps a debounced draft in `feedback_draft.json` in the
+document directory (not in backups) and posts to `server/feedback-worker/` (Cloudflare Worker,
+Resend, 24 h idempotency, rate limit) with the message, an optional name, the app version and
+Android version — no trip data.

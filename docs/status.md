@@ -1,15 +1,21 @@
 # Status
 
-**The** engineering status board. See [`docs/product-status.md`](product-status.md) for the authoritative product readiness and feature status reference across all platforms and test stages.
+**The** engineering status board: what is done, how it was verified, what is next. [`product-status.md`](product-status.md) is the feature-level view of the same facts; where the two disagree, this file wins. Scope of upcoming work: [`roadmap.md`](roadmap.md).
 
-Verified against the repo on 2026-10-16, on Windows: **895 tests passing across 54 suites, typecheck clean.** Release build **0.7.3**.
- 
-> **Release build 0.7.3** (versionCode 13), built 2026-10-16. Prepared for friends-only Android release with approved Design B app icon, Quick Expense receipt photos, and physical-phone UX verifications:
-> 1. **Official App Icon (Design B — Travel Journal)**: Implemented the approved deep teal journal with mountain illustration, warm orange sun, mustard elastic band, and cream `#FBF6EB` background. Complete Android adaptive icon resource set generated (isolated transparent foreground sized within 66.6% safe zone, solid cream background, monochrome silhouette for Material You dynamic theming, and multi-density mipmaps). Verified with launcher masking and Samsung One UI.
-> 2. **Quick Expense Receipt Photos**: Integrated camera capture ("Take photo") and gallery photo picker ("Choose photo") directly inside the compact Quick Expense sheet, with thumbnail previews, remove actions, uncommitted photo cleanup on dismiss, and persistent local storage included in ZIP backups.
-> 3. **Financial Accounting & Spending Isolation**: Verified through automated tests and device QA that Quick Expenses update ordinary spending totals accurately, keep booking costs strictly isolated (no double-counting), and partition correctly by trip.
-> 4. **Physical-Phone & Emulator QA**: Preserved real trip data and PDF documents on Samsung Galaxy S26 Ultra in-place update; verified cold startup, offline PDF export, and full ZIP backup on Android emulator (<= 4 GB RAM).
-> 5. **In-App Feedback Notebook**: Implemented, persistent local drafts verified, and feature-flagged OFF (`FEATURE_FEEDBACK_ENABLED = false`) for the first friends-only beta release.
+Verified against the repo on 2026-10-19, on Windows: **895 tests passing across 54 suites, typecheck clean.**
+
+> **Where things are (2026-10-19)**
+> - **Latest release build: 0.7.3** (versionCode 13), the first **friends-only beta** —
+>   `release/TravelOrganizer-0.7.3-beta.apk` (gitignored). Tested by friends on a second, smaller
+>   Android phone; their feedback became the roadmap's Phase 1.
+> - **On the owner's phone: not recorded.** A pre-update phone backup was taken on 2026-10-14
+>   (`backups/`, gitignored), 0.7.1 was bumped "for in-place device update" that day, and the
+>   0.7.2 Overview, traveller-picker and Places changes are reported as checked on the S26 Ultra —
+>   so the phone holds **0.7.1 or later**. Confirm with the owner (with permission:
+>   `adb shell dumpsys package com.evelinadakovska.travelorganizer | grep versionName`) before
+>   rehearsing any update.
+> - **Next: the roadmap** ([`roadmap.md`](roadmap.md), section *P* below). Phase 1 is in
+>   progress; Phase 2 waits for the owner.
 
 ---
 
@@ -188,7 +194,7 @@ plus Trip documents sit at the bottom of Now.
 
 ---
 
-## N — next features · approved 2026-09-18, not started
+## N — next features · approved 2026-09-18 (history; the roadmap replaces this list)
 
 Borrowed from Notion after the owner asked what it does well. Each one fits the product rules in
 `CLAUDE.md`: offline, on the phone only, no accounts or sync. Notion's collaboration and cloud sync
@@ -197,12 +203,12 @@ seconds" and are cheap.
 
 | | Feature | ✓ |
 |---|---|---|
-| **N1** | All documents in a trip, in one list | ⬜ |
-| **N2** | Checklists inside notes | ⬜ |
-| **N3** | Start a trip from a previous one | ⬜ |
-| **N4** | Search across all trips | ⬜ |
+| **N1** | All documents in a trip, in one list — built as **B11** *Trip documents* (0.6.0) | ✅ |
+| **N2** | Checklists inside notes — **superseded** by C1 packing and shopping lists (0.6.0) | — |
+| **N3** | Start a trip from a previous one — built as **C5** templates (0.6.0) | ✅ |
+| **N4** | Search across all trips — not on the roadmap yet | ⬜ |
 | **N5a** | Expenses tab without splitting — migration 002, receipts, backup format 2. Built as 0.3.0, rehearsed; decisions answered, Gaps A–D done, regression pass clean, rehearsed on the owner's real data, documented; **on the phone since 2026-10-11** (0.3.0): [`n5-plan.md`](n5-plan.md) | ✅ |
-| **N5b** | Splitting: paid by, split between (equal or amounts), settle up, record payment. Spec: [`expenses-spec.md`](expenses-spec.md) | ⬜ |
+| **N5b** | Splitting — **replaced by roadmap Phase 3** (D32). Earlier spec: [`expenses-spec.md`](expenses-spec.md) | — |
 | **N6** | A journey's time zone from its city: filled with a hint, a tappable zone chip, old flights flagged with a one-tap fix (D26). Built and rehearsed as 0.3.1; on the phone since 2026-10-12 (0.5.1). Plan and audit: [`n6-plan.md`](n6-plan.md). Review step R0 proposed changing decision B; the owner kept it (R0 dropped) | ✅ |
 
 **N1 — All documents.** Every file and link in a trip — attached to the trip *and* to its items — in
@@ -555,7 +561,7 @@ owner's request; the decisions (FB-1…) are listed there for the owner to go th
 | **C4** | Itinerary PDF: every day, both ends of each journey, documents named; names, references, tasks, lists and costs only when chosen | ✅ |
 | **C5** | Templates: save a trip's preparation, apply it to a new trip with dates rebased | ✅ |
 | **QA** | Full code review and QA of 0.6.0; release built and rehearsed over 0.5.1 | ✅ |
-| **Phone** | 0.6.0 on the owner's phone | ⬜ — the owner's call |
+| **Phone** | 0.6.0 on the owner's phone | — never installed alone; superseded by 0.7.x (see *0.7.x*) |
 
 **Code review, what it found and fixed** (each committed, with a test where the logic allows):
 a template saved from a trip with long notes, or a task over a year from the start, could never be
@@ -583,6 +589,53 @@ itinerary PDF was made and shared. On the release build: a PDF shared from Files
 app and saved as a new item; old typed names became travellers by tap, and on the second trip were
 offered as *Use "Evelina"*; a profile in use could not be deleted; a preset list copied into a trip
 and ticked, with Undo.
+
+---
+
+## P — the roadmap · from 2026-10-19
+
+Scope of each phase: [`roadmap.md`](roadmap.md). Rationale: D32. One phase at a time; each starts
+only when the owner asks.
+
+| | Phase | ✓ |
+|---|---|---|
+| **P1** | UI & navigation: trip context in tab headers, active bottom tab, *Notes & lists* label on small phones, bottom-sheet corners | ⬜ in progress |
+| **P2** | Single-trip import/export & AI JSON import | ⬜ |
+| **P3** | Travellers, pricing & shared expenses (replaces N5b) | ⬜ |
+| **P4** | Currency conversion | ⬜ |
+| **P5** | Full-day map | ⬜ |
+| **P6** | Trips without fixed dates | ⬜ |
+| **P7** | Google Maps place import | ⬜ |
+| **P8** | Google Calendar export (.ics) | ⬜ |
+
+---
+
+## 0.7.x — directions, adult/child travellers, the beta · 2026-10-13 → 10-16
+
+Built after 0.6.0, largely from the owner's use on the phone. Recorded here after the fact
+(2026-10-19) from the commits and `product-status.md`; per-release verification notes were not
+written at the time, so this says what each release contains and only the verification that was
+recorded.
+
+| Version | versionCode | What it added | Commits |
+|---|---|---|---|
+| **0.7.0** | 10 | Google Maps directions: `domain/directions.ts`, `DirectionsSheet` (from: current location / previous stop / the stay for that day / a saved place; a mode), connector rows between located plans on the Timeline, *How to get there* on item detail, *Directions* on Overview's lead. No API key, no location permission ([`directions-plan.md`](directions-plan.md)). Then fixes D1–D7 to endpoint and route-day stay resolution, and review fixes C1/C2 | `375a057` → `a65763a` |
+| — | — | Muted deep-teal palette (`palette.ts`) and the PDF's styles with it | `d26d04c` |
+| **0.7.1** | 11 | Adult / child / not specified travellers: **migration 004** (`classification` on `travellers` and `trip_travellers`; a trip can override), **backup format 4**; pricing lines suggested from the trip's adults and children; reusable-list copy review; **migration 005** (`trips.converted_travellers`) so a converted typed name never reappears, **backup format 5**; atomic, idempotent legacy-name conversion | `c368ee0` → `5a1621b`, `cc38497` |
+| **0.7.2** | 12 | Places rows without prices or payment pills (`ItemRow showFinancials={false}`); `TravellerPicker` on New / Edit trip; Overview by stage (upcoming; ongoing with *Now / Up next* and *Your stay*; a past summary); **Quick Expense** sheet from Overview, with receipt photos; in-app feedback (`app/feedback.tsx`, `server/feedback-worker/`) behind `FEATURE_FEEDBACK_ENABLED`, **off** (D31) | `065d6bb` → `5f7f013` |
+| **0.7.3** | 13 | App icon Design B (adaptive foreground, background, monochrome); the friends-only beta build | `ba749a2` |
+
+**Recorded verification:** 895 tests across 54 suites, typecheck clean. Migrations 004 and 005 are
+tested in node (`migrations.test.ts`), formats 4 and 5 in `backup.queries.test.ts` and
+`export.test.ts`. The release ran on the emulator (`Pixel_10_Pro`, ≤ 4 GB RAM): cold start,
+navigation, the itinerary PDF offline, a full zip export. The Places, traveller-picker and
+Overview changes are reported as checked on the owner's S26 Ultra; the beta on a friend's smaller
+phone.
+
+**Not recorded, worth knowing before the next phone update:** an update rehearsal of 0.7.x over
+the exact APK on the phone (the routine in `session-handoff.md` §9). The 0.7.x APKs were not kept
+with the others in `%USERPROFILE%/.travel-organizer/` (0.7.3 is in the repo's `release/`), and
+which version the phone holds is not written down.
 
 ---
 
@@ -758,7 +811,7 @@ timeline place keep working. Expenses never convert currencies.
 | The user says | Do this |
 |---|---|
 | *"do the next C task"* / *"do the priority work"* | First unticked **C** → finish → commit → tick here. **Stop after C5** |
-| *"continue with the plan"* | First unticked task overall. Every C and S task is done, so that is an **N** |
+| *"continue with the plan"* / *"the next phase"* | The next phase in [`roadmap.md`](roadmap.md) — **only when the owner has asked for it**. Never start the following phase on your own |
 
 A task is not done until it is **committed and ticked here**. The conversation does not survive
 compaction; this file does.

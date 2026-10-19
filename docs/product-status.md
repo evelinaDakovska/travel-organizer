@@ -1,8 +1,10 @@
 # Product Status & Feature Matrix
 
-> **Current authoritative product reference.**
-> Last updated: 2026-10-16.
-> This document is the single source of truth for feature readiness, implementation status, and verification stages. Older planning and status documents (`docs/status.md`, `docs/plan.md`, `docs/fieldbook-plan.md`, `docs/feedback-plan.md`, `docs/paid-plan.md`) are linked below with notes on superseded sections.
+> **The feature-level view** — what a user can do, and where each feature was verified.
+> Last updated: 2026-10-19.
+> Task-level status, how each piece was built and verified, and which version is where live in
+> [`status.md`](status.md); where the two disagree, `status.md` wins. What comes next is
+> [`roadmap.md`](roadmap.md).
 
 ---
 
@@ -76,6 +78,16 @@
 
 ---
 
+### Also built in 0.7.x — verification on the phone not recorded
+
+- **Directions to Google Maps (0.7.0)**: from the Timeline's connector rows, *How to get there* on
+  item detail and *Directions* on Overview; from current location, the previous stop, the day's
+  stay or a saved place; no API key, no location permission. Covered by tests and the emulator.
+- **Adult / child travellers (0.7.1)**: a classification on each profile, overridable per trip;
+  per-person pricing lines suggested from it. Migrations 004 and 005, backup format 5.
+
+---
+
 ### Implemented, Prepared for Friends-Only Beta (v0.7.3)
 *Fully implemented, covered by automated test suite (895 tests across 54 suites), typecheck clean, verified end-to-end on clean emulator install (`Pixel_10_Pro`, <= 4 GB RAM) and ready for friends-only test distribution.*
 
@@ -128,8 +140,8 @@
 ### Deferred
 *Explicitly excluded from the current friends-only test build after evaluation.*
 
-- **Day-Wide Map View**:
-  - *Rationale*: Individual items already feature one-tap A→B Google Maps directions via geo-coordinates or formatted addresses. A full integrated interactive map adds significant bundle size, API key exposure risks, and complex offline tile-caching overhead without substantial daily travel value.
+- **Day-Wide Map View** — now on the roadmap as **Phase 5** (D32):
+  - *Rationale for leaving it out of the beta*: Individual items already feature one-tap A→B Google Maps directions via geo-coordinates or formatted addresses. A full integrated interactive map adds significant bundle size, API key exposure risks, and complex offline tile-caching overhead.
 - **Passports & Sensitive Traveller Documents**:
   - *Rationale*: Storing passport numbers, scans, and national IDs introduces high data privacy and security risks. The app deliberately remains an offline itinerary and booking document holder.
 - **Estimated Shopping Prices**:
@@ -142,10 +154,17 @@
 ### Clarifications & Proof-of-Concepts (Not Production)
 
 - **Gmail Integration**:
-  - *Current Status*: Isolated Proof-of-Concept (`scripts/gmail-poc/` or isolated tooling only).
-  - *Boundary*: **Not integrated into the production app.** Does not run on user devices. Real booking search, OAuth consent, and multi-account mailbox scraping require extensive owner testing and security reviews before any app-level consideration.
+  - *Current Status*: A standalone Gmail search proof of concept, verified **outside this repository** (nothing of it is in the repo).
+  - *Boundary*: **Not integrated into the production app**, deliberately; a universal email import (forwarding, shared files, `.eml`) is future work (`roadmap.md`, *Deferred*). Does not run on user devices. Real booking search, OAuth consent, and multi-account mailbox scraping require extensive owner testing and security reviews before any app-level consideration.
 
 ---
+
+### Roadmap (2026-10-19)
+
+Phases 1–8 in [`roadmap.md`](roadmap.md), done in order, each only when the owner asks: (1) UI &
+navigation fixes from the beta, (2) single-trip import/export and AI JSON import, (3) travellers,
+pricing and shared expenses, (4) currency conversion, (5) a full-day map, (6) trips without fixed
+dates, (7) Google Maps place import, (8) an `.ics` calendar export.
 
 ### Future Scope (Post-Friends Testing)
 
@@ -158,10 +177,11 @@
 
 ## 3. Related Documentation & Status Links
 
-- [`docs/status.md`](docs/status.md): Detailed task-level checklist (C1–C5, S1–S8, U1–U8, N1–N6, R1–R11, FB1–FB11).
+- [`status.md`](status.md): Task-level status (C, S, U, N, R, F, FB, 0.7.x, P1–P8) — wins on any disagreement.
+- [`roadmap.md`](roadmap.md): Phases 1–8.
 - [`CLAUDE.md`](../CLAUDE.md): Core architectural invariants, time model, and conventions.
-- [`docs/technical-reference.md`](docs/technical-reference.md): Database schema and technical contracts.
-- [`docs/plan.md`](docs/plan.md): Milestone roadmap (M0–M9). *(Note: Milestone descriptions reflect initial project sequencing; refer to this document for current feature status).*
-- [`docs/fieldbook-plan.md`](docs/fieldbook-plan.md): Completed Fieldbook design review (v0.6.0).
-- [`docs/paid-plan.md`](docs/paid-plan.md): Completed payment status implementation (v0.5.1).
-- [`docs/feedback-plan.md`](docs/feedback-plan.md): Superseded initial feedback design (v0.5.0); refer to Section 2 above for the current In-App Feedback Notebook architecture.
+- [`technical-reference.md`](technical-reference.md): Database schema and technical contracts.
+- [`plan.md`](plan.md): Milestone roadmap (M0–M9). *(Note: Milestone descriptions reflect initial project sequencing; refer to this document for current feature status).*
+- [`fieldbook-plan.md`](fieldbook-plan.md): Completed Fieldbook design review (v0.6.0).
+- [`paid-plan.md`](paid-plan.md): Completed payment status implementation (v0.5.1).
+- [`feedback-plan.md`](feedback-plan.md): Superseded initial feedback design (v0.5.0); refer to Section 2 above for the current In-App Feedback Notebook architecture.
