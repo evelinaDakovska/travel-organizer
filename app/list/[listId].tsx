@@ -10,6 +10,7 @@ import {
   listNameSchema,
   listProgress,
   progressText,
+  recipientsLine,
   type ListItem,
 } from '../../src/domain/lists';
 import { ListItemRow } from '../../src/features/lists/ListItemRow';
@@ -22,16 +23,13 @@ import {
   getList,
   LIST_TABLES,
   listListItems,
+  listRecipients,
   renameList,
   saveAsReusable,
   setListItemDone,
   updateReusableFrom,
 } from '../../src/repositories/lists';
-import {
-  listTravellers,
-  listTripTravellers,
-  TRAVELLER_TABLES,
-} from '../../src/repositories/travellers';
+import { listTripTravellers, TRAVELLER_TABLES } from '../../src/repositories/travellers';
 import { getTrip, listTrips, TRIP_TABLES } from '../../src/repositories/trips';
 import { CopyListPreviewSheet } from '../../src/features/lists/CopyListPreviewSheet';
 import { AddByName } from '../../src/ui/components/AddByName';
@@ -81,14 +79,19 @@ export default function ListScreen() {
     TRIP_TABLES,
     [tripId],
   );
-  // Who an item can be for: the trip's travellers, or anyone for a reusable list.
-  const { data: people } = useLiveQuery(
+  // Who each item is for (2B-0), and the trip's travellers, to know when that is everyone.
+  const { data: members } = useLiveQuery(
     useCallback(
-      (database) => (tripId ? listTripTravellers(database, tripId) : listTravellers(database)),
+      async (database) => (tripId ? listTripTravellers(database, tripId) : null),
       [tripId],
     ),
     TRAVELLER_TABLES,
     [tripId],
+  );
+  const { data: recipients } = useLiveQuery(
+    useCallback((database) => listRecipients(database, listId), [listId]),
+    [...LIST_TABLES, ...TRAVELLER_TABLES],
+    [listId],
   );
   const { data: source } = useLiveQuery(
     useCallback(
@@ -102,8 +105,11 @@ export default function ListScreen() {
   const items = useMemo(() => itemsQuery.data ?? [], [itemsQuery.data]);
   const open = useMemo(() => items.filter((item) => item.doneAt === null), [items]);
   const done = useMemo(() => items.filter((item) => item.doneAt !== null), [items]);
-  const nameOf = (item: ListItem) =>
-    people?.find((person) => person.id === item.travellerId)?.name ?? null;
+  const forWhom = (item: ListItem) =>
+    recipientsLine(
+      recipients?.get(item.id) ?? [],
+      members ? members.map((member) => member.id) : null,
+    );
 
   const view = queryView(listQuery);
   if (view !== 'ready' || !list) {
@@ -138,7 +144,7 @@ export default function ListScreen() {
       key={item.id}
       item={item}
       kind={list.kind}
-      person={nameOf(item)}
+      forWhom={forWhom(item)}
       onToggle={forTrip ? () => toggle(item) : undefined}
       onPress={() => openItem(item)}
     />

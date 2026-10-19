@@ -10,7 +10,7 @@ Rationale for the change of direction: [`decision-log.md`](decision-log.md) D32.
 | Phase | Scope | State |
 |---|---|---|
 | **1** | UI & navigation: trip context in tab headers, active bottom tab, *Notes & lists* label on small phones, bottom-sheet corners | **done — 0.7.4**, on the emulator; awaiting review |
-| **2** | Single-trip import/export and AI JSON import | **2A plan written** ([`phase2-plan.md`](phase2-plan.md)); 2B–2D wait for approval |
+| **2** | Single-trip import/export and AI JSON import | **2A plan written** ([`phase2-plan.md`](phase2-plan.md)); **2B-0 done — 0.8.0** (Me, several people per list item); 2B–2D wait for approval |
 | **3** | Travellers, pricing and shared expenses | not started |
 | **4** | Currency conversion | not started |
 | **5** | Full-day map | not started |
@@ -37,6 +37,12 @@ explained and agreed before it is written.
 4. One clean rounded top edge on every bottom sheet — no double corners.
 
 No schema change.
+
+## Phase 2B-0 — "Me" and several people per list item (prerequisite, done in 0.8.0)
+
+A persistent "Me" — one traveller profile marked as the person using the app, linked to an existing
+profile or created, added to existing trips only after a confirmed preview, ticked on every new
+trip — and packing/shopping items for any number of people. Migration 006, backup format 6. D33.
 
 ## Phase 2 — Single-trip import/export & AI JSON import
 

@@ -6,10 +6,12 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import {
   CLASSIFICATION_LABELS,
   legacyNames,
+  travellerLabel,
   travellerNameSchema,
   type Traveller,
   type TravellerClassification,
 } from '../../../src/domain/traveller';
+import { useMe } from '../../../src/features/travellers/useMe';
 import { queryView } from '../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import {
@@ -49,6 +51,7 @@ export default function TripTravellersScreen() {
   const c = useColors();
   const db = useSQLiteContext();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  const { meId } = useMe();
 
   const tripQuery = useLiveQuery(
     useCallback((database) => getTrip(database, tripId), [tripId]),
@@ -226,7 +229,7 @@ export default function TripTravellersScreen() {
               {members.map((member) => (
                 <ListRow
                   key={member.id}
-                  title={member.name}
+                  title={travellerLabel(member, meId)}
                   subtitle={`For this trip: ${CLASSIFICATION_LABELS[member.classification]}`}
                   onPress={() => setEditingMember(member)}
                   trailing={
@@ -306,7 +309,7 @@ export default function TripTravellersScreen() {
               {others.map((profile) => (
                 <ListRow
                   key={profile.id}
-                  title={profile.name}
+                  title={travellerLabel(profile, meId)}
                   trailing={
                     <HeaderAction
                       icon="add"

@@ -2,7 +2,12 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 export const SETTINGS_TABLES = ['settings'] as const;
 
-export type SettingKey = 'default_travellers' | 'default_currency' | 'notification_lead_minutes';
+export type SettingKey =
+  | 'default_travellers'
+  | 'default_currency'
+  | 'notification_lead_minutes'
+  /** The traveller profile that is the person using the app on this phone (2B-0). */
+  | 'me_traveller_id';
 
 export async function getSetting(
   db: SQLiteDatabase,

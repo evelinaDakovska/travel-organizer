@@ -137,6 +137,18 @@ Use these words precisely, in code and in conversation.
 | **Timeline** | A **derived view** over TripItems. Never a separate data model. |
 | **Now / Next** | Derived from items, **not** from trip dates. |
 
+**People — six concepts, never conflated** (2B-0, D33):
+
+| Term | Meaning | Stored |
+|---|---|---|
+| **Traveller profile** | A person, kept once, reused across trips: name + adult/child/unspecified | `travellers` (global) |
+| **Me** | The profile that is the person using the app *on this phone*. A local mark, not an account, not an owner, not a payer | `settings.me_traveller_id` → a `travellers` id |
+| **Trip membership** | Who is on a trip, with a per-trip classification | `trip_travellers` |
+| **Activity participant** | Who goes to one booking/plan. None = *not specified*, never "everyone" | `item_participants` |
+| **List recipient** | Who a packing/shopping item is for — any number; never a quantity | `list_item_recipients` |
+| **Financially responsible adult** | *Future (Phase 3)*: who pays for a child. Not modelled yet | — |
+| *(Account user, trip owner)* | *Future (accounts/shared trips)*. Neither exists; Me must not be reused as either | — |
+
 ## 5. Load-bearing architecture decisions
 
 Full detail in `docs/technical-reference.md`; rationale in `docs/decision-log.md`.
@@ -156,7 +168,8 @@ Plus `trips`, `trip_notes`, `resources`, `settings`, since migration 002 `expens
 `payments` (N5; an expense is not a TripItem, D25), and since migration 003 `travellers`,
 `trip_travellers`, `item_participants`, `lists`, `list_items`, `templates`, `template_uses`
 (Fieldbook C1–C5). Migration 004 adds adult/child `classification` to `travellers` and
-`trip_travellers`; 005 adds `trips.converted_travellers`. Backup format 5. No per-kind tables.
+`trip_travellers`; 005 adds `trips.converted_travellers`; 006 adds `list_item_recipients`
+(`list_items.traveller_id` is legacy since). Backup format 6. No per-kind tables.
 Kind-specific extras live in a Zod-validated `details` JSON column.
 
 ### 5.3 Time: store wall-clock + IANA zone, derive the instant

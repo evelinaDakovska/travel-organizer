@@ -5,6 +5,8 @@ import { EXPORT_COLUMNS } from './queries';
 import { asyncDatabase } from './testing/asyncDatabase';
 import {
   buildExportDocument,
+  EXPORT_FORMAT_VERSION,
+  filterTablesForTrip,
   parseExportDocument,
   planImport,
   type ExportTables,
@@ -390,7 +392,7 @@ describe('the backup round trip', () => {
     const source = fresh();
     seed(source);
     const current = JSON.parse(JSON.stringify(await documentFrom(source)));
-    const futureDoc = { ...current, formatVersion: 6 };
+    const futureDoc = { ...current, formatVersion: EXPORT_FORMAT_VERSION + 1 };
 
     const parsed = parseExportDocument(futureDoc);
     expect(parsed.ok).toBe(false);
@@ -609,5 +611,93 @@ describe('settings follow the import mode', () => {
     await restoreInto(target, source, 'merge');
 
     expect(valueIn(target)).toBe('["Evelina"]');
+  });
+});
+
+describe('who a list item is for (format 6)', () => {
+  const recipientsIn = (db: Database.Database) =>
+    db
+      .prepare(`SELECT list_item_id, traveller_id FROM list_item_recipients ORDER BY 1, 2`)
+      .all();
+  const forItem = (db: Database.Database, item: string, ...people: string[]) => {
+    for (const person of people) {
+      run(
+        db,
+        `INSERT INTO list_item_recipients (list_item_id, traveller_id) VALUES (?, ?)`,
+        item,
+        person,
+      );
+    }
+  };
+
+  it('restores an item for several people with every one of them', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    forItem(source, 'm1', 'ev', 'mia');
+    const target = fresh();
+
+    await restoreInto(target, source, 'merge');
+
+    expect(recipientsIn(target)).toEqual([
+      { list_item_id: 'm1', traveller_id: 'ev' },
+      { list_item_id: 'm1', traveller_id: 'mia' },
+    ]);
+  });
+
+  it("turns a format-5 backup's one person per item into that one recipient", async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source); // m1 is for 'mia' through the old column only
+    const onWire = JSON.parse(JSON.stringify(await documentFrom(source)));
+    onWire.formatVersion = 5;
+    delete onWire.tables.listItemRecipients;
+    const parsed = parseExportDocument(onWire);
+    if (!parsed.ok) throw new Error(parsed.reason);
+    const target = fresh();
+
+    await applyImport(target, planImport(parsed.document, [], 'merge', ['media/r1.pdf']));
+
+    expect(recipientsIn(target)).toEqual([{ list_item_id: 'm1', traveller_id: 'mia' }]);
+    expect(target.prepare(`SELECT traveller_id FROM list_items WHERE id = 'm1'`).get()).toEqual({
+      traveller_id: 'mia',
+    });
+  });
+
+  it('keep mine leaves the people on an item already here exactly as they are', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    forItem(source, 'm1', 'ev', 'mia');
+    const target = fresh();
+    seed(target);
+    seedFieldbook(target);
+    forItem(target, 'm1', 'ev');
+
+    await restoreInto(target, source, 'merge');
+
+    expect(recipientsIn(target)).toEqual([{ list_item_id: 'm1', traveller_id: 'ev' }]);
+  });
+
+  it('a one-trip selection carries its items’ recipients and the profiles they name', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    run(
+      source,
+      `INSERT INTO travellers (id, name, sort_order, created_at, updated_at)
+       VALUES ('aunt', 'Aunt Vera', 9, ?, ?)`,
+      now,
+      now,
+    );
+    forItem(source, 'm1', 'ev', 'aunt'); // 'aunt' is on no trip
+
+    const one = filterTablesForTrip(await readAll(source), 't1');
+
+    expect([...one.listItemRecipients].sort((x, y) => x.traveller_id.localeCompare(y.traveller_id))).toEqual([
+      { list_item_id: 'm1', traveller_id: 'aunt' },
+      { list_item_id: 'm1', traveller_id: 'ev' },
+    ]);
+    expect(one.travellers.map((t) => t.id).sort()).toEqual(['aunt', 'ev', 'mia']);
   });
 });

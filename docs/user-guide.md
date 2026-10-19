@@ -422,7 +422,11 @@ from it never changes your kept list, and the kept list's later changes never re
 Copying the same list twice asks first.
 
 Each line has **What**, and optionally **How many**, a **Unit**, a **Group** (*Clothes*,
-*Toiletries*…), a **Note**, and who it is **For**. Tap the box to tick it — packed, or bought —
+*Toiletries*…), a **Note**, and who it is **For** — tick one person, several, or nobody: *Hand
+warmers* for you, Misho and Mitko is one line, still the quantity you typed. The list then reads
+*For Evelina, Misho*, or *For Everyone* when every traveller on the trip is ticked (someone who
+joins the trip later is not added to old lines). Someone missing? **+ Add new traveller** puts a
+saved person on the trip, or adds someone new, and ticks them. Tap the box to tick it — packed, or bought —
 and **Undo** shows for 8 seconds. Ticked lines fold away under *Packed (8)* or *Bought (3)*. *Packed 8 of 12* counts
 lines, not pieces.
 
@@ -517,6 +521,13 @@ Photograph receipts as you pay.
 ## 9. Travellers, templates and the itinerary PDF
 
 ### Travellers
+
+**You.** Under **Your trips → Travellers → Which traveller are you?** tell the app which profile
+is you — choose yours if you are already saved (do not make a second one), or add yourself. You then
+show as *Evelina (Me)* wherever people are chosen, and every **new** trip starts with you ticked.
+Trips made before are listed under **Trips you are not on yet**: tick the ones to join and confirm.
+That adds you to the trip only — who goes to each booking, prices, expenses and lists stay exactly
+as they were. "Me" is only on this phone; it is not an account.
 
 The people you travel with are kept once, under **Your trips → Travellers**: a name, and whether
 they are an **Adult**, a **Child** or *Not specified* — no birth dates. When you create or edit a

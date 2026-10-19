@@ -6,6 +6,7 @@ import {
   moveInOrder,
   PRESET_LISTS,
   progressText,
+  recipientsLine,
 } from './lists';
 
 describe('listProgress and progressText', () => {
@@ -79,5 +80,43 @@ describe('PRESET_LISTS', () => {
     expect(new Set(PRESET_LISTS.map((preset) => preset.kind))).toEqual(
       new Set(['packing', 'shopping']),
     );
+  });
+});
+
+describe('recipientsLine (2B-0)', () => {
+  const ev = { id: 'ev', name: 'Evelina' };
+  const misho = { id: 'misho', name: 'Misho' };
+  const mitko = { id: 'mitko', name: 'Mitko' };
+
+  it('is nothing for no one', () => {
+    expect(recipientsLine([], ['ev', 'misho'])).toBeNull();
+  });
+
+  it('names the people chosen', () => {
+    expect(recipientsLine([ev, misho], ['ev', 'misho', 'mitko'])).toBe('Evelina, Misho');
+  });
+
+  it('says Everyone only when every one of two or more travellers is chosen', () => {
+    expect(recipientsLine([ev, misho, mitko], ['ev', 'misho', 'mitko'])).toBe('Everyone');
+    expect(recipientsLine([ev], ['ev'])).toBe('Evelina');
+  });
+
+  it('stops saying Everyone once the trip has someone the item is not for', () => {
+    expect(recipientsLine([ev, misho], ['ev', 'misho', 'mitko'])).toBe('Evelina, Misho');
+  });
+
+  it('names people on a reusable list, which has no trip', () => {
+    expect(recipientsLine([ev, misho], null)).toBe('Evelina, Misho');
+  });
+});
+
+describe('listItemInputSchema recipients', () => {
+  it('keeps each person once', () => {
+    const parsed = listItemInputSchema.parse({ label: 'Gloves', recipientIds: ['a', 'b', 'a'] });
+    expect(parsed.recipientIds).toEqual(['a', 'b']);
+  });
+
+  it('leaves recipients out when not given', () => {
+    expect(listItemInputSchema.parse({ label: 'Gloves' }).recipientIds).toBeUndefined();
   });
 });

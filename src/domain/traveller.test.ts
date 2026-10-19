@@ -2,6 +2,7 @@ import {
   legacyNames,
   namesLine,
   parseTravellerRow,
+  travellerLabel,
   travellerNameSchema,
   tripPeopleLine,
   usesText,
@@ -152,5 +153,13 @@ describe('usesText', () => {
     );
     expect(usesText({ trips: [], items: 1 })).toBe('Is on 1 booking');
     expect(usesText({ trips: [], items: 0 })).toBeNull();
+  });
+});
+
+describe('travellerLabel (2B-0)', () => {
+  it('marks the profile that is Me, and only that one', () => {
+    expect(travellerLabel({ id: 'ev', name: 'Evelina' }, 'ev')).toBe('Evelina (Me)');
+    expect(travellerLabel({ id: 'mia', name: 'Mia' }, 'ev')).toBe('Mia');
+    expect(travellerLabel({ id: 'ev', name: 'Evelina' }, null)).toBe('Evelina');
   });
 });

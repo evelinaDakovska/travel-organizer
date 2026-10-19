@@ -5,26 +5,28 @@ import { ListRow } from '../../ui/components/ListRow';
 type Props = {
   item: ListItem;
   kind: ListKind;
-  /** The person it is for, by name. */
-  person?: string | null;
+  /** Who it is for, as one line — *Evelina, Misho* or *Everyone* (`recipientsLine`). */
+  forWhom?: string | null;
   /** Ticking: only on a trip's list; a reusable list has no box. */
   onToggle?: () => void;
   onPress: () => void;
 };
 
 /** One thing on a list: what, how much, for whom — and on a trip's list, packed or bought. */
-export function ListItemRow({ item, kind, person, onToggle, onPress }: Props) {
+export function ListItemRow({ item, kind, forWhom, onToggle, onPress }: Props) {
   const done = item.doneAt !== null;
   const verb = kind === 'packing' ? 'packed' : 'bought';
+  const forText = forWhom ? `For ${forWhom}` : null;
+  const name = forWhom ? `${item.label}, for ${forWhom}` : item.label;
 
   return (
     <ListRow
       title={item.label}
-      subtitle={[amountText(item), person, item.note].filter(Boolean).join(' · ') || null}
+      subtitle={[amountText(item), forText, item.note].filter(Boolean).join(' · ') || null}
       struck={done}
       dimmed={done}
       onPress={onPress}
-      accessibilityLabel={done ? `${item.label}, ${verb}` : item.label}
+      accessibilityLabel={done ? `${name}, ${verb}` : name}
       leading={
         onToggle ? (
           <CheckBox

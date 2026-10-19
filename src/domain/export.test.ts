@@ -410,13 +410,13 @@ describe('format 3: travellers and lists', () => {
     }
   });
 
-  it('round-trips format 5 with converted_travellers preserved', () => {
+  it('round-trips the current format with converted_travellers preserved', () => {
     const t5Tables = {
       ...emptyExportTables(),
       trips: [{ ...trip('t1'), converted_travellers: '["Legacy Alice"]' }],
     };
     const doc = buildExportDocument(t5Tables, { exportedAt: at });
-    expect(doc.formatVersion).toBe(5);
+    expect(doc.formatVersion).toBe(EXPORT_FORMAT_VERSION);
     const parsed = parseExportDocument(doc);
     expect(parsed.ok).toBe(true);
     if (parsed.ok) {
@@ -424,9 +424,9 @@ describe('format 3: travellers and lists', () => {
     }
   });
 
-  it('rejects format 6 (newer version) rather than silently dropping newer columns', () => {
+  it('rejects a newer format rather than silently dropping newer columns', () => {
     const parsed = parseExportDocument({
-      formatVersion: 6,
+      formatVersion: EXPORT_FORMAT_VERSION + 1,
       app: 'travel-organizer',
       exportedAt: at,
       tables: {
@@ -440,7 +440,7 @@ describe('format 3: travellers and lists', () => {
     });
     expect(parsed.ok).toBe(false);
     if (!parsed.ok) {
-      expect(parsed.reason).toMatch(/newer version \(format 6\)/);
+      expect(parsed.reason).toContain(`newer version (format ${EXPORT_FORMAT_VERSION + 1})`);
     }
   });
 });

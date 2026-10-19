@@ -128,7 +128,8 @@ media/<id>.<ext>          each attached file, once (only when files are included
   "tables": {                           // the backup's raw row shapes and Zod schemas, unchanged
     "trips": [1 row], "tripItems": [], "itemParticipants": [], "tripTravellers": [],
     "travellers": [ only those referenced, see below ], "tripNotes": [], "expenses": [],
-    "payments": [], "resources": [], "lists": [ trip copies only ], "listItems": []
+    "payments": [], "resources": [], "lists": [ trip copies only ], "listItems": [],
+    "listItemRecipients": []        // format 6 (2B-0)
   },
   "files": [
     { "storedPath": "media/<id>.pdf", "sizeBytes": 123456, "sha256": "hex",
@@ -196,6 +197,12 @@ before sharing, the way the itinerary PDF does.
   the trip's zone after insert (`recomputeTripInstants` logic) rather than trusted.
 
 ### 5.3 Travellers
+
+*(Updated after 2B-0, 0.8.0.)* An archive carries `listItemRecipients` (format 6, D33): they are
+remapped with the list items (`list_item_id`) and the traveller choice (`traveller_id`) like
+participants. **Me never travels**: `settings` is not in a trip archive, so the importing phone's
+Me is unchanged and no imported traveller becomes Me by itself. A same-name match with the
+importing phone's Me is offered like any other match (*Use existing "Evelina (Me)"*), never assumed.
 
 Never merged silently (FB-12, D31). For each traveller in the archive the preview offers:
 **Add as a new traveller** (default) or, when a profile with the same name exists here, **Use

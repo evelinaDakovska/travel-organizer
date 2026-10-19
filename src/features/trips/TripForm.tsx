@@ -6,6 +6,7 @@ import { StyleSheet } from 'react-native';
 
 import { tripInputSchema, type TripInput } from '../../domain/trip';
 import { TravellerPicker } from '../travellers/TravellerPicker';
+import { useMe } from '../travellers/useMe';
 import { useLiveQuery } from '../../hooks/useLiveQuery';
 import { createTraveller, listTravellers, TRAVELLER_TABLES } from '../../repositories/travellers';
 import { Button } from '../../ui/components/Button';
@@ -35,6 +36,7 @@ export function TripForm({
 }: Props) {
   const db = useSQLiteContext();
   const { data: profiles = [] } = useLiveQuery(listTravellers, TRAVELLER_TABLES);
+  const { meId } = useMe();
   const [selectedTravellerIds, setSelectedTravellerIds] = useState<string[]>(
     defaultTravellerIds ?? [],
   );
@@ -141,6 +143,7 @@ export function TripForm({
             return await createTraveller(db, name, classification);
           }}
           legacyNames={defaultValues.travellers ?? []}
+          meId={meId}
         />
       </Field>
 

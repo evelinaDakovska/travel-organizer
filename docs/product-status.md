@@ -88,6 +88,15 @@
 
 ---
 
+### Built in 0.8.0 (roadmap 2B-0) — verified on the emulator, not yet on a phone
+
+- **Me**: one traveller profile marked as you on this phone — linked to an existing profile or
+  added; ticked on every new trip; offered as *Evelina (Me)*; added to older trips only after a
+  confirmed choice, as a member only (bookings, prices, expenses and lists untouched).
+- **Several people per packing/shopping item**, with *For Evelina, Misho* / *For Everyone*, and
+  *Add new traveller* (or link a saved one) from the item. Old single assignments carried over
+  (migration 006); old backups restore the same way (backup format 6).
+
 ### Built in 0.7.4 (roadmap Phase 1) — verified on the emulator, not yet on a phone
 
 - **Trip context on every inner tab**: the trip's name and destination above *Timeline*, *Places*,

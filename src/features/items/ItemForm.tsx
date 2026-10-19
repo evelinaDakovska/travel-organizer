@@ -41,7 +41,8 @@ import {
   type TripItemKind,
   type TripItemStatus,
 } from '../../domain/tripItem';
-import { CLASSIFICATION_LABELS, type Traveller } from '../../domain/traveller';
+import { CLASSIFICATION_LABELS, travellerLabel, type Traveller } from '../../domain/traveller';
+import { useMe } from '../travellers/useMe';
 import { followPlace, lastKnownPlace } from '../../domain/zoneHints';
 import { Button } from '../../ui/components/Button';
 import { ChoiceField } from '../../ui/components/ChoiceField';
@@ -162,6 +163,7 @@ export function ItemForm({
   const c = useColors();
 
   const [choosingKind, setChoosingKind] = useState(false);
+  const { meId } = useMe();
   // Only the trip's travellers can be ticked; one taken off the trip since is left out on save.
   const [participants, setParticipants] = useState<string[]>(() =>
     defaultParticipants.filter((id) => travellers.some((traveller) => traveller.id === id)),
@@ -418,10 +420,11 @@ export function ItemForm({
           <MultiChoiceField
             options={travellers.map((traveller) => ({
               id: traveller.id,
+              // *Evelina (Me)*; a classification is shown for anyone else, to tell namesakes apart.
               label:
-                traveller.classification !== 'unspecified'
+                traveller.id !== meId && traveller.classification !== 'unspecified'
                   ? `${traveller.name} (${CLASSIFICATION_LABELS[traveller.classification]})`
-                  : traveller.name,
+                  : travellerLabel(traveller, meId),
             }))}
             selected={participants}
             onChange={setParticipants}

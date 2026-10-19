@@ -1,6 +1,7 @@
 import { randomUUID } from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { getSetting, setSetting } from './settings';
 import { markLegacyTravellerConverted } from './trips';
 
 import {
@@ -16,6 +17,7 @@ import {
   SELECT_TRAVELLER_TRIPS,
   SELECT_TRAVELLERS,
   SELECT_TRIP_TRAVELLERS,
+  SELECT_TRIPS_WITHOUT_TRAVELLER,
   UPDATE_TRAVELLER_CLASSIFICATION,
   UPDATE_TRIP_TRAVELLER_CLASSIFICATION,
 } from '../db/queries';
@@ -27,6 +29,75 @@ import {
 } from '../domain/traveller';
 
 export const TRAVELLER_TABLES = ['travellers', 'trip_travellers', 'item_participants'] as const;
+
+/** What "Me" is read from: the setting, and the profile it names. */
+export const ME_TABLES = ['settings', 'travellers'] as const;
+
+/**
+ * The traveller profile that is the person using the app (2B-0) — a profile like any other,
+ * marked by one setting, so there can only ever be one. A local, per-phone identity: not an
+ * account, and not who owns or pays for anything. Null until chosen, or if the profile is gone.
+ */
+export async function getMe(db: SQLiteDatabase): Promise<Traveller | null> {
+  const id = await getSetting(db, 'me_traveller_id');
+  if (!id) return null;
+  return (await listTravellers(db)).find((traveller) => traveller.id === id) ?? null;
+}
+
+/** Marks an existing profile as Me. Nothing else changes: no trip, item or list is touched. */
+export async function setMe(db: SQLiteDatabase, travellerId: string): Promise<void> {
+  const exists = (await listTravellers(db)).some((traveller) => traveller.id === travellerId);
+  if (!exists) throw new Error('That traveller no longer exists');
+  await setSetting(db, 'me_traveller_id', travellerId);
+}
+
+/** A new profile that is Me — an adult unless said otherwise — in one step. */
+export async function createMe(
+  db: SQLiteDatabase,
+  name: string,
+  classification: TravellerClassification = 'adult',
+): Promise<string> {
+  let id = '';
+  await db.withTransactionAsync(async () => {
+    id = await createTraveller(db, name, classification);
+    await setSetting(db, 'me_traveller_id', id);
+  });
+  return id;
+}
+
+export type TripWithoutTraveller = { id: string; name: string; startDate: string; endDate: string };
+
+export async function listTripsWithout(
+  db: SQLiteDatabase,
+  travellerId: string,
+): Promise<TripWithoutTraveller[]> {
+  const rows = await db.getAllAsync<{
+    id: string;
+    name: string;
+    start_date: string;
+    end_date: string;
+  }>(SELECT_TRIPS_WITHOUT_TRAVELLER, { $id: travellerId });
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    startDate: row.start_date,
+    endDate: row.end_date,
+  }));
+}
+
+/**
+ * Puts a traveller on the trips chosen, all or none. Membership only: who goes to each booking,
+ * prices, expenses and lists are left exactly as they are. A trip they are on already is skipped.
+ */
+export async function addTravellerToTrips(
+  db: SQLiteDatabase,
+  travellerId: string,
+  tripIds: readonly string[],
+): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    for (const tripId of new Set(tripIds)) await addTripTraveller(db, tripId, travellerId);
+  });
+}
 
 export async function listTravellers(db: SQLiteDatabase): Promise<Traveller[]> {
   const rows = await db.getAllAsync<TravellerRow>(SELECT_TRAVELLERS);
@@ -82,9 +153,11 @@ export async function travellerUses(db: SQLiteDatabase, id: string): Promise<Tra
 export async function deleteTraveller(
   db: SQLiteDatabase,
   id: string,
-): Promise<{ deleted: true } | { deleted: false; uses: TravellerUses }> {
+): Promise<{ deleted: true } | { deleted: false; uses: TravellerUses; isMe?: true }> {
   const uses = await travellerUses(db, id);
   if (uses.trips.length > 0 || uses.items > 0) return { deleted: false, uses };
+  // Me is not deleted by accident: another profile is made Me first.
+  if ((await getSetting(db, 'me_traveller_id')) === id) return { deleted: false, uses, isMe: true };
   await db.runAsync(`DELETE FROM travellers WHERE id = $id`, { $id: id });
   return { deleted: true };
 }

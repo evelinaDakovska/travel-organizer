@@ -28,7 +28,6 @@ export type ListItem = {
   unit: string | null;
   category: string | null;
   note: string | null;
-  travellerId: string | null;
   /** Packed or bought. Only ever set on a trip's copy. */
   doneAt: string | null;
   sortOrder: number;
@@ -53,6 +52,10 @@ export type ListItemRow = {
   unit: string | null;
   category: string | null;
   note: string | null;
+  /**
+   * Legacy (until 0.7.x): the one person an item was for. Since migration 006 who it is for lives
+   * in `list_item_recipients`; this column is kept as it was and no longer read or written.
+   */
   traveller_id: string | null;
   done_at: string | null;
   sort_order: number;
@@ -82,7 +85,6 @@ export function parseListItemRow(row: ListItemRow): ListItem {
     unit: row.unit,
     category: row.category,
     note: row.note,
-    travellerId: row.traveller_id,
     doneAt: row.done_at,
     sortOrder: row.sort_order,
   };
@@ -104,7 +106,12 @@ export const listItemInputSchema = z.object({
   unit: optionalText(20),
   category: optionalText(40),
   note: optionalText(200),
-  travellerId: z.string().min(1).optional(),
+  /** Who it is for: none, one or several people, each once (2B-0). */
+  recipientIds: z
+    .array(z.string().min(1))
+    .max(100)
+    .optional()
+    .transform((ids) => (ids ? [...new Set(ids)] : undefined)),
 });
 
 /** What an item is saved from: the schema's output, or a preset's literal. */
@@ -114,8 +121,26 @@ export type ListItemInput = {
   unit?: string;
   category?: string;
   note?: string;
-  travellerId?: string;
+  /** Traveller profile ids. Never a quantity: two people do not make it two of the thing. */
+  recipientIds?: string[];
 };
+
+/**
+ * Who an item is for, as one line: *Evelina, Misho*. *Everyone* only when the trip has two or
+ * more travellers and every one of them is chosen — a summary of what is saved, never a rule: a
+ * traveller added to the trip later is not added to the item. Null when it is for no one.
+ */
+export function recipientsLine(
+  recipients: readonly { id: string; name: string }[],
+  tripMemberIds: readonly string[] | null,
+): string | null {
+  if (recipients.length === 0) return null;
+  const chosen = new Set(recipients.map((person) => person.id));
+  if (tripMemberIds && tripMemberIds.length > 1 && tripMemberIds.every((id) => chosen.has(id))) {
+    return 'Everyone';
+  }
+  return recipients.map((person) => person.name).join(', ');
+}
 
 /** Groups offered for a new item; any other group can be typed. Never required. */
 export const SUGGESTED_GROUPS: Record<ListKind, readonly string[]> = {

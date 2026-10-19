@@ -6,11 +6,14 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   listItemInputSchema,
   moveInOrder,
+  recipientsLine,
   SUGGESTED_GROUPS,
   type List,
   type ListItem,
 } from '../../src/domain/lists';
 import type { Traveller } from '../../src/domain/traveller';
+import { TravellerPicker } from '../../src/features/travellers/TravellerPicker';
+import { useMe } from '../../src/features/travellers/useMe';
 import { queryView } from '../../src/hooks/queryView';
 import { useBusy } from '../../src/hooks/useBusy';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
@@ -19,12 +22,16 @@ import {
   deleteListItem,
   getList,
   getListItem,
+  getRecipientIds,
   LIST_TABLES,
   listListItems,
   setListOrder,
   updateListItem,
 } from '../../src/repositories/lists';
 import {
+  addTripTraveller,
+  createTraveller,
+  createTripTraveller,
   listTravellers,
   listTripTravellers,
   TRAVELLER_TABLES,
@@ -35,10 +42,12 @@ import { FormScroll } from '../../src/ui/components/FormScroll';
 import { QueryScreen } from '../../src/ui/components/QueryStates';
 import { Screen } from '../../src/ui/components/Screen';
 import { ScreenHeader } from '../../src/ui/components/ScreenHeader';
-import { SelectField } from '../../src/ui/components/SelectField';
 import { opacity, radius, spacing, type, useColors } from '../../src/ui/tokens';
 
-/** One thing on a list (C1): what, how many, which group, for whom, a note — and its place. */
+/**
+ * One thing on a list (C1): what, how many, which group, for whom — any number of people (2B-0) —
+ * a note, and its place.
+ */
 export default function ListItemScreen() {
   const { itemId } = useLocalSearchParams<{ itemId: string }>();
 
@@ -49,11 +58,14 @@ export default function ListItemScreen() {
         if (!item) return null;
         const list = await getList(database, item.listId);
         if (!list) return null;
-        // Who it can be for: the trip's travellers, or anyone on a reusable list.
-        const people = list.tripId
-          ? await listTripTravellers(database, list.tripId)
-          : await listTravellers(database);
-        return { item, list, people };
+        // Who it can be for: the trip's travellers, or anyone on a reusable list — a profile
+        // either way, never someone a trip does not know as a profile.
+        const [everyone, members, recipientIds] = await Promise.all([
+          listTravellers(database),
+          list.tripId ? listTripTravellers(database, list.tripId) : Promise.resolve(null),
+          getRecipientIds(database, item.id),
+        ]);
+        return { item, list, everyone, members, recipientIds };
       },
       [itemId],
     ),
@@ -73,18 +85,38 @@ export default function ListItemScreen() {
       />
     );
   }
-  const { item, list, people } = query.data;
+  const { item, list, everyone, members, recipientIds } = query.data;
 
   return (
     <Screen>
       <ScreenHeader title={item.label} subtitle={list.name} />
       {/* Keyed by the item: an edit saved elsewhere starts the form afresh. */}
-      <ItemForm key={`${item.id}:${item.label}`} item={item} list={list} people={people} />
+      <ItemForm
+        key={`${item.id}:${item.label}`}
+        item={item}
+        list={list}
+        everyone={everyone}
+        members={members}
+        initialRecipients={recipientIds}
+      />
     </Screen>
   );
 }
 
-function ItemForm({ item, list, people }: { item: ListItem; list: List; people: Traveller[] }) {
+function ItemForm({
+  item,
+  list,
+  everyone,
+  members,
+  initialRecipients,
+}: {
+  item: ListItem;
+  list: List;
+  everyone: Traveller[];
+  /** The trip's travellers; null on a reusable list. */
+  members: Traveller[] | null;
+  initialRecipients: string[];
+}) {
   const c = useColors();
   const db = useSQLiteContext();
   const router = useRouter();
@@ -93,7 +125,24 @@ function ItemForm({ item, list, people }: { item: ListItem; list: List; people: 
   const [unit, setUnit] = useState(item.unit ?? '');
   const [category, setCategory] = useState(item.category ?? '');
   const [note, setNote] = useState(item.note ?? '');
-  const [travellerId, setTravellerId] = useState(item.travellerId);
+  const [recipients, setRecipients] = useState<string[]>(initialRecipients);
+  const { meId } = useMe();
+  // On a trip: its travellers, plus anyone already chosen who has since left it — kept and shown,
+  // never dropped unseen. Everyone else saved can be put on the trip from the add sheet.
+  const shown = members
+    ? [
+        ...members,
+        ...everyone.filter(
+          (person) => recipients.includes(person.id) && !members.some((m) => m.id === person.id),
+        ),
+      ]
+    : everyone;
+  const notShown = members ? everyone.filter((person) => !shown.some((s) => s.id === person.id)) : [];
+  // In the order the list shows them (SELECT_LIST_RECIPIENTS), so the two never disagree.
+  const chosen = shown
+    .filter((person) => recipients.includes(person.id))
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+  const forLine = recipientsLine(chosen, members ? members.map((member) => member.id) : null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, run] = useBusy();
 
@@ -104,7 +153,7 @@ function ItemForm({ item, list, people }: { item: ListItem; list: List; people: 
       unit,
       category,
       note,
-      travellerId: travellerId ?? undefined,
+      recipientIds: recipients,
     });
     if (!parsed.success) {
       setErrors(
@@ -197,18 +246,27 @@ function ItemForm({ item, list, people }: { item: ListItem; list: List; people: 
         </View>
       </Field>
 
-      {people.length > 0 ? (
-        <Field label="For" hint="Optional">
-          <SelectField
-            value={travellerId}
-            options={people.map((person) => person.id)}
-            labelFor={(id) => people.find((person) => person.id === id)?.name ?? ''}
-            onChange={setTravellerId}
-            title="Who is it for"
-            noneLabel="Anyone"
-          />
-        </Field>
-      ) : null}
+      <Field
+        label="For"
+        hint={
+          forLine ? `For: ${forLine}` : 'Optional — tick one or more people. It does not change how many.'
+        }>
+        <TravellerPicker
+          profiles={shown}
+          selectedIds={recipients}
+          onChange={setRecipients}
+          meId={meId}
+          existingToAdd={notShown}
+          onAddExisting={
+            list.tripId ? (id) => addTripTraveller(db, list.tripId!, id) : undefined
+          }
+          onAddNewProfile={(name, classification) =>
+            list.tripId
+              ? createTripTraveller(db, list.tripId, name, classification)
+              : createTraveller(db, name, classification)
+          }
+        />
+      </Field>
 
       <Field label="Note" hint="Optional">
         <Input value={note} onChangeText={setNote} placeholder="The thick ones" />

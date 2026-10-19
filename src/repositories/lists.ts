@@ -2,14 +2,19 @@ import { randomUUID } from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import {
+  COPY_LIST_ITEM_RECIPIENTS,
   COPY_LIST_ITEMS,
   COUNT_TRIP_COPIES,
+  DELETE_LIST_ITEM_RECIPIENTS,
   INSERT_LIST,
   INSERT_LIST_ITEM,
+  INSERT_LIST_ITEM_RECIPIENT,
   RENAME_LIST,
   SELECT_LIST,
   SELECT_LIST_ITEM,
+  SELECT_LIST_ITEM_RECIPIENT_IDS,
   SELECT_LIST_ITEMS,
+  SELECT_LIST_RECIPIENTS,
   SELECT_REUSABLE_LISTS,
   SELECT_TRIP_LISTS,
   SET_LIST_ITEM_DONE,
@@ -27,8 +32,9 @@ import {
   type ListKind,
   type ListRow,
 } from '../domain/lists';
+import { parseTravellerRow, type Traveller, type TravellerRow } from '../domain/traveller';
 
-export const LIST_TABLES = ['lists', 'list_items'] as const;
+export const LIST_TABLES = ['lists', 'list_items', 'list_item_recipients'] as const;
 
 export type ListSummary = List & { done: number; total: number };
 
@@ -63,6 +69,43 @@ export async function listListItems(db: SQLiteDatabase, listId: string): Promise
 export async function getListItem(db: SQLiteDatabase, id: string): Promise<ListItem | null> {
   const row = await db.getFirstAsync<ListItemRow>(SELECT_LIST_ITEM, { $id: id });
   return row ? parseListItemRow(row) : null;
+}
+
+/** Who each item of a list is for, by item id; an item for no one is absent. */
+export async function listRecipients(
+  db: SQLiteDatabase,
+  listId: string,
+): Promise<Map<string, Traveller[]>> {
+  const rows = await db.getAllAsync<TravellerRow & { list_item_id: string }>(
+    SELECT_LIST_RECIPIENTS,
+    { $listId: listId },
+  );
+  const byItem = new Map<string, Traveller[]>();
+  for (const row of rows) {
+    const people = byItem.get(row.list_item_id) ?? [];
+    people.push(parseTravellerRow(row));
+    byItem.set(row.list_item_id, people);
+  }
+  return byItem;
+}
+
+export async function getRecipientIds(db: SQLiteDatabase, itemId: string): Promise<string[]> {
+  const rows = await db.getAllAsync<{ traveller_id: string }>(SELECT_LIST_ITEM_RECIPIENT_IDS, {
+    $itemId: itemId,
+  });
+  return rows.map((row) => row.traveller_id);
+}
+
+/** Not a transaction of its own: callers that need one hold it. */
+async function writeRecipients(
+  db: SQLiteDatabase,
+  itemId: string,
+  recipientIds: readonly string[],
+): Promise<void> {
+  await db.runAsync(DELETE_LIST_ITEM_RECIPIENTS, { $itemId: itemId });
+  for (const travellerId of new Set(recipientIds)) {
+    await db.runAsync(INSERT_LIST_ITEM_RECIPIENT, { $itemId: itemId, $travellerId: travellerId });
+  }
 }
 
 /** A new list: for a trip, or reusable when `tripId` is null. Not a transaction of its own. */
@@ -104,7 +147,6 @@ const itemBindings = (input: ListItemInput) => ({
   $unit: input.unit ?? null,
   $category: input.category ?? null,
   $note: input.note ?? null,
-  $travellerId: input.travellerId ?? null,
 });
 
 export async function addListItem(
@@ -119,6 +161,7 @@ export async function addListItem(
     $now: new Date().toISOString(),
     ...itemBindings(input),
   });
+  if (input.recipientIds?.length) await writeRecipients(db, id, input.recipientIds);
   return id;
 }
 
@@ -127,10 +170,14 @@ export async function updateListItem(
   id: string,
   input: ListItemInput,
 ): Promise<void> {
-  await db.runAsync(UPDATE_LIST_ITEM, {
-    $id: id,
-    $now: new Date().toISOString(),
-    ...itemBindings(input),
+  // The item and who it is for together; `recipientIds` left out keeps whoever it is for now.
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(UPDATE_LIST_ITEM, {
+      $id: id,
+      $now: new Date().toISOString(),
+      ...itemBindings(input),
+    });
+    if (input.recipientIds !== undefined) await writeRecipients(db, id, input.recipientIds);
   });
 }
 
@@ -161,12 +208,14 @@ export async function setListOrder(db: SQLiteDatabase, ids: readonly string[]): 
 async function copyItems(db: SQLiteDatabase, fromListId: string, toListId: string): Promise<void> {
   const now = new Date().toISOString();
   for (const item of await listListItems(db, fromListId)) {
+    const newId = randomUUID();
     await db.runAsync(COPY_LIST_ITEMS, {
-      $newId: randomUUID(),
+      $newId: newId,
       $toListId: toListId,
       $fromItemId: item.id,
       $now: now,
     });
+    await db.runAsync(COPY_LIST_ITEM_RECIPIENTS, { $newId: newId, $fromItemId: item.id });
   }
 }
 
@@ -259,7 +308,7 @@ export async function addToPacking(
       unit: item.unit ?? undefined,
       category: item.category ?? undefined,
       note: item.note ?? undefined,
-      travellerId: item.travellerId ?? undefined,
+      recipientIds: await getRecipientIds(db, item.id),
     });
   });
   return id;

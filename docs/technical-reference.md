@@ -407,8 +407,10 @@ everything, awkward values, rows compared before/after, a failing batch leaves n
 | 003 | 0.6.0 | `travellers`, `trip_travellers`, `item_participants`, `lists`, `list_items`, `templates`, `template_uses` (§14) |
 | 004 | 0.7.1 | `classification` on `travellers` and `trip_travellers` (§15) |
 | 005 | 0.7.1 | `trips.converted_travellers` (§15) |
+| 006 | 0.8.0 | `list_item_recipients`, filled from `list_items.traveller_id` (§16) |
 
-All five are additive: new tables, or new columns with defaults.
+All six are additive: new tables, or new columns with defaults; 006 also copies existing values
+into its new table and changes no existing row.
 
 ---
 
@@ -1004,7 +1006,13 @@ trip uses.
 
 **Formats 4 and 5** (0.7.1) add `classification` on `travellers` / `trip_travellers` and
 `trips.converted_travellers`; the Zod schema defaults them (`'unspecified'`, `'[]'`), so formats
-1–4 still import. `EXPORT_FORMAT_VERSION` is **5**.
+1–4 still import.
+
+**Format 6** (0.8.0) adds `listItemRecipients`. A format-1–5 document is passed through
+`upgradeDocument` on parse: each list item's `traveller_id` becomes its one recipient, exactly
+as migration 006 does on the phone. On import, recipients are written only for list items the
+import itself writes (`insertLinkRow`, `INSERT OR IGNORE`), so *Keep mine* never adds people to an
+item already here. `EXPORT_FORMAT_VERSION` is **6**.
 
 **Export reads one snapshot (A4).** `readTables` runs inside `withExclusiveTransactionAsync`, whose
 second connection holds one WAL read snapshot for every table, so a write landing mid-export can
@@ -1254,3 +1262,46 @@ redirects to `/`. When on, the form keeps a debounced draft in `feedback_draft.j
 document directory (not in backups) and posts to `server/feedback-worker/` (Cloudflare Worker,
 Resend, 24 h idempotency, rate limit) with the message, an optional name, the app version and
 Android version — no trip data.
+
+---
+
+## 16. Me and list recipients (2B-0, 0.8.0)
+
+Rationale: D33. The people concepts and where each is stored: CLAUDE.md §4 — traveller profile,
+Me, trip membership, activity participant, list recipient, and the future financially responsible
+adult are separate, and code must not use one for another.
+
+### Me
+
+`settings.me_traveller_id` holds the id of the traveller profile that is the person using the app
+(`SettingKey` in `repositories/settings.ts`). `repositories/travellers.ts`:
+- `getMe` — the profile, or null when unset **or** when the id no longer names a profile;
+- `setMe(id)` — refuses an id that is not a profile; `createMe(name, classification = 'adult')` —
+  profile and setting in one transaction;
+- `listTripsWithout(id)`, `addTravellerToTrips(id, tripIds)` — *Add me to trips*: one transaction,
+  `INSERT … ON CONFLICT DO NOTHING` per trip, membership only;
+- `deleteTraveller` refuses the Me profile (`isMe: true`).
+
+`features/travellers/useMe` reads it live (`ME_TABLES = settings + travellers`). New trip waits
+for that first read and starts with Me ticked; `travellerLabel` shows *Evelina (Me)* in every
+picker (trip form, item *Who's going*, list *For*, trip and global Travellers). The screen is
+`app/me.tsx`, from Travellers. A full backup carries the setting like any other (*Keep mine*
+keeps the phone's; *Use the backup's* takes the backup's); a single-trip archive (2B) will not.
+
+### List recipients
+
+`list_item_recipients (list_item_id → list_items CASCADE, traveller_id → travellers CASCADE,
+PRIMARY KEY both)`. `repositories/lists.ts`: `addListItem` / `updateListItem` take
+`recipientIds` (deduplicated by the schema; `updateListItem` replaces them in the same transaction,
+and leaves them alone when `recipientIds` is undefined); `listRecipients(listId)` returns them by
+item, ordered like travellers; copies (`copyItems` → *copy to trip*, *Save as reusable*, *Update
+reusable*) and `addToPacking` carry them. `list_items.traveller_id` is legacy: new rows write
+NULL, edits leave it, nothing reads it.
+
+On a trip's list the picker offers the trip's travellers plus anyone already chosen who has left
+the trip (kept, not hidden); its add sheet links a saved profile to the trip
+(`addTripTraveller`) or creates one on the trip (`createTripTraveller`), then ticks them. On a
+reusable list it offers every profile, and adding creates a profile only. `recipientsLine`
+(`domain/lists.ts`) gives *Evelina, Misho*, or *Everyone* when the trip has two or more travellers
+and all are chosen — a summary, never stored. The itinerary PDF and templates do not include
+recipients.

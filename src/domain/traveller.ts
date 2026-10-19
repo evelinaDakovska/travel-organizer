@@ -49,6 +49,14 @@ export const travellerNameSchema = z
   .min(1, 'Give them a name')
   .max(60, 'Keep it under 60 characters');
 
+/**
+ * A traveller as pickers show them: *Evelina (Me)* for the profile that is the person using the
+ * app (2B-0), the name alone for anyone else. "Me" is a mark on a profile, never a name of its own.
+ */
+export function travellerLabel(traveller: Pick<Traveller, 'id' | 'name'>, meId: string | null): string {
+  return traveller.id === meId ? `${traveller.name} (Me)` : traveller.name;
+}
+
 /** 'Evelina, Ana and Mia' — for one line on a trip or an item. Empty for nobody. */
 export function namesLine(travellers: readonly Pick<Traveller, 'name'>[]): string {
   return listPhrase(travellers.map((traveller) => traveller.name));

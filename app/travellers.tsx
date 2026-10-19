@@ -2,7 +2,8 @@ import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 
-import { travellerNameSchema } from '../src/domain/traveller';
+import { CLASSIFICATION_LABELS, travellerLabel, travellerNameSchema } from '../src/domain/traveller';
+import { useMe } from '../src/features/travellers/useMe';
 import { queryView } from '../src/hooks/queryView';
 import { useLiveQuery } from '../src/hooks/useLiveQuery';
 import { createTraveller, listTravellers, TRAVELLER_TABLES } from '../src/repositories/travellers';
@@ -23,6 +24,7 @@ export default function TravellersScreen() {
   const router = useRouter();
   const query = useLiveQuery(listTravellers, TRAVELLER_TABLES);
   const view = queryView(query);
+  const { me, meId, loading } = useMe();
 
   const add = async (text: string) => {
     const name = travellerNameSchema.safeParse(text);
@@ -38,6 +40,20 @@ export default function TravellersScreen() {
       />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <StaleNotice queries={[query]} />
+        {/* Which of these is you (2B-0) — chosen once, changed rarely. */}
+        {loading ? null : (
+          <Rows>
+            <ListRow
+              title={me ? travellerLabel(me, meId) : 'Which traveller are you?'}
+              subtitle={
+                me
+                  ? `My traveller profile · ${CLASSIFICATION_LABELS[me.classification]}`
+                  : 'Choose or add your own profile, so new trips start with you on them'
+              }
+              onPress={() => router.push('/me')}
+            />
+          </Rows>
+        )}
         <AddByName placeholder="A name, e.g. Ana" onAdd={add} />
         {view === 'failed' ? (
           <LoadFailed what="the travellers" onRetry={query.refetch} />
@@ -50,7 +66,7 @@ export default function TravellersScreen() {
             {(query.data ?? []).map((traveller) => (
               <ListRow
                 key={traveller.id}
-                title={traveller.name}
+                title={travellerLabel(traveller, meId)}
                 onPress={() =>
                   router.push({
                     pathname: '/traveller/[travellerId]',

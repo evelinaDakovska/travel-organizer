@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   CLASSIFICATION_LABELS,
+  travellerLabel,
   travellerNameSchema,
   type Traveller,
   type TravellerClassification,
@@ -21,6 +22,14 @@ export type TravellerPickerProps = {
   onChange: (ids: string[]) => void;
   onAddNewProfile: (name: string, classification: TravellerClassification) => Promise<string>;
   legacyNames?: readonly string[];
+  /** The profile that is the person using the app, shown as *Evelina (Me)* (2B-0). */
+  meId?: string | null;
+  /**
+   * Saved profiles not offered above — people not on this trip yet. The add sheet lists them, so
+   * someone already saved is linked rather than created twice.
+   */
+  existingToAdd?: readonly Traveller[];
+  onAddExisting?: (id: string) => Promise<void>;
 };
 
 const CLASSIFICATION_OPTIONS: readonly { value: TravellerClassification; label: string }[] = [
@@ -35,6 +44,9 @@ export function TravellerPicker({
   onChange,
   onAddNewProfile,
   legacyNames = [],
+  meId = null,
+  existingToAdd = [],
+  onAddExisting,
 }: TravellerPickerProps) {
   const c = useColors();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -50,6 +62,20 @@ export function TravellerPicker({
       onChange(selectedIds.filter((item) => item !== id));
     } else {
       onChange([...selectedIds, id]);
+    }
+  };
+
+  const handleAddExisting = async (id: string) => {
+    if (!onAddExisting) return;
+    setSaving(true);
+    try {
+      await onAddExisting(id);
+      if (!selectedSet.has(id)) onChange([...selectedIds, id]);
+      setSheetOpen(false);
+    } catch (error) {
+      setNameError(error instanceof Error ? error.message : 'Could not add this traveller');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -108,13 +134,14 @@ export function TravellerPicker({
           {profiles.map((profile) => {
             const isSelected = selectedSet.has(profile.id);
             const classLabel = CLASSIFICATION_LABELS[profile.classification];
+            const label = travellerLabel(profile, meId);
             return (
               <Pressable
                 key={profile.id}
                 onPress={() => toggle(profile.id)}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: isSelected }}
-                accessibilityLabel={`${profile.name}, ${classLabel}`}
+                accessibilityLabel={`${label}, ${classLabel}`}
                 style={({ pressed }) => [
                   styles.profileRow,
                   { borderColor: isSelected ? c.accent : c.border },
@@ -128,11 +155,14 @@ export function TravellerPicker({
                       backgroundColor: isSelected ? c.accent : 'transparent',
                     },
                   ]}>
-                  {isSelected ? <Icon name="check" size={16} color={c.accentText} /> : null}
+                  {/* onAccent, as CheckBox: accentText on an accent fill was invisible. */}
+                  {isSelected ? (
+                    <Icon name="check" size={16} color={c.onAccent} strokeWidth={3} />
+                  ) : null}
                 </View>
                 <View style={styles.profileInfo}>
-                  <Text style={[type.heading, { color: c.text }]} numberOfLines={1}>
-                    {profile.name}
+                  <Text style={[type.heading, { color: c.text }]} numberOfLines={2}>
+                    {label}
                   </Text>
                 </View>
                 <Tag label={classLabel} tone="neutral" />
@@ -164,6 +194,36 @@ export function TravellerPicker({
           }
         }}>
         <View style={styles.sheetContent}>
+          {existingToAdd.length > 0 && onAddExisting ? (
+            <View style={styles.existing}>
+              <Text style={[type.label, { color: c.textMuted }]}>Already saved</Text>
+              {existingToAdd.map((profile) => {
+                const label = travellerLabel(profile, meId);
+                return (
+                  <Pressable
+                    key={profile.id}
+                    disabled={saving}
+                    onPress={() => void handleAddExisting(profile.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Add ${label}`}
+                    style={({ pressed }) => [
+                      styles.profileRow,
+                      { borderColor: c.border },
+                      pressed && { backgroundColor: c.surfaceSunken },
+                    ]}>
+                    <Icon name="add" size={18} color={c.accentText} />
+                    <View style={styles.profileInfo}>
+                      <Text style={[type.heading, { color: c.text }]} numberOfLines={2}>
+                        {label}
+                      </Text>
+                    </View>
+                    <Tag label={CLASSIFICATION_LABELS[profile.classification]} tone="neutral" />
+                  </Pressable>
+                );
+              })}
+              <Text style={[type.label, { color: c.textMuted }]}>Or someone new</Text>
+            </View>
+          ) : null}
           <Field label="Name" error={nameError ?? undefined}>
             <Input
               value={name}
@@ -233,4 +293,5 @@ const styles = StyleSheet.create({
   profileInfo: { flex: 1 },
   addActionRow: { marginTop: spacing.xs },
   sheetContent: { gap: spacing.lg, paddingBottom: spacing.lg },
+  existing: { gap: spacing.sm },
 });

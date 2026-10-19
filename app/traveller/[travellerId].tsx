@@ -8,6 +8,7 @@ import {
   usesText,
   type TravellerClassification,
 } from '../../src/domain/traveller';
+import { useMe } from '../../src/features/travellers/useMe';
 import { queryView } from '../../src/hooks/queryView';
 import { useBusy } from '../../src/hooks/useBusy';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
@@ -33,6 +34,7 @@ export default function TravellerScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
   const { travellerId } = useLocalSearchParams<{ travellerId: string }>();
+  const { meId } = useMe();
 
   const query = useLiveQuery(
     useCallback(
@@ -68,15 +70,23 @@ export default function TravellerScreen() {
       `${traveller.name} is still listed`,
       `${usesText(uses)}. Take them off those first, from each trip's Travellers.`,
     );
+  // Me is never deleted by accident (2B-0): another profile is made Me first.
+  const refuseMe = () =>
+    Alert.alert(
+      'This is your profile',
+      'To delete it, first choose another profile as you, under Travellers → My traveller profile.',
+    );
   const remove = async () => {
     const result = await deleteTraveller(db, traveller.id);
     if (result.deleted) router.back();
+    else if (result.isMe) refuseMe();
     else refuse(result.uses);
   };
   // Known to be in use: say so at once, rather than ask and then refuse.
   const uses = usesQuery.data;
   const confirmDelete = () => {
     if (uses && (uses.trips.length > 0 || uses.items > 0)) return refuse(uses);
+    if (traveller.id === meId) return refuseMe();
     Alert.alert(`Delete ${traveller.name}?`, 'This cannot be undone.', [
       { text: 'Keep', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => void remove() },
@@ -85,7 +95,10 @@ export default function TravellerScreen() {
 
   return (
     <Screen>
-      <ScreenHeader title={traveller.name} />
+      <ScreenHeader
+        title={traveller.name}
+        subtitle={traveller.id === meId ? 'This is you (Me)' : undefined}
+      />
       {/* Keyed by the name and classification: a save elsewhere starts the field afresh. */}
       <NameForm
         key={`${traveller.name}:${traveller.classification}`}

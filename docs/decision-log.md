@@ -626,3 +626,35 @@ After friends tested 0.7.3 on a second, smaller phone, the owner set eight phase
 **What it settles:** N5b (splitting) is replaced by Phase 3, which adds who is financially
 responsible for a child and keeps participation, responsibility and payment apart. Gmail
 integration stays out; a universal email import (forwarding, `.eml`) is future work.
+
+## D33 — "Me" and several people per list item (2B-0, 0.8.0)
+
+The beta showed two gaps: the person using the app was often not one of the trip's travellers, so
+they could not put a shopping item "for" themselves; and an item could be for one person only.
+
+**Me is a mark on a profile, not a second kind of person.** One `settings` key,
+`me_traveller_id`, names an existing traveller profile. Rejected: a `travellers.is_me` column
+(a migration, and "only one" would need a partial unique index), and a separate "user" table (a
+parallel traveller system, and an early guess at accounts). A setting holds one value by
+construction, is restored with a full backup, and is *not* part of a future single-trip archive,
+so an imported trip can never make someone else "Me". It is deliberately not an account id or a
+trip owner: those arrive with accounts and shared trips, and will be separate (CLAUDE.md §4).
+
+**Linking, not inserting.** The user may already be a profile under their own name, so Me is
+chosen from the existing profiles first, created only if absent. Existing trips are offered, never
+changed: a confirmed step adds Me as a trip **member** only — booking participants, prices,
+expenses, payments, documents and lists stay as they are. New trips start with Me ticked. The Me
+profile cannot be deleted until another is chosen.
+
+**Recipients in their own table (migration 006).** `list_item_recipients(list_item_id,
+traveller_id)`, both CASCADE, primary key on the pair — normalised, referentially checked, no
+duplicates. Rejected: a JSON array in `list_items` (no foreign keys, so a deleted profile would
+leave dangling ids) and reusing `traveller_id` (one person). The migration copies every existing
+`traveller_id` into the table and leaves the column untouched (legacy, unread), so nothing saved is
+lost and a restore of an old backup does the same copy (`upgradeDocument`). Backup format 6.
+
+**Same meaning on every list.** Packing and shopping, trip and reusable lists all mean "for whom".
+A reusable list names saved profiles (never trip-specific rows); copying a list, *Save as reusable*
+and *Add to packing list* carry the people with the item. *Everyone* is a display summary only —
+every current trip traveller chosen — and is never stored: someone joining the trip later is not
+added to old items. Recipients never change a quantity or a price.

@@ -47,6 +47,7 @@ describe('migrations', () => {
     expect(tables).toEqual([
       'expenses',
       'item_participants',
+      'list_item_recipients',
       'list_items',
       'lists',
       'payments',

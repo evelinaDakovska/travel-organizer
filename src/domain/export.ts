@@ -11,10 +11,11 @@ import { travellerClassificationSchema } from './traveller';
 /**
  * 2 added expenses, payments and `resources.expense_id` (N5); 3 added travellers, lists and
  * templates (Fieldbook, migration 003); 4 added traveller classification (migration 004); 5 added
- * converted_travellers (migration 005). Formats 1, 2, 3 and 4 still import: their missing tables or
- * columns default safely.
+ * converted_travellers (migration 005); 6 added list_item_recipients (migration 006, 2B-0). Formats
+ * 1–5 still import: their missing tables or columns default safely, and a format-5-or-earlier
+ * list item's one `traveller_id` becomes its one recipient (`upgradeDocument`).
  */
-export const EXPORT_FORMAT_VERSION = 5;
+export const EXPORT_FORMAT_VERSION = 6;
 export const EXPORT_APP = 'travel-organizer';
 
 const nullableString = z.string().nullable();
@@ -170,6 +171,11 @@ const listItemRowSchema = z.object({
   updated_at: z.string(),
 });
 
+const listItemRecipientRowSchema = z.object({
+  list_item_id: z.string().min(1),
+  traveller_id: z.string().min(1),
+});
+
 const templateRowSchema = z.object({
   id: z.string().min(1),
   name: z.string(),
@@ -196,6 +202,7 @@ export type TripTravellerExportRow = z.infer<typeof tripTravellerRowSchema>;
 export type ItemParticipantExportRow = z.infer<typeof itemParticipantRowSchema>;
 export type ListExportRow = z.infer<typeof listRowSchema>;
 export type ListItemExportRow = z.infer<typeof listItemRowSchema>;
+export type ListItemRecipientExportRow = z.infer<typeof listItemRecipientRowSchema>;
 export type TemplateExportRow = z.infer<typeof templateRowSchema>;
 export type TemplateUseExportRow = z.infer<typeof templateUseRowSchema>;
 
@@ -212,6 +219,7 @@ export type ExportTables = {
   itemParticipants: ItemParticipantExportRow[];
   lists: ListExportRow[];
   listItems: ListItemExportRow[];
+  listItemRecipients: ListItemRecipientExportRow[];
   templates: TemplateExportRow[];
   templateUses: TemplateUseExportRow[];
 };
@@ -248,6 +256,8 @@ export const exportDocumentSchema = z.object({
     itemParticipants: z.array(itemParticipantRowSchema).default([]),
     lists: z.array(listRowSchema).default([]),
     listItems: z.array(listItemRowSchema).default([]),
+    // Absent before format 6: rebuilt from list_items.traveller_id by upgradeDocument.
+    listItemRecipients: z.array(listItemRecipientRowSchema).default([]),
     templates: z.array(templateRowSchema).default([]),
     templateUses: z.array(templateUseRowSchema).default([]),
   }),
@@ -271,6 +281,7 @@ export function emptyExportTables(): ExportTables {
     itemParticipants: [],
     lists: [],
     listItems: [],
+    listItemRecipients: [],
     templates: [],
     templateUses: [],
   };
@@ -289,6 +300,7 @@ export const EXPORT_TABLE_ORDER = [
   'itemParticipants',
   'lists',
   'listItems',
+  'listItemRecipients',
   'templates',
   'templateUses',
 ] as const satisfies readonly (keyof ExportTables)[];
@@ -348,7 +360,23 @@ export function parseExportDocument(value: unknown): ParseResult {
       reason: `This backup is from a newer version (format ${parsed.data.formatVersion})`,
     };
   }
-  return { ok: true, document: parsed.data };
+  return { ok: true, document: upgradeDocument(parsed.data) };
+}
+
+/**
+ * A backup from before format 6 has one "For" per list item, in `traveller_id`; from 6 on, who an
+ * item is for lives in `listItemRecipients`. The old value becomes the one recipient, exactly as
+ * migration 006 does on the phone, so restoring an old backup loses no assignment.
+ */
+export function upgradeDocument(document: ExportDocument): ExportDocument {
+  if (document.formatVersion >= 6) return document;
+  const travellerIds = new Set(document.tables.travellers.map((traveller) => traveller.id));
+  const listItemRecipients = document.tables.listItems.flatMap((item) =>
+    item.traveller_id && travellerIds.has(item.traveller_id)
+      ? [{ list_item_id: item.id, traveller_id: item.traveller_id }]
+      : [],
+  );
+  return { ...document, tables: { ...document.tables, listItemRecipients } };
 }
 
 /**
@@ -364,10 +392,15 @@ export function filterTablesForTrip(tables: ExportTables, tripId: string): Expor
   const listItems = tables.listItems.filter((item) => listIds.has(item.list_id));
   const tripTravellers = tables.tripTravellers.filter((member) => member.trip_id === tripId);
   const itemParticipants = tables.itemParticipants.filter((part) => itemIds.has(part.item_id));
+  const listItemIds = new Set(listItems.map((item) => item.id));
+  const listItemRecipients = tables.listItemRecipients.filter((row) =>
+    listItemIds.has(row.list_item_id),
+  );
   const usedTravellers = new Set([
     ...tripTravellers.map((member) => member.traveller_id),
     ...itemParticipants.map((part) => part.traveller_id),
     ...listItems.flatMap((item) => (item.traveller_id ? [item.traveller_id] : [])),
+    ...listItemRecipients.map((row) => row.traveller_id),
   ]);
 
   return {
@@ -387,6 +420,7 @@ export function filterTablesForTrip(tables: ExportTables, tripId: string): Expor
     itemParticipants,
     lists,
     listItems,
+    listItemRecipients,
     templates: [],
     templateUses: tables.templateUses.filter((use) => use.trip_id === tripId),
   };
@@ -459,6 +493,8 @@ export function planImport(
     list.trip_id === null ? missing(existingShared.lists)(list) : keptTripIds.has(list.trip_id),
   );
   const keptListIds = new Set(lists.map((list) => list.id));
+  const listItems = tables.listItems.filter((item) => keptListIds.has(item.list_id));
+  const keptListItemIds = new Set(listItems.map((item) => item.id));
 
   return {
     mode,
@@ -474,7 +510,11 @@ export function planImport(
       tripTravellers: tables.tripTravellers.filter((member) => keptTripIds.has(member.trip_id)),
       itemParticipants: tables.itemParticipants.filter((part) => keptItemIds.has(part.item_id)),
       lists,
-      listItems: tables.listItems.filter((item) => keptListIds.has(item.list_id)),
+      listItems,
+      // Only for items this import writes: an item already here keeps the people it has.
+      listItemRecipients: tables.listItemRecipients.filter((row) =>
+        keptListItemIds.has(row.list_item_id),
+      ),
       templates: tables.templates.filter(missing(existingShared.templates)),
       templateUses: tables.templateUses.filter((use) => keptTripIds.has(use.trip_id)),
     },

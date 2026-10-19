@@ -2,6 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import {
   DELETE_TRIP_FOR_REPLACE,
+  insertLinkRow,
   insertRow,
   MERGE_SETTING,
   REPLACE_SETTING,
@@ -26,6 +27,8 @@ const TABLES: readonly (readonly [keyof ExportTables, ExportTableName])[] = [
   ['resources', 'resources'],
   ['lists', 'lists'],
   ['listItems', 'list_items'],
+  // After their items and the travellers they name.
+  ['listItemRecipients', 'list_item_recipients'],
   ['templates', 'templates'],
   ['templateUses', 'template_uses'],
   ['settings', 'settings'],
@@ -117,5 +120,6 @@ function sqlFor(
   // A reusable list and its items belong to no trip either.
   if (key === 'lists' && row.trip_id === null) return upsertSharedRow(table, mode);
   if (key === 'listItems') return upsertSharedRow(table, mode);
+  if (key === 'listItemRecipients') return insertLinkRow(table);
   return insertRow(table);
 }

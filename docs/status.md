@@ -5,8 +5,10 @@
 Verified against the repo on 2026-10-19, on Windows: **895 tests passing across 54 suites, typecheck clean.**
 
 > **Where things are (2026-10-19)**
-> - **Latest release build: 0.7.4** (versionCode 14) — roadmap Phase 1, built and verified on the
->   emulator, **not installed on any phone**: `%USERPROFILE%/.travel-organizer/travel-organizer-0.7.4.apk`.
+> - **Latest release build: 0.8.0** (versionCode 15) — Phase 2B-0 (Me and several people per list
+>   item; **migration 006**, backup format 6), rehearsed on the emulator as an update over 0.7.4,
+>   **not installed on any phone**: `%USERPROFILE%/.travel-organizer/travel-organizer-0.8.0.apk`.
+>   Before it, **0.7.4** (versionCode 14, Phase 1), also not on a phone.
 >   Before it, **0.7.3** (versionCode 13) was the first **friends-only beta**
 >   (`release/TravelOrganizer-0.7.3-beta.apk`, gitignored), tested by friends on a second, smaller
 >   Android phone; their feedback became Phase 1.
@@ -16,8 +18,8 @@ Verified against the repo on 2026-10-19, on Windows: **895 tests passing across 
 >   so the phone holds **0.7.1 or later**. Confirm with the owner (with permission:
 >   `adb shell dumpsys package com.evelinadakovska.travelorganizer | grep versionName`) before
 >   rehearsing any update.
-> - **Next: the roadmap** ([`roadmap.md`](roadmap.md), section *P* below). Phase 1 is done
->   (0.7.4); Phase 2 waits for the owner's review of it.
+> - **Next: the roadmap** ([`roadmap.md`](roadmap.md), section *P* below). Phase 1 (0.7.4) and
+>   2B-0 (0.8.0) are done and wait for the owner's review; 2B waits for approval.
 
 ---
 
@@ -602,6 +604,7 @@ only when the owner asks.
 | | Phase | ✓ |
 |---|---|---|
 | **P1** | UI & navigation: trip context in tab headers, active bottom tab, *Notes & lists* label on small phones, bottom-sheet corners — **0.7.4**, emulator; not on a phone yet | ✅ |
+| **P2·2B-0** | "Me" — one traveller profile marked as the person using the app — and several people per packing/shopping item. **0.8.0**, emulator; not on a phone yet | ✅ |
 | **P2** | Single-trip import/export & AI JSON import — **2A** architecture and audit done ([`phase2-plan.md`](phase2-plan.md), 2026-10-19); **2B** single-trip archive, **2C** AI activity import, **2D** planning context wait for the owner's approval and the decisions in its §10 | ⬜ |
 | **P3** | Travellers, pricing & shared expenses (replaces N5b) | ⬜ |
 | **P4** | Currency conversion | ⬜ |
@@ -647,6 +650,39 @@ Back, after backgrounding, after leaving the trip and coming back; Back from a t
 Overview as before. Testing created one throwaway trip (*P1 Test Saariselka…*, a child traveller
 *Mia*) on the emulator; the existing test trip was not changed. **Not tested:** on a physical
 phone (neither phone was connected); three-button navigation.
+
+**2B-0, what was built (0.8.0, versionCode 15).** Decisions: D33. Technical: technical reference §16.
+- **Me:** `settings.me_traveller_id` names an existing traveller profile — no parallel traveller
+  system, one Me by construction, a local identity (not an account, not an owner). *Travellers →
+  Which traveller are you?* (`app/me.tsx`): pick an existing profile (confirmed) or add yourself
+  (Adult by default); rename through the profile; *This is not me — choose another*. *Trips you are
+  not on yet* lists them, current and upcoming ticked, past not, and adds Me as a **member only**
+  after a confirmation that says so. New trips start with Me ticked. Pickers show *Evelina (Me)*.
+  The Me profile cannot be deleted until another is chosen.
+- **Recipients:** **migration 006** — `list_item_recipients`, filled from every
+  `list_items.traveller_id` (left as it was, legacy). The list item's *For* is a multi-select
+  (`TravellerPicker`), with *Add new traveller* offering saved profiles not on the trip (linked to
+  the trip) or a new one, ticked on return. Rows read *For Evelina, Misho* or *For Everyone* (every
+  current trip traveller chosen — display only). Copies, *Save as reusable* and *Add to packing
+  list* carry the people. Same meaning on packing and shopping, trip and reusable lists.
+- **Backup format 6**; formats 1–5 restore with each old single *For* as one recipient.
+- Fixed on the way: the picker's tick was drawn in the accent colour on an accent fill — invisible.
+
+**2B-0, how it was verified.** 935 tests (36 new: migration 006 from a phone-shaped version-5
+database — every old row identical, each single *For* one recipient, idempotent, failed batch leaves
+nothing; recipients repository; Me repository; format-6 round trip, format-5 upgrade, *Keep mine*
+untouched, per-trip selection), typecheck clean. Release 0.8.0, same key (`63:8D:C6:86…52:35:E7`).
+**Update rehearsal on the emulator:** a synthetic **format-5** backup (three travellers, a trip with
+a booking for Misho, an expense, trip and reusable lists with single *For*s) imported into **0.7.4**
+→ list read *10 · Misho*, *Mitko*, nothing → **0.8.0 with `install -r`** (first-install time kept),
+migration 006 ran, no errors in logcat → *For Misho*, *For Mitko*, nothing: identical. Me linked to
+the existing *Evelina*; *Add me to 2 trips* confirmed; the booking's *Who's going* still *Misho*,
+EUR 290.00 *Paid*, reference unchanged. *Hand warmers* for all three → *For Everyone*; Mia linked
+from the add sheet onto the trip and *Merino* → *For Mia, Mitko*; *Hand warmers* then read the three
+names (Mia joined later — the saved selection did not change). Survived a cold restart. A second
+synthetic format-5 backup restored on 0.8.0 → *For Aunt Vera*, and its trip is offered, not joined,
+under *Trips you are not on yet*. New trip: only *Evelina (Me)* ticked. *Export everything* → archive
+created. Light, dark, 427 dp and 360 dp. **Not tested:** a physical phone; the owner's real data.
 
 ---
 

@@ -331,6 +331,13 @@ SELECT t.name FROM trip_travellers tt JOIN trips t ON t.id = tt.trip_id
  WHERE tt.traveller_id = $id ORDER BY t.start_date
 `;
 
+/** Trips a traveller is not on yet, soonest first: what *Add me to trips* offers (2B-0). */
+export const SELECT_TRIPS_WITHOUT_TRAVELLER = `
+SELECT id, name, start_date, end_date FROM trips
+ WHERE id NOT IN (SELECT trip_id FROM trip_travellers WHERE traveller_id = $id)
+ ORDER BY start_date
+`;
+
 export const COUNT_TRAVELLER_ITEMS = `
 SELECT COUNT(*) AS n FROM item_participants WHERE traveller_id = $id
 `;
@@ -419,10 +426,11 @@ SELECT * FROM list_items WHERE list_id = $listId ORDER BY sort_order, created_at
 
 export const SELECT_LIST_ITEM = `SELECT * FROM list_items WHERE id = $id`;
 
+/** `traveller_id` is legacy since migration 006: a new item leaves it empty (recipients below). */
 export const INSERT_LIST_ITEM = `
 INSERT INTO list_items (id, list_id, label, quantity, unit, category, note, traveller_id, done_at,
                         sort_order, created_at, updated_at)
-VALUES ($id, $listId, $label, $quantity, $unit, $category, $note, $travellerId, NULL,
+VALUES ($id, $listId, $label, $quantity, $unit, $category, $note, NULL, NULL,
         (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM list_items WHERE list_id = $listId),
         $now, $now)
 `;
@@ -430,7 +438,7 @@ VALUES ($id, $listId, $label, $quantity, $unit, $category, $note, $travellerId, 
 export const UPDATE_LIST_ITEM = `
 UPDATE list_items
    SET label = $label, quantity = $quantity, unit = $unit, category = $category, note = $note,
-       traveller_id = $travellerId, updated_at = $now
+       updated_at = $now
  WHERE id = $id
 `;
 
@@ -446,9 +454,35 @@ export const SET_LIST_ITEM_ORDER = `UPDATE list_items SET sort_order = $sortOrde
 export const COPY_LIST_ITEMS = `
 INSERT INTO list_items (id, list_id, label, quantity, unit, category, note, traveller_id, done_at,
                         sort_order, created_at, updated_at)
-SELECT $newId, $toListId, label, quantity, unit, category, note, traveller_id, NULL,
+SELECT $newId, $toListId, label, quantity, unit, category, note, NULL, NULL,
        sort_order, $now, $now
   FROM list_items WHERE id = $fromItemId
+`;
+
+/** Who a copied item is for goes with it (2B-0). */
+export const COPY_LIST_ITEM_RECIPIENTS = `
+INSERT OR IGNORE INTO list_item_recipients (list_item_id, traveller_id)
+SELECT $newId, traveller_id FROM list_item_recipients WHERE list_item_id = $fromItemId
+`;
+
+/** Everyone each item of one list is for, by name, in the order travellers are kept. */
+export const SELECT_LIST_RECIPIENTS = `
+SELECT r.list_item_id, t.id, t.name, t.sort_order, t.classification, t.created_at, t.updated_at
+  FROM list_item_recipients r
+  JOIN travellers t ON t.id = r.traveller_id
+  JOIN list_items li ON li.id = r.list_item_id
+ WHERE li.list_id = $listId
+ ORDER BY t.sort_order, t.name
+`;
+
+export const SELECT_LIST_ITEM_RECIPIENT_IDS = `
+SELECT traveller_id FROM list_item_recipients WHERE list_item_id = $itemId
+`;
+
+export const DELETE_LIST_ITEM_RECIPIENTS = `DELETE FROM list_item_recipients WHERE list_item_id = $itemId`;
+
+export const INSERT_LIST_ITEM_RECIPIENT = `
+INSERT OR IGNORE INTO list_item_recipients (list_item_id, traveller_id) VALUES ($itemId, $travellerId)
 `;
 
 /** Column order for the backup. Append only — a restore binds by name, but order documents it. */
@@ -480,6 +514,7 @@ export const EXPORT_COLUMNS = {
                'done_at', 'sort_order', 'created_at', 'updated_at'],
   templates: ['id', 'name', 'content', 'created_at', 'updated_at'],
   template_uses: ['trip_id', 'template_id', 'applied_at'],
+  list_item_recipients: ['list_item_id', 'traveller_id'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type ExportTableName = keyof typeof EXPORT_COLUMNS;
@@ -513,6 +548,10 @@ INSERT INTO settings (key, value) VALUES ($key, $value)
  * import. *Keep mine* adds it only when the phone lacks it; *Use the backup's* also updates the
  * phone's row with the same id. Never a delete: a profile still in use cannot be removed.
  */
+/** A link row keyed by both ends: one already here is the same fact, so it is kept, not doubled. */
+export const insertLinkRow = (table: ExportTableName) =>
+  insertRow(table).replace('INSERT INTO', 'INSERT OR IGNORE INTO');
+
 export const upsertSharedRow = (table: ExportTableName, mode: 'merge' | 'replace') => {
   const columns = EXPORT_COLUMNS[table].filter((column) => column !== 'id');
   const onConflict =

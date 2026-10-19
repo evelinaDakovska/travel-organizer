@@ -386,6 +386,18 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ### 11.0000 Latest (2026-10-19)
 
+- **Later the same day: 2B-0 built as 0.8.0** (Me + several people per list item; migration 006,
+  backup format 6, D33) and rehearsed on the emulator as an update over 0.7.4 with synthetic
+  format-5 data — details in status.md *P*. APK:
+  `%USERPROFILE%/.travel-organizer/travel-organizer-0.8.0.apk`. **Not on any phone.** When it goes
+  to the owner's phone (which holds 0.7.1 or later — confirm), it brings migrations 006 and
+  whatever it skips over: rehearse from that exact APK first, fresh Drive backup, `install -r` only.
+- The emulator now holds 0.8.0 with test data only (Vienna Beta Test, P1 Test…, Rehearsal Lapland,
+  Old Backup Rome; Me = the fixture's "Evelina"). Its Downloads also hold two older zips this
+  session did not create (`phone_backup_test.zip`, `travel-organizer-backup-2026-10-11.zip`) that
+  may be copies of real data — left unopened; the owner should decide whether to delete them.
+- **2B waits for the owner's approval** of `docs/phase2-plan.md` §10.
+
 - **0.7.0 → 0.7.3 were built on 2026-10-13 → 10-16** (directions, adult/child travellers with
   migrations 004/005 and backup format 5, Overview by stage, Quick Expense with receipt photos,
   the feedback form switched off, the new icon). Summary and commits: `docs/status.md` →
