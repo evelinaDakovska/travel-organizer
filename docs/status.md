@@ -5,17 +5,19 @@
 Verified against the repo on 2026-10-19, on Windows: **895 tests passing across 54 suites, typecheck clean.**
 
 > **Where things are (2026-10-19)**
-> - **Latest release build: 0.7.3** (versionCode 13), the first **friends-only beta** —
->   `release/TravelOrganizer-0.7.3-beta.apk` (gitignored). Tested by friends on a second, smaller
->   Android phone; their feedback became the roadmap's Phase 1.
+> - **Latest release build: 0.7.4** (versionCode 14) — roadmap Phase 1, built and verified on the
+>   emulator, **not installed on any phone**: `%USERPROFILE%/.travel-organizer/travel-organizer-0.7.4.apk`.
+>   Before it, **0.7.3** (versionCode 13) was the first **friends-only beta**
+>   (`release/TravelOrganizer-0.7.3-beta.apk`, gitignored), tested by friends on a second, smaller
+>   Android phone; their feedback became Phase 1.
 > - **On the owner's phone: not recorded.** A pre-update phone backup was taken on 2026-10-14
 >   (`backups/`, gitignored), 0.7.1 was bumped "for in-place device update" that day, and the
 >   0.7.2 Overview, traveller-picker and Places changes are reported as checked on the S26 Ultra —
 >   so the phone holds **0.7.1 or later**. Confirm with the owner (with permission:
 >   `adb shell dumpsys package com.evelinadakovska.travelorganizer | grep versionName`) before
 >   rehearsing any update.
-> - **Next: the roadmap** ([`roadmap.md`](roadmap.md), section *P* below). Phase 1 is in
->   progress; Phase 2 waits for the owner.
+> - **Next: the roadmap** ([`roadmap.md`](roadmap.md), section *P* below). Phase 1 is done
+>   (0.7.4); Phase 2 waits for the owner's review of it.
 
 ---
 
@@ -599,7 +601,7 @@ only when the owner asks.
 
 | | Phase | ✓ |
 |---|---|---|
-| **P1** | UI & navigation: trip context in tab headers, active bottom tab, *Notes & lists* label on small phones, bottom-sheet corners | ⬜ in progress |
+| **P1** | UI & navigation: trip context in tab headers, active bottom tab, *Notes & lists* label on small phones, bottom-sheet corners — **0.7.4**, emulator; not on a phone yet | ✅ |
 | **P2** | Single-trip import/export & AI JSON import | ⬜ |
 | **P3** | Travellers, pricing & shared expenses (replaces N5b) | ⬜ |
 | **P4** | Currency conversion | ⬜ |
@@ -607,6 +609,44 @@ only when the owner asks.
 | **P6** | Trips without fixed dates | ⬜ |
 | **P7** | Google Maps place import | ⬜ |
 | **P8** | Google Calendar export (.ics) | ⬜ |
+
+**P1, what was built (0.7.4, versionCode 14).** No schema, data or native change.
+- **Trip context in tab headers.** `ScreenHeader` takes an optional `context` line above the title
+  (`type.bodyStrong`, ink colour, up to two lines); `TripTabHeader` (`src/features/trips/`) gives
+  Timeline, Places, Expenses and Notes & lists the trip (`tripContextLine`: *Lapland, Finland*,
+  the destination left out when the name already holds it; 4 tests) above the tab's title and the
+  dates below it, muted. Overview is unchanged. Places loses its old descriptive subtitle (*Saved
+  ideas, and where your plans are*) for the dates, as on the other tabs.
+- **Active tab.** `TripTabBar`: a 28 × 3 dp accent bar at the top edge of the active tab (always
+  laid out, transparent when inactive, so nothing moves), the accent on icon and label, and a
+  semibold label — never colour alone. `accessibilityState.selected` as before.
+- **One-line labels.** Every label is `numberOfLines={1}`. *Notes & lists* has a `shortLabel`,
+  *Notes*, used only when the full label — measured unseen at its active (semibold) width — is
+  wider than the tab; the screen title keeps *Notes & lists*. Labels follow the font scale up to
+  **1.15×** (`maxFontSizeMultiplier`): at 1.2× and above, *Overview* and *Expenses* no longer fit a
+  360 dp phone.
+- **Sheet corners.** Root cause: the scrim was a flex sibling *above* the sheet, so it ended at
+  the sheet's square top edge; outside each rounded corner the screen showed through undimmed —
+  the "second corner". The scrim is now a full-screen layer behind the sheet. Shared `Sheet`, so
+  every bottom sheet is fixed.
+- **Beyond the brief, in the same component:** a sheet's text field was hidden by the keyboard
+  (the app is edge to edge, so Android does not resize the window — the same reason as
+  `FormScroll`). `Sheet` now pads itself with `KeyboardAvoidingView`, keeps below the status bar,
+  lets its list shrink and scroll, and its taps go through with the keyboard open
+  (`keyboardShouldPersistTaps="handled"`). Seen on *Add traveller* and *Quick expense*.
+
+**P1, how it was verified.** 899 tests, typecheck clean (no lint is configured). Release 0.7.4,
+release key `63:8D:C6:86…52:35:E7`, installed with `install -r` over **0.7.3** on the emulator
+(first-install time kept). Before and after screenshots from 0.7.3 and 0.7.4. Light and dark;
+1280 × 2856 at 480 dpi (≈ 427 dp) and a small phone simulated with `wm size 720x1520` /
+`wm density 320` (360 dp); font scale 1.0, 1.3 and 2.0. Before: *Notes & lists* wrapped to two
+lines at 360 dp and its icon rode up; after: one line everywhere, all labels on the same baseline,
+the short label from 360 dp at 1.0 and on the large screen at 1.3. Corners magnified 4× before and
+after, light and dark: one continuous curve. Selected tab correct after tapping, after search →
+Back, after backgrounding, after leaving the trip and coming back; Back from a tab still goes to
+Overview as before. Testing created one throwaway trip (*P1 Test Saariselka…*, a child traveller
+*Mia*) on the emulator; the existing test trip was not changed. **Not tested:** on a physical
+phone (neither phone was connected); three-button navigation.
 
 ---
 

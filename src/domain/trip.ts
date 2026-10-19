@@ -125,6 +125,19 @@ export function tripPhaseLabel(phase: TripPhase): string {
 }
 
 /**
+ * Which trip a tab belongs to, above the tab's title: 'Lapland, Finland'. The destination is
+ * left out when the name already says it ('Finland' to Finland, 'Rome weekend' to Rome).
+ */
+export function tripContextLine(trip: Pick<Trip, 'name' | 'destination'>): string {
+  const name = trip.name.trim();
+  const destination = trip.destination?.trim();
+  if (!destination || name.toLocaleLowerCase().includes(destination.toLocaleLowerCase())) {
+    return name;
+  }
+  return `${name}, ${destination}`;
+}
+
+/**
  * Upcoming keeps trips that have not finished, soonest first; past is most recent first.
  * The boundary uses the device's local date — while travelling the device zone is the trip zone.
  */

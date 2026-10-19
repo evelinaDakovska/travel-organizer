@@ -6,6 +6,8 @@ import { gutter, spacing, type, useColors } from '../tokens';
 import { Icon } from './Icon';
 
 type Props = {
+  /** Where this screen belongs, above the title: the trip on a trip's tab. */
+  context?: string;
   title: string;
   subtitle?: string;
   action?: ReactNode;
@@ -13,7 +15,7 @@ type Props = {
   leading?: 'back' | 'close' | false;
 };
 
-export function ScreenHeader({ title, subtitle, action, leading = 'back' }: Props) {
+export function ScreenHeader({ context, title, subtitle, action, leading = 'back' }: Props) {
   const c = useColors();
   const router = useRouter();
 
@@ -31,6 +33,12 @@ export function ScreenHeader({ title, subtitle, action, leading = 'back' }: Prop
       ) : null}
 
       <View style={styles.titles}>
+        {/* Ink, not muted: which trip is open must read at a glance, yet stay below the title. */}
+        {context ? (
+          <Text style={[type.bodyStrong, { color: c.text }]} numberOfLines={2}>
+            {context}
+          </Text>
+        ) : null}
         {/* Two lines, not one: a long trip name wraps at a large font scale rather than vanish. */}
         <Text style={[type.title, { color: c.text }]} numberOfLines={2} accessibilityRole="header">
           {title}

@@ -88,6 +88,17 @@
 
 ---
 
+### Built in 0.7.4 (roadmap Phase 1) — verified on the emulator, not yet on a phone
+
+- **Trip context on every inner tab**: the trip's name and destination above *Timeline*, *Places*,
+  *Expenses* and *Notes & lists*, the dates below.
+- **A clear active tab**: accent bar, accent icon and semibold label.
+- **Tab labels on one line** on small phones and large text; *Notes & lists* shortens to *Notes* in
+  the bar only where it cannot fit.
+- **Bottom sheets**: one clean rounded top edge; text fields stay above the keyboard.
+
+---
+
 ### Implemented, Prepared for Friends-Only Beta (v0.7.3)
 *Fully implemented, covered by automated test suite (895 tests across 54 suites), typecheck clean, verified end-to-end on clean emulator install (`Pixel_10_Pro`, <= 4 GB RAM) and ready for friends-only test distribution.*
 

@@ -13,7 +13,7 @@ import {
   stopLabels,
   tripDates,
 } from '../../../../src/domain/dayRail';
-import { formatDateRange, formatDayHeading } from '../../../../src/domain/format';
+import { formatDayHeading } from '../../../../src/domain/format';
 import { undatedConfirmed } from '../../../../src/domain/itinerary';
 import { groupResourcesByItem } from '../../../../src/domain/resource';
 import { buildTimeline } from '../../../../src/domain/timeline';
@@ -32,6 +32,7 @@ import { TimelineConnectorRow } from '../../../../src/features/timeline/Timeline
 import { TimelineRow } from '../../../../src/features/timeline/TimelineRow';
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { useTripId } from '../../../../src/features/trips/TripContext';
+import { TripTabHeader } from '../../../../src/features/trips/TripTabHeader';
 import { queryView } from '../../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../../src/hooks/useLiveQuery';
 import { useNow } from '../../../../src/hooks/useNow';
@@ -48,7 +49,6 @@ import { ItemRow } from '../../../../src/ui/components/ItemRow';
 import { Rows } from '../../../../src/ui/components/ListRow';
 import { LoadFailed, QueryScreen, StaleNotice } from '../../../../src/ui/components/QueryStates';
 import { Screen } from '../../../../src/ui/components/Screen';
-import { ScreenHeader } from '../../../../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../../../../src/ui/components/SectionLabel';
 import { Tag } from '../../../../src/ui/components/Tag';
 import { gutter, radius, spacing, type, useColors } from '../../../../src/ui/tokens';
@@ -131,9 +131,9 @@ export default function TimelineScreen() {
 
   return (
     <Screen>
-      <ScreenHeader
+      <TripTabHeader
         title="Timeline"
-        subtitle={`${trip.name} · ${formatDateRange(trip.startDate, trip.endDate)}`}
+        trip={trip}
         action={
           <View style={styles.headerActions}>
             {duringTrip && selectedKey !== today ? (

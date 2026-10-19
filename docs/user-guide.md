@@ -258,6 +258,11 @@ missing from this phone** instead of opening nothing. Attach it again.
 
 ### Overview
 
+At the bottom of a trip, five tabs: **Overview**, **Timeline**, **Places**, **Expenses** and
+**Notes & lists** (just *Notes* on a narrow phone or with large text). The one you are on is
+marked by a short bar above it and a bolder label. Every tab but Overview names the trip above its
+title.
+
 The trip opens on its **Overview**. The top line says where and when, and **Full itinerary** opens
 the Timeline. Below it, one large panel shows the thing that matters most:
 

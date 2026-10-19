@@ -9,6 +9,7 @@ import { AddListSheet } from '../../../../src/features/lists/AddListSheet';
 import { NoteListRow } from '../../../../src/features/notes/NoteListRow';
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { useTripId } from '../../../../src/features/trips/TripContext';
+import { TripTabHeader } from '../../../../src/features/trips/TripTabHeader';
 import { queryView, type QueryState } from '../../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../../src/hooks/useLiveQuery';
 import {
@@ -26,7 +27,6 @@ import { Icon } from '../../../../src/ui/components/Icon';
 import { ListRow, Rows } from '../../../../src/ui/components/ListRow';
 import { LoadFailed, StaleNotice } from '../../../../src/ui/components/QueryStates';
 import { Screen } from '../../../../src/ui/components/Screen';
-import { ScreenHeader } from '../../../../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../../../../src/ui/components/SectionLabel';
 import { Segments } from '../../../../src/ui/components/Segments';
 import { gutter, radius, spacing, type, useColors } from '../../../../src/ui/tokens';
@@ -80,9 +80,9 @@ export default function NotesScreen() {
 
   return (
     <Screen>
-      <ScreenHeader
+      <TripTabHeader
         title="Notes & lists"
-        subtitle={trip?.name}
+        trip={trip}
         action={
           <View style={styles.headerActions}>
             <SearchButton tripId={tripId} />

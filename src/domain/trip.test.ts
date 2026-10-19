@@ -6,6 +6,7 @@ import {
   parseTripRow,
   tripDurationDays,
   tripInputSchema,
+  tripContextLine,
   tripPhase,
   tripPhaseLabel,
   type TripRow,
@@ -216,5 +217,25 @@ describe('outboundRoute (B6)', () => {
   it('is null with fewer than two cities', () => {
     expect(outboundRoute([])).toBeNull();
     expect(outboundRoute([leg('2026-11-20T07:20', 'Sofia', null)])).toBeNull();
+  });
+});
+
+describe('tripContextLine', () => {
+  it('names the trip and its destination', () => {
+    expect(tripContextLine({ name: 'Lapland', destination: 'Finland' })).toBe('Lapland, Finland');
+  });
+
+  it('is the name alone without a destination', () => {
+    expect(tripContextLine({ name: 'Milan', destination: null })).toBe('Milan');
+    expect(tripContextLine({ name: 'Milan', destination: '  ' })).toBe('Milan');
+  });
+
+  it('does not repeat a destination the name already holds, whatever its case', () => {
+    expect(tripContextLine({ name: 'Finland', destination: 'Finland' })).toBe('Finland');
+    expect(tripContextLine({ name: 'Rome weekend', destination: 'rome' })).toBe('Rome weekend');
+  });
+
+  it('trims what was typed', () => {
+    expect(tripContextLine({ name: ' Lapland ', destination: ' Finland ' })).toBe('Lapland, Finland');
   });
 });

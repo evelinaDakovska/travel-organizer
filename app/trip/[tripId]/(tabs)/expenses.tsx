@@ -9,6 +9,7 @@ import { SpendingView } from '../../../../src/features/expenses/SpendingView';
 import { TripTotal } from '../../../../src/features/expenses/TripTotal';
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { useTripId } from '../../../../src/features/trips/TripContext';
+import { TripTabHeader } from '../../../../src/features/trips/TripTabHeader';
 import { queryView } from '../../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../../src/hooks/useLiveQuery';
 import {
@@ -22,7 +23,6 @@ import { getTrip, TRIP_TABLES } from '../../../../src/repositories/trips';
 import { HeaderAction } from '../../../../src/ui/components/HeaderAction';
 import { LoadFailed, StaleNotice } from '../../../../src/ui/components/QueryStates';
 import { Screen } from '../../../../src/ui/components/Screen';
-import { ScreenHeader } from '../../../../src/ui/components/ScreenHeader';
 import { Segments } from '../../../../src/ui/components/Segments';
 import { gutter, spacing, useColors } from '../../../../src/ui/tokens';
 
@@ -79,9 +79,9 @@ export default function ExpensesScreen() {
 
   return (
     <Screen>
-      <ScreenHeader
+      <TripTabHeader
         title="Expenses"
-        subtitle={trip?.name}
+        trip={trip}
         action={
           <View style={styles.headerActions}>
             <SearchButton tripId={tripId} />

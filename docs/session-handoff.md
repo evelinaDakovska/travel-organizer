@@ -395,7 +395,9 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
   is not recorded.** Find out (ask; with permission, `dumpsys package`) before building the next
   update rehearsal, which must start from that exact APK.
 - **The roadmap (`docs/roadmap.md`, D32)** replaces the N list: Phases 1–8, one at a time, each
-  only when the owner asks. **Phase 1 (UI & navigation) is the current work**; Phase 2 waits.
+  only when the owner asks. **Phase 1 (UI & navigation) is done as 0.7.4** (status.md → *P*),
+  verified on the emulator and archived as `%USERPROFILE%/.travel-organizer/travel-organizer-0.7.4.apk`;
+  not installed on any phone. Phase 2 waits for the owner.
 - **On this laptop:** a real phone backup in `backups/` (gitignored). CLAUDE.md §9 says the laptop
   is not a safe store; the copy that counts is the owner's Drive one.
 - The owner's data-safety rules were restated with the roadmap: never uninstall or clear the app on

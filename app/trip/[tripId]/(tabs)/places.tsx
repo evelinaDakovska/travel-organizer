@@ -7,6 +7,7 @@ import type { Priority } from '../../../../src/domain/tripItem';
 import { AddSheet } from '../../../../src/features/items/AddSheet';
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { useTripId } from '../../../../src/features/trips/TripContext';
+import { TripTabHeader } from '../../../../src/features/trips/TripTabHeader';
 import { queryView } from '../../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../../src/hooks/useLiveQuery';
 import {
@@ -14,13 +15,13 @@ import {
   listTripItems,
   TRIP_ITEM_TABLES,
 } from '../../../../src/repositories/tripItems';
+import { getTrip, TRIP_TABLES } from '../../../../src/repositories/trips';
 import { Button } from '../../../../src/ui/components/Button';
 import { HeaderAction } from '../../../../src/ui/components/HeaderAction';
 import { ItemRow } from '../../../../src/ui/components/ItemRow';
 import { Rows } from '../../../../src/ui/components/ListRow';
 import { LoadFailed, StaleNotice } from '../../../../src/ui/components/QueryStates';
 import { Screen } from '../../../../src/ui/components/Screen';
-import { ScreenHeader } from '../../../../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../../../../src/ui/components/SectionLabel';
 import { Segments } from '../../../../src/ui/components/Segments';
 import { gutter, radius, spacing, type, useColors } from '../../../../src/ui/tokens';
@@ -43,6 +44,11 @@ export default function PlacesScreen() {
   const [view, setView] = useState<PlacesView>('saved');
   const [adding, setAdding] = useState(false);
 
+  const { data: trip } = useLiveQuery(
+    useCallback((database) => getTrip(database, tripId), [tripId]),
+    TRIP_TABLES,
+    [tripId],
+  );
   const placesQuery = useLiveQuery(
     useCallback((database) => listPlaces(database, tripId), [tripId]),
     TRIP_ITEM_TABLES,
@@ -62,9 +68,9 @@ export default function PlacesScreen() {
 
   return (
     <Screen>
-      <ScreenHeader
+      <TripTabHeader
         title="Places"
-        subtitle="Saved ideas, and where your plans are"
+        trip={trip}
         action={
           <View style={styles.headerActions}>
             <SearchButton tripId={tripId} />
