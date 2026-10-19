@@ -17,6 +17,7 @@ what is still open, and the conventions to follow.
 | `docs/paid-plan.md` | F7, paid or not at a glance (done; 0.5.1, on the phone) |
 | `docs/fieldbook-plan.md` | The design review of 0.5.1: fixes A1–A7, the Fieldbook redesign B1–B11, additions C1–C5, decisions FB-1… (0.6.0) |
 | `docs/directions-plan.md` | Google Maps directions and timeline connectors (0.7.0) |
+| `docs/phase2-plan.md` | Roadmap Phase 2 architecture (2A): single-trip archive, AI JSON import, planning context — awaiting approval |
 | `docs/decision-log.md` | *Why* things were decided. Rationale only — no authoritative detail |
 | `docs/windows-handoff.md` | **Continuing on Windows** — read this instead of `dev-setup.md` there |
 | `docs/dev-setup.md` | Machine setup for the macOS machine it was started on |

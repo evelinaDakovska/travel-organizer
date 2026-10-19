@@ -602,7 +602,7 @@ only when the owner asks.
 | | Phase | ✓ |
 |---|---|---|
 | **P1** | UI & navigation: trip context in tab headers, active bottom tab, *Notes & lists* label on small phones, bottom-sheet corners — **0.7.4**, emulator; not on a phone yet | ✅ |
-| **P2** | Single-trip import/export & AI JSON import | ⬜ |
+| **P2** | Single-trip import/export & AI JSON import — **2A** architecture and audit done ([`phase2-plan.md`](phase2-plan.md), 2026-10-19); **2B** single-trip archive, **2C** AI activity import, **2D** planning context wait for the owner's approval and the decisions in its §10 | ⬜ |
 | **P3** | Travellers, pricing & shared expenses (replaces N5b) | ⬜ |
 | **P4** | Currency conversion | ⬜ |
 | **P5** | Full-day map | ⬜ |
