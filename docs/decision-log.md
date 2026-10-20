@@ -736,3 +736,32 @@ minutes with more screens open. `useLiveQuery` now waits for 50 ms of quiet (at 
 queues one read at most; every change is still followed by a read. Rejected: suspending listeners
 during an import (a global switch every batch writer would have to remember), and virtualising the
 preview alone (it did not touch the cause).
+
+## D36 — Plan with AI: the planning context (2D, 0.11.0)
+
+Plan, decisions and the owner's refinements: `docs/phase2d-plan.md` §10–§11; as built: technical
+reference §19.
+
+**Text for people and assistants, not a format.** 2A sketched JSON, but nothing parses the context
+back: an assistant reads it, and so does the person in the preview. Markdown is read well by both.
+The importable direction stays 2C's JSON; the context ends with a compact description of it so a
+reply can go straight into Import activities — the full schema stays on that screen.
+
+**An allowlist at the source.** One mapper copies the planning fields of an item; the repository
+reads only the trip, its items and its travellers' classifications (the SQL does not even select
+names). Notes, files, links, expenses, lists and Me are never read, so no later code can leak
+them. Rejected: serialising rows and deleting fields — one forgotten field and it leaks.
+
+**Titles are needed and are free text, so: scrub, show, and say so.** Booking references stored in
+the trip, emails, links, phone-like and long digit runs are taken out of titles and place names —
+best effort, tuned not to damage dates, times, road or flight numbers. The screen says above the
+exact preview that titles may contain personal information (owner's refinement); Copy and Share use
+exactly the previewed string. The person's own typed request is theirs and goes in verbatim.
+
+**Optional means off, and once.** Where we stay and who is travelling are off by default. A stay
+is the overnight base, so with the switch on it is listed once as the nights it covers — never in
+the daily itinerary, never with an address (owner's refinement). Travellers are counts by the trip's
+own adult/child classification, never names.
+
+**Read-only by construction.** Nothing is written — not even the choices — and nothing is sent:
+the person copies or shares.

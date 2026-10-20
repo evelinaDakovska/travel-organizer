@@ -524,6 +524,24 @@ You can plan with an AI assistant and bring its suggestions into a trip without 
 *Share the format* sends the technical description (a JSON Schema) to anyone or any tool that needs
 it. The full description, with an example to copy, is `docs/ai-activities-format.md`.
 
+### Plan with AI
+
+**More → Plan with AI** turns the trip into a short text for ChatGPT or another assistant, so you
+don't have to describe it again.
+
+1. **What would you like help with?** — *Improve my itinerary*, *Fill free time*, *Is it too busy?*,
+   *Places to eat*, *General planning*, or *In my own words* (what you type goes in exactly as typed).
+2. **What to include** — the destination, dates and what is planned are always in. *Ideas not
+   decided yet* is on; *Where we stay* (the place name for each night, never the address) and *Who
+   is travelling* (numbers of adults and children, never names) are off unless you switch them on.
+3. **Exactly what will be shared** — read it. Titles and place names are cleaned of booking
+   references, emails, links and phone numbers, but that is not a guarantee: if a title holds
+   something private, change the title first.
+4. **Copy for ChatGPT** or **Share** — exactly the text you see. The app sends nothing by itself.
+
+Ask the assistant for *activities to import* and it can reply in the activities format; save the
+reply as a `.json` file and use **Import activities**. Nothing in your trip changes until you do.
+
 ### Export activities
 
 **More → Export activities**: tick the ideas and plans you want (filter **All · Ideas · Planned**)

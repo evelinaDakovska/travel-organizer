@@ -88,6 +88,13 @@
 
 ---
 
+### Built in 0.11.0 (roadmap 2D) — verified on emulators, not yet on a phone
+
+- **Plan with AI** (Overview → More): the trip as text to paste into ChatGPT or another assistant —
+  what to help with, what is planned day by day, ideas, optionally where you stay and how many are
+  going. You see exactly what will be shared before you copy or share it. Names, booking
+  references, prices, notes, addresses, documents and links are never included.
+
 ### Built in 0.10.0 (roadmap 2C) — verified on emulators, not yet on a phone
 
 - **Import activities** (Overview → More): add ideas and plans from a JSON file — e.g. written by

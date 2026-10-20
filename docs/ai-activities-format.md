@@ -13,6 +13,9 @@ no database fields, no files.
 
 ## Use it with ChatGPT
 
+*Plan with AI* (a trip's More menu, 0.11.0) gives an assistant the trip itself plus a compact
+description of this format; the steps below give it the full instructions and example instead.
+
 1. In the trip, open **More → Import activities → Copy instructions for ChatGPT**.
 2. Paste them into a chat, then describe the trip: where, when, who, what you like.
 3. Ask for the file. Save the answer as a `.json` file (a Markdown code fence around it is fine).

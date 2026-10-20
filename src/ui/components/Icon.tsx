@@ -49,6 +49,7 @@ import {
   Search,
   Settings,
   Shapes,
+  Sparkles,
   Share2,
   ShieldCheck,
   Ship,
@@ -129,6 +130,8 @@ const ICONS = {
   // The activities file (2C): in from an AI assistant, out to share.
   importActivities: FileInput,
   exportActivities: FileOutput,
+  // Plan with AI (2D).
+  planWithAi: Sparkles,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

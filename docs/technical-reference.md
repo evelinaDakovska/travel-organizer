@@ -1470,3 +1470,64 @@ own schema file. The app reads every version it ever read and refuses a newer on
 **Known limitations:** the preview renders every row (no virtualisation) — at 300 rows one toggle
 costs ~200 ms on the software-rendered emulator; an exported file stays in the cache until Android
 reclaims it; per-person prices wait for Phase 3.
+
+## 19. Plan with AI: the planning context (2D, 0.11.0)
+
+Rationale: D36. Plan: `docs/phase2d-plan.md`. Code: `domain/planningContext.ts` (allowlist, scrub,
+intentions, builder — pure), `repositories/planningContext.ts` (`readPlanningInput`, selects only),
+`SELECT_TRIP_TRAVELLER_CLASSIFICATIONS` in `db/queries.ts`, screen `app/trip/[tripId]/plan-with-ai.tsx`.
+No writes, no network, no migration.
+
+### Allowlist
+
+`planningItemOf(item)` is the only code that reads a stored item. It returns `null` for tasks and
+cancelled items, and otherwise exactly: `kind`, `subkind` (when valid), `status` (idea or
+confirmed), `priority` (ideas), `title`, `start`/`end`, `startTzOverride`/`endTzOverride`,
+`locationName`, and for transport `from`/`to`; `id` is kept only to break ties in ordering and is
+never written. `planningInputOf` also collects the trip's `confirmation_code`s — used only to scrub
+them. `readPlanningInput` reads the trip row, its items and `trip_travellers.classification`
+(no names selected); notes, resources, expenses, payments, lists, templates and settings are not read.
+
+| In the text | When |
+|---|---|
+| Destination (else trip name), dates, default zone | always |
+| Planned items (not stays): day, time(s), zone where it differs, role (*Departs*/*Arrives*…), title, kind/type, place name or route | always |
+| Planned without a date; before / after the trip | always, own sections |
+| Ideas: title, kind/type, place, priority, *considering <date>* | switch, on |
+| Stays: nights covered + place name (else title) + kind of stay | switch, off — **never** in the daily itinerary, never an address |
+| Traveller counts: total, adults, children, not specified | switch, off — numbers only |
+| Request: preset text or own words (≤ 500, verbatim) | always |
+| Instructions + compact activities-format block | always |
+
+Never: notes, descriptions, addresses, coordinates, links, booking references, carrier, flight
+number, seat, journey id, reminders, prices, paid state, receipts, documents, expenses, payments,
+lists, names, Me, ids, other trips, to-dos, cancelled items.
+
+### Scrub (`scrubPlanningText`, titles / place names / route / destination)
+
+Best effort, stated on screen. Removes (→ `…`): URLs (`http(s)://`, `www.`), emails, the trip's
+booking references as whole words (case-insensitive, ≥ 3 characters, regex-escaped), runs of digits
+with phone/card separators holding 9+ digits unless they contain a real calendar date, digit runs of
+10+. Keeps dates (`2026-11-21`, `21.11.2026`), times, road and route numbers, flight numbers and
+ordinary names. Whitespace collapsed.
+
+### Rules
+
+Days are `tripDates(trip)`; entries from `buildTimeline` over planned non-stay items (so overnight
+items split, ordered by instant). An empty day says *Nothing planned yet*; 3+ consecutive empty
+days collapse to one range. Times are the stored wall clock; a zone is named (`zoneName`, *Sofia
+time*) when that end's zone differs from the trip's; a full entry with both ends shows `a–b` (same
+zone) or `a → b`. Deterministic: no timestamp; ideas by priority, title, id; stays by start, title,
+id; ties by id. Output ends with a newline.
+
+### Screen
+
+Presets / own words, three switches, the *never included* line, the warning *Review this text before
+sharing. Activity titles and place names may contain personal information.*, the exact text
+(selectable) and its length, pinned **Copy for ChatGPT** (`expo-clipboard`) and **Share**
+(`react-native` `Share.share({ message })`) — both receive the one memoised string that is
+rendered. Choices are not saved.
+
+**Known limitations:** the scrub cannot recognise every kind of personal data in free text; the
+text is plain Markdown with no length cap (a 120-plan month is ~7 KB); trips without fixed dates
+wait for Phase 6.

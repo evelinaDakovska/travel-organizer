@@ -614,3 +614,9 @@ SELECT r.expense_id, COUNT(*) AS n
  WHERE e.trip_id = $tripId
  GROUP BY r.expense_id
 `;
+
+/** Plan with AI (2D): how many are going, by classification — names are not selected at all. */
+export const SELECT_TRIP_TRAVELLER_CLASSIFICATIONS = `
+SELECT tt.classification FROM trip_travellers tt
+ WHERE tt.trip_id = $tripId ORDER BY tt.sort_order, tt.traveller_id
+`;

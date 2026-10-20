@@ -15,7 +15,7 @@ single source of truth for schema, time, files, queries). Read in this order:
 5. `docs/decision-log.md` — why, and what was rejected (D1–D32)
 6. `docs/windows-handoff.md` — machine setup, release build, Windows specifics
 
-Last verified: **2026-10-20**, after 0.10.0 (Phase 2C) — **1082 tests**, typecheck clean.
+Last verified: **2026-10-20**, after 0.11.0 (Phase 2D) — **1119 tests**, typecheck clean.
 
 > **Starting fresh? Jump to §11 first** — it is the exact point the last session stopped, what is
 > waiting on the owner, and the next steps in order.
@@ -206,7 +206,7 @@ Moving the repo to `C:\dev` is what fixed the first Windows build.
 
 ```bash
 npm install                 # postinstall applies the patches
-npm test                    # 1082 tests, ~3s
+npm test                    # 1119 tests, ~3s
 npx tsc --noEmit            # must be clean
 npx expo prebuild --platform android      # after any app.json or native change
 # EXPO_NO_GIT_STATUS=1 when the tree is dirty, or prebuild stops on a prompt
@@ -384,7 +384,24 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ## 11. Where the last session stopped (2026-10-19) — read this first
 
-### 11.00000 Latest (2026-10-20)
+### 11.000000 Latest (2026-10-20, later)
+
+- **2D built as 0.11.0** (Plan with AI; no migration, no writes; D36, technical reference §19) and
+  verified end to end — `%USERPROFILE%\Pictures\TravelOrganizer-0.11.0-2D-e2e\E2E-LOG.md`. APK
+  `%USERPROFILE%/.travel-organizer/travel-organizer-0.11.0.apk`, **not on any phone**. **Phase 2 is
+  complete; Phase 3 waits for the owner.**
+- How exactness was proven, worth reusing: pull the debuggable build's database, rebuild the
+  expected text off-device with the app's own SQL strings, row parsers and pure builder
+  (`tsx`, importing only `src/db/queries` and `src/domain` — the repositories pull in React Native),
+  and `cmp` it with the preview node's text from the UI dump (`&#10;` = newline). Copy: paste into a
+  note's field (`KEYCODE_PASTE` 279) and read it back, then close unsaved. Share: the system share
+  sheet shows the full text.
+- The app now **opens straight into a trip that is under way** (single active trip) — synthetic
+  one-day trips dated today make every launch land there; tap Back for Home.
+- `TO_2B_Test`: debuggable 0.11.0 with the synthetic 2D trips; `Pixel_10_Pro`: release 0.11.0 over
+  0.10.0. Both shut down.
+
+### 11.00000 Earlier (2026-10-20)
 
 - **2C built as 0.10.0** (AI activity import, selective export; no migration; D35, technical
   reference §18, public format `docs/ai-activities-format.md`) and verified end to end — matrix and

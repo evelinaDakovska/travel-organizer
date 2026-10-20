@@ -2,10 +2,13 @@
 
 **The** engineering status board: what is done, how it was verified, what is next. [`product-status.md`](product-status.md) is the feature-level view of the same facts; where the two disagree, this file wins. Scope of upcoming work: [`roadmap.md`](roadmap.md).
 
-Verified against the repo on 2026-10-20, on Windows: **1082 tests passing across 64 suites, typecheck clean.**
+Verified against the repo on 2026-10-20, on Windows: **1119 tests passing across 66 suites, typecheck clean.**
 
 > **Where things are (2026-10-19)**
-> - **Latest release build: 0.10.0** (versionCode 17) — Phase **2C**, AI activity import and
+> - **Latest release build: 0.11.0** (versionCode 18) — Phase **2D**, Plan with AI (no migration),
+>   verified end to end on emulators and as a release update over 0.10.0, **not installed on any
+>   phone**: `%USERPROFILE%/.travel-organizer/travel-organizer-0.11.0.apk`. **Phase 2 is complete.**
+> - Before it: **0.10.0** (versionCode 17) — Phase **2C**, AI activity import and
 >   selective export (no migration), verified end to end on emulators and as a release update over
 >   0.9.0, **not installed on any phone**: `%USERPROFILE%/.travel-organizer/travel-organizer-0.10.0.apk`.
 > - Before it: **0.9.0** (versionCode 16) — Phase **2B**, single-trip export and import
@@ -22,7 +25,8 @@ Verified against the repo on 2026-10-20, on Windows: **1082 tests passing across
 >   `adb shell dumpsys package com.evelinadakovska.travelorganizer | grep versionName`) before
 >   rehearsing any update.
 > - **Next: the roadmap** ([`roadmap.md`](roadmap.md), section *P* below). Phase 1 (0.7.4), 2B-0
->   (0.8.0), 2B (0.9.0) and 2C (0.10.0) are done and wait for the owner's review; **2D waits for approval**.
+>   (0.8.0), 2B (0.9.0), 2C (0.10.0) and 2D (0.11.0) are done and wait for the owner's review;
+>   **Phase 3 waits for approval**.
 
 ---
 
@@ -610,7 +614,8 @@ only when the owner asks.
 | **P2·2B-0** | "Me" — one traveller profile marked as the person using the app — and several people per packing/shopping item. **0.8.0**, emulator; not on a phone yet | ✅ |
 | **P2·2B** | Single-trip export and import: Export trip (complete or without attachments), Import a trip as a new trip, traveller mapping, duplicate detection, staged import with rollback. **0.9.0**, emulator E2E; not on a phone | ✅ |
 | **P2·2C** | AI activity import and selective export: a public, versioned JSON format with JSON Schema and AI instructions; Import activities (preview, validation tiers, duplicates, selection, one transaction, review list); Export activities (filters, privacy filtering, re-importable). **0.10.0**, emulator E2E; not on a phone | ✅ |
-| **P2** | Single-trip import/export & AI JSON import — **2A** architecture and audit done ([`phase2-plan.md`](phase2-plan.md), 2026-10-19); 2B-0, **2B** (single-trip archive) and **2C** (AI activity import, selective export) done; **2D** planning context waits for the owner's approval | ⬜ |
+| **P2·2D** | Plan with AI: the trip as Markdown for an AI assistant — presets or own request, allowlisted fields, scrubbed titles, optional stays (as nights) and traveller counts, exact preview, Copy/Share of that very text, a compact activities-format block. **0.11.0**, emulator E2E; not on a phone | ✅ |
+| **P2** | Single-trip import/export & AI JSON import — **2A** architecture and audit done ([`phase2-plan.md`](phase2-plan.md), 2026-10-19); 2B-0, **2B** (single-trip archive) and **2C** (AI activity import, selective export) and **2D** (Plan with AI) done — awaiting the owner's review | ✅ |
 | **P3** | Travellers, pricing & shared expenses (replaces N5b) | ⬜ |
 | **P4** | Currency conversion | ⬜ |
 | **P5** | Full-day map | ⬜ |
@@ -655,6 +660,39 @@ Back, after backgrounding, after leaving the trip and coming back; Back from a t
 Overview as before. Testing created one throwaway trip (*P1 Test Saariselka…*, a child traveller
 *Mia*) on the emulator; the existing test trip was not changed. **Not tested:** on a physical
 phone (neither phone was connected); three-button navigation.
+
+**2D, what was built (0.11.0, versionCode 18).** Plan: `phase2d-plan.md`. Decisions: D36. Technical:
+technical reference §19. No migration, no new dependency, no network, no writes.
+- **Plan with AI** (Overview → More): *What would you like help with?* (five presets or *In my own
+  words*, verbatim, ≤ 500 characters) → *What to include* (always: destination, dates, the
+  itinerary; switches: ideas on, *Where we stay* off, *Who is travelling* off; a line naming what is
+  never included) → *Exactly what will be shared*, with *Review this text before sharing. Activity
+  titles and place names may contain personal information.* above it → **Copy for ChatGPT** /
+  **Share** (the very string shown) → a pointer to Import activities.
+- **The text**: request, trip, every day (empty days said; 3+ in a row collapsed), times as stored
+  with a zone where it differs, overnight items on both days, *Planned, no date yet*, before/after
+  the trip, ideas with priority and *considering <date>*, stays as nights (switch), traveller counts
+  (switch), instructions to keep plans and not invent, a compact activities-format block. To-dos
+  and cancelled plans never. Deterministic.
+- **Privacy**: one allowlist mapper; the repository reads only the trip, its items and its
+  travellers' classifications; titles and place names scrubbed (the trip's booking references,
+  emails, links, phone-like and long digit runs), keeping dates, times, road and flight numbers.
+
+**2D, how it was verified.** 1119 tests (37 new: privacy negatives with fake codes, emails, phones,
+passport/card/IBAN strings, private URLs, notes, names, prices for all 8 switch combinations; scrub
+keeps/removes; days, zones, overnight, undated, before/after, empty and one-day trips, years;
+stays once as nights; counts; every intention and verbatim request; the format block imports;
+determinism under reordering; 300 items; the repository reads one trip and changes nothing),
+typecheck clean. **End to end** on `TO_2B_Test` (debuggable 0.11.0 over 0.10.0, three synthetic
+trips imported as archives): A–J **pass** — every preview **byte-identical** to the text computed
+from a copy of the emulator's database; Copy (pasted back) and Share (share sheet text) identical to
+the preview; no planted fake or stored private value in any preview; all table hashes identical
+before and after; 360 dp, dark, font 1.3/2.0, Back. **J**: release 0.11.0 `install -r` over 0.10.0
+on `Pixel_10_Pro`, every captured screen identical; 2B import, 2C import/export and Plan with AI
+work. Found and fixed: Copy label cut short; a literal `https://...` in the format block made a
+receiver see a link; a phone number read as a date. Log:
+`%USERPROFILE%\Pictures\TravelOrganizer-0.11.0-2D-e2e\E2E-LOG.md`. **Not tested:** a physical phone;
+pasting into ChatGPT itself; three-button navigation.
 
 **2C, what was built (0.10.0, versionCode 17).** Plan: `phase2c-plan.md`. Decisions: D35. Technical:
 technical reference §18. Public format: `ai-activities-format.md`. No migration; no new native

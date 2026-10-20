@@ -19,6 +19,7 @@ what is still open, and the conventions to follow.
 | `docs/directions-plan.md` | Google Maps directions and timeline connectors (0.7.0) |
 | `docs/phase2-plan.md` | Roadmap Phase 2 architecture (2A): single-trip archive (built as 2B, 0.9.0), AI JSON import, planning context |
 | `docs/phase2c-plan.md` | 2C plan as approved, with the owner's refinements and what was built (0.10.0) |
+| `docs/phase2d-plan.md` | 2D (Plan with AI) plan as approved, with the owner's refinements and what was built (0.11.0) |
 | `docs/ai-activities-format.md` | **The public activities JSON format** (v1) for AI assistants and tools — schema in `docs/schema/` |
 | `docs/decision-log.md` | *Why* things were decided. Rationale only — no authoritative detail |
 | `docs/windows-handoff.md` | **Continuing on Windows** — read this instead of `dev-setup.md` there |

@@ -18,7 +18,7 @@ describe('Feature Flags & Conditional Feedback Presentation', () => {
     it('omits feedback action when disabled (default)', () => {
       const actions = getTripMoreActions(false);
 
-      expect(actions).toHaveLength(7);
+      expect(actions).toHaveLength(8);
       expect(actions.some((a) => a.path === 'feedback')).toBe(false);
 
       const paths = actions.map((a) => a.path);
@@ -26,6 +26,7 @@ describe('Feature Flags & Conditional Feedback Presentation', () => {
         'edit',
         'itinerary-pdf',
         'export-trip',
+        'plan-with-ai',
         'import-activities',
         'export-activities',
         'use-template',
@@ -36,7 +37,7 @@ describe('Feature Flags & Conditional Feedback Presentation', () => {
     it('includes feedback action when enabled', () => {
       const actions = getTripMoreActions(true);
 
-      expect(actions).toHaveLength(8);
+      expect(actions).toHaveLength(9);
       const feedbackAction = actions.find((a) => a.path === 'feedback');
       expect(feedbackAction).toBeDefined();
       expect(feedbackAction).toEqual<TripMoreAction>({

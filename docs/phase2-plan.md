@@ -25,6 +25,12 @@ the owner should make first.
 > import is from a file only (no paste) with no *Add as* switch; no Undo — a *Review imported
 > activities* list instead; selective export in the same format was added. Decisions §10: 4
 > per-person prices reported, not written; 5 ideas by default; 6 is 2D's.
+>
+> **As built in 2D (0.11.0)** — `phase2d-plan.md` and technical reference §19 are authoritative for
+> §7. Differences: Markdown text, not JSON; a request (preset or own words) instead of planning
+> notes; no derived *area* — a stay's own place name, listed once as nights, only when switched on;
+> titles and place names scrubbed and the preview warns; one combined action (§10 decision 6:
+> *Plan with AI* with a compact activities-format block).
 
 ## 1. Current architecture — findings
 

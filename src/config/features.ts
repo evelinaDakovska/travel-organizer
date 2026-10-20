@@ -17,6 +17,7 @@ export type TripMoreAction = {
     | 'export-trip'
     | 'import-activities'
     | 'export-activities'
+    | 'plan-with-ai'
     | 'use-template'
     | 'save-template'
     | 'feedback';
@@ -43,6 +44,12 @@ export function getTripMoreActions(
       subtitle: 'This trip as a file, to import on another phone',
       icon: 'share',
       path: 'export-trip',
+    },
+    {
+      title: 'Plan with AI',
+      subtitle: 'This trip as text for ChatGPT — you see it all first',
+      icon: 'planWithAi',
+      path: 'plan-with-ai',
     },
     {
       title: 'Import activities',
