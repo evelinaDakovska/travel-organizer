@@ -4,7 +4,8 @@
 **Repository:** https://github.com/evelinaDakovska/travel-organizer  
 **Last reported release:** v0.12.0, versionCode 19, commit `991994e` (Phase 3B)  
 **Verification status:** This document consolidates owner decisions, previous planning and coding-agent reports. It is **not** an independent source-code audit. Verify all implementation claims against the repository before relying on them.  
-**Repository cross-check:** Claude compared this document with the repository at `991994e` and its docs on 20 October 2026. Factual corrections are marked **[Repo check]**. Product requirements were not changed, and no future plan was removed. Points that need an owner decision are listed in §21. This check was done by the coding agent. It is not an independent review.
+**Repository cross-check:** Claude compared this document with the repository at `991994e` and its docs on 20 October 2026. Factual corrections are marked **[Repo check]**. Product requirements were not changed, and no future plan was removed. Points that need an owner decision are listed in §21. This check was done by the coding agent. It is not an independent review.  
+**Owner decisions on §21:** given 20 October 2026 and recorded in §21, in the sections they affect, in `docs/phase3-plan.md` §18–§19, and in decision-log D38.
 
 > **Document hierarchy:** This is the long-range product and delivery roadmap. `docs/phase3-plan.md` contains the detailed financial architecture; `CLAUDE.md`, the technical reference, decision log, status, and session handoff describe implementation specifics. When these conflict, inspect current code, identify the conflict, and ask the owner before silently changing product intent. Do not overwrite historical decisions or fabricate verification.
 
@@ -18,6 +19,20 @@ Travel Organizer is a practical, **offline-first travel companion** for keeping 
 
 **Distribution ambition:** initially free friends-only Android testing; potentially free Google Play launch later. No monetisation is required now. Cloud accounts, Firebase, collaboration, iOS and AI APIs are **possible future products**, not dependencies for the existing local-first roadmap. Do not assume a backend is approved.
 
+### 1.1 Status vocabulary (owner, 20 October 2026)
+
+Every feature or idea named in these documents has exactly one of these statuses. **"Not building now" never means "never building."**
+
+| Status | Meaning |
+|---|---|
+| **Implemented** | Already present in the application. |
+| **Approved/planned** | Included in this roadmap. Only the **current** phase is authorised for implementation. |
+| **Deferred** | Potentially wanted later, but not part of the current development scope. |
+| **Discovery** | Needs product research and a separate owner decision before it can be planned. |
+| **Explicitly excluded** | Intentionally not part of the product, unless the owner reverses that decision. |
+
+Ideas are never removed just to make documents consistent; they move between statuses. `CLAUDE.md` §7 uses the same vocabulary, and §17 below marks each backlog item Deferred or Discovery.
+
 ## 2. Collaboration and evidence protocol
 
 - **Owner:** decides product behavior, approves each stage, controls real-device access and releases.
@@ -29,7 +44,8 @@ Travel Organizer is a practical, **offline-first travel companion** for keeping 
 
 ## 3. Non-negotiable data safety and privacy
 
-1. The primary Samsung phone contains irreplaceable real trip information. **No physical-phone install, uninstall, clear data, debug reset, real-data testing, signing/application-ID change, or migration on it without explicit owner permission.** Physical acceptance testing is deferred until the planned feature phases are finished, unless the owner changes that decision.
+1. The primary Samsung phone contains irreplaceable real trip information. **No physical-phone install, uninstall, clear data, debug reset, real-data testing, signing/application-ID change, or migration on it without explicit owner permission.** Physical acceptance testing on the primary phone is deferred until the planned feature phases are finished, unless the owner changes that decision.
+   - **Secondary beta phone (owner, 20 October 2026):** a separate secondary Android phone may be used for controlled beta testing before the feature phases are finished, but **only in a testing session the owner has explicitly approved**. This permits *planning* early beta testing. It does not permit installing anything now. In such a session: synthetic data only; no access to or installation on the primary Samsung phone; no personal trip backups or production data; verify the application ID, signing, APK source and upgrade behaviour; never uninstall or clear data without explicit approval. Emulators stay the default testing environment.
 2. Use **synthetic fixtures on Android emulators** for development and destructive tests. Avoid opening or altering unidentified archive files, even on emulators.
 3. Preserve existing trip IDs, participants, travellers, prices, payment semantics, receipts, attachments and document references unless the owner explicitly changes them.
 4. Prefer additive SQLite migrations, versioned backups and transactional writes. Rehearse upgrade/restore on synthetic databases representing older schema and backup formats. A backup is not proven safe until a restore is tested.
@@ -74,7 +90,7 @@ The following milestones are **reported complete by Claude**, not independently 
 
 ## 5. Roadmap overview and dependency graph
 
-**Current gate:** Independent review of Phase 3B commit `991994e`, followed by approval and design of Phase 3C. Do not start 3C until approved.
+**Current gate:** Independent review of Phase 3B commit `991994e`, followed by approval and design of Phase 3C. Do not start 3C until approved. The owner confirmed 3C's scope on 20 October 2026 (§6.2); the pre-coding schema check is `docs/phase3-plan.md` §19, and its open design questions need answers before the 3C plan is written.
 
 ```text
 Completed (reported): Foundations → Phase 1 → Phase 2A → 2B-0 → 2B → 2C → 2D → 3A → 3B
@@ -83,8 +99,8 @@ Next:                          3C Pricing → 3D-1 Payments → 3D-2 Responsibil
                                    ↓                 ↓                 ↓                     ↓
 Later:                          Phase 4 Currency ──────────────────────────────────────────────┘
 Independent UI tracks:          Phase 5 Route Map; Phase 6 Undated Trips; Phase 7 Maps Import; Phase 8 ICS
-Pre-release:                    Integrated regression → controlled phone acceptance → friends beta → Play readiness
-Future discovery:               Feedback, Gmail, passports, sync/accounts, automatic booking extraction, iOS
+Pre-release:                    Feedback deployment + security check → integrated regression → controlled phone acceptance → friends beta → Play readiness
+Deferred / discovery:           Gmail, passports, sync/accounts, automatic booking extraction, AI API, weather, iOS (§17)
 ```
 
 Numbering 3B–3E follows the **approved Phase 3 audit**, not a promise of exact calendar dates. Each phase has an explicit exit gate.
@@ -105,13 +121,23 @@ Make mixed-group activity pricing clear without rewriting historic bookings or c
 - Participant changes must **not** silently recalculate totals, paid status or historical price lines; suggestions are non-destructive and user-invoked.
 - Distinguish a planning **estimate** from a real payment/confirmed booking. Existing boolean Paid is not proof of a payer or payment history.
 - Use currency-specific minor units/rounding safely; no FX conversion yet.
-- Handle no participants, one traveller, mixed adult/child, multiple children, zero/free lines, partial quantities, missing classifications, manually overridden totals and unusual currencies. **[Repo check]** Today a rate line's quantity must be a whole number of at least 1. A line with quantity 0 is refused, while a unit price of 0 (free) is allowed (`src/domain/pricing.ts`). Whether "partial quantities" means fractional quantities is an open question (§21).
+- Handle no participants, one traveller, mixed adult/child, multiple children, zero/free lines, partial quantities, missing classifications, manually overridden totals and unusual currencies. **[Repo check]** Today a rate line's quantity must be a whole number of at least 1. A line with quantity 0 is refused, while a unit price of 0 (free) is allowed (`src/domain/pricing.ts`).
+- **"Partial quantities" (owner, 20 October 2026): not fractional quantities.** Pricing quantities stay positive whole numbers (1 or more). A group that is only partly attending, or only partly priced, is represented by **separate pricing lines with whole quantities**, never by fractional people. No fractional quantities and no database change for this.
+- **Scope confirmed by the owner (20 October 2026):**
+  - a **user-invoked "Price for who's going"** calculation/suggestion;
+  - **Adult / Child / Anyone** classification on pricing lines;
+  - **free pricing lines**, including free child admission;
+  - **optional extras** as separate pricing lines;
+  - an **"Estimate"** label for prices on ideas.
+- **Constraints with that scope (owner):** existing totals stay authoritative until explicitly changed; suggestions never silently overwrite prices; editing participants never recalculates the total; historical and paid booking values are preserved; an estimate is never confused with a confirmed booking or a payment; fixed group totals stay supported; no fractional quantities; new pricing metadata is never silently discarded by backup, restore, ZIP import/export or PDF export.
 - **[Repo check]** The 3A audit's proposal: lines stored in `details.pricing.lines` gain an optional `for: 'adult' | 'child' | 'any'`. A missing value keeps the old free-label meaning. On that basis the plan expects 3C to need **no migration** (`docs/phase3-plan.md` §7, §12). §6.3 still requires this to be verified before coding.
 - UI should progressively disclose advanced pricing, keeping ordinary activity creation simple.
 
 ### 6.3 Architecture audit required before coding
 
 Inspect the actual SQLite columns, pricing-line domain functions, validation, forms, expense selectors, PDF, backups, single-trip ZIP, AI activity JSON and templates. Determine whether Adult/Child/Anyone metadata can live in existing fields **without lossy label parsing**. If a migration is actually needed, stop for owner approval; do not claim no migration merely because the initial roadmap anticipated one.
+
+**Result (20 October 2026, `docs/phase3-plan.md` §19):** the metadata fits in the existing `trip_items.details` JSON, which full backups and trip archives already carry as an unparsed string, so **no SQLite migration is needed**. The check found no lossy workaround in the storage. It did find four questions to settle in the 3C plan before coding: how an older app treats the new metadata (a backup-format bump is recommended), how an extra is marked, a group total combined with extras, and applying a suggestion to a booking already marked paid.
 
 ### 6.4 Acceptance criteria
 
@@ -153,6 +179,9 @@ Represent actual payments independently of booking price. One €250 booking wit
 - Keep unused legacy fields/tables intact; avoid rewriting old data.
 - Specify rules for payment amount > total, zero amount, different currency, deleting linked records, missing payer, booking edits after payment, and legacy paid flags **before coding**.
 - Clarify source-of-truth and aggregation: booking cost + associated payment records must not be added as separate costs; define whether Quick Expense represents a standalone cost or a payment linked to a booking.
+- **Required before implementation (owner, 20 October 2026):** a written distinction between a **standalone expense**, a **payment against a booking** and a **linked expense**. A booking and its payment records are never counted as separate costs.
+- **Deleting a booking that has linked financial records (owner):** never cascade-delete payments, expenses or settlements. Ordinary deletion of such a booking is **blocked**, with an explanation. A later explicit resolution workflow preserves financial history, for example unlinking a standalone expense, or archiving/cancelling the booking while keeping its financial relationships. A booking payment is never silently turned into an independent expense, and a payment is never orphaned. The exact archive/unlink UI and the source-of-truth rules are proposed and approved before 3D-1 is implemented. **[Repo check]** The draft DDL in `docs/phase3-plan.md` §8 has `ON DELETE CASCADE` from `cost_payments` to `trip_items`/`expenses`; it must change before migration 007 is written (§18 there).
+- **Linked records in different currencies (owner):** no automatic conversion and no adding of different currencies. In 3D-1, a linked booking payment must use the booking's currency; if the currencies differ, the link is blocked with a clear explanation and the records stay separate. No exchange rate is invented, and neither amount changes. Multi-currency reconciliation belongs to Phase 4 or a separately approved extension.
 
 ### 7.4 Backups, imports and migration
 
@@ -366,7 +395,18 @@ Owner previously requested a minimal form for friends to jot observations, close
 - Fixed owner-controlled email recipient; secure HTTPS endpoint/service, server-side secrets, validation, rate limits, abuse/spend controls and idempotent retries.
 - Do not deploy paid/public infrastructure or send test mail without owner authorization. If backend is not approved, do not fake a successful Send.
 
-**Status:** The old handoff called this the next priority, but subsequent owner-approved work focused on Phases 2–3. Treat timing as **unresolved**, not as permission to interrupt Phase 3. Ask whether feedback should precede friends beta.
+**Timing (owner, 20 October 2026):** the form is enabled, and its email worker deployed, **before the first APK is distributed to friends for testing** — not during Phase 3C. Until then the form stays disabled.
+
+**Pre-beta task: feedback deployment and security verification** (separate task, `docs/status.md` *B1*; approved/planned, not authorised yet). It covers:
+- a secure HTTPS endpoint;
+- secrets held on the server only;
+- input validation and rate limiting;
+- abuse protection and cost limits;
+- no personal trip data included automatically;
+- the draft persists and is cleared only after the server confirms acceptance;
+- real end-to-end delivery verification, with the owner's explicit approval.
+
+No infrastructure is deployed and no test email is sent until the owner approves that task.
 
 ### 16.3 Friends-only APK
 
@@ -385,22 +425,22 @@ Owner previously requested a minimal form for friends to jot observations, close
 - Decide whether free offline-only app is sufficient before committing to account/backend complexity.
 - Do not publish without explicit owner approval.
 
-## 17. Longer-term discovery backlog [NOT COMMITTED]
+## 17. Longer-term backlog [DEFERRED OR DISCOVERY — NOT COMMITTED]
 
-These are possibilities, not approved implementation work. Reassess value, complexity, privacy and cost before prioritising.
+These are possibilities, not approved implementation work. Reassess value, complexity, privacy and cost before prioritising. Each item carries a status from §1.1; none is excluded, and moving one to Approved/planned is the owner's decision. *(Statuses assigned by the coding agent from the wording below, 20 October 2026; the owner may move any of them.)*
 
-1. **Gmail confirmation lookup:** A separate PoC reportedly opened Gmail search for a booking reference, not guaranteed exact-message deep links. Avoid promising universal direct email linking. Gmail-only search may be useful, but is brittle; universal provider integration needs separate design. **[Repo check]** The 2026-10-19 roadmap records the proof of concept as verified **outside this repository** and not integrated. Its Gmail-specific native approach was postponed in favour of something universal: forwarding, shared files, or `.eml` attachments.
-2. **Universal booking import:** Parse shared emails/PDFs into reviewable draft bookings with provenance, confidence, duplicate detection and zero automatic mutation; account permissions and privacy require separate approval.
-3. **Passport/traveller identity vault:** High sensitivity; require encryption, device security, key recovery, sharing/export controls and legal/privacy review before collecting data.
-4. **Shared trips and multi-device sync:** Identity, conflict resolution, offline edits, permissions, end-to-end encryption considerations, account deletion and migration from local-only storage. No Firebase commitment yet.
-5. **Peer-to-peer local sharing:** Discovery only; complexity of conflict resolution and data exposure may outweigh benefit.
-6. **iOS release:** Platform audit for file sharing, SQLite, notifications, deep links, maps, PDF, in-app purchases (if ever), signing and QA.
-7. **Automatic trip email linking and document extraction:** Only with explicit access scopes and per-import review.
-8. **AI API integration:** Not needed for existing manual Copy/Share/JSON workflow; would introduce ongoing cost, privacy and prompt-injection issues.
-9. **Shopping-list estimated prices:** Distinguish preparation estimates from actual expenses.
-10. **Full itinerary templates:** Current template scope is primarily reusable tasks, notes and lists; richer day-by-day templates need separate decisions.
-11. **Business model / monetisation:** Not a current requirement; revisit after user feedback.
-12. **Notification/reminder improvements and aurora/weather/travel monitoring:** Separate opt-in, source accuracy and network/privacy decisions.
+1. **[Discovery] Gmail confirmation lookup:** A separate PoC reportedly opened Gmail search for a booking reference, not guaranteed exact-message deep links. Avoid promising universal direct email linking. Gmail-only search may be useful, but is brittle; universal provider integration needs separate design. **[Repo check]** The 2026-10-19 roadmap records the proof of concept as verified **outside this repository** and not integrated. Its Gmail-specific native approach was postponed in favour of something universal: forwarding, shared files, or `.eml` attachments.
+2. **[Discovery] Universal booking import:** Parse shared emails/PDFs into reviewable draft bookings with provenance, confidence, duplicate detection and zero automatic mutation; account permissions and privacy require separate approval.
+3. **[Discovery] Passport/traveller identity vault:** High sensitivity; require encryption, device security, key recovery, sharing/export controls and legal/privacy review before collecting data.
+4. **[Discovery] Shared trips, accounts and multi-device sync:** Identity, conflict resolution, offline edits, permissions, end-to-end encryption considerations, account deletion and migration from local-only storage. No Firebase commitment yet.
+5. **[Discovery] Peer-to-peer local sharing:** Discovery only; complexity of conflict resolution and data exposure may outweigh benefit.
+6. **[Deferred] iOS release:** Platform audit for file sharing, SQLite, notifications, deep links, maps, PDF, in-app purchases (if ever), signing and QA.
+7. **[Discovery] Automatic trip email linking and document extraction:** Only with explicit access scopes and per-import review.
+8. **[Discovery] AI API integration:** Not needed for existing manual Copy/Share/JSON workflow; would introduce ongoing cost, privacy and prompt-injection issues.
+9. **[Deferred] Shopping-list estimated prices:** Distinguish preparation estimates from actual expenses.
+10. **[Deferred] Full itinerary templates:** Current template scope is primarily reusable tasks, notes and lists; richer day-by-day templates need separate decisions.
+11. **[Deferred] Business model / monetisation:** Not a current requirement; revisit after user feedback.
+12. **[Discovery] Notification/reminder improvements and aurora/weather/travel monitoring:** Separate opt-in, source accuracy and network/privacy decisions.
 
 ## 18. Product rules and decisions that must not drift
 
@@ -416,6 +456,10 @@ These are possibilities, not approved implementation work. Reassess value, compl
 - Child financial responsibility is assigned to an adult when explicitly configured; otherwise remains unallocated.
 - Payment ≠ expense; settlement ≠ expense.
 - No silent automatic currency conversion.
+- Pricing quantities are whole numbers of at least 1; a partly attending group is separate lines, never fractional people.
+- A booking with linked financial records is never cascade-deleted with them; deletion is blocked until an explicit resolution.
+- A linked booking payment uses the booking's currency (until Phase 4); a different currency blocks the link.
+- "Not building now" never means "never building" (§1.1).
 - Personal financial data in PDF/export remains opt-in where approved.
 - AI planning exports exclude sensitive fields by default and show exact preview.
 - User explicitly controls real-device testing, release distribution and infrastructure spending.
@@ -451,15 +495,26 @@ These are possibilities, not approved implementation work. Reassess value, compl
 ## 20. Immediate next actions
 
 1. **Independent review:** inspect actual `991994e` diff and key adjacent traveller/pricing/backup code. Resolve any issues before 3C. If GitHub access fails, obtain a repository ZIP or diff from Claude/user.
-2. **Phase 3C design:** inspect real pricing model and `docs/phase3-plan.md`; verify proposed Adult/Child/Anyone metadata is lossless without a migration. Ask owner about any unresolved pricing UI/semantics.
+2. **Phase 3C design:** the schema check is done (`docs/phase3-plan.md` §19: no migration; four design questions). After the owner answers them, write the 3C plan for approval.
 3. **Only after approval:** implement 3C with synthetic tests, release-upgrade rehearsal, docs and commit.
 4. **Then:** proceed stage by stage through 3D-1, 3D-2 and 3E, respecting migration gate and explicit financial invariants.
 5. **Later:** independently plan Phases 4–8; do not pre-approve unspecified implementation details.
-6. **Before friends beta:** revisit feedback-form priority, controlled physical acceptance, distribution and privacy requirements.
+6. **Before friends beta:** the feedback deployment and security task (§16.2, *B1*), then controlled testing on the secondary phone in an owner-approved session (§3.1), distribution and privacy requirements.
 
-## 21. Open points from the repository cross-check (20 October 2026) [AWAITING OWNER]
+## 21. Open points from the repository cross-check (20 October 2026) [ANSWERED BY THE OWNER, 20 OCTOBER 2026]
 
-None of these was resolved by choosing an interpretation. Each needs the owner's decision.
+None of these was resolved by choosing an interpretation. The owner answered all six (five below, plus the 3D-1 linking questions); the answers are applied in the sections named and in decision-log D38. The original questions are kept below for history.
+
+| # | Owner's answer | Applied in |
+|---|---|---|
+| 1 | A separate **secondary** Android phone may be used for controlled beta testing before the feature phases end, only in a session the owner explicitly approves; synthetic data only; never the primary phone. Permission to plan, not to install. | §3.1, §20 |
+| 2 | Reconcile with the five-status vocabulary (Implemented, Approved/planned, Deferred, Discovery, Explicitly excluded). "Not building now" ≠ "never building"; Gmail, accounts/sync, AI integrations and weather are kept as Deferred or Discovery; no idea removed. | §1.1, §17, `CLAUDE.md` §7 |
+| 3 | Not fractional. Quantities stay whole numbers ≥ 1; partly attending groups are separate lines. No database change. | §6.2 |
+| 4 | Scope confirmed: Price for who's going (user-invoked), Adult/Child/Anyone, free lines, optional extras as separate lines, Estimate on ideas — with the constraints in §6.2. Verify the schema first; stop if a migration is needed. | §6.2, §6.3, `phase3-plan.md` §19 |
+| 5 | Enable the form and deploy the worker **before the first friends APK**, not in 3C; a separate pre-beta deployment and security task. Nothing deployed and no test email now. | §16.2, `status.md` *B1* |
+| 6 | 3D-1: deleting a booking with linked financial records is blocked (no cascade, no silent conversion, no orphan), resolved by a future explicit workflow; linked payments must share the booking's currency (no conversion); the three money records are defined before implementation. | §7.3, `phase3-plan.md` §18 |
+
+*Original questions:*
 
 1. **When physical-device testing happens.** §3.1 defers physical acceptance until the planned feature phases are finished. That rule is new, and no earlier document records it.
    - The 2026-10-19 `docs/roadmap.md`, and the handoff entry for that day, said to verify "on the emulator or the separate beta phone".

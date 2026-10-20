@@ -2,6 +2,8 @@
 
 Not MVP. Recorded so they are not lost. Items the owner has since scheduled point at their phase in
 `roadmap.md` (2026-10-19).
+Everything here is *Deferred* or *Discovery* in the owner's status words (2026-10-20, D38;
+`MASTER_ROADMAP.md` §1.1): not in scope now, which never means never.
 
 - **"Someday" trips** — a trip with no fixed dates; a wishlist destination with places and notes
   attached, promoted to a real trip once dates exist. (Deferred from R2-d.) → **roadmap Phase 6**.

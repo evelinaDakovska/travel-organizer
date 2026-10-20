@@ -9,7 +9,7 @@ what is still open, and the conventions to follow.
 | `docs/product-status.md` | **Product status & feature matrix** — readiness per feature and where it was verified (phone, beta phone, emulator) |
 | `docs/session-handoff.md` | **Starting fresh? Read after this file.** How the work goes: decisions in context, the machine, driving a device, what bit us |
 | `docs/status.md` | **Engineering status board** — what is done and how it was verified, task by task; open questions |
-| `docs/MASTER_ROADMAP.md` | **The long-term product roadmap** (owner's baseline, 2026-10-20): every phase's goals, requirements and exit gates, rules that must not drift, the beta/release track, the discovery backlog; §21 lists open points awaiting the owner |
+| `docs/MASTER_ROADMAP.md` | **The long-term product roadmap** (owner's baseline, 2026-10-20): every phase's goals, requirements and exit gates, rules that must not drift, the beta/release track, the deferred/discovery backlog; §21 records the owner's answers to the cross-check (2026-10-20) |
 | `docs/roadmap.md` | **The roadmap overview**: Phases 1–8 and their state, done in order, each only when the owner asks; links to the master roadmap and phase plans |
 | `docs/technical-reference.md` | **Single source of truth** for schema, time model, file storage, queries |
 | `docs/plan.md` | Step-by-step implementation plan and current position |
@@ -247,26 +247,37 @@ Full list with per-dependency rationale in `docs/technical-reference.md` §8.
 ## 7. Constraints
 
 - **Android only.** Target device: Samsung Galaxy S26 Ultra; the beta also runs on a smaller
-  Android phone, so layouts must hold on a narrow screen. No iOS, no tablets.
-- **No backend, no accounts, no auth, no sync, no telemetry.** Everything on-device.
+  Android phone, so layouts must hold on a narrow screen. No iOS (deferred), no tablets.
+- **No backend, no accounts, no auth, no sync, no telemetry** in the current scope. Everything
+  on-device. Accounts and sync are *Discovery*, not excluded (see the status table below).
 - **A custom dev client is required** (`expo prebuild` + `expo run:android`) because
   `expo-share-intent` needs native code. Expo Go cannot run this app.
-- **Development targets the emulator by default** (`Pixel_10_Pro`, 1280×2856). The physical phone is
-  connected only when strictly necessary — see §9.
+- **Development targets the emulator by default** (`Pixel_10_Pro`, 1280×2856). The owner's primary
+  phone is never connected, installed on or tested with without explicit permission. A separate
+  **secondary** beta phone may be used only in a testing session the owner has explicitly approved,
+  with synthetic data only (`docs/MASTER_ROADMAP.md` §3.1) — see also §9.
 - Offline access to stored documents is a **core requirement**, not a nice-to-have.
 - **One exception to "no backend"**: the in-app feedback form (0.7.x) posts to a small Cloudflare
   Worker (`server/feedback-worker/`) that emails the owner. It is **off** behind
-  `FEATURE_FEEDBACK_ENABLED` (D31) and carries no trip data.
+  `FEATURE_FEEDBACK_ENABLED` (D31) and carries no trip data. It is switched on, and the worker
+  deployed, only before the first friends APK, through its own pre-beta task (`status.md` *B1*).
 
-### Explicitly not building
-AI features in the app · itinerary generation · flight/hotel search · booking APIs · Gmail
-integration · Google Wallet API · cloud backend · accounts · collaboration · weather · automatic
-booking parsing.
+### What is in and out of scope
 
-**Now on the roadmap** (2026-10-19, D32), each only when its phase is asked for: importing an
-AI-generated itinerary from JSON (Phase 2 — the app reads a file; it calls no AI), currency
-conversion (4), a full-day map (5), trips without dates (6), Google Maps place import (7) and an
-`.ics` calendar export (8).
+Five statuses (owner, 2026-10-20, D38; `docs/MASTER_ROADMAP.md` §1.1). **"Not building now" never
+means "never building."** Ideas move between statuses; none is removed to make documents agree.
+
+| Status | Meaning | Items |
+|---|---|---|
+| **Implemented** | In the app | Importing AI-written activities from JSON (2C) and *Plan with AI* (2D) — the app reads and writes files, it calls no AI service |
+| **Approved/planned** | On the roadmap; **only the current phase is authorised** | 3C–3E, currency conversion (4), a full-day map (5), trips without dates (6), Google Maps place import (7), an `.ics` export (8); the feedback deployment before the friends beta (*B1*) |
+| **Deferred** | Possibly wanted later; not current scope | iOS · shopping-list estimated prices · full itinerary templates · monetisation |
+| **Discovery** | Needs research and a separate owner decision | AI integrations in the app (an AI API, in-app itinerary generation) · Gmail integration · automatic booking parsing / email and document extraction · cloud backend, accounts, sync and collaboration · weather and travel monitoring · a passport vault · peer-to-peer sharing |
+| **Explicitly excluded** | Not part of the product unless the owner reverses it | Flight/hotel search · booking APIs (the app is not a search engine or booking service, §1) · Google Wallet API |
+
+The *Explicitly excluded* row is the earlier "explicitly not building" list minus what the owner
+asked to keep open; it is unchanged otherwise and is the owner's to confirm. Detail and per-item
+reasoning: `docs/MASTER_ROADMAP.md` §17.
 
 ## 8. Conventions
 

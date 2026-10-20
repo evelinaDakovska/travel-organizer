@@ -385,7 +385,19 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ## 11. Where the last session stopped (2026-10-19) — read this first
 
-### 11.00000000 Latest (2026-10-20, night) — documentation only
+### 11.000000000 Latest (2026-10-20, late night) — the owner's answers, documentation only
+
+- **The owner answered `MASTER_ROADMAP.md` §21** (D38): a secondary beta phone only in an
+  approved session, synthetic data only (master §3.1); five status words in CLAUDE.md §7 and
+  master §1.1/§17; 3C quantities stay whole; 3C scope confirmed (`phase3-plan.md` §18.1);
+  feedback deployment is its own pre-beta task (`status.md` *B1*); 3D-1: a booking with linked
+  money is not deleted, links need the same currency (§18.2).
+- **3C schema check** (`phase3-plan.md` §19): no migration; four design questions for the owner
+  before the 3C plan — backup-format bump, how an extra is marked, group total + extras, the
+  suggestion on a paid booking. No code, build or device was touched.
+- **Next:** wait for the answers; then a written 3C plan for approval. Not 3C code.
+
+### 11.00000000 Earlier (2026-10-20, night) — documentation only
 
 - **`docs/MASTER_ROADMAP.md` added**: the owner's long-term product roadmap. It was cross-checked
   against the repository, and factual corrections are marked **[Repo check]**. The points that

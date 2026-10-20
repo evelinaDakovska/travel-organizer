@@ -795,3 +795,43 @@ the new-item default never applies to an edit, and a member who joined later is 
 the confirmation says; re-adding restores nothing and offers the items again. Once money records
 exist (3D), removing someone who has them is refused and resolved by a safe flow, never by deleting
 history or moving it silently (owner, §15 *9*).
+
+## D38 — Answers on the roadmap cross-check: beta phone, status words, 3C scope, 3D-1 links
+
+The owner's answers to `docs/MASTER_ROADMAP.md` §21 (2026-10-20). Detail: master §1.1, §3.1, §6.2,
+§7.3, §16.2, §17; `docs/phase3-plan.md` §18 (decisions) and §19 (3C schema check).
+
+**A secondary phone, but only in an approved session.** Emulators stay the default. A separate
+secondary Android phone may be used for controlled beta testing before the feature phases end, so
+real-device problems surface earlier than the end of the roadmap. Each session needs the owner's
+explicit approval, and the primary phone, real backups and production data stay out of it. The
+answer allows *planning* such testing, not installing anything.
+
+**Five status words, so "not now" stops reading as "never".** CLAUDE.md §7's "explicitly not
+building" list and the backlog both treated AI, Gmail, accounts and weather as unapproved, but one
+read as permanent and the other as maybe. Implemented / Approved/planned / Deferred / Discovery /
+Explicitly excluded separates *not in scope now* from *not part of the product*, and only the
+current phase is ever authorised. Future possibilities are kept as Deferred or Discovery rather than
+deleted to make the documents agree.
+
+**Whole quantities only.** "Partial quantities" meant groups only partly attending or partly priced,
+which separate lines with whole quantities already express. Fractional people would weaken every
+count that reads `quantity` and would need a schema change for no gain.
+
+**3C scope confirmed, with the totals kept authoritative.** *Price for who's going* is a suggestion
+the person invokes, never a recalculation triggered by editing who is going: a price is a fact
+about what was booked, and history must not move because a list of names did. Free lines, extras,
+Adult/Child/Anyone and an *Estimate* label on ideas were confirmed; the schema check (phase3-plan
+§19) found they fit in `details` JSON with no migration.
+
+**A booking with money attached is not deleted, and money is not converted.** Cascading a deletion
+to payments would erase financial history; silently turning a booking payment into a standalone
+expense would change what it means. So deletion is blocked with an explanation, and an explicit
+resolution workflow (unlink, or archive/cancel keeping the links) is designed and approved before
+3D-1. This rejects the §17 proposal that linked expenses become unlinked spending. A linked payment
+must be in the booking's currency until Phase 4: adding or converting across currencies needs a
+rate, and inventing one would make a total lie.
+
+**Feedback before the friends beta, not inside 3C.** The form is useful only once friends test, and
+deploying it means real infrastructure and a mail key, so it becomes its own pre-beta task with a
+security checklist and a real delivery test the owner approves.

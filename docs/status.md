@@ -30,7 +30,9 @@ Verified against the repo on 2026-10-20, on Windows: **1153 tests passing across
 >   rehearsing any update.
 > - **Next: the roadmap** ([`roadmap.md`](roadmap.md), section *P* below). Phase 1 (0.7.4), 2B-0
 >   (0.8.0), 2B (0.9.0), 2C (0.10.0), 2D (0.11.0) and 3B (0.12.0) are done and wait for the owner's
->   review; **3C waits for approval**.
+>   review; **3C waits for approval**. The owner answered the roadmap cross-check on 2026-10-20
+  (D38): 3C scope confirmed, its schema check done ([`phase3-plan.md`](phase3-plan.md) §19); four
+  3C design questions are open before the 3C plan.
 
 ---
 
@@ -622,8 +624,8 @@ only when the owner asks.
 | **P2** | Single-trip import/export & AI JSON import — **2A** architecture and audit done ([`phase2-plan.md`](phase2-plan.md), 2026-10-19); 2B-0, **2B** (single-trip archive) and **2C** (AI activity import, selective export) and **2D** (Plan with AI) done — awaiting the owner's review | ✅ |
 | **P3·3A** | Phase 3 architecture and data-safety audit; the owner's decisions recorded ([`phase3-plan.md`](phase3-plan.md) §15), five stages approved | ✅ |
 | **P3·3B** | Who is going: every trip member ticked on a new plan or saved place (to-dos none), edit keeps the saved set, *Also add … to* after joining a trip (all unticked), namesakes told apart. **0.12.0**, emulator E2E; not on a phone | ✅ |
-| **P3·3C** | Adult/child pricing — waits for approval | ⬜ |
-| **P3·3D-1** | Money records (migration 007, payments linked to bookings) — waits for approval | ⬜ |
+| **P3·3C** | Adult/child pricing — scope confirmed by the owner 2026-10-20 ([`phase3-plan.md`](phase3-plan.md) §18.1); schema check done (§19: no migration, four design questions for the plan). Waits for answers, a written plan and approval | ⬜ |
+| **P3·3D-1** | Money records (migration 007, payments linked to bookings) — linking rules decided 2026-10-20 (§18.2: deletion blocked, same currency only); exact proposal still to be approved. Waits for approval | ⬜ |
 | **P3·3D-2** | Responsibility and splits — waits for approval | ⬜ |
 | **P3·3E** | Balances and settlements — waits for approval | ⬜ |
 | **P3** | Travellers, pricing & shared expenses (replaces N5b) — 3A, 3B done; 3C–3E to come | ⬜ |
@@ -632,6 +634,7 @@ only when the owner asks.
 | **P6** | Trips without fixed dates | ⬜ |
 | **P7** | Google Maps place import | ⬜ |
 | **P8** | Google Calendar export (.ics) | ⬜ |
+| **B1** | **Pre-beta: feedback deployment and security verification** (owner, 2026-10-20; `MASTER_ROADMAP.md` §16.2). Before the first friends APK, not in 3C: secure HTTPS endpoint, server-side secrets only, input validation and rate limiting, abuse protection and cost limits, no trip data sent automatically, draft cleared only after confirmed server acceptance, a real end-to-end delivery test with the owner's approval. The form stays off until then. Nothing deployed and no test email sent — waits for approval | ⬜ |
 
 **P1, what was built (0.7.4, versionCode 14).** No schema, data or native change.
 - **Trip context in tab headers.** `ScreenHeader` takes an optional `context` line above the title

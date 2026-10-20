@@ -11,6 +11,8 @@ Every statement is marked **[Confirmed]** (read in the code at that commit, file
 **Reviewed by the owner 2026-10-20: the five stages are approved with refinements — §15 records
 every decision and supersedes §§7–14 where they differ. §16 is the 3B design as built.** Each stage
 is implemented and verified on its own, and the next one starts only when the owner approves it.
+**§18 is the owner's later answers on 3C scope and 3D-1 linking (2026-10-20), and supersedes §17
+where they differ. §19 is the 3C pre-coding schema check.**
 
 ---
 
@@ -422,6 +424,116 @@ Not built in 3B. Recorded now so 3D-1 starts from the owner's requirement (§15 
 - **Warning:** an unlinked expense in the same trip and currency, same amount as a booking's price
   or remaining balance, within a few days of it → *This may be the booking "…" — link it?* Never
   merged automatically.
-- Open for the 3D-1 plan: what deleting a booking does to linked expenses (proposal: they are
+- ~~Open for the 3D-1 plan: what deleting a booking does to linked expenses (proposal: they are
   kept and become unlinked spending, with a confirmation), a different currency on a linked
-  expense (proposal: refused), and the exact wording.
+  expense (proposal: refused), and the exact wording.~~ **Decided by the owner, §18:** the
+  "become unlinked spending" proposal is **rejected** (deletion is blocked instead); a different
+  currency is refused, as proposed.
+
+## 18. The owner's answers on 3C scope and 3D-1 linking (2026-10-20)
+
+Given in answer to `MASTER_ROADMAP.md` §21. Supersedes §§9, 12 and 17 where they differ. Rationale:
+decision-log D38.
+
+### 18.1 Phase 3C — confirmed scope (not yet approved to implement)
+
+| # | Decision |
+|---|---|
+| C-1 | **"Partial quantities" are not fractional.** Quantities stay whole numbers ≥ 1 (`rateLineSchema` as today). A partly attending or partly priced group is separate lines with whole quantities. No fractional quantities, no database change for this |
+| C-2 | **In scope:** a user-invoked *Price for who's going* calculation/suggestion; *Adult / Child / Anyone* on pricing lines; free lines (including free child admission); optional extras as separate lines; an *Estimate* label for prices on ideas |
+| C-3 | **Constraints:** existing totals stay authoritative until explicitly changed · suggestions never silently overwrite prices · editing participants never recalculates the total · historical and paid booking values are preserved · an estimate is never confused with a confirmed booking or payment · fixed group totals stay supported · no fractional quantities · new pricing metadata is never silently discarded by backup, restore, ZIP import/export or PDF export |
+| C-4 | **Before coding**, verify the existing schema represents this without lossy workarounds; if a migration is necessary, stop and ask. Done in §19: no migration; four design questions |
+
+### 18.2 Phase 3D-1 — linking rules (to be turned into an exact proposal before 3D-1)
+
+| # | Decision |
+|---|---|
+| L-1 | **Deleting a booking with linked financial records:** never cascade-delete payments, expenses or settlements. If any linked financial record exists, **ordinary deletion is blocked**, with an explanation |
+| L-2 | A **future explicit resolution workflow** preserves financial history — e.g. unlinking a standalone expense, or archiving/cancelling the booking while keeping its financial relationships. A booking payment is **never silently converted** into an independent expense, and a payment is **never orphaned**. The exact archive/unlink UI and the source-of-truth rules are proposed and approved before 3D-1 is implemented |
+| L-3 | **Different currencies:** no automatic conversion and no adding of different currencies. In 3D-1 a linked booking payment **must use the booking's currency**; if they differ, the link is blocked with a clear explanation and the records stay separate. No invented exchange rate; neither amount changes. Multi-currency reconciliation is Phase 4 or a separately approved extension |
+| L-4 | **Define before implementation** the distinction between a **standalone expense**, a **payment against a booking** and a **linked expense**. A booking and its payment records are never counted as separate costs |
+
+**Consequences for the drafts above, to be resolved in the 3D-1 proposal** (recorded, not decided):
+- §8's DDL has `cost_payments.trip_item_id` / `expense_id` and `cost_shares.trip_item_id` /
+  `expense_id` as `ON DELETE CASCADE`. That contradicts L-1 for payments. The 3D-1 proposal must
+  change them (for example to `RESTRICT`, with the app refusing first and explaining) before
+  migration 007 is written.
+- **Deleting a whole trip** cascades to its bookings today. L-1 speaks of ordinary booking deletion;
+  what deleting a trip that holds financial records does (blocked, or allowed as one explicit
+  whole-trip removal) is an owner question for the 3D-1 proposal. With `RESTRICT` on the item
+  reference, SQLite would refuse the trip's cascade, so this has to be decided, not left to the
+  schema.
+- A **cancelled** booking keeps its financial relationships (L-2); today cancelling changes only
+  `status`, which already fits.
+- L-4 replaces the bullets of §17 as the source of truth once written; §17's aggregation (cost =
+  the booking's price once; paid = its payments + linked expenses in the same currency; spending =
+  unlinked expenses only) is the starting point.
+
+## 19. Phase 3C — pre-coding schema check (2026-10-20, at `2b8a648`)
+
+Asked by the owner (§18 C-4) before any 3C code. Read in the code; nothing changed.
+
+### 19.1 Where pricing lives and travels [Confirmed]
+
+| Path | How `details.pricing` is handled | Keeps a new key on a line? |
+|---|---|---|
+| SQLite | `trip_items.details` TEXT, JSON; `parseDetails` returns the whole object (`tripItem.ts`) | **Yes** — no column involved |
+| Item save | `tripItemInputSchema`: `details` is `z.record(...)`, stored as given; `pricingSchema` only **validates** (`superRefine`, `pricingMatches`) | **Yes** |
+| Full backup / restore | `export.ts` row schema: `details: nullableString` — the JSON text is copied, never parsed | **Yes** |
+| Trip archive (2B ZIP) | rows copied as text; `remapDetails` parses only to rewrite `journeyId` and spreads every other key back | **Yes** |
+| Journey (U7) | `journeyItemValues` copies the whole `pricing` object to the first leg | **Yes** |
+| Change of kind | `detailsForKind` drops only transport route keys | **Yes** |
+| Reading for display | `pricingOf` → `pricingSchema.safeParse` — Zod **strips** unknown keys | No — must be extended in 3C |
+| Form | `PriceSection` rebuilds lines from `label`/`quantity`/`unitAmount` and writes them back | **No — an edit would drop it.** Must be extended in 3C |
+| PDF | `pricingText` (confirmed items only): quantity × unit + label | Shows only what `pricingText` prints — must be extended |
+| AI activities JSON (2C) | total and currency only; per-person lines are neither imported nor exported (documented in the v1 format: *"Per-person prices are not imported yet"*) | n/a — unchanged limitation |
+| Plan with AI (2D) | reads no price lines | n/a |
+
+**Conclusion:** an optional per-line field inside `details.pricing.lines` (§7: `for: 'adult' |
+'child' | 'any'`, absent = today's free label) is stored, backed up, restored, archived and
+journey-copied **losslessly with no SQLite migration**. Nothing needs label parsing: a legacy line
+labelled *Adult* stays untagged until the person tags it. The read and edit paths (`pricingOf`,
+`rateLineSchema`, `PriceSection`, `pricingText`) are in-scope 3C code and are extended, with tests
+that a tagged line survives load → edit → save, backup → restore and archive → import unchanged.
+
+### 19.2 Questions to settle in the 3C plan (recommendation first)
+
+None needs a migration. Each changes what the 3C plan says, so each needs an answer first.
+
+1. **An older app reading 3C metadata.** Backups and archives carry `details` as text, so 0.12.0
+   would *accept* a format-6 backup or trip ZIP from a 3C build. It would show tagged lines by label
+   only, count extras as people (*"Priced for 5; 4 are going"*), and **drop the tags and extra marks
+   the first time the price is edited** there, because its form rebuilds every line. That is silent
+   loss, which C-3 forbids. Realistic case: a friend on 0.12.0 imports a trip ZIP from a 3C build.
+   **Recommended:** bump `EXPORT_FORMAT_VERSION` 6 → 7 in 3C (no SQLite change; `user_version`
+   stays 6). Older apps then refuse 3C backups and archives with their existing *"from a newer
+   version"* message, and formats 1–6 restore as untagged lines. Migration 007's backup format
+   becomes **8** in 3D-1. Alternative: no bump, and the downgrade loss is documented.
+2. **How an extra is marked.** An extra (*sled hire 2 × EUR 20*) counts units, not people. It must
+   not count towards *priced for N*, and *Price for who's going* must never change its quantity.
+   **Recommended:** a separate optional flag on the line, `extra: true` (audience stays about
+   people; an extra has none). Alternative: a fourth audience value `for: 'extra'`.
+3. **A fixed group total with extras.** Today a price is *either* one total *or* per-person lines
+   (`mode: 'perPerson'`). *Family ticket EUR 120 + 2 sleds* fits neither cleanly.
+   **Recommended:** keep the plain total as it is, and allow a group line in the breakdown as a
+   line of quantity 1 marked like an extra (not people), so the existing `mode` and the
+   lines-sum-to-total rule are unchanged. Alternative: a new pricing mode, which an older app
+   cannot read (`pricingOf` returns null, and its save refuses the item).
+4. **Applying *Price for who's going* to a booking marked Paid.** Today *Price for N* sets the first
+   line's quantity in one tap and the item stays *Paid* (§6 invariant A conflict, unresolved until
+   3D-1). **Recommended:** on any item the suggestion shows the old and new total and changes
+   nothing until confirmed; on a booking marked Paid the confirmation also says the booking stays
+   marked Paid and the paid amount is not recorded. Alternative: refuse the suggestion on paid
+   bookings.
+
+**Not blockers, recorded:**
+- **Currency minor units:** amount entry and display assume two decimals for every currency
+  (`format.ts`: × 100), so a zero-decimal currency such as JPY is shown and typed as if it had
+  cents. This predates 3C. 3C adds no division and no rounding, so it does not make this worse;
+  the fix belongs to Phase 4 (master §10).
+- **Today's *Price for N*** sets only the first line's quantity to everyone going, which is wrong
+  for a mixed Adult + Child breakdown. 3C replaces it with *Price for who's going*.
+- **Estimate on ideas** is display only: `paymentStatus` already ignores ideas, and their price is
+  already a budget, not spent (`bookingCosts.ts`). No stored change.
+- **2C activities JSON** still carries totals only. Carrying lines would be a v2 format change,
+  outside 3C unless the owner asks.
