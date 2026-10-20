@@ -75,8 +75,10 @@ The form, top to bottom:
    day you were looking at on the Timeline.
 5. **Where**: *Place* and *Address*. Place names you have used before are suggested.
 6. **Booking reference**, e.g. *ABC123*.
-7. **Who's going**, when the trip has travellers: tick who this is for. Nobody ticked means *not
-   said* — never "everyone".
+7. **Who's going**, when the trip has travellers: tick who this is for. A new plan or saved place
+   starts with **everyone on the trip ticked** — untick whoever is not going; a new to-do starts with
+   nobody. Nobody ticked means *not said* — never "everyone". Editing keeps who you ticked before,
+   even if someone joined the trip since.
 8. **Price & payment** (folded until you open it): **Total price**, or **Per person** — a line for
    each rate, e.g. *2 × EUR 290.00 Adult* and *1 × EUR 60.00 Child*, with **Add a rate**; the total
    is worked out for you and shown with its working. Then **Paid** (*Not paid yet* / *Paid*) and
@@ -602,7 +604,16 @@ traveller** without leaving the form. On a trip, Overview → **Travellers** cha
 can mark someone differently for just this trip — a twelve-year-old on an adult ticket, say. A
 price per person then suggests one line for adults and one for children. Then each booking can
 say **Who's going** — tick a subset when not everyone goes. Renaming someone renames them
-everywhere. Someone still on a trip or a booking cannot be deleted; the app says where they are
+everywhere.
+
+**Someone joins a trip that already has plans.** After you add them on the trip's Travellers page,
+**Also add *name* to…** lists the trip's plans (upcoming first) and saved places, **all unticked**:
+tick the ones they are going to and tap **Add to N items**, or **Not now** — nothing is added unless
+you tick it, and prices and payments do not change. To do it later, tap them under *Going* and
+choose **Add to existing plans…**. Removing someone from a trip takes them off its plans; adding
+them back does not put them back on — the list offers the plans again. Activities imported from a
+file (Import activities) start with nobody ticked. Two of your travellers with the same name are
+told apart under *Your travellers* by a line such as *Adult · On Lapland*. Someone still on a trip or a booking cannot be deleted; the app says where they are
 used.
 
 A trip made before 0.6.0 keeps the names typed in its *Travelling with* field. Its Travellers page

@@ -1531,3 +1531,41 @@ rendered. Choices are not saved.
 **Known limitations:** the scrub cannot recognise every kind of personal data in free text; the
 text is plain Markdown with no length cap (a 120-plan month is ~7 KB); trips without fixed dates
 wait for Phase 6.
+
+## 20. Who is going: new items and joining a trip (3B, 0.12.0)
+
+Rationale: D37. Plan: `docs/phase3-plan.md` §16. Code: `domain/participation.ts`
+(`newItemParticipants`, `offeredOnJoin`, `joinCandidates` — pure), `domain/traveller.ts`
+`namesakeHint`, `repositories/travellers.ts` (`listJoinCandidates`, `addTravellerToItems`),
+`SELECT_JOIN_CANDIDATES` / `INSERT_JOIN_PARTICIPANT` in `db/queries.ts`,
+`features/travellers/AddToItemsSheet.tsx`, `app/item/new.tsx`, `app/trip/[tripId]/travellers.tsx`.
+No migration (schema 6), no backup or archive change, no money code touched.
+
+| Path | Participants written |
+|---|---|
+| Item form, new plan or saved place (any kind) | every current trip member, ticked by default, in `trip_travellers.sort_order`; editable before saving |
+| Item form, new to-do | none |
+| Item form, journey | the same ticked set on every leg (as before) |
+| Item form, edit | the saved set, filtered to current members; never re-defaulted |
+| AI import (2C), item from a share, to-do template | none (unchanged) |
+| Joining a trip (profile added, new name, old typed name linked) | none; *Also add … to* offers candidates unticked |
+| *Add to N items* | one `item_participants` row per ticked item, in one transaction |
+| Leaving a trip | that trip's participation of that person deleted (unchanged) |
+
+**Candidates** (`SELECT_JOIN_CANDIDATES` + `joinCandidates`): items of the trip that are not
+`kind = 'task'`, not `status = 'cancelled'`, and that the person is not on. Plans
+(`status = 'confirmed'`): upcoming — not yet ended, by `toInstant(end ?? start)`, a date-only moment
+lasting to the next midnight in its zone — soonest first; then undated by title; then past, most
+recent first. Saved places (`status = 'idea'`) by title. Ties: title, then id.
+
+**Write** (`addTravellerToItems`): refuses (throws, writes nothing) when the person is not a member
+of the trip; then per distinct id `INSERT … SELECT … WHERE` the item is in that trip, not a to-do,
+not cancelled, `ON CONFLICT DO NOTHING`. Returns the rows added. Touches no `trip_items` column
+(`updated_at` included), no other person's participation, no setting.
+
+**Screens.** The new-item screen waits for the trip's travellers before opening the form (so the
+default is never empty by accident; a failed read shows the usual retry). The Travellers screen
+opens the sheet after each way of joining when there is something to offer, and from a member's
+sheet (*Add to existing plans…*) at any time; with nothing to offer that action says so. In *Your
+travellers*, a profile whose name another profile shares has the subtitle `namesakeHint`:
+*Adult · On Lapland, Rome +1*.

@@ -20,6 +20,7 @@ what is still open, and the conventions to follow.
 | `docs/phase2-plan.md` | Roadmap Phase 2 architecture (2A): single-trip archive (built as 2B, 0.9.0), AI JSON import, planning context |
 | `docs/phase2c-plan.md` | 2C plan as approved, with the owner's refinements and what was built (0.10.0) |
 | `docs/phase2d-plan.md` | 2D (Plan with AI) plan as approved, with the owner's refinements and what was built (0.11.0) |
+| `docs/phase3-plan.md` | Roadmap Phase 3 (travellers, pricing, shared expenses): the 3A audit, the owner's decisions (§15), 3B as built (0.12.0), the starting point for 3D-1 |
 | `docs/ai-activities-format.md` | **The public activities JSON format** (v1) for AI assistants and tools — schema in `docs/schema/` |
 | `docs/decision-log.md` | *Why* things were decided. Rationale only — no authoritative detail |
 | `docs/windows-handoff.md` | **Continuing on Windows** — read this instead of `dev-setup.md` there |
@@ -150,7 +151,7 @@ Use these words precisely, in code and in conversation.
 | **Traveller profile** | A person, kept once, reused across trips: name + adult/child/unspecified | `travellers` (global) |
 | **Me** | The profile that is the person using the app *on this phone*. A local mark, not an account, not an owner, not a payer | `settings.me_traveller_id` → a `travellers` id |
 | **Trip membership** | Who is on a trip, with a per-trip classification | `trip_travellers` |
-| **Activity participant** | Who goes to one booking/plan. None = *not specified*, never "everyone" | `item_participants` |
+| **Activity participant** | Who goes to one booking/plan. None = *not specified*, never "everyone". A new plan or saved place made in the item form starts with every trip member ticked; joining a trip adds nobody to existing items (3B) | `item_participants` |
 | **List recipient** | Who a packing/shopping item is for — any number; never a quantity | `list_item_recipients` |
 | **Financially responsible adult** | *Future (Phase 3)*: who pays for a child. Not modelled yet | — |
 | *(Account user, trip owner)* | *Future (accounts/shared trips)*. Neither exists; Me must not be reused as either | — |

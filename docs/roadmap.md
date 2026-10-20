@@ -63,6 +63,12 @@ one trip in the existing format.
 
 ## Phase 3 — Travellers, pricing & shared expenses
 
+**Status (2026-10-20):** 3A audit done and approved with refinements; **3B (participation) built as
+0.12.0**; 3C → 3D-1 → 3D-2 → 3E each wait for the owner's approval. Plan, decisions and what was
+built: [`phase3-plan.md`](phase3-plan.md) (§15 supersedes the bullets below where they differ — e.g.
+the add-to-existing list is all unticked, payers default to *Not recorded*, payments link to
+bookings).
+
 - All trip travellers selected by default on a new activity; add or remove per activity.
 - Adult and child unit prices, totals from the selected participants.
 - Adding a traveller to a trip with activities: an optional *Add to existing activities* toggle,

@@ -10,10 +10,12 @@ import {
   DELETE_TRIP_TRAVELLER,
   DELETE_TRIP_TRAVELLER_PARTICIPATION,
   INSERT_ITEM_PARTICIPANT,
+  INSERT_JOIN_PARTICIPANT,
   INSERT_TRAVELLER,
   INSERT_TRIP_TRAVELLER,
   RENAME_TRAVELLER,
   SELECT_ITEM_PARTICIPANTS,
+  SELECT_JOIN_CANDIDATES,
   SELECT_TRAVELLER_TRIPS,
   SELECT_TRAVELLERS,
   SELECT_TRIP_TRAVELLERS,
@@ -21,6 +23,8 @@ import {
   UPDATE_TRAVELLER_CLASSIFICATION,
   UPDATE_TRIP_TRAVELLER_CLASSIFICATION,
 } from '../db/queries';
+import { joinCandidates, type JoinCandidates } from '../domain/participation';
+import { parseTripItemRow, type TripItem, type TripItemRow } from '../domain/tripItem';
 import {
   parseTravellerRow,
   type Traveller,
@@ -267,6 +271,56 @@ export async function writeItemParticipants(
   for (const travellerId of new Set(travellerIds)) {
     await db.runAsync(INSERT_ITEM_PARTICIPANT, { $itemId: itemId, $travellerId: travellerId });
   }
+}
+
+/**
+ * What *Also add … to* offers someone on this trip (3B): its plans and saved places they are not on
+ * yet, all to be shown unticked. Reads only.
+ */
+export async function listJoinCandidates(
+  db: SQLiteDatabase,
+  tripId: string,
+  travellerId: string,
+  now: Date = new Date(),
+): Promise<JoinCandidates<TripItem>> {
+  const rows = await db.getAllAsync<TripItemRow & { trip_default_tz: string }>(
+    SELECT_JOIN_CANDIDATES,
+    { $tripId: tripId, $travellerId: travellerId },
+  );
+  return joinCandidates(
+    rows.map((row) => parseTripItemRow(row, row.trip_default_tz)),
+    now,
+  );
+}
+
+/**
+ * Adds a member of the trip to the items ticked, all or none (3B). Only items of this trip that can
+ * be offered count; one they are on already is left alone. Nobody else's participation and nothing
+ * on the items themselves — price, paid, times — change. Returns how many were added.
+ */
+export async function addTravellerToItems(
+  db: SQLiteDatabase,
+  tripId: string,
+  travellerId: string,
+  itemIds: readonly string[],
+): Promise<number> {
+  let added = 0;
+  await db.withTransactionAsync(async () => {
+    const member = await db.getFirstAsync(
+      `SELECT 1 AS yes FROM trip_travellers WHERE trip_id = $tripId AND traveller_id = $travellerId`,
+      { $tripId: tripId, $travellerId: travellerId },
+    );
+    if (!member) throw new Error('That traveller is not on this trip');
+    for (const itemId of new Set(itemIds)) {
+      const result = await db.runAsync(INSERT_JOIN_PARTICIPANT, {
+        $tripId: tripId,
+        $travellerId: travellerId,
+        $itemId: itemId,
+      });
+      added += result.changes;
+    }
+  });
+  return added;
 }
 
 export type ConvertLegacyTravellerOptions = {

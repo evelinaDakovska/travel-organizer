@@ -1,5 +1,6 @@
 import {
   legacyNames,
+  namesakeHint,
   namesLine,
   parseTravellerRow,
   travellerLabel,
@@ -161,5 +162,27 @@ describe('travellerLabel (2B-0)', () => {
     expect(travellerLabel({ id: 'ev', name: 'Evelina' }, 'ev')).toBe('Evelina (Me)');
     expect(travellerLabel({ id: 'mia', name: 'Mia' }, 'ev')).toBe('Mia');
     expect(travellerLabel({ id: 'ev', name: 'Evelina' }, null)).toBe('Evelina');
+  });
+});
+
+describe('namesakeHint', () => {
+  const maria = { ...profile('m1', 'Maria'), classification: 'adult' as const };
+  const mariaChild = { ...profile('m2', ' maria '), classification: 'child' as const };
+  const ana = profile('a', 'Ana');
+
+  it('says nothing for a name nobody else has', () => {
+    expect(namesakeHint(ana, [ana, maria], ['Lapland'])).toBeUndefined();
+  });
+
+  it('tells namesakes apart by classification and trips, ignoring case and spaces', () => {
+    const all = [maria, mariaChild, ana];
+    expect(namesakeHint(maria, all, ['Lapland'])).toBe('Adult · On Lapland');
+    expect(namesakeHint(mariaChild, all, [])).toBe('Child · On no trips');
+  });
+
+  it('names two trips and counts the rest', () => {
+    expect(namesakeHint(maria, [maria, mariaChild], ['Lapland', 'Rome', 'Milan', 'Oslo'])).toBe(
+      'Adult · On Lapland, Rome +2',
+    );
   });
 });

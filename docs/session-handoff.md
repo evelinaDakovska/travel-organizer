@@ -384,6 +384,29 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ## 11. Where the last session stopped (2026-10-19) — read this first
 
+### 11.0000000 Latest (2026-10-20, evening)
+
+- **Phase 3 approved in five stages** (3B → 3C → 3D-1 → 3D-2 → 3E), each only when the owner asks.
+  The owner's decisions are `docs/phase3-plan.md` §15 — read them before any Phase 3 work: payers
+  default to *Not recorded*, payments and expenses link to a booking (one cost, never doubled), no
+  real backup is inspected until a phone install is separately approved, migration 007 is tested on
+  synthetic databases with odd values in the unused `paid_by`/`split`/`payments`.
+- **3B built as 0.12.0** (who is going; no migration; D37, technical reference §20) and verified end
+  to end — `%USERPROFILE%\Pictures\TravelOrganizer-0.12.0-3B-e2e\E2E-LOG.md`. APK
+  `%USERPROFILE%/.travel-organizer/travel-organizer-0.12.0.apk`, **not on any phone**. **3C waits
+  for approval.**
+- **Debuggable test builds must be debug-signed.** The `E2E-INJECT` edit replaces the release
+  `signingConfig` line with `signingConfig signingConfigs.debug` *and* adds `debuggable true`.
+  Adding only `debuggable true` produces a debuggable APK signed with the **release key** — one that
+  would install over a real release; it was built once by mistake this session, refused by the
+  emulator (signature mismatch with the debug-signed test install), and deleted unused.
+- E2E helpers in the session scratchpad worth recreating: `open-trip.sh` (relaunch → Home → a
+  trip), `type.sh`, `check-backup.js` (a full backup's `backup.json` vs a pulled database, table by
+  table). A file `adb push`ed into Downloads shows in the picker only after
+  `adb shell content call --method scan_volume --uri content://media --arg external_primary`.
+  `uiautomator` reports a half-hidden row's centre, which can land on a button below a scroll
+  area — scroll first.
+
 ### 11.000000 Latest (2026-10-20, later)
 
 - **2D built as 0.11.0** (Plan with AI; no migration, no writes; D36, technical reference §19) and

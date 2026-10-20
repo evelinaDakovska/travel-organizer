@@ -397,6 +397,32 @@ export const INSERT_ITEM_PARTICIPANT = `
 INSERT INTO item_participants (item_id, traveller_id) VALUES ($itemId, $travellerId)
 `;
 
+/**
+ * What someone who just joined a trip could be added to (3B): its plans and saved places they are
+ * not on yet — never a to-do or a cancelled plan. `domain/participation.ts` orders them.
+ */
+export const SELECT_JOIN_CANDIDATES = `
+SELECT ${ITEM_COLUMNS}
+  FROM trip_items i JOIN trips t ON t.id = i.trip_id
+ WHERE i.trip_id = $tripId
+   AND i.kind <> 'task'
+   AND i.status <> 'cancelled'
+   AND NOT EXISTS (SELECT 1 FROM item_participants ip
+                    WHERE ip.item_id = i.id AND ip.traveller_id = $travellerId)
+`;
+
+/**
+ * Adds one person to one item, only when the item is in that trip and can be offered
+ * (`SELECT_JOIN_CANDIDATES`); someone already on it is left as they are. Nobody else's
+ * participation, and nothing on the item itself, changes.
+ */
+export const INSERT_JOIN_PARTICIPANT = `
+INSERT INTO item_participants (item_id, traveller_id)
+SELECT i.id, $travellerId FROM trip_items i
+ WHERE i.id = $itemId AND i.trip_id = $tripId AND i.kind <> 'task' AND i.status <> 'cancelled'
+ON CONFLICT (item_id, traveller_id) DO NOTHING
+`;
+
 /* Lists (C1). A list with no trip is a reusable one; its items are never ticked. */
 
 /** Lists with how many rows they hold and how many are ticked, for one trip or the reusable ones. */

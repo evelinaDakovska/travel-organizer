@@ -88,6 +88,15 @@
 
 ---
 
+### Built in 0.12.0 (roadmap 3B) — verified on emulators, not yet on a phone
+
+- **Who's going, by default**: a new plan or saved place starts with everyone on the trip ticked
+  (a to-do with nobody); editing keeps who was ticked. Activities imported from a file still start
+  with nobody.
+- **Someone joins a trip**: *Also add … to* lists the trip's plans and saved places, all unticked —
+  nothing is added unless ticked; also later from the traveller's row. Prices and payments never
+  change. Travellers with the same name are told apart by their trips.
+
 ### Built in 0.11.0 (roadmap 2D) — verified on emulators, not yet on a phone
 
 - **Plan with AI** (Overview → More): the trip as text to paste into ChatGPT or another assistant —

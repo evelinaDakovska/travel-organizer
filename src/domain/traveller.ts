@@ -146,3 +146,23 @@ export function usesText(uses: { trips: readonly string[]; items: number }): str
   const sentence = parts.join(', and ');
   return sentence.charAt(0).toUpperCase() + sentence.slice(1);
 }
+
+/**
+ * What tells a profile from another of the same name in a list of profiles (3B): its usual
+ * classification and the trips it is on, *Child · On Lapland, Rome +1*. Undefined when the name is
+ * its own — nothing extra is shown then.
+ */
+export function namesakeHint(
+  traveller: Pick<Traveller, 'id' | 'name' | 'classification'>,
+  profiles: readonly Pick<Traveller, 'id' | 'name'>[],
+  tripNames: readonly string[],
+): string | undefined {
+  const shared = profiles.some(
+    (other) => other.id !== traveller.id && sameName(other.name, traveller.name),
+  );
+  if (!shared) return undefined;
+  const shown = tripNames.slice(0, 2).join(', ');
+  const more = tripNames.length > 2 ? ` +${tripNames.length - 2}` : '';
+  const trips = tripNames.length > 0 ? `On ${shown}${more}` : 'On no trips';
+  return `${CLASSIFICATION_LABELS[traveller.classification]} · ${trips}`;
+}

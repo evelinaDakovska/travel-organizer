@@ -765,3 +765,33 @@ own adult/child classification, never names.
 
 **Read-only by construction.** Nothing is written — not even the choices — and nothing is sent:
 the person copies or shares.
+
+## D37 — Phase 3 stages, and 3B: who is going (0.12.0)
+
+Audit, the owner's decisions and the 3B design: `docs/phase3-plan.md` (§15 decisions, §16 3B as
+built, §17 linking money to bookings, for 3D-1); technical reference §20.
+
+**Five stages, each on its own.** Participation (3B) and pricing by audience (3C) need no
+migration; money records (3D-1) bring the one additive migration 007; splits and responsibility
+(3D-2) and balances (3E) build on it. Splitting the money work keeps each stage reviewable and
+leaves the migration in one place. Each stage ships, is verified, and the next waits for approval.
+
+**Everyone ticked on a new plan, nobody added to old ones.** The owner's ask: a new plan or saved
+place made by hand starts with every current trip member ticked — in practice the family goes
+together, and unticking is one tap. A to-do starts with nobody (people do not *go* to a to-do).
+Joining a trip never touches existing items: the *Also add … to* list offers them all **unticked**,
+because silently adding a newcomer to past bookings would rewrite history, and once money depends on
+participation it would move money too. Rejected: one *add to all upcoming* switch (one tap rewrites
+many rows the person did not look at).
+
+**Only the item form changes.** AI import (2C), items made from something shared in, and to-do
+templates keep *not specified*: 3B must not change 2C, and those paths have no *Who's going* to
+review. Making them consistent is recorded as a future product decision.
+
+**Edit keeps what was saved.** The form starts from the saved set (filtered to current members);
+the new-item default never applies to an edit, and a member who joined later is not added.
+
+**Removal unchanged for now.** Leaving a trip still removes that person's participation in it, as
+the confirmation says; re-adding restores nothing and offers the items again. Once money records
+exist (3D), removing someone who has them is refused and resolved by a safe flow, never by deleting
+history or moving it silently (owner, §15 *9*).

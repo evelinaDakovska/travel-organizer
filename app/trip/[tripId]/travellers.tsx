@@ -6,26 +6,34 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import {
   CLASSIFICATION_LABELS,
   legacyNames,
+  namesakeHint,
   travellerLabel,
   travellerNameSchema,
   type Traveller,
   type TravellerClassification,
 } from '../../../src/domain/traveller';
+import type { JoinCandidates } from '../../../src/domain/participation';
+import type { TripItem } from '../../../src/domain/tripItem';
+import { AddToItemsSheet } from '../../../src/features/travellers/AddToItemsSheet';
 import { useMe } from '../../../src/features/travellers/useMe';
 import { queryView } from '../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import {
+  addTravellerToItems,
   addTripTraveller,
   convertLegacyTraveller,
   createTripTraveller,
+  listJoinCandidates,
   listTravellers,
   listTripTravellers,
   removeTripTraveller,
+  travellerTripNames,
   updateTripTravellerClassification,
   TRAVELLER_TABLES,
 } from '../../../src/repositories/travellers';
 import { getTrip, TRIP_TABLES } from '../../../src/repositories/trips';
 import { AddByName } from '../../../src/ui/components/AddByName';
+import { Button } from '../../../src/ui/components/Button';
 import { HeaderAction } from '../../../src/ui/components/HeaderAction';
 import { Icon } from '../../../src/ui/components/Icon';
 import { ListRow, Rows } from '../../../src/ui/components/ListRow';
@@ -36,6 +44,9 @@ import { SectionLabel } from '../../../src/ui/components/SectionLabel';
 import { Sheet } from '../../../src/ui/components/Sheet';
 import { gutter, radius, spacing, touchTarget, type, useColors } from '../../../src/ui/tokens';
 
+/** Someone who just joined, and what they could be added to. */
+type Joining = { id: string; name: string; candidates: JoinCandidates<TripItem> };
+
 const CLASSIFICATION_OPTIONS: { value: TravellerClassification; label: string }[] = [
   { value: 'adult', label: 'Adult' },
   { value: 'child', label: 'Child' },
@@ -45,7 +56,8 @@ const CLASSIFICATION_OPTIONS: { value: TravellerClassification; label: string }[
 /**
  * Who is going on a trip (C2): picked from the travellers you keep, or added here. Names typed in
  * the trip's old Travellers field are shown until each is turned into a profile — by a tap, never
- * by matching on its own (FB-12).
+ * by matching on its own (FB-12). Whoever joins is on none of the trip's plans until ticked in
+ * *Also add … to* (3B), offered right after joining and from their row at any time.
  */
 export default function TripTravellersScreen() {
   const c = useColors();
@@ -64,6 +76,11 @@ export default function TripTravellersScreen() {
     [tripId],
   );
   const profilesQuery = useLiveQuery(listTravellers, TRAVELLER_TABLES);
+  // Two profiles of one name are told apart by their trips (3B), as when importing a trip (2B).
+  const { data: tripsOf = {} } = useLiveQuery(travellerTripNames, [
+    ...TRIP_TABLES,
+    ...TRAVELLER_TABLES,
+  ]);
 
   const members = useMemo(() => membersQuery.data ?? [], [membersQuery.data]);
   const profiles = useMemo(() => profilesQuery.data ?? [], [profilesQuery.data]);
@@ -71,6 +88,7 @@ export default function TripTravellersScreen() {
   const [editingMember, setEditingMember] = useState<Traveller | null>(null);
   const convertingRef = useRef(false);
   const [convertingName, setConvertingName] = useState<string | null>(null);
+  const [joining, setJoining] = useState<Joining | null>(null);
 
   const typed = useMemo(
     () =>
@@ -117,12 +135,42 @@ export default function TripTravellersScreen() {
   }
   const failed = queryView(membersQuery) === 'failed' || queryView(profilesQuery) === 'failed';
 
+  /**
+   * After someone joins: the trip's plans and saved places to add them to, all unticked. Nothing to
+   * offer, no sheet — unless asked from their row, which then says why.
+   */
+  const offerItems = async (id: string, name: string, asked = false) => {
+    try {
+      const candidates = await listJoinCandidates(db, trip.id, id);
+      if (candidates.plans.length + candidates.places.length > 0) {
+        setJoining({ id, name, candidates });
+      } else if (asked) {
+        Alert.alert(
+          `Nothing to add ${name} to`,
+          `${trip.name} has no plans or saved places that ${name} is not on already.`,
+        );
+      }
+    } catch {
+      if (asked) Alert.alert('Could not read the plans', 'Please try again.');
+    }
+  };
+
+  const addJoinerTo = async (itemIds: string[]) => {
+    if (!joining) return;
+    try {
+      await addTravellerToItems(db, trip.id, joining.id, itemIds);
+      setJoining(null);
+    } catch {
+      Alert.alert('Could not add to plans', 'Nothing was changed. Please try again.');
+    }
+  };
+
   const executeConvert = async (name: string, existingTravellerId?: string) => {
     if (convertingRef.current || !trip) return;
     convertingRef.current = true;
     setConvertingName(name);
     try {
-      await convertLegacyTraveller(db, {
+      const result = await convertLegacyTraveller(db, {
         tripId: trip.id,
         legacyName: name,
         existingTravellerId,
@@ -130,6 +178,10 @@ export default function TripTravellersScreen() {
       tripQuery.refetch();
       membersQuery.refetch();
       profilesQuery.refetch();
+      if (result.travellerId && !result.alreadyConverted) {
+        const linked = profiles.find((profile) => profile.id === result.travellerId);
+        void offerItems(result.travellerId, linked?.name ?? name.trim());
+      }
     } catch {
       Alert.alert(
         'Could not convert traveller',
@@ -145,7 +197,8 @@ export default function TripTravellersScreen() {
     if (convertingRef.current) return;
     const name = travellerNameSchema.safeParse(text);
     if (!name.success) return name.error.issues[0]?.message;
-    await createTripTraveller(db, trip.id, name.data);
+    const id = await createTripTraveller(db, trip.id, name.data);
+    void offerItems(id, name.data);
   };
 
   const handleLegacyConvert = (name: string, matches: Traveller[]) => {
@@ -310,6 +363,7 @@ export default function TripTravellersScreen() {
                 <ListRow
                   key={profile.id}
                   title={travellerLabel(profile, meId)}
+                  subtitle={namesakeHint(profile, profiles, tripsOf[profile.id] ?? [])}
                   trailing={
                     <HeaderAction
                       icon="add"
@@ -322,6 +376,7 @@ export default function TripTravellersScreen() {
                           try {
                             await addTripTraveller(db, trip.id, profile.id);
                             membersQuery.refetch();
+                            void offerItems(profile.id, profile.name);
                           } catch {
                             Alert.alert(
                               'Could not add traveller',
@@ -384,7 +439,24 @@ export default function TripTravellersScreen() {
             );
           })}
         </View>
+        <Button
+          label="Add to existing plans…"
+          variant="secondary"
+          onPress={() => {
+            const member = editingMember;
+            setEditingMember(null);
+            if (member) void offerItems(member.id, member.name, true);
+          }}
+        />
       </Sheet>
+
+      <AddToItemsSheet
+        key={joining?.id ?? 'none'}
+        traveller={joining}
+        candidates={joining?.candidates ?? { plans: [], places: [] }}
+        onAdd={addJoinerTo}
+        onClose={() => setJoining(null)}
+      />
     </Screen>
   );
 }

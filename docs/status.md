@@ -2,10 +2,14 @@
 
 **The** engineering status board: what is done, how it was verified, what is next. [`product-status.md`](product-status.md) is the feature-level view of the same facts; where the two disagree, this file wins. Scope of upcoming work: [`roadmap.md`](roadmap.md).
 
-Verified against the repo on 2026-10-20, on Windows: **1119 tests passing across 66 suites, typecheck clean.**
+Verified against the repo on 2026-10-20, on Windows: **1153 tests passing across 68 suites, typecheck clean.**
 
-> **Where things are (2026-10-19)**
-> - **Latest release build: 0.11.0** (versionCode 18) — Phase **2D**, Plan with AI (no migration),
+> **Where things are (2026-10-20)**
+> - **Latest release build: 0.12.0** (versionCode 19) — Phase **3B**, who is going (no migration),
+>   verified end to end on emulators and as a release update over 0.11.0, **not installed on any
+>   phone**: `%USERPROFILE%/.travel-organizer/travel-organizer-0.12.0.apk`. Phase 3 plan and the
+>   owner's decisions: [`phase3-plan.md`](phase3-plan.md).
+> - Before it: **0.11.0** (versionCode 18) — Phase **2D**, Plan with AI (no migration),
 >   verified end to end on emulators and as a release update over 0.10.0, **not installed on any
 >   phone**: `%USERPROFILE%/.travel-organizer/travel-organizer-0.11.0.apk`. **Phase 2 is complete.**
 > - Before it: **0.10.0** (versionCode 17) — Phase **2C**, AI activity import and
@@ -25,8 +29,8 @@ Verified against the repo on 2026-10-20, on Windows: **1119 tests passing across
 >   `adb shell dumpsys package com.evelinadakovska.travelorganizer | grep versionName`) before
 >   rehearsing any update.
 > - **Next: the roadmap** ([`roadmap.md`](roadmap.md), section *P* below). Phase 1 (0.7.4), 2B-0
->   (0.8.0), 2B (0.9.0), 2C (0.10.0) and 2D (0.11.0) are done and wait for the owner's review;
->   **Phase 3 waits for approval**.
+>   (0.8.0), 2B (0.9.0), 2C (0.10.0), 2D (0.11.0) and 3B (0.12.0) are done and wait for the owner's
+>   review; **3C waits for approval**.
 
 ---
 
@@ -616,7 +620,13 @@ only when the owner asks.
 | **P2·2C** | AI activity import and selective export: a public, versioned JSON format with JSON Schema and AI instructions; Import activities (preview, validation tiers, duplicates, selection, one transaction, review list); Export activities (filters, privacy filtering, re-importable). **0.10.0**, emulator E2E; not on a phone | ✅ |
 | **P2·2D** | Plan with AI: the trip as Markdown for an AI assistant — presets or own request, allowlisted fields, scrubbed titles, optional stays (as nights) and traveller counts, exact preview, Copy/Share of that very text, a compact activities-format block. **0.11.0**, emulator E2E; not on a phone | ✅ |
 | **P2** | Single-trip import/export & AI JSON import — **2A** architecture and audit done ([`phase2-plan.md`](phase2-plan.md), 2026-10-19); 2B-0, **2B** (single-trip archive) and **2C** (AI activity import, selective export) and **2D** (Plan with AI) done — awaiting the owner's review | ✅ |
-| **P3** | Travellers, pricing & shared expenses (replaces N5b) | ⬜ |
+| **P3·3A** | Phase 3 architecture and data-safety audit; the owner's decisions recorded ([`phase3-plan.md`](phase3-plan.md) §15), five stages approved | ✅ |
+| **P3·3B** | Who is going: every trip member ticked on a new plan or saved place (to-dos none), edit keeps the saved set, *Also add … to* after joining a trip (all unticked), namesakes told apart. **0.12.0**, emulator E2E; not on a phone | ✅ |
+| **P3·3C** | Adult/child pricing — waits for approval | ⬜ |
+| **P3·3D-1** | Money records (migration 007, payments linked to bookings) — waits for approval | ⬜ |
+| **P3·3D-2** | Responsibility and splits — waits for approval | ⬜ |
+| **P3·3E** | Balances and settlements — waits for approval | ⬜ |
+| **P3** | Travellers, pricing & shared expenses (replaces N5b) — 3A, 3B done; 3C–3E to come | ⬜ |
 | **P4** | Currency conversion | ⬜ |
 | **P5** | Full-day map | ⬜ |
 | **P6** | Trips without fixed dates | ⬜ |
@@ -660,6 +670,38 @@ Back, after backgrounding, after leaving the trip and coming back; Back from a t
 Overview as before. Testing created one throwaway trip (*P1 Test Saariselka…*, a child traveller
 *Mia*) on the emulator; the existing test trip was not changed. **Not tested:** on a physical
 phone (neither phone was connected); three-button navigation.
+
+**3B, what was built (0.12.0, versionCode 19).** Plan and the owner's decisions:
+`phase3-plan.md` §15–§16. Decisions: D37. Technical: technical reference §20. No migration (schema
+6), no backup/archive change, no money code touched, no new dependency.
+- **New item in the form**: every current trip member ticked for plans and saved places of every
+  kind; to-dos nobody. The form waits for the trip's travellers before opening. **Edit** keeps the
+  saved set. AI import, shared-in items and to-do templates unchanged (nobody).
+- **Joining a trip** (a profile added, a new name, an old typed name linked): *Also add … to* lists
+  the trip's plans (upcoming, undated, past) and saved places the person is not on, **all
+  unticked**; *Add to N items* writes those rows in one transaction, *Not now* nothing. Also from a
+  member's sheet, *Add to existing plans…*. No sheet when nothing is offered.
+- **Namesakes**: *Your travellers* shows *Adult · On Lapland, Rome +1* for profiles sharing a name.
+
+**3B, how it was verified.** 1153 tests (34 new: the new-item default per kind, candidates and
+their order — upcoming/started/date-only/undated/past/places, to-dos and cancelled excluded, ties;
+add-to-items writes exactly the ticked rows with every other table byte-identical, refuses a
+non-member, ignores to-dos/cancelled/other trips/duplicates, all-or-none under an injected
+failure; namesakes; same profile on two trips; remove and re-add; Me untouched; edit keeps the set
+and price/paid; AI import and shared-in items add no participants), typecheck clean. **End to end**
+on `TO_2B_Test` (debug-signed debuggable 0.12.0 `install -r` over debuggable 0.11.0, synthetic data,
+database pulled and diffed after every step): A–N **pass** — upgrade with every row identical; new
+activity/saved place all ticked, to-do none, unticking saved as shown; edit kept the saved set (price
+and paid unchanged); the add-to sheet all unticked, exactly the ticked rows added, *Not now* and Back
+add nothing; remove → re-add restores nothing; empty trip (no *Who's going*, no sheet, then ticked);
+namesake lines; other trips, Me, expenses, payments, lists, recipients, resources byte-identical;
+AI import adds no participants; trip ZIP export → import keeps every participation; full backup
+(format 6) matches the database and restores with no change; 360 dp, dark, font 1.3/2.0. **J**:
+release 0.12.0 `install -r` over release 0.11.0 on `Pixel_10_Pro` — every captured screen identical
+(Overview, Timeline, Expenses, lists, Packing, Travellers, Home); a new activity there starts with
+all four travellers ticked. Found and fixed: the *nothing to add* message on an empty trip. Log:
+`%USERPROFILE%\Pictures\TravelOrganizer-0.12.0-3B-e2e\E2E-LOG.md`. **Not tested:** a physical phone;
+three-button navigation; TalkBack by ear.
 
 **2D, what was built (0.11.0, versionCode 18).** Plan: `phase2d-plan.md`. Decisions: D36. Technical:
 technical reference §19. No migration, no new dependency, no network, no writes.

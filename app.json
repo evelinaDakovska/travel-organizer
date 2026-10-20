@@ -2,7 +2,7 @@
   "expo": {
     "name": "Travel Organizer",
     "slug": "travel-organizer",
-    "version": "0.11.0",
+    "version": "0.12.0",
     "orientation": "portrait",
     "scheme": "travelorganizer",
     "userInterfaceStyle": "automatic",
@@ -22,7 +22,7 @@
       "permissions": [
         "android.permission.USE_EXACT_ALARM"
       ],
-      "versionCode": 18
+      "versionCode": 19
     },
     "plugins": [
       "expo-router",

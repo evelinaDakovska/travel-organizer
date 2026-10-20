@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
 
+import { newItemParticipants } from '../../src/domain/participation';
 import { isValidLocal } from '../../src/domain/time';
 import { defaultItemDate } from '../../src/domain/trip';
 import {
@@ -53,7 +54,7 @@ export default function NewItem() {
     [tripId],
   );
 
-  const { data: travellers } = useLiveQuery(
+  const travellersQuery = useLiveQuery(
     useCallback((database) => listTripTravellers(database, tripId), [tripId]),
     TRAVELLER_TABLES,
     [tripId],
@@ -73,6 +74,22 @@ export default function NewItem() {
     );
   }
 
+  // Who starts ticked is read once, when the form opens (3B): no form until the trip's travellers
+  // are, or the default would be nobody.
+  const travellers = travellersQuery.data;
+  const travellersView = queryView(travellersQuery);
+  if (travellers === undefined) {
+    return (
+      <QueryScreen
+        title="New item"
+        view={travellersView}
+        missingText=""
+        what="who is going"
+        onRetry={travellersQuery.refetch}
+      />
+    );
+  }
+
   return (
     <Screen>
       <ScreenHeader title={idea ? 'Save a place' : `Add ${kindLabel(kind).toLowerCase()}`} />
@@ -81,7 +98,8 @@ export default function NewItem() {
         defaultTz={trip.defaultTz}
         defaultDate={date ?? defaultItemDate(trip)}
         knownPlaces={knownPlaces ?? []}
-        travellers={travellers ?? []}
+        travellers={travellers}
+        defaultParticipants={newItemParticipants(kind, travellers)}
         defaultValues={{
           kind,
           // A to-do is not an idea to book later; as one it would also land on Places.
