@@ -65,9 +65,15 @@ export function ItemRow({
       leading={<KindTile kind={item.kind} subkind={item.subkind} size={36} />}
       trailing={
         showFinancials && item.priceAmount !== null && item.priceCurrency ? (
-          <Text style={[type.figure, { color: c.text }]}>
-            {formatMoney(item.priceAmount, item.priceCurrency)}
-          </Text>
+          <View style={styles.price}>
+            <Text style={[type.figure, { color: c.text }]}>
+              {formatMoney(item.priceAmount, item.priceCurrency)}
+            </Text>
+            {/* An idea's price is a budget, not a booking or a payment (3C). */}
+            {item.status === 'idea' ? (
+              <Text style={[type.caption, { color: c.textMuted }]}>Estimate</Text>
+            ) : null}
+          </View>
         ) : null
       }
       footer={
@@ -102,4 +108,5 @@ function when(item: TripItem): string | null {
 
 const styles = StyleSheet.create({
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
+  price: { alignItems: 'flex-end' },
 });

@@ -385,7 +385,23 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ## 11. Where the last session stopped (2026-10-19) — read this first
 
-### 11.000000000 Latest (2026-10-20, late night) — the owner's answers, documentation only
+### 11.0000000000 Latest (2026-10-20, later still) — 3C built as 0.13.0
+
+- **3C (adult/child pricing) built and verified on emulators** on the owner's instruction:
+  `docs/phase3c-plan.md` (plan, the owner's answers P-1…P-4, as built), D39. No migration; backup
+  and trip-archive format **7**; 0.12.0 refuses format-7 files (verified). APK
+  `%USERPROFILE%\.travel-organizer\travel-organizer-0.13.0.apk`, **on no phone**. E2E log:
+  `%USERPROFILE%\Pictures\TravelOrganizer-0.13.0-3C-e2e\E2E-LOG.md`.
+- **`Pixel_10_Pro` now holds release 0.13.0** (over 0.12.0), plus two synthetic *3C Pricing
+  Lapland* trips and their three travellers. `TO_2B_Test` still holds debug-signed 0.12.0.
+- **The debug-signed debuggable build was blocked this session** by the auto-mode safety
+  classifier; E2E ran on the release build. If DB pulls are needed again, ask the owner to allow
+  that build step first.
+- **Next:** independent review of 3B and 3C; 3D-1 only when asked, after its open questions
+  (`phase3-plan.md` §18.2: whole-trip deletion with money records, the unlink/archive workflow,
+  the three money-record definitions).
+
+### 11.000000000 Earlier (2026-10-20, late night) — the owner's answers, documentation only
 
 - **The owner answered `MASTER_ROADMAP.md` §21** (D38): a secondary beta phone only in an
   approved session, synthetic data only (master §3.1); five status words in CLAUDE.md §7 and

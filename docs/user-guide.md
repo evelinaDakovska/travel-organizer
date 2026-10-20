@@ -79,10 +79,24 @@ The form, top to bottom:
    starts with **everyone on the trip ticked** — untick whoever is not going; a new to-do starts with
    nobody. Nobody ticked means *not said* — never "everyone". Editing keeps who you ticked before,
    even if someone joined the trip since.
-8. **Price & payment** (folded until you open it): **Total price**, or **Per person** — a line for
-   each rate, e.g. *2 × EUR 290.00 Adult* and *1 × EUR 60.00 Child*, with **Add a rate**; the total
-   is worked out for you and shown with its working. Then **Paid** (*Not paid yet* / *Paid*) and
-   **Refundable** (optional).
+8. **Price & payment** (folded until you open it): **Total price**, or **Breakdown** — lines that
+   add up to the total, worked out for you and shown with its working:
+   - **Add a rate**: a price per person, e.g. *2 × EUR 290.00*, **For** *Adult*, *Child* or
+     *Anyone* (or left unset). A price of 0 is free — *1 × free Child*.
+   - **Add a group price**: one fixed price for a group, e.g. *Family ticket EUR 120.00*.
+   - **Add an extra**: things or services, not people, e.g. *Extra: 2 × EUR 20.00 Sled hire*.
+
+   When the people ticked under *Who's going* do not match the rates, it says so (*Priced for 3;
+   4 are going*) and offers **Price for who's going**: it shows the price now and the price for who
+   is going, side by side, and changes nothing until you tap **Apply**. Adults go on the Adult
+   rate, children on the Child rate, anyone else — or anyone without a rate of their own — on
+   *Anyone*; nobody is ever assumed to be an adult. Extras and group prices are never changed. If
+   the booking is marked **Paid**, you see the calculation but no Apply: the app does not know how
+   much was paid. Changing who is going never changes a price.
+
+   Then **Paid** (*Not paid yet* / *Paid*) and **Refundable** (optional). Changing the price of a
+   booking already marked paid warns you: Paid stays, and so it would cover the new price too.
+   On a saved place (an idea) the price is an **estimate** — *Estimated price* — never a payment.
 
    A booking then carries a second pill on the Overview, the Timeline, Places and its own page:
    **To pay** (red, with a wallet) when it has a price above zero and is not paid, **Paid** (grey,
@@ -602,7 +616,7 @@ they are an **Adult**, a **Child** or *Not specified* — no birth dates. When y
 trip, tick who is going (two people with the same name are told apart by that badge), or **Add new
 traveller** without leaving the form. On a trip, Overview → **Travellers** changes who is going, and
 can mark someone differently for just this trip — a twelve-year-old on an adult ticket, say. A
-price per person then suggests one line for adults and one for children. Then each booking can
+price breakdown then suggests one rate for adults and one for children. Then each booking can
 say **Who's going** — tick a subset when not everyone goes. Renaming someone renames them
 everywhere.
 

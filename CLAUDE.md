@@ -178,7 +178,8 @@ Plus `trips`, `trip_notes`, `resources`, `settings`, since migration 002 `expens
 `trip_travellers`, `item_participants`, `lists`, `list_items`, `templates`, `template_uses`
 (Fieldbook C1–C5). Migration 004 adds adult/child `classification` to `travellers` and
 `trip_travellers`; 005 adds `trips.converted_travellers`; 006 adds `list_item_recipients`
-(`list_items.traveller_id` is legacy since). Backup format 6. No per-kind tables.
+(`list_items.traveller_id` is legacy since). Backup format 7 (0.13.0: same tables as 6; price lines in
+`details` may carry who they are for, group prices and extras). No per-kind tables.
 Kind-specific extras live in a Zod-validated `details` JSON column.
 
 ### 5.3 Time: store wall-clock + IANA zone, derive the instant

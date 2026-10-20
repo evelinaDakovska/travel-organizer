@@ -147,6 +147,22 @@ describe('journeyItemValues', () => {
     const schema = tripItemInputSchema(ROME);
     for (const v of legs) expect(schema.safeParse(v).success).toBe(true);
   });
+
+  it('keeps who each rate is for, group prices and extras on the first leg (3C)', () => {
+    const pricing = {
+      mode: 'perPerson',
+      lines: [
+        { label: 'Adult', quantity: 2, unitAmount: 15500, for: 'adult' },
+        { quantity: 1, unitAmount: 0, for: 'child' },
+        { label: 'Bag', quantity: 2, unitAmount: 3000, extra: true },
+      ],
+    };
+    const priced = { ...base, details: { ...base.details, pricing }, priceAmount: 37000 };
+    const legs = journeyItemValues(priced, { outbound: [out1, out2], returning: [] }, 'j1');
+    expect(legs.map((v) => v.details?.pricing)).toEqual([pricing, undefined]);
+    const schema = tripItemInputSchema(ROME);
+    for (const v of legs) expect(schema.safeParse(v).success).toBe(true);
+  });
 });
 
 describe('journeyLegs', () => {

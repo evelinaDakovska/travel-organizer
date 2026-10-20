@@ -10,7 +10,7 @@
  * Layout (docs/phase2-plan.md §4, technical reference §17):
  *
  *   manifest.json   what this is, which version, which trip, every file with size and SHA-256
- *   trip.json       the trip's rows, in the full backup's raw row shapes (format 6)
+ *   trip.json       the trip's rows, in the full backup's raw row shapes (`EXPORT_FORMAT_VERSION`, 7)
  *   files/NNN.ext   each attached file once, however many records point at it
  */
 

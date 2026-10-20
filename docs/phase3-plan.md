@@ -12,7 +12,8 @@ Every statement is marked **[Confirmed]** (read in the code at that commit, file
 every decision and supersedes §§7–14 where they differ. §16 is the 3B design as built.** Each stage
 is implemented and verified on its own, and the next one starts only when the owner approves it.
 **§18 is the owner's later answers on 3C scope and 3D-1 linking (2026-10-20), and supersedes §17
-where they differ. §19 is the 3C pre-coding schema check.**
+where they differ. §19 is the 3C pre-coding schema check. 3C as built (0.13.0):
+`docs/phase3c-plan.md`.**
 
 ---
 
@@ -452,6 +453,17 @@ decision-log D38.
 | L-2 | A **future explicit resolution workflow** preserves financial history — e.g. unlinking a standalone expense, or archiving/cancelling the booking while keeping its financial relationships. A booking payment is **never silently converted** into an independent expense, and a payment is **never orphaned**. The exact archive/unlink UI and the source-of-truth rules are proposed and approved before 3D-1 is implemented |
 | L-3 | **Different currencies:** no automatic conversion and no adding of different currencies. In 3D-1 a linked booking payment **must use the booking's currency**; if they differ, the link is blocked with a clear explanation and the records stay separate. No invented exchange rate; neither amount changes. Multi-currency reconciliation is Phase 4 or a separately approved extension |
 | L-4 | **Define before implementation** the distinction between a **standalone expense**, a **payment against a booking** and a **linked expense**. A booking and its payment records are never counted as separate costs |
+
+**Confirmed by the owner (2026-10-20, with the 3C answers):** the cascade deletion of booking
+payments drafted in §8 is **rejected**; the schema and the deletion behaviour are redesigned before
+migration 007 is approved.
+
+**Open 3D-1 design questions (unresolved, owner's decision):**
+1. **Deleting a whole trip that holds linked financial records** — blocked like a booking, allowed
+   as one explicit whole-trip removal with its money history, or something else.
+2. The exact archive/unlink resolution workflow and its source-of-truth rules (L-2).
+3. The written distinction between a standalone expense, a payment against a booking and a linked
+   expense (L-4).
 
 **Consequences for the drafts above, to be resolved in the 3D-1 proposal** (recorded, not decided):
 - §8's DDL has `cost_payments.trip_item_id` / `expense_id` and `cost_shares.trip_item_id` /

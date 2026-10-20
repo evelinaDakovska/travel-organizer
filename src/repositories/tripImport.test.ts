@@ -134,6 +134,40 @@ describe('importing a trip archive into a database', () => {
     ).toEqual([{ classification: 'adult' }, { classification: 'adult' }, { classification: 'adult' }]);
   });
 
+  it('carries price lines with who they are for, group prices and extras unchanged (3C)', async () => {
+    const { raw, db } = await setup();
+    const pricing = {
+      mode: 'perPerson',
+      lines: [
+        { label: 'Adult', quantity: 2, unitAmount: 9000, for: 'adult' },
+        { quantity: 1, unitAmount: 0, for: 'child' },
+        { label: 'Family ticket', quantity: 1, unitAmount: 12000, group: true },
+        { label: 'Sled', quantity: 2, unitAmount: 2000, extra: true },
+      ],
+    };
+    const { id } = raw
+      .prepare(`SELECT id FROM trip_items WHERE trip_id = 'lap' AND kind <> 'transport' LIMIT 1`)
+      .get() as { id: string };
+    raw
+      .prepare(
+        `UPDATE trip_items SET details = json_set(COALESCE(details, '{}'), '$.pricing', json(?)),
+                price_amount = 34000, price_currency = 'EUR' WHERE id = ?`,
+      )
+      .run(JSON.stringify(pricing), id);
+    const { archive } = await archiveFrom(db);
+    expect(archive.manifest.rowFormat).toBe(7);
+
+    const plan = await importInto(db, archive);
+    const copies = raw
+      .prepare(
+        `SELECT json_extract(details, '$.pricing') AS pricing, price_amount FROM trip_items
+          WHERE trip_id = ? AND price_amount = 34000`,
+      )
+      .all(plan.tripId) as { pricing: string; price_amount: number }[];
+    expect(copies).toHaveLength(1);
+    expect(JSON.parse(copies[0].pricing)).toEqual(pricing);
+  });
+
   it('rebuilds the derived instants from the trip’s zone rather than trusting the file', async () => {
     const { raw, db } = await setup();
     const { archive } = await archiveFrom(db);

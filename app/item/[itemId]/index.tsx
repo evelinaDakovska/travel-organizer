@@ -265,12 +265,19 @@ export default function ItemDetail() {
           {details?.seat ? <Fact label="Seat" value={details.seat} /> : null}
           {item.priceAmount !== null && item.priceCurrency ? (
             <Fact
-              label="Price"
+              label={item.status === 'idea' ? 'Estimated price' : 'Price'}
               value={formatMoney(item.priceAmount, item.priceCurrency)}
               detail={[
                 // The working of a per-person price (C3): 2 × EUR 90.00 Adult + …
                 pricing ? pricingText(pricing, item.priceCurrency) : null,
-                item.isPaid ? 'Paid' : item.priceAmount > 0 ? 'Not paid yet' : null,
+                // An idea's price is a budget, never a payment state (3C).
+                item.status === 'idea'
+                  ? 'Estimate'
+                  : item.isPaid
+                    ? 'Paid'
+                    : item.priceAmount > 0
+                      ? 'Not paid yet'
+                      : null,
                 REFUNDABLE_LABEL[String(refundableOf(item.details))],
               ]
                 .filter(Boolean)

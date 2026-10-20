@@ -274,6 +274,16 @@ describe('opening a trip archive', () => {
     }
   });
 
+  it('writes row format 7, and still opens a trip exported by 0.12.0 (row format 6)', async () => {
+    const entries = goodEntries();
+    const manifest = manifestOf(entries);
+    expect(manifest.rowFormat).toBe(7);
+    const older = await open(rawZip(replace(entries, MANIFEST_NAME, json({ ...manifest, rowFormat: 6 }))));
+    expect(older.ok).toBe(true);
+    // What 0.12.0 does with this app's archives: its own check, with its own number.
+    expect(manifest.rowFormat).toBeGreaterThan(6);
+  });
+
   it('refuses trip data that does not match its checksum', async () => {
     const entries = goodEntries();
     const data = entries.find(([name]) => name === DATA_NAME)![1];

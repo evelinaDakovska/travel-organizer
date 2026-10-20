@@ -835,3 +835,30 @@ rate, and inventing one would make a total lie.
 **Feedback before the friends beta, not inside 3C.** The form is useful only once friends test, and
 deploying it means real infrastructure and a mail key, so it becomes its own pre-beta task with a
 security checklist and a real delivery test the owner approves.
+
+## D39 — 3C: who a price is for, group prices, extras (0.13.0)
+
+Plan and as-built record: `docs/phase3c-plan.md`; the owner's answers P-1…P-4 there.
+
+**Flags on the line, not a new type field.** A line with no `for`, `group` or `extra` is exactly a
+line from before 3C, so no old breakdown needs converting and none changes meaning. `extra: true`
+was the owner's choice; `group: true` mirrors it, with quantity fixed at 1 so a group price can
+never be mistaken for people. Labels stay free text and are never read for meaning: a legacy line
+called *Adult* is not set until someone says it is.
+
+**`mode` keeps its old literal.** Renaming `'perPerson'` would have made every saved breakdown
+invalid to the older schema and forced a conversion. It now simply means "a breakdown".
+
+**The suggestion refuses to guess.** *Price for who's going* maps adults, children and people not
+specified onto rates by audience, never treats someone unspecified as an adult, leaves group prices
+and extras alone, and gives up with a reason rather than choosing between two rates for the same
+people. It writes nothing until **Apply**, and the item's Save is a second step.
+
+**No Apply on a paid booking.** `is_paid` says *paid*, not *how much*. Applying a new total to a
+paid booking would silently change what the app reports as paid, so the calculation is shown but
+not applied; a hand edit of a paid booking's price warns instead. Payment amounts arrive with 3D-1.
+
+**Backup format 7 without a migration.** The rows are unchanged, but 0.12.0 would accept the new
+keys in a format-6 file and drop them on its next edit. Raising the format makes an older app refuse
+instead (verified on the emulator, both for a full backup and a trip ZIP). The format for 3D-1 is
+decided with its own changes.

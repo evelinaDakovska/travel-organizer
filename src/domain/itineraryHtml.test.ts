@@ -143,6 +143,27 @@ describe('itineraryHtml (C4)', () => {
     expect(withTasks).toContain('☐ Pack');
   });
 
+  it('shows a breakdown with who each rate is for, group prices and extras, only for plans (3C)', () => {
+    const pricing = {
+      mode: 'perPerson',
+      lines: [
+        { quantity: 2, unitAmount: 9000, for: 'adult' },
+        { quantity: 1, unitAmount: 0, for: 'child' },
+        { label: 'Sled', quantity: 2, unitAmount: 2000, extra: true },
+      ],
+    };
+    const priced = (id: string, status: TripItem['status']) =>
+      item({ id, title: `Safari ${id}`, status, details: { pricing }, priceAmount: 22000, priceCurrency: 'EUR' });
+    const html = itineraryHtml(input({ items: [priced('a', 'confirmed'), priced('b', 'idea')] }), {
+      ...DEFAULT_PDF_OPTIONS,
+      costs: true,
+    });
+    expect(html).toContain(
+      'Safari a: 2 × EUR 90.00 Adult + 1 × free Child + Extra: 2 × EUR 20.00 Sled = EUR 220.00',
+    );
+    expect(html).not.toContain('Safari b:');
+  });
+
   it('says when it was made', () => {
     expect(itineraryHtml(input(), DEFAULT_PDF_OPTIONS)).toContain('Made 13 Oct 2026, 09:42');
   });

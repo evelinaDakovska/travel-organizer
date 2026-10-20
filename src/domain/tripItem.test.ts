@@ -445,6 +445,19 @@ describe('detailsForKind', () => {
     expect(detailsForKind(details, 'activity')).toEqual({ reminder: '15m', refundable: true });
   });
 
+  it('keeps every price line, tags and flags included, through a change of kind (3C)', () => {
+    const pricing = {
+      mode: 'perPerson',
+      lines: [
+        { quantity: 2, unitAmount: 100, for: 'adult' },
+        { quantity: 1, unitAmount: 900, group: true },
+        { quantity: 3, unitAmount: 50, extra: true },
+      ],
+    };
+    expect(detailsForKind({ from: 'Sofia', pricing }, 'food')).toEqual({ pricing });
+    expect(detailsForKind({ pricing }, 'transport')).toEqual({ pricing });
+  });
+
   it('keeps the lot for travel, and leaves nothing behind when nothing is left', () => {
     expect(detailsForKind({ from: 'Sofia' }, 'transport')).toEqual({ from: 'Sofia' });
     expect(detailsForKind({ from: 'Sofia' }, 'stay')).toBeUndefined();
@@ -496,5 +509,26 @@ describe('a per-person price (C3)', () => {
     expect(parse(lines(9000), 18001).error?.issues.map((issue) => issue.message)).toEqual([
       'The rates do not add up to this price',
     ]);
+  });
+
+  it('saves who each rate is for, a group price and extras, when the lines make the price (3C)', () => {
+    const pricing = {
+      mode: 'perPerson',
+      lines: [
+        { label: 'Adult', quantity: 2, unitAmount: 9000, for: 'adult' },
+        { quantity: 1, unitAmount: 0, for: 'child' },
+        { label: 'Family', quantity: 1, unitAmount: 12000, group: true },
+        { label: 'Sled', quantity: 2, unitAmount: 2000, extra: true },
+      ],
+    };
+    const result = parse({ pricing }, 34000);
+    expect(result.success).toBe(true);
+    expect(result.data?.details).toEqual({ pricing });
+    expect(parse({ pricing }, 30000).success).toBe(false);
+  });
+
+  it('refuses a group price of more than one, under the price', () => {
+    const pricing = { mode: 'perPerson', lines: [{ quantity: 2, unitAmount: 100, group: true }] };
+    expect(parse({ pricing }, 200).error?.issues[0]).toMatchObject({ path: ['priceAmount'] });
   });
 });

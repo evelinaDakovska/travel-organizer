@@ -71,6 +71,7 @@ The following milestones are **reported complete by Claude**, not independently 
 | Phase 2D Plan with AI | v0.11.0 / `0bdca7c` | Read-only planning context with exact preview, optional stay/traveller counts, Copy/Share, privacy allowlist | Real ChatGPT paste flow, physical UX |
 | Phase 3A financial audit | `docs/phase3-plan.md` | Current schema and behavior, five-stage financial proposal, data-safety invariants | Verify audit against actual code |
 | Phase 3B traveller participation | v0.12.0 / `991994e` | New manual plans/saved places default all trip travellers; edit preserves saved selection; optional unticked bulk assignment when person joins; no schema migration | Legacy typed-name conversion edge case; independent diff review; physical UX |
+| Phase 3C adult/child pricing | v0.13.0 (`docs/phase3c-plan.md`) | Rates for Adult/Child/Anyone, free lines, group prices, extras; user-invoked *Price for who's going* (no Apply on paid bookings); paid-price warning; *Estimate* on ideas; backup/archive format 7; no schema migration | Independent diff review; physical UX |
 
 **Reported current schema:** version 6. **Reported latest tests:** 1,153 passing and clean TypeScript typecheck at v0.12.0. These are agent-reported numbers, not tests run by ChatGPT.
 
@@ -90,12 +91,12 @@ The following milestones are **reported complete by Claude**, not independently 
 
 ## 5. Roadmap overview and dependency graph
 
-**Current gate:** Independent review of Phase 3B commit `991994e`, followed by approval and design of Phase 3C. Do not start 3C until approved. The owner confirmed 3C's scope on 20 October 2026 (§6.2); the pre-coding schema check is `docs/phase3-plan.md` §19, and its open design questions need answers before the 3C plan is written.
+**Current gate:** Independent review of Phase 3B (`991994e`) and Phase 3C (0.13.0, `docs/phase3c-plan.md`, built on the owner's instruction after the owner's answers to the schema check). Do not start 3D-1 until approved; its open design questions are in `docs/phase3-plan.md` §18.2.
 
 ```text
-Completed (reported): Foundations → Phase 1 → Phase 2A → 2B-0 → 2B → 2C → 2D → 3A → 3B
+Completed (reported): Foundations → Phase 1 → Phase 2A → 2B-0 → 2B → 2C → 2D → 3A → 3B → 3C
                                                               ↓
-Next:                          3C Pricing → 3D-1 Payments → 3D-2 Responsibility/Splits → 3E Balances
+Next:                          3D-1 Payments → 3D-2 Responsibility/Splits → 3E Balances
                                    ↓                 ↓                 ↓                     ↓
 Later:                          Phase 4 Currency ──────────────────────────────────────────────┘
 Independent UI tracks:          Phase 5 Route Map; Phase 6 Undated Trips; Phase 7 Maps Import; Phase 8 ICS
@@ -105,7 +106,9 @@ Deferred / discovery:           Gmail, passports, sync/accounts, automatic booki
 
 Numbering 3B–3E follows the **approved Phase 3 audit**, not a promise of exact calendar dates. Each phase has an explicit exit gate.
 
-## 6. Phase 3C — Adult/Child Pricing [NEXT; NOT APPROVED TO IMPLEMENT]
+## 6. Phase 3C — Adult/Child Pricing [BUILT — v0.13.0; AWAITING INDEPENDENT REVIEW]
+
+As built: `docs/phase3c-plan.md` (the owner's answers P-1…P-4, the representation, tests and the emulator E2E). The requirements below are kept as written.
 
 ### 6.1 Goal
 
@@ -180,7 +183,8 @@ Represent actual payments independently of booking price. One €250 booking wit
 - Specify rules for payment amount > total, zero amount, different currency, deleting linked records, missing payer, booking edits after payment, and legacy paid flags **before coding**.
 - Clarify source-of-truth and aggregation: booking cost + associated payment records must not be added as separate costs; define whether Quick Expense represents a standalone cost or a payment linked to a booking.
 - **Required before implementation (owner, 20 October 2026):** a written distinction between a **standalone expense**, a **payment against a booking** and a **linked expense**. A booking and its payment records are never counted as separate costs.
-- **Deleting a booking that has linked financial records (owner):** never cascade-delete payments, expenses or settlements. Ordinary deletion of such a booking is **blocked**, with an explanation. A later explicit resolution workflow preserves financial history, for example unlinking a standalone expense, or archiving/cancelling the booking while keeping its financial relationships. A booking payment is never silently turned into an independent expense, and a payment is never orphaned. The exact archive/unlink UI and the source-of-truth rules are proposed and approved before 3D-1 is implemented. **[Repo check]** The draft DDL in `docs/phase3-plan.md` §8 has `ON DELETE CASCADE` from `cost_payments` to `trip_items`/`expenses`; it must change before migration 007 is written (§18 there).
+- **Deleting a booking that has linked financial records (owner):** never cascade-delete payments, expenses or settlements. Ordinary deletion of such a booking is **blocked**, with an explanation. A later explicit resolution workflow preserves financial history, for example unlinking a standalone expense, or archiving/cancelling the booking while keeping its financial relationships. A booking payment is never silently turned into an independent expense, and a payment is never orphaned. The exact archive/unlink UI and the source-of-truth rules are proposed and approved before 3D-1 is implemented. **[Repo check]** The draft DDL in `docs/phase3-plan.md` §8 has `ON DELETE CASCADE` from `cost_payments` to `trip_items`/`expenses`; it must change before migration 007 is written (§18 there). The owner confirmed that this cascade is **rejected**: the schema and deletion behaviour are redesigned before migration 007 is approved.
+- **Unresolved 3D-1 design question (owner):** what deleting a **whole trip** that holds linked financial records does. Recorded in `docs/phase3-plan.md` §18.2; decided in the 3D-1 proposal.
 - **Linked records in different currencies (owner):** no automatic conversion and no adding of different currencies. In 3D-1, a linked booking payment must use the booking's currency; if the currencies differ, the link is blocked with a clear explanation and the records stay separate. No exchange rate is invented, and neither amount changes. Multi-currency reconciliation belongs to Phase 4 or a separately approved extension.
 
 ### 7.4 Backups, imports and migration

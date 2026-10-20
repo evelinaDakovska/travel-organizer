@@ -11,11 +11,14 @@ import { travellerClassificationSchema } from './traveller';
 /**
  * 2 added expenses, payments and `resources.expense_id` (N5); 3 added travellers, lists and
  * templates (Fieldbook, migration 003); 4 added traveller classification (migration 004); 5 added
- * converted_travellers (migration 005); 6 added list_item_recipients (migration 006, 2B-0). Formats
- * 1–5 still import: their missing tables or columns default safely, and a format-5-or-earlier
- * list item's one `traveller_id` becomes its one recipient (`upgradeDocument`).
+ * converted_travellers (migration 005); 6 added list_item_recipients (migration 006, 2B-0); 7 has
+ * the same tables and columns, but price lines in `trip_items.details` may carry who they are for,
+ * group prices and extras (3C) — raised so an older app refuses the file rather than dropping
+ * those on its next edit. Formats 1–6 still import: their missing tables or columns default
+ * safely, and a format-5-or-earlier list item's one `traveller_id` becomes its one recipient
+ * (`upgradeDocument`).
  */
-export const EXPORT_FORMAT_VERSION = 6;
+export const EXPORT_FORMAT_VERSION = 7;
 export const EXPORT_APP = 'travel-organizer';
 
 const nullableString = z.string().nullable();

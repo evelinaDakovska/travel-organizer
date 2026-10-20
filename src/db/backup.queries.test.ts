@@ -388,6 +388,34 @@ describe('the backup round trip', () => {
     );
   });
 
+  it('restores price lines with who they are for, group prices and extras byte for byte (3C)', async () => {
+    const source = fresh();
+    seed(source);
+    const details =
+      '{"room":"402","pricing":{"mode":"perPerson","lines":[' +
+      '{"label":"Adult","quantity":2,"unitAmount":9000,"for":"adult"},' +
+      '{"quantity":1,"unitAmount":0,"for":"child"},' +
+      '{"label":"Family ticket","quantity":1,"unitAmount":12000,"group":true},' +
+      '{"label":"Sled","quantity":2,"unitAmount":2000,"extra":true}]}}';
+    source.prepare(`UPDATE trip_items SET details = ?, price_amount = 34000 WHERE id = 'i1'`).run(details);
+    const target = fresh();
+    await restoreInto(target, source, 'merge');
+
+    const item = target.prepare(`SELECT details, price_amount, is_paid FROM trip_items WHERE id = 'i1'`).get();
+    expect(item).toEqual({ details, price_amount: 34000, is_paid: 1 });
+  });
+
+  it('writes format 7, and still restores a format-6 backup from 0.12.0', async () => {
+    const source = fresh();
+    seed(source);
+    const current = JSON.parse(JSON.stringify(await documentFrom(source)));
+    expect(current.formatVersion).toBe(7);
+    const fromOlder = parseExportDocument({ ...current, formatVersion: 6 });
+    expect(fromOlder.ok).toBe(true);
+    // 0.12.0 refuses anything above its own 6 — this app's backups included.
+    expect(current.formatVersion).toBeGreaterThan(6);
+  });
+
   it('rejects a backup from a future format with a clear message', async () => {
     const source = fresh();
     seed(source);

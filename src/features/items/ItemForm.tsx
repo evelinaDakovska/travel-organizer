@@ -603,6 +603,7 @@ export function ItemForm({
         initiallyOpen={defaultValues.priceAmount !== undefined || defaultValues.isPaid === true}
         goingCount={participants.length}
         participants={selectedParticipants}
+        saved={{ priceAmount: defaultValues.priceAmount, isPaid: defaultValues.isPaid === true }}
       />
 
       {status === 'confirmed' && (

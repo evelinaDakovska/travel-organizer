@@ -1019,7 +1019,13 @@ trip uses.
 `upgradeDocument` on parse: each list item's `traveller_id` becomes its one recipient, exactly
 as migration 006 does on the phone. On import, recipients are written only for list items the
 import itself writes (`insertLinkRow`, `INSERT OR IGNORE`), so *Keep mine* never adds people to an
-item already here. `EXPORT_FORMAT_VERSION` is **6**.
+item already here.
+
+**Format 7** (0.13.0, 3C) has the same tables and columns as 6. It exists because price lines in
+`trip_items.details` may now carry `for` / `group` / `extra`: 0.12.0 would accept them in a format-6
+file and drop them the first time the price was edited there, so the number is raised and an older
+app refuses the file (*from a newer version*). Formats 1–6 restore unchanged (no upgrade step).
+No SQLite migration: `user_version` stays 6. `EXPORT_FORMAT_VERSION` is **7**.
 
 **Export reads one snapshot (A4).** `readTables` runs inside `withExclusiveTransactionAsync`, whose
 second connection holds one WAL read snapshot for every table, so a write landing mid-export can
@@ -1191,6 +1197,28 @@ computed total, because every cost calculation already reads it. The item schema
 past `Number.MAX_SAFE_INTEGER` (`pricingTotal` returns null). On a journey the pricing goes on the
 first leg only, like its price (`journey.ts`). `pricingText` shows the working.
 
+**Who a rate is for, group prices, extras (3C, 0.13.0; `docs/phase3c-plan.md`).** A line may also
+carry `for: 'adult' | 'child' | 'any'` (person rates only; absent = not set, which is every line
+from before 3C), `group: true` (a fixed price for a group; quantity exactly 1) or `extra: true`
+(things or services, not people). The schema refuses both flags, a group of more than 1, `for` on a
+group or extra, and `false` flags. `mode` stays `'perPerson'` so every old breakdown is valid
+unchanged. The total is the sum of **all** lines (integers, no division, no rounding);
+`pricedFor` counts person rates only. Labels are never parsed for an audience.
+
+- `pricingFromDraft` writes the form's lines back with their type and audience, so editing one
+  line never drops another's metadata; `detailsForKind` and `journeyItemValues` keep the whole
+  `pricing` object.
+- `priceForWhosGoing(lines, going)` is the user-invoked suggestion: adults → Adult rate, else
+  Anyone; children → Child rate, else Anyone; not specified → Anyone only; one untagged rate alone
+  counts as Anyone. It refuses to guess (`untagged`, `ambiguous`), says who has no rate
+  (`unpriced`), leaves group and extra lines exactly as they are, and removes a person rate nobody
+  is on (`removed`). `PriceSection` shows it beside the current working; **Apply** only when the
+  item is neither saved as paid nor marked paid in the form — a paid booking sees the calculation
+  only, because `is_paid` records no amount. Changing the price of an item saved as paid shows a
+  warning; `is_paid` is never changed by a price action.
+- An idea's price is labelled *Estimated price* / *Estimate* (form, item page, `ItemRow`); no
+  stored change — ideas never counted as spent.
+
 ### Lists (C1)
 
 One `lists` table for reusable lists (`trip_id` NULL) and trip copies (FB-15); ticks (`done_at`)
@@ -1325,7 +1353,7 @@ staging), screens `app/trip/[tripId]/export-trip.tsx` and `app/import-trip.tsx`.
 
 ```
 <Trip>-trip-YYYY-MM-DD-HHMM.zip
-  manifest.json   { kind: "travel-organizer-trip", formatVersion: 1, rowFormat: 6, schemaVersion: 6,
+  manifest.json   { kind: "travel-organizer-trip", formatVersion: 1, rowFormat: 7, schemaVersion: 6,
                     app {name, version}, exportId, exportedAt, sourceTripId,
                     trip {name, destination, startDate, endDate},
                     attachments: "included" | "excluded", partial,
@@ -1343,6 +1371,8 @@ staging), screens `app/trip/[tripId]/export-trip.tsx` and `app/import-trip.tsx`.
 version — update the app first*), never partly imported. A future change to row shapes bumps
 `rowFormat` with the backup format; a change to the layout or manifest bumps `formatVersion`. Never
 in an archive: settings (so not Me), templates, reusable lists, other trips, other travellers.
+`rowFormat` 7 (0.13.0) is the 3C price lines; 0.12.0 refuses such an archive, and this app still
+opens `rowFormat` 1–6.
 
 ### Limits (`TRIP_ARCHIVE_LIMITS`)
 

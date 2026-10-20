@@ -88,6 +88,19 @@
 
 ---
 
+### Built in 0.13.0 (roadmap 3C) — verified on emulators, not yet on a phone
+
+- **Price breakdowns by audience**: a rate can be **for** an Adult, a Child or Anyone; a rate of 0
+  is free; a **group price** (one fixed price, e.g. a family ticket) and **extras** (things, not
+  people, e.g. sled hire) sit beside the rates. The total is always the sum of the lines.
+- **Price for who's going**: offered when the rates do not match who is ticked; shows the price now
+  and the suggested price, and changes nothing until **Apply**. Not offered for a booking marked
+  paid (the calculation is still shown), and changing a paid booking's price warns that *Paid* would
+  cover the new price too. Changing who is going never changes a price.
+- **Estimate**: a saved place's price is labelled an estimate. Nothing about it is counted as spent.
+- **Backup format 7**: backups and trip files from 0.13.0 are refused by 0.12.0 rather than losing
+  the new price details; 0.13.0 still reads every older backup and trip file. No database migration.
+
 ### Built in 0.12.0 (roadmap 3B) — verified on emulators, not yet on a phone
 
 - **Who's going, by default**: a new plan or saved place starts with everyone on the trip ticked
