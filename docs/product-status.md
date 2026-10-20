@@ -1,7 +1,7 @@
 # Product Status & Feature Matrix
 
 > **The feature-level view** — what a user can do, and where each feature was verified.
-> Last updated: 2026-10-19.
+> Last updated: 2026-10-20.
 > Task-level status, how each piece was built and verified, and which version is where live in
 > [`status.md`](status.md); where the two disagree, `status.md` wins. What comes next is
 > [`roadmap.md`](roadmap.md).
@@ -87,6 +87,17 @@
   per-person pricing lines suggested from it. Migrations 004 and 005, backup format 5.
 
 ---
+
+### Built in 0.10.0 (roadmap 2C) — verified on emulators, not yet on a phone
+
+- **Import activities** (Overview → More): add ideas and plans from a JSON file — e.g. written by
+  ChatGPT with the instructions the app copies — after a preview that shows every activity, what is
+  invalid and why, possible duplicates, and fields it will not import. Only ticked activities are
+  added, all at once or not at all; then a list to review them. Never paid, never a booking.
+- **Export activities** (Overview → More): chosen ideas and plans as a file in the same format —
+  without booking references, people, documents, payments or ids. Re-imports into any trip.
+- **The format** is public and documented (`docs/ai-activities-format.md`, JSON Schema in
+  `docs/schema/`).
 
 ### Built in 0.9.0 (roadmap 2B) — verified on emulators, not yet on a phone
 

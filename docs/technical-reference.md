@@ -364,6 +364,13 @@ It defaults to `false`. Without it `addDatabaseChangeListener` never fires, so `
 never refreshes and screens show stale data — with **no error and no warning**. Verified on device
 in M2, where a newly created trip did not appear on Home.
 
+Events arrive **one per row changed**. `useLiveQuery` does not answer each: a read starts after
+50 ms without a new event on its tables (at most 10 s after the first), and while a read runs at
+most one more is queued (0.10.0). Every change is still followed by a read that starts after it.
+Before, a batch write re-read and re-rendered every mounted query per row, between the batch's own
+statements — 300 imported activities took 43 s, minutes with Timeline and Places open; now ~3 s.
+`useReminders` already waited for 600 ms of quiet.
+
 ### What a read's state means on screen (R4)
 
 `useLiveQuery` returns `{ data, error, loading, refetch }`. A failed read keeps the data it had and
@@ -1378,3 +1385,88 @@ The record lives in `settings` (no migration), so a full backup carries it.
 **Known limitations:** archives are built and read in memory (the limits above bound it); exported
 zips stay in the app cache until Android reclaims it; when the disk is full the message shows
 SQLite's secondary "cannot rollback" error rather than "storage full".
+
+## 18. Activities format: AI import and selective export (2C, 0.10.0)
+
+Rationale: D35. Plan: `docs/phase2c-plan.md`. **Public description:** `docs/ai-activities-format.md`
+and `docs/schema/travel-organizer-activities-v1.schema.json`. Code: `domain/activityFormat.ts`
+(limits, parser, mapping, export), `activityFormat.schema.json` (the JSON Schema the app shares — a
+test keeps the docs copy identical), `activityTemplate.ts` (AI instructions + example),
+`activityDuplicates.ts`, `activityImport.ts` (preview model, selection, notices), `currencies.ts`
+(ISO 4217 list), `repositories/activityImport.ts` (the write; item links for export),
+`files/activityFiles.ts` (pick, read, share), screens `app/trip/[tripId]/import-activities.tsx` and
+`export-activities.tsx`.
+
+### Format (version 1)
+
+`{ format: "travel-organizer-activities", version: 1, activities: [...] }` — 1–300 activities, ≤ 1 MB
+UTF-8, nesting ≤ 6. Activity fields and limits: the public doc. Nothing in it names a table, a
+column or an id.
+
+### Mapping to the model
+
+| Format | `TripItemInput` / row |
+|---|---|
+| `kind` (activity · food · stay · transport · other, default activity) | `kind`; `task` is refused |
+| `type` | `subkind` when valid for the kind; otherwise dropped with a warning |
+| `status` idea · planned (default idea) | `idea` · `confirmed`; anything else makes the activity invalid |
+| `priority` | `priority` on ideas; dropped with a warning on planned |
+| `date` + `startTime` | `start.local` `YYYY-MM-DD[THH:mm]` |
+| `endDate` / `endTime` | `end.local`; omitted when it would say nothing (same day, no time) |
+| `timeZone` / `endTimeZone` | `start.tz` / `end.tz` (IANA names only); the end takes `timeZone` when it has none; absent = follows the trip (`NULL`) |
+| `location.{name,address,latitude,longitude}` | `location_name`, `address`, `latitude`, `longitude` (both or neither) |
+| `description`, `notes` | `notes` = description, blank line, notes |
+| `price.{amount,currency}` | `price_amount` (minor units: strings by `parseAmount`, numbers only with ≤ 2 decimals), `price_currency` (`^[A-Z]{3}$`; outside ISO 4217 = warning) |
+| `links[]` | `resources` rows `kind='link'`, http(s) only; subtype `guessLinkSubtype`, label `defaultLinkLabel` when absent |
+| `transport.{from,to,carrier,number}` | `details` (transport only) |
+| — | `is_paid = 0`, no confirmation code, no participants, no `completed_at`, no reminder choice; ids made by the app |
+
+Every activity goes through the same `tripItemInputSchema(trip.defaultTz)` the forms use.
+
+### Validation tiers (`parseActivityFile`)
+
+1. **Fatal file** — size; empty; not JSON (after removing a BOM and one surrounding Markdown fence);
+   a `__proto__` / `constructor` / `prototype` key anywhere; depth > 6; wrong `format`; `version`
+   not a positive integer, or newer than 1; `activities` missing, not a list, empty or > 300.
+2. **Invalid activity** — every problem collected (wrong types, limits, calendar dates, times, zones,
+   coordinates, amounts, currency shape, status, kind, links, end before start).
+3. **Warnings** — type not of its kind, priority on a plan, outside the trip's dates, planned without
+   a date, unknown currency, a zone with nothing to apply to.
+4. **Ignored fields** — every key the format does not have, at any level, reported with a reason
+   (per-person prices, ids, references, paid, people, files, timestamps, reminders, seats); the value
+   is never read.
+
+### Duplicates (`findActivityDuplicates`)
+
+Normalised titles (NFD, no accents, lower case, punctuation → space). A candidate matches an item in
+the trip (any status) or an earlier valid entry in the file when (1) the titles are equal, the times
+compatible (same day and, if both timed, same time — or either undated) and the places do not
+contradict (both located and > 1 km apart, or differently named); or (2) a timed start equals the
+other's and the places are the same (name, or ≤ 100 m). Likely duplicates start unticked; the reason
+names the other item and its date.
+
+### Write
+
+`importActivities(db, tripId, entries)`: one `withTransactionAsync` (checks the trip exists, then
+`insertTripItem` + `createResource` per link). Any failure rolls back the batch. Add-only.
+Reminders follow from the reconciler for planned, dated, future items — the preview counts them with
+the same `reminderFor`. After the write the screen lists the new ids live (*Review imported
+activities*); there is no bulk delete.
+
+### Export (`buildActivityExport`)
+
+Offered: ideas and plans of every kind but `task`; never cancelled items. Written: only the format's
+fields; `startTzOverride` → `timeZone`; an end whose zone differs from the start's → `endTimeZone` (a
+NULL end zone written as the trip's zone, so it means the same in another trip); links only of
+subtype `website` / `maps` with http(s) URLs ≤ 2048. Each activity is re-read with `parseActivity`;
+one that would not import again is excluded and named, never altered. File:
+`<Trip>-activities-YYYY-MM-DD.json` in the cache, shared as `application/json`.
+
+### Versioning
+
+`format` is permanent. Version 1 never gains a field or a meaning; anything new is version 2 with its
+own schema file. The app reads every version it ever read and refuses a newer one whole.
+
+**Known limitations:** the preview renders every row (no virtualisation) — at 300 rows one toggle
+costs ~200 ms on the software-rendered emulator; an exported file stays in the cache until Android
+reclaims it; per-person prices wait for Phase 3.

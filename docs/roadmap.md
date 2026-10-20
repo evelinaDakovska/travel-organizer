@@ -10,7 +10,7 @@ Rationale for the change of direction: [`decision-log.md`](decision-log.md) D32.
 | Phase | Scope | State |
 |---|---|---|
 | **1** | UI & navigation: trip context in tab headers, active bottom tab, *Notes & lists* label on small phones, bottom-sheet corners | **done — 0.7.4**, on the emulator; awaiting review |
-| **2** | Single-trip import/export and AI JSON import | **2A plan written** ([`phase2-plan.md`](phase2-plan.md)); **2B-0 done — 0.8.0** (Me, several people per list item); **2B done — 0.9.0** (single-trip export/import); 2C–2D wait for approval |
+| **2** | Single-trip import/export and AI JSON import | **2A plan written** ([`phase2-plan.md`](phase2-plan.md)); **2B-0 done — 0.8.0** (Me, several people per list item); **2B done — 0.9.0** (single-trip export/import); **2C done — 0.10.0** (AI activity import, selective export); 2D waits for approval |
 | **3** | Travellers, pricing and shared expenses | not started |
 | **4** | Currency conversion | not started |
 | **5** | Full-day map | not started |

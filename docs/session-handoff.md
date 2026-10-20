@@ -15,7 +15,7 @@ single source of truth for schema, time, files, queries). Read in this order:
 5. `docs/decision-log.md` — why, and what was rejected (D1–D32)
 6. `docs/windows-handoff.md` — machine setup, release build, Windows specifics
 
-Last verified: **2026-10-19**, after 0.7.3 (the friends-only beta) — **895 tests**, typecheck clean.
+Last verified: **2026-10-20**, after 0.10.0 (Phase 2C) — **1082 tests**, typecheck clean.
 
 > **Starting fresh? Jump to §11 first** — it is the exact point the last session stopped, what is
 > waiting on the owner, and the next steps in order.
@@ -206,7 +206,7 @@ Moving the repo to `C:\dev` is what fixed the first Windows build.
 
 ```bash
 npm install                 # postinstall applies the patches
-npm test                    # 895 tests, ~3s
+npm test                    # 1082 tests, ~3s
 npx tsc --noEmit            # must be clean
 npx expo prebuild --platform android      # after any app.json or native change
 # EXPO_NO_GIT_STATUS=1 when the tree is dirty, or prebuild stops on a prompt
@@ -384,7 +384,24 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ## 11. Where the last session stopped (2026-10-19) — read this first
 
-### 11.0000 Latest (2026-10-19)
+### 11.00000 Latest (2026-10-20)
+
+- **2C built as 0.10.0** (AI activity import, selective export; no migration; D35, technical
+  reference §18, public format `docs/ai-activities-format.md`) and verified end to end — matrix and
+  screenshots in `%USERPROFILE%\Pictures\TravelOrganizer-0.10.0-2C-e2e\E2E-LOG.md`. APK
+  `%USERPROFILE%/.travel-organizer/travel-organizer-0.10.0.apk`, **not on any phone**.
+- **A shared hook changed:** `useLiveQuery` now waits for 50 ms of quiet after change events. If a
+  screen ever seems a beat late after an edit, that is why; if it is ever *stale*, that is a bug.
+- E2E tips that cost time: adb-pushed files appear in the picker only after
+  `adb shell content call --method scan_volume --uri content://media --arg external_primary`;
+  uiautomator writes attribute values containing `"` in single quotes (parse both); a release-type
+  build still logs `console.warn` to logcat (`ReactNativeJS`), handy for temporary timings; a font
+  scale change recreates the activity, so the next Back may leave the app.
+- `TO_2B_Test` holds the debuggable 0.10.0 with synthetic data; `Pixel_10_Pro` the release 0.10.0
+  over 0.9.0. Both shut down.
+- **2D waits for the owner's approval.**
+
+### 11.0000 Earlier (2026-10-19)
 
 - **Latest: 2B built as 0.9.0** (single-trip export/import, no migration, D34, technical reference
   §17) and verified end to end — matrix and screenshots in

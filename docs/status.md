@@ -2,10 +2,13 @@
 
 **The** engineering status board: what is done, how it was verified, what is next. [`product-status.md`](product-status.md) is the feature-level view of the same facts; where the two disagree, this file wins. Scope of upcoming work: [`roadmap.md`](roadmap.md).
 
-Verified against the repo on 2026-10-19, on Windows: **895 tests passing across 54 suites, typecheck clean.**
+Verified against the repo on 2026-10-20, on Windows: **1082 tests passing across 64 suites, typecheck clean.**
 
 > **Where things are (2026-10-19)**
-> - **Latest release build: 0.9.0** (versionCode 16) — Phase **2B**, single-trip export and import
+> - **Latest release build: 0.10.0** (versionCode 17) — Phase **2C**, AI activity import and
+>   selective export (no migration), verified end to end on emulators and as a release update over
+>   0.9.0, **not installed on any phone**: `%USERPROFILE%/.travel-organizer/travel-organizer-0.10.0.apk`.
+> - Before it: **0.9.0** (versionCode 16) — Phase **2B**, single-trip export and import
 >   (no migration), verified end to end on emulators and as a release update over 0.8.0, **not
 >   installed on any phone**: `%USERPROFILE%/.travel-organizer/travel-organizer-0.9.0.apk`. Before
 >   it, **0.8.0** (2B-0, migration 006) and **0.7.4** (Phase 1), neither on a phone.
@@ -19,7 +22,7 @@ Verified against the repo on 2026-10-19, on Windows: **895 tests passing across 
 >   `adb shell dumpsys package com.evelinadakovska.travelorganizer | grep versionName`) before
 >   rehearsing any update.
 > - **Next: the roadmap** ([`roadmap.md`](roadmap.md), section *P* below). Phase 1 (0.7.4), 2B-0
->   (0.8.0) and 2B (0.9.0) are done and wait for the owner's review; 2C waits for approval.
+>   (0.8.0), 2B (0.9.0) and 2C (0.10.0) are done and wait for the owner's review; **2D waits for approval**.
 
 ---
 
@@ -606,7 +609,8 @@ only when the owner asks.
 | **P1** | UI & navigation: trip context in tab headers, active bottom tab, *Notes & lists* label on small phones, bottom-sheet corners — **0.7.4**, emulator; not on a phone yet | ✅ |
 | **P2·2B-0** | "Me" — one traveller profile marked as the person using the app — and several people per packing/shopping item. **0.8.0**, emulator; not on a phone yet | ✅ |
 | **P2·2B** | Single-trip export and import: Export trip (complete or without attachments), Import a trip as a new trip, traveller mapping, duplicate detection, staged import with rollback. **0.9.0**, emulator E2E; not on a phone | ✅ |
-| **P2** | Single-trip import/export & AI JSON import — **2A** architecture and audit done ([`phase2-plan.md`](phase2-plan.md), 2026-10-19); **2B** single-trip archive, **2C** AI activity import, **2D** planning context wait for the owner's approval and the decisions in its §10 | ⬜ |
+| **P2·2C** | AI activity import and selective export: a public, versioned JSON format with JSON Schema and AI instructions; Import activities (preview, validation tiers, duplicates, selection, one transaction, review list); Export activities (filters, privacy filtering, re-importable). **0.10.0**, emulator E2E; not on a phone | ✅ |
+| **P2** | Single-trip import/export & AI JSON import — **2A** architecture and audit done ([`phase2-plan.md`](phase2-plan.md), 2026-10-19); 2B-0, **2B** (single-trip archive) and **2C** (AI activity import, selective export) done; **2D** planning context waits for the owner's approval | ⬜ |
 | **P3** | Travellers, pricing & shared expenses (replaces N5b) | ⬜ |
 | **P4** | Currency conversion | ⬜ |
 | **P5** | Full-day map | ⬜ |
@@ -651,6 +655,42 @@ Back, after backgrounding, after leaving the trip and coming back; Back from a t
 Overview as before. Testing created one throwaway trip (*P1 Test Saariselka…*, a child traveller
 *Mia*) on the emulator; the existing test trip was not changed. **Not tested:** on a physical
 phone (neither phone was connected); three-button navigation.
+
+**2C, what was built (0.10.0, versionCode 17).** Plan: `phase2c-plan.md`. Decisions: D35. Technical:
+technical reference §18. Public format: `ai-activities-format.md`. No migration; no new native
+dependency (`ajv` is a dev dependency for tests only).
+- **The format** — `travel-organizer-activities` version 1: title, kind/type, idea/planned,
+  priority, date/times/zones, location, notes/description, price (total + currency), links,
+  transport route. JSON Schema in `docs/schema/`, shared from the app; AI instructions copied from
+  the app. Tests keep docs, schema, template and parser in step (ajv).
+- **Import activities** (Overview → More): document picker (any type, ≤ 1 MB checked before
+  reading) → fatal file errors refused whole; per-activity errors shown and unselectable; warnings;
+  every unknown field listed as not imported with a reason → duplicates against the trip and inside
+  the file, unticked with the reason → select/deselect, notices for priced plans (*unpaid booking
+  cost, not a payment*) and plans that will remind → one transaction → *Review imported
+  activities* (live list into the item screens; no bulk delete).
+- **Export activities** (Overview → More): All · Ideas · Planned, tick rows, share a JSON file.
+  To-dos and cancelled plans not offered; wallet/ticket/confirmation links, booking references,
+  people, files, paid state, reminders, ids never written; every activity re-checked by the importer.
+- **Shared fixes from E2E:** `useLiveQuery` waits for a pause in change events (300-row import 43 s →
+  3 s); `Segments` labels one line at any font size.
+
+**2C, how it was verified.** 1082 tests (90 new: format and every field rule, fatal/invalid/warning/
+ignored tiers, prototype keys and depth, fences, amounts and currencies, links, zones, duplicates incl.
+no false positives, preview counts and notices, the write in one transaction with failure injected at
+every insert, existing rows byte-identical, export privacy against the fixture, round trip into
+another trip, schema ⇔ parser agreement on good and bad files, docs examples), typecheck clean.
+**End to end** on `TO_2B_Test` (Android 17, debuggable build of the same code over 0.9.0, synthetic
+data, real document picker): scenarios A–I **pass** — AI file with every field checked in UI and DB;
+3 of 9; duplicates and override; ten invalid/hostile files; export checked outside the app (schema
+valid, 0 of 96 private values); round trip; injected DB failure, triple tap, kill mid-transaction;
+restart; 360 dp, dark, font 1.3/2.0, Back, empty trip, 300 rows. Then **J**: release-signed 0.10.0
+`install -r` over 0.9.0 on `Pixel_10_Pro` — same key, first install kept, every captured screen
+identical (trips, expenses, recipients, Me), a PDF opens, *Import a trip* works, AI import/export
+work. Found and fixed: silent preview rows for TalkBack, faded error text, the batch-write slowdown,
+the footer at font 2.0, a wrapping segment, chevrons on tick rows, *Choose another file*. Matrix and
+screenshots: `%USERPROFILE%\Pictures\TravelOrganizer-0.10.0-2C-e2e\E2E-LOG.md`. **Not tested:** a
+physical phone; three-button navigation; TalkBack by ear.
 
 **2B, what was built (0.9.0, versionCode 16).** Decisions: D34. Technical: technical reference §17.
 No migration; full backup and restore unchanged apart from refusing a trip archive with a pointer.

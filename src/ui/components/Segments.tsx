@@ -26,7 +26,10 @@ export function Segments<T extends string>({ value, options, onChange, labelFor 
             accessibilityRole="tab"
             accessibilityState={{ selected }}
             style={[styles.segment, { borderBottomColor: selected ? c.accent : 'transparent' }]}>
+            {/* One line at any font size: a third segment wrapped mid-word at 2.0 on a 360 dp phone. */}
             <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
               style={[selected ? type.label : type.body, { color: selected ? c.accentText : c.textMuted }]}>
               {labelFor(option)}
             </Text>

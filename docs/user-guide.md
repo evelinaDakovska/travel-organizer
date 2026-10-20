@@ -499,6 +499,39 @@ there changes. Each traveller in it becomes a new person unless you link them to
 Importing the same trip again makes another copy, after a warning. A full backup is restored with
 **Import a backup** instead; each button tells you if you picked the other kind of file.
 
+### Plan with ChatGPT: import activities
+
+You can plan with an AI assistant and bring its suggestions into a trip without typing them.
+
+1. Open the trip → **More → Import activities → Copy instructions for ChatGPT**.
+2. Paste them into a chat and describe your trip. The instructions ask it to write a file in the
+   Travel Organizer format and not to invent dates, prices or bookings.
+3. Save its answer as a `.json` file (on the phone, or send it to yourself), then **Choose a file**.
+4. Look through the list. Everything is ticked except:
+   - **invalid** activities — greyed, with what is wrong (a date that does not exist, a time like
+     25:00, *booked* as a status…); fix the file and choose it again;
+   - **possible duplicates** — something with the same title on the same day, or at the same place
+     and time, already in the trip or earlier in the file. The line says which. Tick it to add it
+     anyway.
+   Anything the app does not import (booking references, per-person prices, who is going…) is
+   listed under *Not imported*.
+5. **Add**. Ideas go to **Places**, planned activities to the **Timeline** (*No date yet* when they
+   have no date). A planned activity with a price shows in Expenses as **to pay** — an estimate is
+   never a payment — and a planned one still ahead gets the usual reminder. Nothing already in the
+   trip changes.
+6. **Review imported activities** lists what was just added; open one to check, edit or delete it.
+
+*Share the format* sends the technical description (a JSON Schema) to anyone or any tool that needs
+it. The full description, with an example to copy, is `docs/ai-activities-format.md`.
+
+### Export activities
+
+**More → Export activities**: tick the ideas and plans you want (filter **All · Ideas · Planned**)
+and **Share**. The file has titles, kinds, dates, times, places, notes, prices, website and map
+links — never booking references, who is going, documents, whether something is paid, or which
+traveller is you. To-dos and cancelled plans are not offered. The file can be imported into any
+trip, on this phone or another.
+
 ## 7. Checklist before you fly
 
 At home, on wifi, a day or two before:

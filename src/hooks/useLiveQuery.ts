@@ -8,6 +8,11 @@ const LOADING = { data: undefined, error: undefined, loading: true } as const;
 /** Waits before each retry of a failed read. After the last, the error stands until a change. */
 const RETRY_DELAYS_MS = [300, 1000, 3000];
 
+/** A read waits for this much quiet after the last change event… */
+const CHANGE_QUIET_MS = 50;
+/** …but never longer than this after the first, so a long stream of writes still shows. */
+const CHANGE_MAX_WAIT_MS = 10_000;
+
 /**
  * Runs a query and re-runs it when a watched table changes. This is why the app
  * needs no global store — SQLite stays the source of truth.
@@ -78,12 +83,47 @@ export function useLiveQuery<T>(
     void run();
   }, [run]);
 
+  // Changes arrive one event per row. A batch write — 300 imported activities, a restore — used to
+  // start a read per row in every mounted query, each re-rendering its screen and queued on the
+  // same connection between the batch's own statements, so the batch itself crawled (2C E2E: 43 s,
+  // then minutes, for 300 rows). Now a read waits for the events to pause (or for the max wait),
+  // and while one runs at most one more is queued. Every change is still followed by a read that
+  // starts after it, so nothing is left stale.
   useEffect(() => {
     const watched = new Set(tables);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let firstEventAt: number | undefined;
+    let reading = false;
+    let dirty = false;
+    const drain = async () => {
+      timer = undefined;
+      firstEventAt = undefined;
+      if (reading) {
+        dirty = true;
+        return;
+      }
+      reading = true;
+      try {
+        do {
+          dirty = false;
+          await run();
+        } while (dirty && mounted.current);
+      } finally {
+        reading = false;
+      }
+    };
     const subscription = addDatabaseChangeListener(({ tableName }) => {
-      if (watched.has(tableName)) void run();
+      if (!watched.has(tableName)) return;
+      const now = Date.now();
+      firstEventAt ??= now;
+      clearTimeout(timer);
+      const untilMax = firstEventAt + CHANGE_MAX_WAIT_MS - now;
+      timer = setTimeout(drain, Math.max(0, Math.min(CHANGE_QUIET_MS, untilMax)));
     });
-    return () => subscription.remove();
+    return () => {
+      subscription.remove();
+      clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run, tables.join(',')]);
 

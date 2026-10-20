@@ -18,6 +18,8 @@ import {
   Ellipsis,
   FerrisWheel,
   FileDown,
+  FileInput,
+  FileOutput,
   FileText,
   FileX,
   Flag,
@@ -124,6 +126,9 @@ const ICONS = {
   travellers: Users,
   pdf: FileDown,
   directions: Route,
+  // The activities file (2C): in from an AI assistant, out to share.
+  importActivities: FileInput,
+  exportActivities: FileOutput,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

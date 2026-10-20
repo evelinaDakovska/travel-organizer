@@ -11,7 +11,15 @@ export type TripMoreAction = {
   title: string;
   subtitle: string;
   icon: IconName;
-  path: 'edit' | 'itinerary-pdf' | 'export-trip' | 'use-template' | 'save-template' | 'feedback';
+  path:
+    | 'edit'
+    | 'itinerary-pdf'
+    | 'export-trip'
+    | 'import-activities'
+    | 'export-activities'
+    | 'use-template'
+    | 'save-template'
+    | 'feedback';
 };
 
 /**
@@ -35,6 +43,18 @@ export function getTripMoreActions(
       subtitle: 'This trip as a file, to import on another phone',
       icon: 'share',
       path: 'export-trip',
+    },
+    {
+      title: 'Import activities',
+      subtitle: 'From a file, such as one written with ChatGPT',
+      icon: 'importActivities',
+      path: 'import-activities',
+    },
+    {
+      title: 'Export activities',
+      subtitle: 'Chosen ideas and plans, as a file to share',
+      icon: 'exportActivities',
+      path: 'export-activities',
     },
     {
       title: 'Use a template',

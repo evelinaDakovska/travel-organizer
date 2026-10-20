@@ -18,6 +18,8 @@ what is still open, and the conventions to follow.
 | `docs/fieldbook-plan.md` | The design review of 0.5.1: fixes A1–A7, the Fieldbook redesign B1–B11, additions C1–C5, decisions FB-1… (0.6.0) |
 | `docs/directions-plan.md` | Google Maps directions and timeline connectors (0.7.0) |
 | `docs/phase2-plan.md` | Roadmap Phase 2 architecture (2A): single-trip archive (built as 2B, 0.9.0), AI JSON import, planning context |
+| `docs/phase2c-plan.md` | 2C plan as approved, with the owner's refinements and what was built (0.10.0) |
+| `docs/ai-activities-format.md` | **The public activities JSON format** (v1) for AI assistants and tools — schema in `docs/schema/` |
 | `docs/decision-log.md` | *Why* things were decided. Rationale only — no authoritative detail |
 | `docs/windows-handoff.md` | **Continuing on Windows** — read this instead of `dev-setup.md` there |
 | `docs/dev-setup.md` | Machine setup for the macOS machine it was started on |
@@ -118,6 +120,9 @@ survives a compacted context.
 9. **Expo modules ship prebuilt** (`local-maven-repo/…aar`). A `patch-package` patch to one is
    silently ignored unless `package.json` lists it in `expo.autolinking.android.buildFromSource`.
    Check the build log for `:<module>:compileReleaseKotlin`. `expo-notifications` is listed.
+10. **Change events arrive one per row.** A live query that re-reads per event slows a batch write to
+    a crawl (300 rows: 43 s, minutes with more screens open). `useLiveQuery` waits for a pause —
+    keep it that way, and debounce any new change listener the same way.
 
 ## 4. Domain terminology
 

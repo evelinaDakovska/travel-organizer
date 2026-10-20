@@ -695,3 +695,44 @@ on the phone — never by name. Importing again makes another independent copy a
 `templateUses` keep their template id (provenance, as in the full backup); `source_list_id` and the
 legacy `list_items.traveller_id` are cleared. Instants are rebuilt from the trip's zone without
 touching `updated_at`.
+
+## D35 — AI activity import and selective export (2C, 0.10.0)
+
+Plan, decisions and refinements: `docs/phase2c-plan.md` §9–§10 (approved 2026-10-19); as built:
+technical reference §18; public format: `docs/ai-activities-format.md`.
+
+**A public format, not a database dump.** An assistant must be able to write it from one page, so
+it names activities, never tables, ids or files, and is versioned on its own (`format` +
+`version`). Version 1 is frozen; anything new is version 2. The app keeps reading old versions and
+refuses newer ones whole — never a half-understood file.
+
+**The form's rules, not new ones.** Every activity becomes the same `TripItemInput` a form produces
+and passes the same `tripItemInputSchema`, so an import cannot create an item the app could not
+have created by hand. Unknown fields are reported and skipped (an assistant adding something extra
+should not lose the rest); structure and security problems refuse the whole file.
+
+**Statuses mean what the app means.** *idea* and *planned* (= confirmed, *In my itinerary*); no
+default is ever stronger than *idea*. *booked*, *confirmed* and *cancelled* make an activity
+invalid with a reason rather than being mapped to something they did not say. Imported items are
+never paid, have no booking reference and no participants; a planned price shows as an unpaid
+booking cost and the preview says so (owner's refinement).
+
+**Duplicates are suggested, never decided.** Title alone is not enough unless neither side has a
+date; a different day, a different time, or clearly different places mean a different plan; the
+same place at the same time is a duplicate whatever the titles. Duplicates start unticked, say why,
+and can be ticked. Nothing is merged or overwritten.
+
+**No Undo; a review list instead** (owner's refinement). Deleting a batch would be the one
+destructive step in an add-only feature; the done screen lists the new items, each opened and
+edited or deleted on its own screen.
+
+**Export writes only what the format can say.** To-dos and cancelled plans are not offered (they
+would arrive as live plans); wallet, ticket and confirmation links never leave (their addresses can
+carry a booking); every exported activity is re-read by the importer, so every file re-imports.
+
+**Live queries wait for a pause** (found in E2E). One change event per row made every mounted query
+re-read and re-render during a batch write, which slowed the batch itself to 43 s for 300 rows —
+minutes with more screens open. `useLiveQuery` now waits for 50 ms of quiet (at most 10 s) and
+queues one read at most; every change is still followed by a read. Rejected: suspending listeners
+during an import (a global switch every batch writer would have to remember), and virtualising the
+preview alone (it did not touch the cause).

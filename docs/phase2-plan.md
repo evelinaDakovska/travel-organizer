@@ -17,6 +17,14 @@ the owner should make first.
 > mapping sheet shows each saved profile's trips; instants are rebuilt without touching
 > `updated_at`. Decisions §10: 1 rows kept as *missing*; 2 new by default, link by choice;
 > 3 repeat allowed after a warning; 7 plain `.zip`. 4–6 belong to 2C/2D.
+>
+> **As built in 2C (0.10.0)** — `phase2c-plan.md` (approved plan and owner refinements) and
+> technical reference §18 are authoritative for §6. Differences from §6 below: no booking reference
+> and no per-person prices in the format (reported as not imported); `planned` without a date is
+> allowed (Timeline *No date yet*); `description` is accepted into notes; `task` is not a kind;
+> import is from a file only (no paste) with no *Add as* switch; no Undo — a *Review imported
+> activities* list instead; selective export in the same format was added. Decisions §10: 4
+> per-person prices reported, not written; 5 ideas by default; 6 is 2D's.
 
 ## 1. Current architecture — findings
 
