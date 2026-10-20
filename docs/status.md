@@ -1,6 +1,6 @@
 # Status
 
-**The** engineering status board: what is done, how it was verified, what is next. [`product-status.md`](product-status.md) is the feature-level view of the same facts; where the two disagree, this file wins. Scope of upcoming work: [`roadmap.md`](roadmap.md).
+**The** engineering status board: what is done, how it was verified, what is next. [`product-status.md`](product-status.md) is the feature-level view of the same facts; where the two disagree, this file wins. Scope of upcoming work: [`roadmap.md`](roadmap.md) (overview) and [`MASTER_ROADMAP.md`](MASTER_ROADMAP.md) (the long-term product roadmap).
 
 Verified against the repo on 2026-10-20, on Windows: **1153 tests passing across 68 suites, typecheck clean.**
 

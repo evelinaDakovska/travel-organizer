@@ -9,13 +9,14 @@ single source of truth for schema, time, files, queries). Read in this order:
 
 1. `CLAUDE.md` — product, terminology, conventions, "findings already paid for"
 2. `docs/status.md` — what is done, what is next, the open questions; `docs/roadmap.md` — the
-   phases ahead
+   phases ahead (overview); **`docs/MASTER_ROADMAP.md` — the long-term product roadmap**, with each
+   phase's requirements and gates and the rules that must not drift (§18)
 3. this file — how the work actually goes, and the traps
 4. `docs/technical-reference.md` — when you touch schema, time, files, queries, native
-5. `docs/decision-log.md` — why, and what was rejected (D1–D32)
+5. `docs/decision-log.md` — why, and what was rejected (D1–D37)
 6. `docs/windows-handoff.md` — machine setup, release build, Windows specifics
 
-Last verified: **2026-10-20**, after 0.11.0 (Phase 2D) — **1119 tests**, typecheck clean.
+Last verified: **2026-10-20**, after 0.12.0 (Phase 3B) — **1153 tests**, typecheck clean.
 
 > **Starting fresh? Jump to §11 first** — it is the exact point the last session stopped, what is
 > waiting on the owner, and the next steps in order.
@@ -384,7 +385,18 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ## 11. Where the last session stopped (2026-10-19) — read this first
 
-### 11.0000000 Latest (2026-10-20, evening)
+### 11.00000000 Latest (2026-10-20, night) — documentation only
+
+- **`docs/MASTER_ROADMAP.md` added**: the owner's long-term product roadmap. It was cross-checked
+  against the repository, and factual corrections are marked **[Repo check]**. The points that
+  need the owner are listed in **§21**: physical testing timing, CLAUDE.md §7 compared with the
+  discovery backlog, partial quantities, 3C scope, and the feedback form.
+- `docs/roadmap.md` is now a short overview that links to it. No code, migration, build or device
+  was touched.
+- **Next:** an independent review of 3B (`991994e`) in a separate conversation, then 3C planning,
+  **only when the owner asks**.
+
+### 11.0000000 Earlier (2026-10-20, evening)
 
 - **Phase 3 approved in five stages** (3B → 3C → 3D-1 → 3D-2 → 3E), each only when the owner asks.
   The owner's decisions are `docs/phase3-plan.md` §15 — read them before any Phase 3 work: payers

@@ -9,7 +9,8 @@ what is still open, and the conventions to follow.
 | `docs/product-status.md` | **Product status & feature matrix** — readiness per feature and where it was verified (phone, beta phone, emulator) |
 | `docs/session-handoff.md` | **Starting fresh? Read after this file.** How the work goes: decisions in context, the machine, driving a device, what bit us |
 | `docs/status.md` | **Engineering status board** — what is done and how it was verified, task by task; open questions |
-| `docs/roadmap.md` | **The roadmap** (2026-10-19): Phases 1–8, done in order, each only when the owner asks |
+| `docs/MASTER_ROADMAP.md` | **The long-term product roadmap** (owner's baseline, 2026-10-20): every phase's goals, requirements and exit gates, rules that must not drift, the beta/release track, the discovery backlog; §21 lists open points awaiting the owner |
+| `docs/roadmap.md` | **The roadmap overview**: Phases 1–8 and their state, done in order, each only when the owner asks; links to the master roadmap and phase plans |
 | `docs/technical-reference.md` | **Single source of truth** for schema, time model, file storage, queries |
 | `docs/plan.md` | Step-by-step implementation plan and current position |
 | `docs/review-plan.md` | R1–R11 from the independent review (done) |
@@ -70,7 +71,8 @@ never exist. No enterprise patterns; this is a personal app that should still be
 **Status board: [`docs/status.md`](docs/status.md) — the single source of truth for what is done.**
 `docs/product-status.md` is the feature-level view of the same facts (what a tester can use, and
 where it was verified); keep the two in step, and when they disagree `status.md` wins.
-**What comes next: [`docs/roadmap.md`](docs/roadmap.md)** — Phases 1–8, one at a time; a phase
+**What comes next: [`docs/roadmap.md`](docs/roadmap.md)** (overview; the long-term product roadmap is
+[`docs/MASTER_ROADMAP.md`](docs/MASTER_ROADMAP.md)) — Phases 1–8, one at a time; a phase
 starts only when the owner asks for it.
 
 Work is tracked by **task ID**, not milestone: **C1–C5** (core — domain, schema, repositories,

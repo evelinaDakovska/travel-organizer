@@ -6,7 +6,7 @@ Not MVP. Recorded so they are not lost. Items the owner has since scheduled poin
 - **"Someday" trips** — a trip with no fixed dates; a wishlist destination with places and notes
   attached, promoted to a real trip once dates exist. (Deferred from R2-d.) → **roadmap Phase 6**.
 - Gmail import + automatic booking extraction → a Gmail PoC was verified outside the repo; a
-  universal email import is *Deferred* in the roadmap
+  universal email import is in the discovery backlog (`MASTER_ROADMAP.md` §17)
 - Smart PDF/email parsing into a draft TripItem, always user-confirmed
 - Trip-wide map of saved places → a **full-day map** is roadmap Phase 5
 - Google Calendar export → **roadmap Phase 8** (.ics)

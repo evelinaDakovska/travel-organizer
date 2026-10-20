@@ -210,7 +210,7 @@
 
 - **Gmail Integration**:
   - *Current Status*: A standalone Gmail search proof of concept, verified **outside this repository** (nothing of it is in the repo).
-  - *Boundary*: **Not integrated into the production app**, deliberately; a universal email import (forwarding, shared files, `.eml`) is future work (`roadmap.md`, *Deferred*). Does not run on user devices. Real booking search, OAuth consent, and multi-account mailbox scraping require extensive owner testing and security reviews before any app-level consideration.
+  - *Boundary*: **Not integrated into the production app**, deliberately; a universal email import (forwarding, shared files, `.eml`) is future work (`MASTER_ROADMAP.md` §17, discovery backlog). Does not run on user devices. Real booking search, OAuth consent, and multi-account mailbox scraping require extensive owner testing and security reviews before any app-level consideration.
 
 ---
 
