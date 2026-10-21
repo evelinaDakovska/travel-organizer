@@ -34,7 +34,9 @@ Verified against the repo on 2026-10-20, on Windows: **1153 tests passing across
   [`phase3c-plan.md`](phase3c-plan.md), D39), verified on emulators, on no phone. **3D-1 is built as
   0.14.0 on the branch `phase-3d1`** (migration 007, backup format 8 — [`phase3d1-plan.md`](phase3d1-plan.md),
   D40), verified on emulators; `main` stays at 0.13.0, and **no phone install until after the
-  owner's trip** (owner, 2026-10-21).
+  owner's trip** (owner, 2026-10-21). **3D-2 is built as 0.15.0 on the same branch** (owner's wish;
+  migration 008, backup format 9 — [`phase3d2-plan.md`](phase3d2-plan.md), D41), verified on emulators
+  including the phone's 0.13.0 → 0.15.0 path; on no phone.
 
 ---
 
@@ -628,9 +630,9 @@ only when the owner asks.
 | **P3·3B** | Who is going: every trip member ticked on a new plan or saved place (to-dos none), edit keeps the saved set, *Also add … to* after joining a trip (all unticked), namesakes told apart. **0.12.0**, emulator E2E; not on a phone | ✅ |
 | **P3·3C** | Adult/child pricing: rates **for** Adult / Child / Anyone, free lines, group prices, extras; *Price for who's going* (suggestion, Apply only when not paid); paid-price warning; *Estimate* on ideas; backup/archive format 7, no migration. **0.13.0**, emulator E2E + in-place upgrade from 0.12.0 and older-app rejection; not on a phone ([`phase3c-plan.md`](phase3c-plan.md), D39) | ✅ |
 | **P3·3D-1** | Money records linked to bookings: payments against a booking (deposits, payer, date), expenses linked to a booking, a payer on an expense (*Not recorded* by default); one cost per booking, legacy *Paid* kept; deletion of a booking with records blocked, whole-trip deletion named; a payer cannot leave the trip; duplicate warning offers a link. Migration 007, backup/archive format 8. **0.14.0 on branch `phase-3d1`**, Node tests on synthetic v6 databases, emulator E2E incl. migration diff on a debug-signed build and release `install -r` over 0.13.0; **not on a phone — waits until after the owner's trip** ([`phase3d1-plan.md`](phase3d1-plan.md), D40) | ✅ |
-| **P3·3D-2** | Responsibility and splits — plan written ([`phase3d2-plan.md`](phase3d2-plan.md): splits equally / by amounts, *Covered by* per child, removal flow, migration 008), **waits for the owner's answers and approval of migration 008** | ⬜ |
+| **P3·3D-2** | Who a cost is for: a booking or a standalone expense split equally or by amounts (*Fill from prices*, *Who's going* as fills), *Not split* by default; *Covered by* one or more adults per child on a trip, a per-cost override, *not covered* shown; leaving a trip blocked while records name someone, with each record listed and opened; *Paid by* on the quick sheet. Migration 008, backup/archive format 9. **0.15.0 on `phase-3d1`**, Node tests incl. 6 → 8, emulator E2E incl. a debug-signed 7 → 8 diff and release 0.13.0 → 0.15.0 rehearsal; **not on a phone** ([`phase3d2-plan.md`](phase3d2-plan.md), D41) | ✅ |
 | **P3·3E** | Balances and settlements — waits for approval | ⬜ |
-| **P3** | Travellers, pricing & shared expenses (replaces N5b) — 3A, 3B, 3C, 3D-1 done (3D-1 on its branch); 3D-2–3E to come | ⬜ |
+| **P3** | Travellers, pricing & shared expenses (replaces N5b) — 3A, 3B, 3C, 3D-1, 3D-2 done (3D-1 and 3D-2 on `phase-3d1`); 3E to come | ⬜ |
 | **P4** | Currency conversion | ⬜ |
 | **P5** | Full-day map | ⬜ |
 | **P6** | Trips without fixed dates | ⬜ |

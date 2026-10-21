@@ -385,7 +385,28 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ## 11. Where the last session stopped (2026-10-19) — read this first
 
-### 11.00000000000 Latest (2026-10-21) — 3D-1 built as 0.14.0 on the branch `phase-3d1`
+### 11.000000000000 Latest (2026-10-21, later) — 3D-1 corrective pass; 3D-2 built as 0.15.0
+
+- **3D-1 corrective pass** (`57535ff`, after an independent review): the trip form's save is one
+  transaction; payment edits are checked at the repository; a payer must be on the record's trip.
+- **3D-2** (who a cost is for, *Covered by*): plan `docs/phase3d2-plan.md`, the owner's answers §11.1,
+  as built §12, D41. Migration 008 approved only without risk to the phone's data, and the owner asked
+  to build it **on `phase-3d1` too** — both wait for the trip; `main` stays at 0.13.0.
+- 0.15.0 / versionCode 22, backup and archive format 9. APK
+  `%USERPROFILE%\.travel-organizer\travel-organizer-0.15.0.apk` (release key), on no phone. E2E log:
+  `%USERPROFILE%\Pictures\TravelOrganizer-0.15.0-3D2-e2e\E2E-LOG.md`.
+- **The phone's install will run 007 and 008 together** (it is on 0.13.0). Rehearsed on a new emulator
+  **`TO_3D2_Rehearsal`** (made from `Pixel_10_Pro`'s config.ini; no `avdmanager` on this machine):
+  release 0.13.0 + synthetic format-7 backup → `install -r` release 0.15.0, screens identical. It now
+  holds release 0.15.0. `TO_2B_Test` holds debug-signed 0.15.0 (schema 8) with *3D2 Split Lapland*
+  trips; `Pixel_10_Pro` still holds release 0.14.0. All shut down.
+- E2E tips: an Escape keyevent closes the quick expense sheet (it is a modal) — type, then scroll the
+  sheet, don't dismiss the keyboard; a synthetic `details.pricing` needs `mode: 'perPerson'` or the app
+  treats the breakdown as unreadable. `scratchpad/setfield.sh` clears and types a field.
+- **Next:** the owner's review of 3D-2 (and of the corrective pass). Merge and any phone install only
+  when the owner says so, after the trip, with the separate approvals. 3E only when asked.
+
+### 11.00000000000 Earlier (2026-10-21) — 3D-1 built as 0.14.0 on the branch `phase-3d1`
 
 - The owner reviewed 3B and 3C and asked for 3D-1, plan then implementation. Plan and answers:
   `docs/phase3d1-plan.md` (§10.1). Migration 007 approved **only without risk to the real data**, so:

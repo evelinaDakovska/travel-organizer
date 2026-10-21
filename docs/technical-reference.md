@@ -1640,3 +1640,33 @@ already names is kept), `checkTripArchive` on archives; backup restore copies as
 re-run the booking, currency and input-schema checks inside their transaction and never move a
 payment. `updateTripWithMembers` is one transaction (fields, removals, additions); its inner steps
 open none of their own. Detail: `docs/phase3d1-plan.md` §11.1.
+
+## 22. Splits and Covered by (3D-2, 0.15.0, migration 008)
+
+Branch `phase-3d1`. Plan and rules: `docs/phase3d2-plan.md`.
+
+**Schema (008).** `cost_shares (id, trip_id → trips CASCADE, trip_item_id → trip_items CASCADE NULL,
+expense_id → expenses CASCADE NULL, traveller_id, amount ≥ 0 NULL, covered_by NULL, sort_order,
+created_at, updated_at)`, exactly one owner, `covered_by ≠ traveller_id`, `(trip_id, traveller_id)` and
+`(trip_id, covered_by)` → `trip_travellers` (NO ACTION); unique per owner and person (partial indexes).
+`trip_cover (trip_id → trips CASCADE, child_id, adult_id, sort_order)`, PK `(trip_id, child_id,
+adult_id)`, both people → `trip_travellers` CASCADE. No row written by the migration.
+
+**Reading.** `domain/costShares`: `splitMode` (all NULL = equal), `shareAmounts(total, shares)` →
+amounts in `sort_order` and `unallocated` (positive: not allocated; negative: over); `coverOf(share,
+classificationOf, tripCover)` → own / covered (override, else trip adults) / not covered. Only a
+standalone expense or a priced, non-idea, non-task booking is split; a linked expense never is.
+
+**Rules** (`MoneyRuleError`, in the repositories' transactions): `splitRefusal` (members once, all equal
+or all amounts adding up, override only on a child's share by an adult of the trip), `coverRefusal`,
+`bookingSplitEditRefusal` / `expenseSplitEditRefusal` (stays a booking with a price; by amounts keeps
+its currency), linking a split expense refused, `holdsRefusal` for leaving (`COUNT_HOLDS`: paid,
+shares, covers by override). `splitMismatchWarning` before a new cost on a split by amounts (same
+currency only).
+
+**Formats.** Backup **format 9** (`costShares`, `tripCover`; empty for 1–8); trip archive **rowFormat 9**
+(new share ids, people through the traveller choices, never merged; `checkTripArchive` checks
+membership). `countTripContents` adds `splits`. 2C and 2D carry none of it (tests).
+
+**Screens.** `features/split/SplitSection` (booking, standalone expense), `app/split/edit`,
+`app/trip/[tripId]/holds`, *Covered by* on the trip Travellers sheet, *Paid by* on the quick sheet.

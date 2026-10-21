@@ -275,3 +275,37 @@ CREATE INDEX idx_trip_cover_adult ON trip_cover(trip_id, adult_id);
    **Consequence:** the phone is on 0.13.0 (schema 6), so its eventual install runs migrations 007
    and 008 together. The 6 → 8 path is tested directly (Node, and the emulator rehearsal), not
    only 7 → 8.
+
+## 12. As built (0.15.0, on `phase-3d1`, 2026-10-21)
+
+As planned, with the owner's answers (§11.1). Where the build settled a detail:
+
+- **Migration 008** exactly as §5; `src/db/migrations/008-cost-shares.ts`. Tested 7 → 8 and 6 → 8 (the
+  phone's path) over synthetic phone-shaped databases with 3D-1 records and odd legacy values.
+- **Domain** `src/domain/costShares.ts`: `splitEqually`, `shareAmounts`, `coverOf` (override, else the
+  trip's adults in order, else not covered; only someone who is an adult on the trip *now* covers —
+  a covering adult reclassified as a child is skipped, never left covering), `splitRefusal`,
+  `coverRefusal`, `bookingSplitRefusal` / `expenseSplitRefusal`, the edit rules, `splitMismatchWarning`,
+  `holdsRefusal`, `fillFromPrices`, `splitSummary`, `coverText`, `splitGoesText`.
+- **Repositories** `src/repositories/costShares.ts` (`saveSplit` replaces a split as a whole in one
+  transaction; `removeSplit`; `setTripCover`; `moneyHolds` / `listHolds`). Items and expenses refuse
+  edits that would strand a split; `leaveTripRefusal` counts payments, shares and covers by override
+  (replacing 3D-1's `leaveRefusal`).
+- **Screens:** `app/split/edit.tsx` (Equally / By amounts; *Everyone on the trip*, *Who's going*, *Fill
+  from prices* as fills; a per-cost *Covered by* on a child's share; *Remove split*);
+  `features/split/SplitSection` on bookings and standalone expenses; *Covered by* on the trip's
+  Travellers sheet (several adults); `app/trip/[tripId]/holds.tsx` (what keeps someone on the trip,
+  opened one by one); *Paid by* on the quick expense sheet; "Split N ways" on Spending rows; split
+  named in booking, expense and trip deletions and in the trip-import preview; a warning before a new
+  price or amount no longer matches a split by amounts (only when the currency is unchanged — a
+  currency change on a split by amounts is refused).
+- **Not split by default, nobody ticked by default** on a new split: the person ticks or uses a fill.
+- **Formats:** backup 9, archive rowFormat 9; `checkTripArchive` refuses shares or covers naming anyone
+  off the trip; `planTripImport` refuses (never merges) two people's shares mapped onto one profile —
+  the preview already refuses that choice.
+
+**Verification.** 1347 Node tests. Emulator E2E: `%USERPROFILE%\Pictures\TravelOrganizer-0.15.0-3D2-e2e\E2E-LOG.md` — 7 → 8 on a
+debug-signed build with every old row identical; 17 UI checks; two fixes found and re-verified; and
+the phone's own path, release 0.13.0 → 0.15.0 on a fresh emulator, with every captured screen
+identical and 0.13.0 refusing format-9 files. Release APK `%USERPROFILE%\.travel-organizer\travel-organizer-0.15.0.apk`
+(versionCode 22, release key), **on no phone**.

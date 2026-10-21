@@ -88,6 +88,25 @@
 
 ---
 
+### Built in 0.15.0 (roadmap 3D-2) — on the branch `phase-3d1`, verified on emulators, not on a phone
+
+Not on any phone until after the owner's trip; it brings migration 008 (and 007 with it).
+
+- **Split a cost:** on a booking or an expense, *Split it* — equally, or by amounts that must add up
+  (*EUR 5.00 left to split*). *Who's going*, *Everyone on the trip* and *Fill from prices* (adult/child
+  rates) fill it in for you to check; nothing is split by itself. *Not split* stays the default.
+- **Covered by:** on the trip's Travellers, each child can be covered by one or more adults (sharing it
+  equally); one cost can name someone else. A child's share nobody covers reads *not covered* — never
+  charged to a guessed adult, and a child never owes anything.
+- **Going, Paid by, Split, Covered by** are shown apart and never filled from one another.
+- **When things change:** an equal split follows a new price; a split by amounts stays and says *Does
+  not add up* (asked first); a currency change on it is refused.
+- **Leaving a trip:** someone who paid, is in a split, or covers a share cannot be removed; *See the
+  records* lists each one to open and change. Nothing is moved for you.
+- **Quick expense** has *Paid by* (Not recorded unless picked). Deleting a booking, expense or trip
+  says which splits go with it.
+- **Backup format 9**: 0.13.0 and 0.14.0 refuse 0.15.0's files; 0.15.0 reads all older ones.
+
 ### Built in 0.14.0 (roadmap 3D-1) — on the branch `phase-3d1`, verified on emulators, not on a phone
 
 Not on any phone until after the owner's trip (owner, 2026-10-21): it brings migration 007.

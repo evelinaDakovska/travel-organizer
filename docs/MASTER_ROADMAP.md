@@ -95,10 +95,10 @@ The following milestones are **reported complete by Claude**, not independently 
 
 ```text
 Completed (reported): Foundations → Phase 1 → Phase 2A → 2B-0 → 2B → 2C → 2D → 3A → 3B → 3C → 3D-1
-(0.14.0, migration 007, on the branch `phase-3d1`; `docs/phase3d1-plan.md`; no phone install until
-after the owner's trip)
+(0.14.0, migration 007, on the branch `phase-3d1`; `docs/phase3d1-plan.md`) → 3D-2 (0.15.0,
+migration 008, same branch; `docs/phase3d2-plan.md`); no phone install until after the owner's trip
                                                               ↓
-Next:                          3D-1 Payments → 3D-2 Responsibility/Splits → 3E Balances
+Next:                          3E Balances and settlements (only when asked)
                                    ↓                 ↓                 ↓                     ↓
 Later:                          Phase 4 Currency ──────────────────────────────────────────────┘
 Independent UI tracks:          Phase 5 Route Map; Phase 6 Undated Trips; Phase 7 Maps Import; Phase 8 ICS

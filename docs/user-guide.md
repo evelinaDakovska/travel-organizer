@@ -670,3 +670,18 @@ changes.
   the app asks before saving. **Unlink from booking** on the expense makes it spending again.
 - A booking with payments cannot be deleted; cancel it, or delete its payments first. Someone who
   paid cannot be removed from the trip. Deleting a whole trip says how many payments go with it.
+
+## Splitting a cost (0.15.0, not yet on your phone)
+
+- On a booking or an expense, **Split it** says who the cost is for. *Equally* divides the price;
+  *By amounts* lets you type each share, and tells you what is left until it adds up. Nothing is
+  split unless you do it — *Who's going*, *Everyone on the trip* and *Fill from prices* only fill the
+  screen for you to check.
+- **Covered by:** on the trip's Travellers, tap a child to choose the adult or adults who cover their
+  share (several share it equally). On one cost you can name someone else. A child's share nobody
+  covers says *not covered*.
+- If you change the price, an equal split follows it; a split by amounts stays and shows *Does not
+  add up* until you edit it. You cannot change the currency of a cost split by amounts.
+- Someone who paid, is in a split or covers a share cannot be removed from the trip. **See the
+  records** lists each one; change them, then remove the person.
+- Deleting a booking, an expense or a trip tells you which splits go with it.

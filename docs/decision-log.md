@@ -896,3 +896,36 @@ when designed; the drafted `cost_shares` had the same cascade problem, and no sc
 the emulator cannot touch the phone, but installing cannot be risk-free (a failed migration would
 leave the data intact and the app unopenable until a fix; no rollback without an uninstall). So 3D-1
 is on `phase-3d1`, `main` stays releasable at 0.13.0, and the phone install waits until after the trip.
+
+## D41 — 3D-2: who a cost is for, and who covers a child (0.15.0, migration 008)
+
+Plan, the owner's answers and the as-built record: `docs/phase3d2-plan.md`.
+
+**Two modes, told apart by the rows.** Equally (`amount` NULL: computed from the current cost, largest
+remainder by the split's order) and by amounts (must add up when saved, never rescaled). No stored
+mode that could disagree with the rows; weights deferred (owner, Q1). *Fill from prices* writes
+amounts the person edits — a fill, not a third mode.
+
+**Live where the person set a rule, fixed where they typed a number** (owner, Q2): an equal split
+follows a new price and the trip's *Covered by*; a split by amounts and a per-cost override stay as
+saved and show when they no longer add up.
+
+**Membership in the database.** Every person in `cost_shares` and `trip_cover` is referenced through
+`trip_travellers(trip_id, traveller_id)`. 3D-1's payer check lives in the repository; here SQLite itself
+refuses anyone off the trip, and NO ACTION blocks leaving alone while a whole-trip delete still works.
+A new table rather than a column on `trip_travellers`: ALTER cannot add a composite key, and
+rebuilding a table that holds real data is the riskier migration.
+
+**One or more adults per child** (owner, Q3), equally; a one-adult override per cost. Only someone who
+is an adult on the trip now covers; a reclassified adult is skipped rather than leaving a child
+covering a child. *Not specified* is never treated as a child.
+
+**A split goes with its cost** (owner, Q4): it is part of the cost, not money that moved. Payments still
+block deleting a booking (3D-1).
+
+**Leaving a trip is resolved record by record.** No *move everything to someone else*: each payment,
+share and override is opened and changed by the person; then the removal goes ahead as before. A
+default cover is a setting and goes with the person, named in the confirmation.
+
+**Built on `phase-3d1`** (owner, 2026-10-21): both stages wait for the trip together; the phone's
+install runs 007 and 008 in one start-up, so that path was rehearsed (release 0.13.0 → 0.15.0).
