@@ -292,7 +292,9 @@ function Preview({
     `${plural(summary.documents, 'document')}, ${plural(summary.links, 'link')}, ${plural(summary.receipts, 'receipt photo')}`,
     // Payments on bookings (3D-1); the old name-based table is named only if a file has rows.
     `${plural(summary.expenses, 'expense')}, ${plural(summary.bookingPayments, 'payment')} on bookings` +
-      (summary.payments > 0 ? `, ${plural(summary.payments, 'older payment record')}` : ''),
+      (summary.payments > 0 ? `, ${plural(summary.payments, 'older payment record')}` : '') +
+      // Splits (3D-2), named only when there are some.
+      (summary.splitCosts > 0 ? `, ${plural(summary.splitCosts, 'split cost')}` : ''),
   ];
 
   return (

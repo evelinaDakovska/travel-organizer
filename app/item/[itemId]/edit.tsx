@@ -10,6 +10,7 @@ import { queryView } from '../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import {
   getTripItem,
+  itemSplitFacts,
   listKnownPlaces,
   TRIP_ITEM_TABLES,
   updateTripItem,
@@ -26,6 +27,7 @@ import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
 import { askForRemindersIfDue } from '../../../src/notifications/reminders';
 import { alertRefusal } from '../../../src/features/payments/refusal';
 import { overpaidWarning } from '../../../src/domain/bookingPayments';
+import { confirmSplitMismatch } from '../../../src/features/split/confirmMismatch';
 
 /** Deleting lives on the detail screen, where the cancel-first rule is shown (decision log D21). */
 export default function EditItem() {
@@ -131,6 +133,13 @@ export default function EditItem() {
               ? overpaidWarning(item.recordedPaid, input.priceAmount, input.priceCurrency)
               : null;
           if (overpaid && !(await confirmOverpaid(overpaid))) return;
+          // A split by amounts that the new price no longer matches: said first (3D-2 §4).
+          if (
+            input.priceCurrency &&
+            !(await confirmSplitMismatch(await itemSplitFacts(db, item.id), input.priceAmount, input.priceCurrency))
+          ) {
+            return;
+          }
           try {
             await updateTripItem(db, item.id, input, participants);
           } catch (error) {

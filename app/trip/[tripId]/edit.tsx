@@ -42,13 +42,14 @@ export default function EditTrip() {
   const members = membersQuery.data ?? [];
   /** Names the blast radius — these files may be the only copies. */
   const confirmDelete = useCallback(async () => {
-    const { items, files, expenses, payments } = await countTripContents(db, tripId);
-    // The money history goes with the trip (3D-1): named, never a surprise.
+    const { items, files, expenses, payments, splits } = await countTripContents(db, tripId);
+    // The money history goes with the trip (3D-1), and the splits (3D-2): named, never a surprise.
     const detail = listPhrase(
       [
         items > 0 ? countOf(items, 'item') : null,
         payments > 0 ? countOf(payments, 'payment') : null,
         expenses > 0 ? countOf(expenses, 'expense') : null,
+        splits > 0 ? countOf(splits, 'split') : null,
         files > 0 ? countOf(files, 'saved file') : null,
       ].filter((part) => part !== null),
     );

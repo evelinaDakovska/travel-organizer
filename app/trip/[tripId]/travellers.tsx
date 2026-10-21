@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -12,6 +12,7 @@ import {
   type Traveller,
   type TravellerClassification,
 } from '../../../src/domain/traveller';
+import { MoneyRuleError } from '../../../src/domain/bookingPayments';
 import type { JoinCandidates } from '../../../src/domain/participation';
 import type { TripItem } from '../../../src/domain/tripItem';
 import { AddToItemsSheet } from '../../../src/features/travellers/AddToItemsSheet';
@@ -31,12 +32,14 @@ import {
   updateTripTravellerClassification,
   TRAVELLER_TABLES,
 } from '../../../src/repositories/travellers';
+import { listTripCover, setTripCover, SHARE_TABLES } from '../../../src/repositories/costShares';
 import { getTrip, TRIP_TABLES } from '../../../src/repositories/trips';
 import { AddByName } from '../../../src/ui/components/AddByName';
 import { Button } from '../../../src/ui/components/Button';
 import { HeaderAction } from '../../../src/ui/components/HeaderAction';
 import { Icon } from '../../../src/ui/components/Icon';
 import { ListRow, Rows } from '../../../src/ui/components/ListRow';
+import { MultiChoiceField } from '../../../src/ui/components/MultiChoiceField';
 import { LoadFailed, QueryScreen, StaleNotice } from '../../../src/ui/components/QueryStates';
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
@@ -63,6 +66,7 @@ const CLASSIFICATION_OPTIONS: { value: TravellerClassification; label: string }[
 export default function TripTravellersScreen() {
   const c = useColors();
   const db = useSQLiteContext();
+  const router = useRouter();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const { meId } = useMe();
 
@@ -77,6 +81,12 @@ export default function TripTravellersScreen() {
     [tripId],
   );
   const profilesQuery = useLiveQuery(listTravellers, TRAVELLER_TABLES);
+  // Who covers each child's share on this trip (3D-2).
+  const { data: cover = [] } = useLiveQuery(
+    useCallback((database) => listTripCover(database, tripId), [tripId]),
+    SHARE_TABLES,
+    [tripId],
+  );
   // Two profiles of one name are told apart by their trips (3B), as when importing a trip (2B).
   const { data: tripsOf = {} } = useLiveQuery(travellerTripNames, [
     ...TRIP_TABLES,
@@ -234,11 +244,34 @@ export default function TripTravellersScreen() {
     void executeConvert(name);
   };
 
+  const nameOf = (id: string) => members.find((m) => m.id === id)?.name ?? 'Someone';
+  /** The adults who cover this child's share on the trip, if they are adults here now. */
+  const coveringAdults = (childId: string) =>
+    cover
+      .filter((cv) => cv.childId === childId)
+      .map((cv) => members.find((m) => m.id === cv.adultId))
+      .filter((m): m is Traveller => m?.classification === 'adult');
+  const memberSubtitle = (member: Traveller) => {
+    const base = `For this trip: ${CLASSIFICATION_LABELS[member.classification]}`;
+    if (member.classification !== 'child') return base;
+    const adults = coveringAdults(member.id);
+    return adults.length > 0
+      ? `${base} · covered by ${adults.map((a) => a.name).join(' and ')}`
+      : `${base} · not covered`;
+  };
+
   const confirmRemove = (member: Traveller) => {
     if (convertingRef.current) return;
+    // A default cover is a setting: it goes with them, and the children it leaves are named.
+    const uncovered = cover
+      .filter((cv) => cv.adultId === member.id && coveringAdults(cv.childId).length === 1)
+      .map((cv) => nameOf(cv.childId));
     Alert.alert(
       `Remove ${member.name} from ${trip.name}?`,
-      'They will be removed from this trip and unlinked from its bookings. Their reusable traveller profile will remain safe.',
+      'They will be removed from this trip and unlinked from its bookings. Their reusable traveller profile will remain safe.' +
+        (uncovered.length > 0
+          ? ` ${uncovered.join(' and ')} will then be not covered — nobody else covers ${uncovered.length === 1 ? 'that share' : 'their shares'}.`
+          : ''),
       [
         { text: 'Keep', style: 'cancel' },
         {
@@ -250,8 +283,21 @@ export default function TripTravellersScreen() {
               await removeTripTraveller(db, trip.id, member.id);
               membersQuery.refetch();
             } catch (error) {
-              // They paid on this trip (3D-1): nothing was changed, and the reason is shown.
-              if (alertRefusal(error, `${member.name} stays on this trip`)) return;
+              // Money records name them (3D-1, 3D-2): nothing was changed; each record can be opened.
+              if (error instanceof MoneyRuleError) {
+                Alert.alert(`${member.name} stays on this trip`, error.message, [
+                  { text: 'Close', style: 'cancel' },
+                  {
+                    text: 'See the records',
+                    onPress: () =>
+                      router.push({
+                        pathname: '/trip/[tripId]/holds',
+                        params: { tripId: trip.id, travellerId: member.id },
+                      }),
+                  },
+                ]);
+                return;
+              }
               Alert.alert(
                 'Could not remove traveller',
                 'Something went wrong while removing this traveller from the trip. Please try again.',
@@ -286,7 +332,7 @@ export default function TripTravellersScreen() {
                 <ListRow
                   key={member.id}
                   title={travellerLabel(member, meId)}
-                  subtitle={`For this trip: ${CLASSIFICATION_LABELS[member.classification]}`}
+                  subtitle={memberSubtitle(member)}
                   onPress={() => setEditingMember(member)}
                   trailing={
                     <HeaderAction
@@ -442,6 +488,33 @@ export default function TripTravellersScreen() {
             );
           })}
         </View>
+        {editingMember?.classification === 'child' ? (
+          <View style={styles.cover}>
+            <Text style={[type.label, { color: c.textMuted }]}>Covered by</Text>
+            <Text style={[type.caption, { color: c.textMuted }]}>
+              Whose costs {editingMember.name}’s share of a split is on this trip. Several adults share
+              it equally. A split can name someone else for one cost.
+            </Text>
+            {members.some((m) => m.classification === 'adult') ? (
+              <MultiChoiceField
+                options={members
+                  .filter((m) => m.classification === 'adult')
+                  .map((m) => ({ id: m.id, label: m.name }))}
+                selected={coveringAdults(editingMember.id).map((a) => a.id)}
+                onChange={(ids) => {
+                  const child = editingMember;
+                  void setTripCover(db, trip.id, child.id, ids).catch((error: unknown) => {
+                    if (!alertRefusal(error)) Alert.alert('Not saved', 'Please try again.');
+                  });
+                }}
+              />
+            ) : (
+              <Text style={[type.body, { color: c.textMuted }]}>
+                No adult is on this trip yet — mark someone as an adult for this trip first.
+              </Text>
+            )}
+          </View>
+        ) : null}
         <Button
           label="Add to existing plans…"
           variant="secondary"
@@ -472,6 +545,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxxl,
   },
   section: { gap: spacing.sm },
+  cover: { gap: spacing.sm, marginBottom: spacing.md },
   sheetOptions: {
     gap: spacing.sm,
     marginBottom: spacing.md,

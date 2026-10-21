@@ -3,6 +3,7 @@ import {
   bookingSplitRefusal,
   coverOf,
   coverRefusal,
+  coverText,
   expenseSplitEditRefusal,
   expenseSplitRefusal,
   fillFromPrices,
@@ -12,6 +13,7 @@ import {
   splitMismatchWarning,
   splitMode,
   splitRefusal,
+  splitGoesText,
   splitSummary,
   whoIsGoing,
   type Member,
@@ -339,5 +341,24 @@ describe('suggestions the person asks for', () => {
     expect(fillFromPrices(one, [ev, mia, sam], 4500, 'EUR')).toMatchObject({
       amounts: [{ amount: 1500 }, { amount: 1500 }, { amount: 1500 }],
     });
+  });
+});
+
+describe('reading a split', () => {
+  const nameOf = (id: string) => members.get(id)?.name ?? 'Someone';
+
+  it('says who covers a child’s share, and nothing for one’s own', () => {
+    expect(coverText({ kind: 'own' }, nameOf)).toBeNull();
+    expect(coverText({ kind: 'notCovered' }, nameOf)).toBe('not covered');
+    expect(coverText({ kind: 'covered', adultIds: ['ev'], source: 'trip' }, nameOf)).toBe('covered by Evelina');
+    expect(coverText({ kind: 'covered', adultIds: ['ev', 'ana'], source: 'trip' }, nameOf)).toBe(
+      'covered by Evelina and Ana',
+    );
+  });
+
+  it('names the split a deletion takes with it', () => {
+    expect(splitGoesText(0)).toBeNull();
+    expect(splitGoesText(1)).toBe('Its split between 1 person goes too.');
+    expect(splitGoesText(3)).toBe('Its split between 3 people goes too.');
   });
 });

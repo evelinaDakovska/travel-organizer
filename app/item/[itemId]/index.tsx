@@ -4,8 +4,9 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { paymentStatuses, refundableOf } from '../../../src/domain/bookingCosts';
+import { countsAsSpent, paymentStatuses, refundableOf } from '../../../src/domain/bookingCosts';
 import { deleteRefusal, hasRecords } from '../../../src/domain/bookingPayments';
+import { bookingSplitRefusal, splitGoesText } from '../../../src/domain/costShares';
 import { formatMoment, formatMoney } from '../../../src/domain/format';
 import { journeyLegs } from '../../../src/domain/journey';
 import { mapsUrl } from '../../../src/domain/places';
@@ -35,6 +36,7 @@ import { DirectionsSheet } from '../../../src/features/directions/DirectionsShee
 import { JourneyEnds } from '../../../src/features/items/JourneyEnds';
 import { PaymentsSection } from '../../../src/features/payments/PaymentsSection';
 import { alertRefusal } from '../../../src/features/payments/refusal';
+import { SplitSection } from '../../../src/features/split/SplitSection';
 import { ZoneNotice } from '../../../src/features/items/ZoneNotice';
 import { OpenResource } from '../../../src/features/resources/OpenResource';
 import { ResourceList } from '../../../src/features/resources/ResourceList';
@@ -48,6 +50,7 @@ import {
 import {
   deleteTripItem,
   getTripItem,
+  itemSplitFacts,
   listTripItems,
   setTaskCompleted,
   setTripItemStatus,
@@ -191,8 +194,9 @@ export default function ItemDetail() {
       ]);
       return;
     }
-    // Files also attached elsewhere stay, so they are not counted as lost.
-    confirmDelete(item, await countItemOwnFiles(db, item.id), async () => {
+    // Files also attached elsewhere stay, so they are not counted as lost; a split goes with it.
+    const split = await itemSplitFacts(db, item.id);
+    confirmDelete(item, await countItemOwnFiles(db, item.id), splitGoesText(split.people), async () => {
       try {
         await deleteTripItem(db, item.id);
       } catch (error) {
@@ -320,6 +324,19 @@ export default function ItemDetail() {
         </View>
 
         {item.kind !== 'task' ? <PaymentsSection item={item} /> : null}
+        {item.kind !== 'task' ? (
+          <SplitSection
+            owner={{ itemId: item.id }}
+            tripId={item.tripId}
+            cost={
+              item.priceAmount !== null && item.priceCurrency !== null
+                ? { total: item.priceAmount, currency: item.priceCurrency }
+                : null
+            }
+            refusal={bookingSplitRefusal(item)}
+            counted={item.status === 'idea' || countsAsSpent(item)}
+          />
+        ) : null}
 
         {defaultEndpoint || departureEndpoint || arrivalEndpoint || maps ? (
           <View style={styles.locationActions}>
@@ -504,13 +521,17 @@ function confirmCancel(item: TripItem, cancel: () => void) {
   );
 }
 
-/** Names the blast radius — these files may be the only copies. */
-function confirmDelete(item: TripItem, files: number, remove: () => Promise<void>) {
+/** Names the blast radius — these files may be the only copies, and the split (3D-2). */
+function confirmDelete(item: TripItem, files: number, split: string | null, remove: () => Promise<void>) {
   Alert.alert(
     `Delete ${item.title}?`,
-    files > 0
-      ? `This also removes ${files} saved file${files === 1 ? '' : 's'}. It cannot be undone.`
-      : 'This cannot be undone.',
+    [
+      files > 0 ? `This also removes ${files} saved file${files === 1 ? '' : 's'}.` : null,
+      split,
+      files > 0 || split ? 'It cannot be undone.' : 'This cannot be undone.',
+    ]
+      .filter(Boolean)
+      .join(' '),
     [
       { text: 'Keep it', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => void remove() },

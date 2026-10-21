@@ -3,12 +3,19 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { expenseSplitRefusal, splitGoesText } from '../../../src/domain/costShares';
 import { formatMoment, formatMoney } from '../../../src/domain/format';
 import { categoryLabel, expenseTitle } from '../../../src/domain/spending';
 import { ResourceList } from '../../../src/features/resources/ResourceList';
+import { SplitSection } from '../../../src/features/split/SplitSection';
 import { queryView } from '../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
-import { deleteExpense, EXPENSE_TABLES, getExpense } from '../../../src/repositories/expenses';
+import {
+  deleteExpense,
+  EXPENSE_TABLES,
+  expenseSplitFacts,
+  getExpense,
+} from '../../../src/repositories/expenses';
 import { PAYMENT_TABLES, unlinkExpense } from '../../../src/repositories/payments';
 import { listTravellers } from '../../../src/repositories/travellers';
 import { getTripItem } from '../../../src/repositories/tripItems';
@@ -79,15 +86,23 @@ export default function ExpenseDetail() {
   }
 
   const receiptCount = receipts?.length ?? 0;
-  const confirmDelete = () =>
+  const confirmDelete = async () => {
+    // A split goes with its expense (3D-2), and is named.
+    const split = splitGoesText((await expenseSplitFacts(db, expense.id)).people);
     Alert.alert(
       `Delete ${expenseTitle(expense)}?`,
-      // Receipts that could not be read are not none: say they go, without a count.
-      receipts === undefined
-        ? 'Any receipts go too. This cannot be undone.'
-        : receiptCount > 0
-          ? `Its ${receiptCount === 1 ? 'receipt goes' : `${receiptCount} receipts go`} too. This cannot be undone.`
-          : 'This cannot be undone.',
+      [
+        // Receipts that could not be read are not none: say they go, without a count.
+        receipts === undefined
+          ? 'Any receipts go too.'
+          : receiptCount > 0
+            ? `Its ${receiptCount === 1 ? 'receipt goes' : `${receiptCount} receipts go`} too.`
+            : null,
+        split,
+        'This cannot be undone.',
+      ]
+        .filter(Boolean)
+        .join(' '),
       [
         { text: 'Keep it', style: 'cancel' },
         {
@@ -100,6 +115,7 @@ export default function ExpenseDetail() {
         },
       ],
     );
+  };
 
   // Explicit, never automatic (L-2): it becomes spending of its own again.
   const confirmUnlink = () =>
@@ -164,6 +180,16 @@ export default function ExpenseDetail() {
           {expense.notes ? <Fact label="Description" value={expense.notes} /> : null}
         </View>
 
+        {/* A linked expense is split with its booking, never on its own (3D-2). */}
+        {expense.tripItemId === null ? (
+          <SplitSection
+            owner={{ expenseId: expense.id }}
+            tripId={expense.tripId}
+            cost={{ total: expense.amount, currency: expense.currency }}
+            refusal={expenseSplitRefusal(expense)}
+          />
+        ) : null}
+
         {queryView(receiptsQuery) === 'failed' ? (
           <View style={styles.facts}>
             <SectionLabel>Receipts</SectionLabel>
@@ -180,7 +206,7 @@ export default function ExpenseDetail() {
         {expense.tripItemId ? (
           <Button label="Unlink from booking" variant="secondary" onPress={confirmUnlink} />
         ) : null}
-        <Button label="Delete expense" variant="danger" onPress={confirmDelete} />
+        <Button label="Delete expense" variant="danger" onPress={() => void confirmDelete()} />
       </ScrollView>
     </Screen>
   );

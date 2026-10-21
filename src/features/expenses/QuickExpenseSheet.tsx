@@ -15,6 +15,8 @@ import { absoluteUriFor, deleteStoredFile } from '../../files/storage';
 import { pickAndImport, type PickerKind } from '../resources/attach';
 import { alertAttachError, alertIfSomeFailed } from '../resources/attachAlerts';
 import { askAboutDuplicate } from '../payments/askAboutDuplicate';
+import { PayerField } from '../payments/PayerField';
+import { useExpenseContext } from './useExpenseContext';
 import { createExpense } from '../../repositories/expenses';
 import { Button } from '../../ui/components/Button';
 import { ChoiceField } from '../../ui/components/ChoiceField';
@@ -53,6 +55,9 @@ export function QuickExpenseSheet({
   const [showMore, setShowMore] = useState(false);
   const [receipts, setReceipts] = useState<ResourceInput[]>([]);
   const [busyPicker, setBusyPicker] = useState<PickerKind | null>(null);
+  // Not recorded unless picked; the last payer is offered, never chosen (§15 *8*, 3D-2).
+  const [payerId, setPayerId] = useState<string | null>(null);
+  const { data: context } = useExpenseContext(tripId);
 
   const [amountError, setAmountError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -81,6 +86,7 @@ export function QuickExpenseSheet({
       setSpentOn(deviceToday());
       setErrorMessage(null);
       setAmountError(null);
+      setPayerId(null);
       savedRef.current = false;
     }
   }, [visible, defaultCurrency]);
@@ -101,6 +107,7 @@ export function QuickExpenseSheet({
     setAmount(undefined);
     setNotes('');
     setLabel('');
+    setPayerId(null);
     setShowMore(false);
     setAmountError(null);
     setErrorMessage(null);
@@ -181,7 +188,7 @@ export function QuickExpenseSheet({
           spentOn,
           label: label.trim() || undefined,
           notes: notes.trim() || undefined,
-          payerId: null,
+          payerId,
           tripItemId,
         },
         receipts,
@@ -244,6 +251,15 @@ export function QuickExpenseSheet({
             onChange={(next) => next && setCategory(next)}
           />
         </Field>
+
+        {context && context.travellers.length > 0 ? (
+          <PayerField
+            value={payerId}
+            onChange={setPayerId}
+            travellers={context.travellers}
+            lastPayerId={context.lastPayerId}
+          />
+        ) : null}
 
         <Field label="Note" hint="Optional description or place">
           <Input

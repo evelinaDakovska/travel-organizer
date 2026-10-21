@@ -18,6 +18,7 @@ import {
   listExpenses,
   RECEIPT_COUNT_TABLES,
 } from '../../../../src/repositories/expenses';
+import { listTripShares, SHARE_TABLES } from '../../../../src/repositories/costShares';
 import { listTripItems, TRIP_ITEM_TABLES } from '../../../../src/repositories/tripItems';
 import { getTrip, TRIP_TABLES } from '../../../../src/repositories/trips';
 import { HeaderAction } from '../../../../src/ui/components/HeaderAction';
@@ -53,6 +54,18 @@ export default function ExpensesScreen() {
   const receiptsQuery = useLiveQuery(
     useCallback((database) => countReceipts(database, tripId), [tripId]),
     RECEIPT_COUNT_TABLES,
+    [tripId],
+  );
+  // How many people each expense is split between (3D-2), for its row.
+  const { data: splits } = useLiveQuery(
+    useCallback(async (database) => {
+      const counts = new Map<string, number>();
+      for (const share of await listTripShares(database, tripId)) {
+        if (share.expenseId) counts.set(share.expenseId, (counts.get(share.expenseId) ?? 0) + 1);
+      }
+      return counts;
+    }, [tripId]),
+    SHARE_TABLES,
     [tripId],
   );
   const itemsQuery = useLiveQuery(
@@ -116,6 +129,7 @@ export default function ExpensesScreen() {
               expenses={standalone}
               totals={spending}
               receipts={receipts ?? new Map()}
+              splits={splits}
               onAdd={addExpense}
             />
           ) : (

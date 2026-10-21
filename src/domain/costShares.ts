@@ -445,3 +445,15 @@ export function splitSummary(shares: readonly Pick<CostShare, 'amount'>[]): stri
   if (mode === null) return 'Not split';
   return `Split ${mode === 'equal' ? 'equally' : 'by amounts'} between ${shares.length}`;
 }
+
+/** "covered by Evelina", "covered by Evelina and Ana", "not covered"; null for one's own share. */
+export function coverText(cover: Cover, nameOf: (travellerId: string) => string): string | null {
+  if (cover.kind === 'own') return null;
+  if (cover.kind === 'notCovered') return 'not covered';
+  return `covered by ${joinAnd(cover.adultIds.map(nameOf))}`;
+}
+
+/** For a deletion's confirmation: the split goes with its cost (Q4), and says so. */
+export function splitGoesText(people: number): string | null {
+  return people > 0 ? `Its split between ${people} ${people === 1 ? 'person' : 'people'} goes too.` : null;
+}

@@ -6,9 +6,15 @@ import { expenseFormValues } from '../../../src/domain/spending';
 import { ExpenseForm } from '../../../src/features/expenses/ExpenseForm';
 import { useExpenseContext } from '../../../src/features/expenses/useExpenseContext';
 import { alertRefusal } from '../../../src/features/payments/refusal';
+import { confirmSplitMismatch } from '../../../src/features/split/confirmMismatch';
 import { queryView } from '../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
-import { EXPENSE_TABLES, getExpense, updateExpense } from '../../../src/repositories/expenses';
+import {
+  EXPENSE_TABLES,
+  expenseSplitFacts,
+  getExpense,
+  updateExpense,
+} from '../../../src/repositories/expenses';
 import { QueryScreen } from '../../../src/ui/components/QueryStates';
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
@@ -53,6 +59,9 @@ export default function EditExpense() {
         defaultValues={expenseFormValues(expense)}
         money={money}
         onSubmit={async (input) => {
+          // A split by amounts that the new amount no longer matches: said first (3D-2 §4).
+          const split = await expenseSplitFacts(db, expense.id);
+          if (!(await confirmSplitMismatch(split, input.amount, input.currency))) return;
           try {
             await updateExpense(db, expense.id, input);
           } catch (error) {

@@ -15,11 +15,13 @@ type Props = {
   expenses: readonly Expense[];
   totals: readonly SpendingTotal[];
   receipts: ReadonlyMap<string, number>;
+  /** Per expense id, how many people it is split between (3D-2). */
+  splits?: ReadonlyMap<string, number>;
   onAdd: () => void;
 };
 
 /** Money spent during the trip: where it went, then each expense by day, newest first. */
-export function SpendingView({ expenses, totals, receipts, onAdd }: Props) {
+export function SpendingView({ expenses, totals, receipts, splits, onAdd }: Props) {
   const c = useColors();
   const router = useRouter();
   const days = useMemo(() => expensesByDay(expenses), [expenses]);
@@ -53,6 +55,7 @@ export function SpendingView({ expenses, totals, receipts, onAdd }: Props) {
                 key={expense.id}
                 expense={expense}
                 receipts={receipts.get(expense.id) ?? 0}
+                splitBetween={splits?.get(expense.id) ?? 0}
                 onPress={() =>
                   router.push({
                     pathname: '/expense/[expenseId]',
