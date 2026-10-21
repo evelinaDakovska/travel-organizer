@@ -4,6 +4,8 @@ import { useCallback } from 'react';
 
 import { expenseFormValues } from '../../../src/domain/spending';
 import { ExpenseForm } from '../../../src/features/expenses/ExpenseForm';
+import { useExpenseContext } from '../../../src/features/expenses/useExpenseContext';
+import { alertRefusal } from '../../../src/features/payments/refusal';
 import { queryView } from '../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import { EXPENSE_TABLES, getExpense, updateExpense } from '../../../src/repositories/expenses';
@@ -27,12 +29,14 @@ export default function EditExpense() {
   );
 
   const expense = expenseQuery.data;
+  const moneyQuery = useExpenseContext(expense?.tripId);
+  const money = moneyQuery.data;
   const expenseView = queryView(expenseQuery);
-  if (expenseView !== 'ready' || !expense) {
+  if (expenseView !== 'ready' || !expense || !money) {
     return (
       <QueryScreen
         title="Edit expense"
-        view={expenseView}
+        view={expenseView === 'ready' ? queryView(moneyQuery) : expenseView}
         missingText="This expense no longer exists."
         what="this expense"
         onRetry={expenseQuery.refetch}
@@ -47,8 +51,14 @@ export default function EditExpense() {
         key={expense.id}
         submitLabel="Save changes"
         defaultValues={expenseFormValues(expense)}
+        money={money}
         onSubmit={async (input) => {
-          await updateExpense(db, expense.id, input);
+          try {
+            await updateExpense(db, expense.id, input);
+          } catch (error) {
+            if (alertRefusal(error)) return;
+            throw error;
+          }
           router.back();
         }}
       />

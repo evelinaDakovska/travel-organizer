@@ -19,6 +19,7 @@ import { Button } from '../../../src/ui/components/Button';
 import { QueryScreen } from '../../../src/ui/components/QueryStates';
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
+import { alertRefusal } from '../../../src/features/payments/refusal';
 
 export default function EditTrip() {
   const db = useSQLiteContext();
@@ -41,10 +42,12 @@ export default function EditTrip() {
   const members = membersQuery.data ?? [];
   /** Names the blast radius — these files may be the only copies. */
   const confirmDelete = useCallback(async () => {
-    const { items, files, expenses } = await countTripContents(db, tripId);
+    const { items, files, expenses, payments } = await countTripContents(db, tripId);
+    // The money history goes with the trip (3D-1): named, never a surprise.
     const detail = listPhrase(
       [
         items > 0 ? countOf(items, 'item') : null,
+        payments > 0 ? countOf(payments, 'payment') : null,
         expenses > 0 ? countOf(expenses, 'expense') : null,
         files > 0 ? countOf(files, 'saved file') : null,
       ].filter((part) => part !== null),
@@ -97,7 +100,13 @@ export default function EditTrip() {
           notes: trip.notes ?? undefined,
         }}
         onSubmit={async (input, selectedTravellerIds) => {
-          await updateTripWithMembers(db, trip.id, input, selectedTravellerIds);
+          try {
+            await updateTripWithMembers(db, trip.id, input, selectedTravellerIds);
+          } catch (error) {
+            // Someone unticked paid on this trip: nothing was saved.
+            if (alertRefusal(error)) return;
+            throw error;
+          }
           router.back();
         }}
         secondaryActions={<Button label="Delete trip" variant="danger" onPress={confirmDelete} />}

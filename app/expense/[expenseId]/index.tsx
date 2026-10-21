@@ -9,6 +9,9 @@ import { ResourceList } from '../../../src/features/resources/ResourceList';
 import { queryView } from '../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import { deleteExpense, EXPENSE_TABLES, getExpense } from '../../../src/repositories/expenses';
+import { PAYMENT_TABLES, unlinkExpense } from '../../../src/repositories/payments';
+import { listTravellers } from '../../../src/repositories/travellers';
+import { getTripItem } from '../../../src/repositories/tripItems';
 import { listResources, RESOURCE_TABLES } from '../../../src/repositories/resources';
 import { Button } from '../../../src/ui/components/Button';
 import { Fact } from '../../../src/ui/components/Fact';
@@ -45,6 +48,23 @@ export default function ExpenseDetail() {
 
   const expense = expenseQuery.data;
   const receipts = receiptsQuery.data;
+  // Who paid and what it pays for (3D-1), by name and title.
+  const payerId = expense?.payerId ?? null;
+  const bookingId = expense?.tripItemId ?? null;
+  const { data: links } = useLiveQuery(
+    useCallback(
+      async (database) => {
+        const [travellers, booking] = await Promise.all([
+          payerId ? listTravellers(database) : [],
+          bookingId ? getTripItem(database, bookingId) : null,
+        ]);
+        return { payer: travellers.find((t) => t.id === payerId)?.name ?? null, booking };
+      },
+      [payerId, bookingId],
+    ),
+    [...PAYMENT_TABLES, 'travellers'],
+    [payerId, bookingId],
+  );
   const expenseView = queryView(expenseQuery);
   if (expenseView !== 'ready' || !expense) {
     return (
@@ -78,6 +98,17 @@ export default function ExpenseDetail() {
             router.back();
           },
         },
+      ],
+    );
+
+  // Explicit, never automatic (L-2): it becomes spending of its own again.
+  const confirmUnlink = () =>
+    Alert.alert(
+      'Unlink from the booking?',
+      `It will count as spending of its own${links?.booking ? `, and “${links.booking.title}” will no longer show it as paid` : ''}.`,
+      [
+        { text: 'Keep linked', style: 'cancel' },
+        { text: 'Unlink', onPress: () => void unlinkExpense(db, expense.id) },
       ],
     );
 
@@ -118,6 +149,18 @@ export default function ExpenseDetail() {
         <View style={styles.facts}>
           {expense.label ? <Fact label="Category" value={categoryLabel(expense.category)} /> : null}
           <Fact label="Date" value={formatMoment(expense.spentOn, 'date')} />
+          {expense.payerId ? <Fact label="Paid by" value={links?.payer ?? '…'} /> : null}
+          {expense.tripItemId ? (
+            <Pressable
+              onPress={() => router.push(`/item/${expense.tripItemId}`)}
+              accessibilityRole="link">
+              <Fact
+                label="Pays for"
+                value={links?.booking?.title ?? '…'}
+                detail="Counted as paid on this booking, not as spending of its own"
+              />
+            </Pressable>
+          ) : null}
           {expense.notes ? <Fact label="Description" value={expense.notes} /> : null}
         </View>
 
@@ -134,6 +177,9 @@ export default function ExpenseDetail() {
           />
         )}
 
+        {expense.tripItemId ? (
+          <Button label="Unlink from booking" variant="secondary" onPress={confirmUnlink} />
+        ) : null}
         <Button label="Delete expense" variant="danger" onPress={confirmDelete} />
       </ScrollView>
     </Screen>

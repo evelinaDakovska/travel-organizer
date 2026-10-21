@@ -136,6 +136,7 @@ describe('linkableBookings', () => {
       { ...booking({ id: 'c', status: 'idea' }), kind: 'food' as const },
       { ...booking({ id: 'd', priceAmount: null, priceCurrency: null }), kind: 'other' as const },
       { ...booking({ id: 'e', status: 'cancelled' }), kind: 'activity' as const },
+      { ...booking({ id: 'f' }), kind: 'task' as const },
     ];
     expect(linkableBookings(items, 'EUR').map((item) => item.id)).toEqual(['hotel', 'e']);
   });

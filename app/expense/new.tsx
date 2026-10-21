@@ -9,6 +9,8 @@ import { deviceToday } from '../../src/domain/trip';
 import { ExpenseForm } from '../../src/features/expenses/ExpenseForm';
 import { deleteStoredFile } from '../../src/files/storage';
 import { PendingReceipts } from '../../src/features/expenses/PendingReceipts';
+import { useExpenseContext } from '../../src/features/expenses/useExpenseContext';
+import { alertRefusal } from '../../src/features/payments/refusal';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
 import { createExpense, EXPENSE_TABLES, listExpenses } from '../../src/repositories/expenses';
 import { Screen } from '../../src/ui/components/Screen';
@@ -43,6 +45,7 @@ export default function NewExpense() {
     EXPENSE_TABLES,
     [tripId],
   );
+  const { data: money } = useExpenseContext(tripId);
 
   if (!tripId) {
     return (
@@ -58,12 +61,16 @@ export default function NewExpense() {
   return (
     <Screen>
       <ScreenHeader title="New expense" leading="close" />
-      {expenses ? (
+      {expenses && money ? (
         <ExpenseForm
           submitLabel="Save expense"
+          money={money}
+          warnDuplicates
           defaultValues={{
             currency: nextCurrency(expenses),
             spentOn: deviceToday(),
+            payerId: null,
+            tripItemId: null,
           }}
           receipts={<PendingReceipts receipts={receipts} onChange={setReceipts} />}
           onSubmit={async (input) => {
@@ -73,6 +80,8 @@ export default function NewExpense() {
             } catch (error) {
               // Rolled back: no row points at the copies, so closing may delete them again.
               saveStarted.current = false;
+              // A link the money rules refuse (3D-1): nothing saved, the reason shown.
+              if (alertRefusal(error)) return;
               throw error;
             }
             router.back();

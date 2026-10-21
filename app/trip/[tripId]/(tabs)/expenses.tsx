@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
 import { refundNotSaid, tripExpenses } from '../../../../src/domain/bookingCosts';
-import { spendingTotals, tripTotals } from '../../../../src/domain/spending';
+import { isStandalone, spendingTotals, tripTotals } from '../../../../src/domain/spending';
 import { BookingsView } from '../../../../src/features/expenses/BookingsView';
 import { SpendingView } from '../../../../src/features/expenses/SpendingView';
 import { TripTotal } from '../../../../src/features/expenses/TripTotal';
@@ -71,6 +71,7 @@ export default function ExpensesScreen() {
     itemsQuery.refetch();
   };
 
+  const standalone = useMemo(() => (expenses ?? []).filter(isStandalone), [expenses]);
   const spending = useMemo(() => spendingTotals(expenses ?? []), [expenses]);
   const bookings = useMemo(() => tripExpenses(items ?? []), [items]);
   const totals = useMemo(() => tripTotals(bookings, spending), [bookings, spending]);
@@ -111,7 +112,8 @@ export default function ExpensesScreen() {
 
           {view === 'spending' ? (
             <SpendingView
-              expenses={expenses}
+              // An expense that pays for a booking is listed on that booking (3D-1).
+              expenses={standalone}
               totals={spending}
               receipts={receipts ?? new Map()}
               onAdd={addExpense}

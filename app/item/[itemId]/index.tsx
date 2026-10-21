@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { paymentStatuses, refundableOf } from '../../../src/domain/bookingCosts';
+import { deleteRefusal, hasRecords } from '../../../src/domain/bookingPayments';
 import { formatMoment, formatMoney } from '../../../src/domain/format';
 import { journeyLegs } from '../../../src/domain/journey';
 import { mapsUrl } from '../../../src/domain/places';
@@ -32,6 +33,8 @@ import {
 } from '../../../src/domain/directions';
 import { DirectionsSheet } from '../../../src/features/directions/DirectionsSheet';
 import { JourneyEnds } from '../../../src/features/items/JourneyEnds';
+import { PaymentsSection } from '../../../src/features/payments/PaymentsSection';
+import { alertRefusal } from '../../../src/features/payments/refusal';
 import { ZoneNotice } from '../../../src/features/items/ZoneNotice';
 import { OpenResource } from '../../../src/features/resources/OpenResource';
 import { ResourceList } from '../../../src/features/resources/ResourceList';
@@ -50,6 +53,7 @@ import {
   setTripItemStatus,
   TRIP_ITEM_TABLES,
 } from '../../../src/repositories/tripItems';
+import { countMoneyRecords } from '../../../src/repositories/payments';
 import { listItemParticipants, TRAVELLER_TABLES } from '../../../src/repositories/travellers';
 import { Button } from '../../../src/ui/components/Button';
 import { CopyValue } from '../../../src/ui/components/CopyValue';
@@ -171,9 +175,30 @@ export default function ItemDetail() {
 
   const remove = async () => {
     setMoreOpen(false);
+    // Money history is never deleted with a booking (L-1): explained, with the way out offered.
+    const records = await countMoneyRecords(db, item.id);
+    if (hasRecords(records)) {
+      Alert.alert('This booking cannot be deleted', deleteRefusal(item.title, records)!, [
+        { text: 'Close', style: 'cancel' },
+        ...(item.status === 'confirmed'
+          ? [
+              {
+                text: 'Cancel booking',
+                onPress: () => confirmCancel(item, () => void setTripItemStatus(db, item.id, 'cancelled')),
+              },
+            ]
+          : []),
+      ]);
+      return;
+    }
     // Files also attached elsewhere stay, so they are not counted as lost.
     confirmDelete(item, await countItemOwnFiles(db, item.id), async () => {
-      await deleteTripItem(db, item.id);
+      try {
+        await deleteTripItem(db, item.id);
+      } catch (error) {
+        if (alertRefusal(error, 'Not deleted')) return;
+        throw error;
+      }
       router.back();
     });
   };
@@ -271,13 +296,16 @@ export default function ItemDetail() {
                 // The working of a per-person price (C3): 2 × EUR 90.00 Adult + …
                 pricing ? pricingText(pricing, item.priceCurrency) : null,
                 // An idea's price is a budget, never a payment state (3C).
+                // A booking's paid state is in Payments below (3D-1); a to-do keeps its line.
                 item.status === 'idea'
                   ? 'Estimate'
-                  : item.isPaid
-                    ? 'Paid'
-                    : item.priceAmount > 0
-                      ? 'Not paid yet'
-                      : null,
+                  : item.kind !== 'task'
+                    ? null
+                    : item.isPaid
+                      ? 'Paid'
+                      : item.priceAmount > 0
+                        ? 'Not paid yet'
+                        : null,
                 REFUNDABLE_LABEL[String(refundableOf(item.details))],
               ]
                 .filter(Boolean)
@@ -290,6 +318,8 @@ export default function ItemDetail() {
           ) : null}
           {item.notes ? <Fact label="Notes" value={item.notes} selectable /> : null}
         </View>
+
+        {item.kind !== 'task' ? <PaymentsSection item={item} /> : null}
 
         {defaultEndpoint || departureEndpoint || arrivalEndpoint || maps ? (
           <View style={styles.locationActions}>

@@ -33,7 +33,8 @@ export function SpendingView({ expenses, totals, receipts, onAdd }: Props) {
         </Text>
         <Button label="Add an expense" variant="secondary" onPress={onAdd} />
         <Text style={[type.caption, { color: c.textMuted }]}>
-          Paying for something already booked? Mark that booking Paid instead.
+          Paying for something already booked? Add it as a payment on that booking instead, so it
+          is counted once.
         </Text>
       </View>
     );

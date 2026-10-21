@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { paymentStatus, type PaymentStatus } from '../../domain/bookingCosts';
+import { paymentStatus, paymentSummary, type PaymentStatus } from '../../domain/bookingCosts';
 import { formatMoney, formatShortMoment } from '../../domain/format';
 import {
   kindLabel,
@@ -56,6 +56,14 @@ export function ItemRow({
   const showStatus =
     item.status === 'cancelled' || (item.status === 'idea' && !headingSays);
   const shownPayment = headingSays || !showFinancials ? null : payment;
+  // Part paid by recorded payments (3D-1): how much, under the price.
+  const summary = item.status === 'idea' ? null : paymentSummary(item);
+  const partly =
+    summary && summary.notRecorded === 0 && summary.paid > 0 && summary.toPay > 0
+      ? `${formatMoney(summary.paid, summary.currency)} paid`
+      : summary && summary.overpaid > 0
+        ? 'Overpaid'
+        : null;
 
   return (
     <ListRow
@@ -72,6 +80,8 @@ export function ItemRow({
             {/* An idea's price is a budget, not a booking or a payment (3C). */}
             {item.status === 'idea' ? (
               <Text style={[type.caption, { color: c.textMuted }]}>Estimate</Text>
+            ) : partly ? (
+              <Text style={[type.caption, { color: c.textMuted }]}>{partly}</Text>
             ) : null}
           </View>
         ) : null

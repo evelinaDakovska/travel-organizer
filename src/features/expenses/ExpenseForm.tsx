@@ -1,8 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { ReactNode } from 'react';
-import { Controller, useForm, type DefaultValues } from 'react-hook-form';
-import { StyleSheet, Text, View } from 'react-native';
+import { Controller, useForm, useWatch, type DefaultValues } from 'react-hook-form';
+import { StyleSheet, View } from 'react-native';
 
+import { paidOf } from '../../domain/bookingCosts';
+import { linkableBookings, possibleDuplicates } from '../../domain/bookingPayments';
+import { formatMoney } from '../../domain/format';
 import {
   categoryLabel,
   EXPENSE_CATEGORIES,
@@ -10,13 +13,26 @@ import {
   type ExpenseFormValues,
   type ExpenseInput,
 } from '../../domain/spending';
+import type { Traveller } from '../../domain/traveller';
+import type { TripItem } from '../../domain/tripItem';
 import { Button } from '../../ui/components/Button';
 import { ChoiceField } from '../../ui/components/ChoiceField';
 import { DateField } from '../../ui/components/DateField';
 import { Field, Input } from '../../ui/components/Field';
 import { FormScroll } from '../../ui/components/FormScroll';
 import { AmountInput, CurrencyInput } from '../../ui/components/MoneyInputs';
-import { spacing, type, useColors } from '../../ui/tokens';
+import { SelectField } from '../../ui/components/SelectField';
+import { spacing } from '../../ui/tokens';
+import { askAboutDuplicate } from '../payments/askAboutDuplicate';
+import { PayerField } from '../payments/PayerField';
+
+/** Who could have paid and what an expense could pay for (3D-1). */
+export type ExpenseMoneyContext = {
+  travellers: readonly Traveller[];
+  /** Every item of the trip; the form offers the ones an expense in its currency can pay for. */
+  bookings: readonly TripItem[];
+  lastPayerId: string | null;
+};
 
 type Props = {
   /** Partial: a new expense starts with only a currency and a date. */
@@ -30,6 +46,9 @@ type Props = {
    * Save button pinned below.
    */
   secondaryActions?: ReactNode;
+  money: ExpenseMoneyContext;
+  /** A new expense: before saving one that looks like a booking's price, offer to link it. */
+  warnDuplicates?: boolean;
 };
 
 /** Built for one hand at a till: the amount first, with the keypad already open. */
@@ -39,8 +58,9 @@ export function ExpenseForm({
   onSubmit,
   receipts,
   secondaryActions,
+  money,
+  warnDuplicates = false,
 }: Props) {
-  const c = useColors();
   const {
     control,
     handleSubmit,
@@ -50,17 +70,29 @@ export function ExpenseForm({
     defaultValues,
     mode: 'onBlur',
   });
+  const [currency, tripItemId] = useWatch({ control, name: ['currency', 'tripItemId'] });
+  const byId = new Map(money.bookings.map((booking) => [booking.id, booking]));
+  const linkable = linkableBookings(money.bookings, (currency ?? '').toUpperCase()).map((b) => b.id);
+  // The one linked now stays visible even if the currency no longer fits: saving says why.
+  const bookingOptions = tripItemId && !linkable.includes(tripItemId) ? [tripItemId, ...linkable] : linkable;
+  const linked = tripItemId ? byId.get(tripItemId) : undefined;
+
+  const save = handleSubmit(async (values) => {
+    if (warnDuplicates && values.tripItemId === null) {
+      const [booking] = possibleDuplicates(values, money.bookings);
+      if (booking) {
+        const choice = await askAboutDuplicate(booking.title);
+        if (choice === 'back') return;
+        if (choice === 'link') values = { ...values, tripItemId: booking.id };
+      }
+    }
+    await onSubmit(values);
+  });
 
   return (
     <FormScroll
       footer={
-        <Button
-          label={submitLabel}
-          busy={isSubmitting}
-          onPress={handleSubmit(async (values) => {
-            await onSubmit(values);
-          })}
-        />
+        <Button label={submitLabel} busy={isSubmitting} onPress={save} />
       }>
       <View style={styles.row}>
         <View style={styles.grow}>
@@ -97,11 +129,55 @@ export function ExpenseForm({
           />
         </View>
       </View>
-      {/* A booking paid on the trip is already in the total through its price (review R9). */}
-      <Text style={[type.caption, { color: c.textMuted }]}>
-        Paying for something already booked? Mark that booking Paid instead — adding it here too
-        counts it twice.
-      </Text>
+      {/* A booking's price is already in the total (R9): an expense that pays for it is linked,
+          so it counts once (3D-1). */}
+      <Controller
+        control={control}
+        name="tripItemId"
+        render={({ field }) => (
+          <Field
+            label="For a booking"
+            error={errors.tripItemId?.message}
+            hint={
+              linked
+                ? 'Counts as paid on that booking, not as spending of its own.'
+                : 'Paying for something already booked? Choose it, so it is counted once.'
+            }>
+            <SelectField
+              title="Pays for"
+              value={field.value ?? null}
+              options={bookingOptions}
+              onChange={field.onChange}
+              noneLabel="None — spending of its own"
+              labelFor={(id) => byId.get(id)?.title ?? 'A booking no longer here'}
+              detailFor={(id) => {
+                const booking = byId.get(id);
+                if (!booking?.priceAmount || !booking.priceCurrency) return null;
+                const left = booking.priceAmount - paidOf(booking);
+                return `${formatMoney(booking.priceAmount, booking.priceCurrency)}${
+                  left > 0 ? ` · ${formatMoney(left, booking.priceCurrency)} left to pay` : ' · Paid'
+                }`;
+              }}
+            />
+          </Field>
+        )}
+      />
+
+      {money.travellers.length > 1 ? (
+        <Controller
+          control={control}
+          name="payerId"
+          render={({ field }) => (
+            <PayerField
+              value={field.value ?? null}
+              onChange={field.onChange}
+              travellers={money.travellers}
+              lastPayerId={money.lastPayerId}
+              error={errors.payerId?.message}
+            />
+          )}
+        />
+      ) : null}
 
       <Controller
         control={control}

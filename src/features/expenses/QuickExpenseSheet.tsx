@@ -2,6 +2,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { possibleDuplicates } from '../../domain/bookingPayments';
 import type { ResourceInput } from '../../domain/resource';
 import {
   categoryLabel,
@@ -9,10 +10,11 @@ import {
   type ExpenseCategory,
 } from '../../domain/spending';
 import { deviceToday } from '../../domain/trip';
-import { DEFAULT_CURRENCY } from '../../domain/tripItem';
+import { DEFAULT_CURRENCY, type TripItem } from '../../domain/tripItem';
 import { absoluteUriFor, deleteStoredFile } from '../../files/storage';
 import { pickAndImport, type PickerKind } from '../resources/attach';
 import { alertAttachError, alertIfSomeFailed } from '../resources/attachAlerts';
+import { askAboutDuplicate } from '../payments/askAboutDuplicate';
 import { createExpense } from '../../repositories/expenses';
 import { Button } from '../../ui/components/Button';
 import { ChoiceField } from '../../ui/components/ChoiceField';
@@ -28,6 +30,8 @@ type Props = {
   onClose: () => void;
   tripId: string;
   defaultCurrency?: string;
+  /** The trip's items: an expense matching a booking's price is offered as a link (3D-1). */
+  bookings?: readonly TripItem[];
 };
 
 export function QuickExpenseSheet({
@@ -35,6 +39,7 @@ export function QuickExpenseSheet({
   onClose,
   tripId,
   defaultCurrency = DEFAULT_CURRENCY,
+  bookings = [],
 }: Props) {
   const c = useColors();
   const db = useSQLiteContext();
@@ -152,6 +157,15 @@ export function QuickExpenseSheet({
       return;
     }
 
+    // Never merged by itself: the person decides (§15 *10*).
+    let tripItemId: string | null = null;
+    const [duplicate] = possibleDuplicates({ amount, currency: validCurrency }, bookings);
+    if (duplicate) {
+      const choice = await askAboutDuplicate(duplicate.title);
+      if (choice === 'back') return;
+      if (choice === 'link') tripItemId = duplicate.id;
+    }
+
     setSubmitting(true);
     setErrorMessage(null);
     savedRef.current = true;
@@ -168,7 +182,7 @@ export function QuickExpenseSheet({
           label: label.trim() || undefined,
           notes: notes.trim() || undefined,
           payerId: null,
-          tripItemId: null,
+          tripItemId,
         },
         receipts,
       );

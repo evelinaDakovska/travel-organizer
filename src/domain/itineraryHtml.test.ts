@@ -164,6 +164,21 @@ describe('itineraryHtml (C4)', () => {
     expect(html).not.toContain('Safari b:');
   });
 
+  it('counts recorded payments in paid and to pay, once, and names no payer (3D-1)', () => {
+    const hotel = item({
+      id: 'h',
+      title: 'Hotel Aurora',
+      priceAmount: 25000,
+      priceCurrency: 'EUR',
+      recordedPaid: 10000,
+    });
+    const html = itineraryHtml(input({ items: [hotel] }), { ...DEFAULT_PDF_OPTIONS, costs: true });
+    expect(html).toContain(
+      '<tr><td>EUR 250.00</td><td>Paid EUR 100.00</td><td>To pay EUR 150.00</td></tr>',
+    );
+    expect(html).not.toMatch(/recorded|Deposit/);
+  });
+
   it('says when it was made', () => {
     expect(itineraryHtml(input(), DEFAULT_PDF_OPTIONS)).toContain('Made 13 Oct 2026, 09:42');
   });

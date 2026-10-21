@@ -43,6 +43,7 @@ import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
 import { SectionLabel } from '../../../src/ui/components/SectionLabel';
 import { Sheet } from '../../../src/ui/components/Sheet';
 import { gutter, radius, spacing, touchTarget, type, useColors } from '../../../src/ui/tokens';
+import { alertRefusal } from '../../../src/features/payments/refusal';
 
 /** Someone who just joined, and what they could be added to. */
 type Joining = { id: string; name: string; candidates: JoinCandidates<TripItem> };
@@ -248,7 +249,9 @@ export default function TripTravellersScreen() {
             try {
               await removeTripTraveller(db, trip.id, member.id);
               membersQuery.refetch();
-            } catch {
+            } catch (error) {
+              // They paid on this trip (3D-1): nothing was changed, and the reason is shown.
+              if (alertRefusal(error, `${member.name} stays on this trip`)) return;
               Alert.alert(
                 'Could not remove traveller',
                 'Something went wrong while removing this traveller from the trip. Please try again.',

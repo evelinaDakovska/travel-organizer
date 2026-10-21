@@ -194,6 +194,7 @@ export function linkableBookings<T extends Pick<TripItem, 'status' | 'priceAmoun
 ): T[] {
   return items.filter(
     (item) =>
+      item.kind !== 'task' &&
       item.status !== 'idea' &&
       item.priceAmount !== null &&
       item.priceAmount > 0 &&

@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
+import { Alert } from 'react-native';
 
 import { defaultItemDate } from '../../../src/domain/trip';
 import { tripItemFormValues } from '../../../src/domain/tripItem';
@@ -23,6 +24,8 @@ import { QueryScreen } from '../../../src/ui/components/QueryStates';
 import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
 import { askForRemindersIfDue } from '../../../src/notifications/reminders';
+import { alertRefusal } from '../../../src/features/payments/refusal';
+import { overpaidWarning } from '../../../src/domain/bookingPayments';
 
 /** Deleting lives on the detail screen, where the cancel-first rule is shown (decision log D21). */
 export default function EditItem() {
@@ -122,7 +125,19 @@ export default function EditItem() {
         travellers={people.travellers}
         defaultParticipants={people.participants}
         onSubmit={async (input, participants) => {
-          await updateTripItem(db, item.id, input, participants);
+          // A price below what is recorded is allowed, said first (3D-1 §5).
+          const overpaid =
+            input.priceAmount !== undefined && input.priceCurrency
+              ? overpaidWarning(item.recordedPaid, input.priceAmount, input.priceCurrency)
+              : null;
+          if (overpaid && !(await confirmOverpaid(overpaid))) return;
+          try {
+            await updateTripItem(db, item.id, input, participants);
+          } catch (error) {
+            // An edit that would strand payments (3D-1): refused, nothing saved, reason shown.
+            if (alertRefusal(error)) return;
+            throw error;
+          }
           router.back();
           void askForRemindersIfDue(db, item.id);
         }}
@@ -131,3 +146,11 @@ export default function EditItem() {
   );
 }
 
+function confirmOverpaid(message: string): Promise<boolean> {
+  return new Promise((resolve) =>
+    Alert.alert('Lower the price?', message, [
+      { text: 'Go back', style: 'cancel', onPress: () => resolve(false) },
+      { text: 'Save', onPress: () => resolve(true) },
+    ], { cancelable: true, onDismiss: () => resolve(false) }),
+  );
+}

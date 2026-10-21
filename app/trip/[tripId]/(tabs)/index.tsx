@@ -642,6 +642,7 @@ export default function OverviewScreen() {
         onClose={() => setQuickExpenseOpen(false)}
         tripId={trip.id}
         defaultCurrency={nextCurrency(expenses)}
+        bookings={items ?? []}
       />
     </Screen>
   );

@@ -41,7 +41,8 @@ import {
 } from '../domain/tripItem';
 import { writeItemParticipants } from './travellers';
 
-export const TRIP_ITEM_TABLES = ['trip_items'] as const;
+/** Payments and linked expenses change an item's `recordedPaid` (3D-1), so they are watched too. */
+export const TRIP_ITEM_TABLES = ['trip_items', 'booking_payments', 'expenses'] as const;
 
 type JoinedRow = TripItemRow & { trip_default_tz: string };
 
