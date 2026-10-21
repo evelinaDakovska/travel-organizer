@@ -385,7 +385,25 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ## 11. Where the last session stopped (2026-10-19) — read this first
 
-### 11.0000000000 Latest (2026-10-20, later still) — 3C built as 0.13.0
+### 11.00000000000 Latest (2026-10-21) — 3D-1 built as 0.14.0 on the branch `phase-3d1`
+
+- The owner reviewed 3B and 3C and asked for 3D-1, plan then implementation. Plan and answers:
+  `docs/phase3d1-plan.md` (§10.1). Migration 007 approved **only without risk to the real data**, so:
+  built on **`phase-3d1`**, `main` stays at 0.13.0 (a trip fix needs no migration), and **no phone
+  install until after the owner's trip**, then with the separate approvals of `phase3-plan.md` §15 *11*.
+- 0.14.0 / versionCode 21: migration 007, backup and archive format 8. APK
+  `%USERPROFILE%\.travel-organizer	ravel-organizer-0.14.0.apk` (release key), on no phone. E2E log:
+  `%USERPROFILE%\Pictures\TravelOrganizer-0.14.0-3D1-e2e\E2E-LOG.md`.
+- The owner **approved a debug-signed debuggable build on the emulator only** for DB inspection; it
+  was built with the E2E-INJECT edit, used on `TO_2B_Test`, and `build.gradle` restored.
+- `TO_2B_Test` now holds debug-signed 0.14.0 (schema 7) with a *3D1 Money Lapland* trip;
+  `Pixel_10_Pro` holds release 0.14.0 over 0.13.0. Both shut down.
+- New typed routes (`app/payment/…`) need `.expo/types/router.d.ts` regenerated: a brief
+  `npx expo start` does it.
+- **Next:** the owner's review of 3D-1; merging `phase-3d1` into `main` and any phone install only
+  when the owner says so (after the trip). 3D-2 only when asked.
+
+### 11.0000000000 Earlier (2026-10-20, later still) — 3C built as 0.13.0
 
 - **3C (adult/child pricing) built and verified on emulators** on the owner's instruction:
   `docs/phase3c-plan.md` (plan, the owner's answers P-1…P-4, as built), D39. No migration; backup

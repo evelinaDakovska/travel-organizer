@@ -657,3 +657,16 @@ Choose what goes in. **Notes on each plan** is on; **Booking references**, **Who
 **To do**, **Packing and shopping lists** and **Booking costs** are off until you switch them on —
 anyone holding the PDF can read whatever is in it. The PDF is a snapshot: make a new one after
 changes.
+
+## Payments on a booking (0.14.0, not yet on your phone)
+
+- On a booking with a price, **Payments** shows what is paid and what is left. **Add a payment**
+  records a deposit or the rest: the amount starts at what is left, *Paid by* stays *Not recorded*
+  unless you pick someone (the last payer is offered as a button), and the date starts at today.
+- The *Paid* switch still means *paid in full*. If you add a payment to a booking already marked
+  *Paid*, the rest shows as *not recorded by whom*.
+- Paying for a booking during the trip? In the expense, choose it under **For a booking**: it then
+  counts as paid on the booking, not as extra spending. If an expense's amount matches a booking,
+  the app asks before saving. **Unlink from booking** on the expense makes it spending again.
+- A booking with payments cannot be deleted; cancel it, or delete its payments first. Someone who
+  paid cannot be removed from the trip. Deleting a whole trip says how many payments go with it.

@@ -1,4 +1,4 @@
-# Phase 3D-1 — money records linked to bookings: plan [Proposed — waits for the owner's approval]
+# Phase 3D-1 — money records linked to bookings: plan, answers and as built (0.14.0)
 
 Written 2026-10-21 at `e5e72e4` (0.13.0), after the owner's review of 3B and 3C. It turns
 `phase3-plan.md` §17 and §18.2 (L-1–L-4) into an exact proposal. **Nothing here is built.** It needs
@@ -240,3 +240,30 @@ owner changes them.
 | 2 | **Whole-trip deletion allowed**, with an explicit confirmation naming the money history |
 | 3 | **The *Paid* switch wins.** Records describe the known part; the rest is *not recorded by whom* |
 | 4 | **Debug-signed debuggable build approved, on the emulator only**, to read the migrated database |
+
+## 11. As built (0.14.0, branch `phase-3d1`, 2026-10-21)
+
+Built as planned in §§2–8, with the owner's answers in §10.1. Differences and details found while
+building:
+
+- **Shown, not only refused.** Every rule of §5 is explained on screen before a write, and enforced
+  again inside the repository's transaction (`MoneyRuleError`); the database's NO ACTION is the last
+  word. NO ACTION vs RESTRICT during a trip's cascade was checked in Node before choosing.
+- **A cancelled booking** with records: the delete block says to remove the records (not "cancel
+  it"), and a refundable or unspecified cancellation reads *Cancelled · … recorded as paid · not
+  counted in the totals* instead of *To pay*. Both found in the emulator E2E and fixed.
+- **To-dos** never get a *Payments* section and are never offered as a booking to link.
+- **The quick expense sheet** (Overview) also asks *Is this a payment for …?*; it does not set a payer.
+- **The trip-archive preview** counts *payments on bookings*; the unused name-based table is named
+  only when a file has rows in it.
+- Payment dates default to today and stay editable; an imported payment without a date reads *Date
+  not recorded*.
+
+**Verification.** 1251 Node tests (new: migration 007 on synthetic v6 databases with legacy values,
+FK behaviour, aggregation incl. a property test, rules, repositories with refusals leaving the
+database unchanged, backup format 8 and 1–7, archive rowFormat 8 remap, 2C/2D carry nothing, PDF).
+Emulator E2E: `%USERPROFILE%\Pictures\TravelOrganizer-0.14.0-3D1-e2e\E2E-LOG.md` — migration 6 → 7
+on a debug-signed build over a real-shaped synthetic database with every old row identical; 15 UI
+checks; release `install -r` over 0.13.0 with identical screens; 0.13.0 refuses format-8 files.
+Release APK `%USERPROFILE%\.travel-organizer	ravel-organizer-0.14.0.apk` (versionCode 21, release key),
+**on no phone**.

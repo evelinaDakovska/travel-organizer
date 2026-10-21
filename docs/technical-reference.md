@@ -1599,3 +1599,37 @@ opens the sheet after each way of joining when there is something to offer, and 
 sheet (*Add to existing plans…*) at any time; with nothing to offer that action says so. In *Your
 travellers*, a profile whose name another profile shares has the subtitle `namesakeHint`:
 *Adult · On Lapland, Rome +1*.
+
+## 21. Money records linked to bookings (3D-1, 0.14.0, migration 007)
+
+Branch `phase-3d1`. Plan and rules: `docs/phase3d1-plan.md`.
+
+**Schema (007).** `booking_payments (id, trip_id → trips CASCADE, trip_item_id → trip_items NO
+ACTION, payer_id → travellers RESTRICT NULL, amount > 0, currency, paid_on NULL, note, created_at,
+updated_at)`; `expenses.trip_item_id → trip_items NO ACTION NULL`; `expenses.payer_id → travellers
+RESTRICT NULL`. Indexes on trip, item and payer. No row written by the migration; `paid_by`, `split`
+and the name-based `payments` stay untouched and unread.
+
+**Derived paid state.** The item queries (`ITEM_COLUMNS`) add `recorded_paid` = Σ payments + Σ linked
+expenses in the price's currency → `TripItem.recordedPaid`. `domain/bookingCosts`: `paidOf` =
+`is_paid ? price : min(recorded, price)`; `isFullyPaid`; `paymentSummary` (paid, toPay, overpaid,
+notRecorded); `tripExpenses`, `expenseGroups`, `paymentStatus` use them. `spendingTotals` and the
+Spending list count standalone expenses only (`isStandalone`). `TRIP_ITEM_TABLES` watches
+`booking_payments` and `expenses`.
+
+**Rules** (`domain/bookingPayments`, enforced again in the repositories' transactions, refused with
+`MoneyRuleError`): `recordRefusal` — no record on an idea, an unpriced booking, or in another
+currency; `editRefusal` — with records, no change to idea, no cleared price, no currency change;
+`deleteRefusal` — a booking with records is not deleted; `leaveRefusal` — a payer does not leave the
+trip (`removeTripTraveller`, `updateTripWithMembers`). `overpaidWarning` warns on a price below what is
+recorded. `possibleDuplicates` (same currency; amount = price, or = balance when not fully paid)
+drives the *link it?* question on new expenses (form and quick sheet).
+
+**Formats.** Backup **format 8** (`bookingPayments`; the two expense columns default NULL for 1–7);
+trip archive **rowFormat 8** (payments and links remapped to new ids; payers through the traveller
+choices; `checkTripArchive` checks the references). Whole-trip delete and backup *replace* remove a
+trip's payments with it in one statement.
+
+**Screens.** Booking: *Payments* section (`features/payments/PaymentsSection`), `app/payment/new`,
+`app/payment/[paymentId]`. Expense form: *For a booking*, *Paid by* (`PayerField`). Expense detail:
+*Paid by*, *Pays for*, **Unlink**. 2C and 2D carry none of it (tests).

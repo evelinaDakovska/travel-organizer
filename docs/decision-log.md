@@ -862,3 +862,37 @@ not applied; a hand edit of a paid booking's price warns instead. Payment amount
 keys in a format-6 file and drop them on its next edit. Raising the format makes an older app refuse
 instead (verified on the emulator, both for a full backup and a trip ZIP). The format for 3D-1 is
 decided with its own changes.
+
+## D40 — 3D-1: money records linked to bookings (0.14.0, migration 007)
+
+Plan, the owner's answers and the as-built record: `docs/phase3d1-plan.md`.
+
+**Three records, one cost.** A standalone expense is spending; a payment against a booking and an
+expense linked to a booking are both *paid towards* that booking and never spending. The booking's
+price is its only cost. Two ways to record paying for a booking exist because an expense already
+logged (perhaps with its receipt) must stop being counted twice without being deleted or converted.
+
+**NO ACTION, not CASCADE or RESTRICT.** CASCADE would delete money history with a booking (rejected,
+L-1). RESTRICT is checked during a trip's cascade, so a whole-trip deletion would succeed or fail
+depending on SQLite's internal order. NO ACTION is checked at the end of the statement: a booking
+alone cannot be deleted, a trip and everything in it can. The repositories refuse first, with the
+reason; the constraint is the last word.
+
+**The *Paid* switch wins** (owner, 2026-10-21). `is_paid` keeps meaning *fully paid*; records describe
+the known part and the rest reads *not recorded by whom*. Letting records win would turn a booking
+marked *Paid* back into *To pay* the moment a deposit was recorded. Nothing ever writes `is_paid`
+except the person's switch.
+
+**Whole-trip deletion allowed, named** (owner, 2026-10-21). Expenses already went with a trip; blocking
+it would make a finished trip undeletable without removing every record by hand.
+
+**No archive state.** *Cancelled* already keeps a booking and its records; the resolution workflow is
+cancel instead, unlink an expense, or delete a payment — each explicit.
+
+**Only 3D-1's schema in 007.** Shares, settlements and the responsible adult get their own migration
+when designed; the drafted `cost_shares` had the same cascade problem, and no schema ships unapproved.
+
+**Built on a branch.** The owner approved the migration only without risk to the real data. Building on
+the emulator cannot touch the phone, but installing cannot be risk-free (a failed migration would
+leave the data intact and the app unopenable until a fix; no rollback without an uninstall). So 3D-1
+is on `phase-3d1`, `main` stays releasable at 0.13.0, and the phone install waits until after the trip.

@@ -94,7 +94,9 @@ The following milestones are **reported complete by Claude**, not independently 
 **Current gate:** Independent review of Phase 3B (`991994e`) and Phase 3C (0.13.0, `docs/phase3c-plan.md`, built on the owner's instruction after the owner's answers to the schema check). Do not start 3D-1 until approved; its open design questions are in `docs/phase3-plan.md` §18.2.
 
 ```text
-Completed (reported): Foundations → Phase 1 → Phase 2A → 2B-0 → 2B → 2C → 2D → 3A → 3B → 3C
+Completed (reported): Foundations → Phase 1 → Phase 2A → 2B-0 → 2B → 2C → 2D → 3A → 3B → 3C → 3D-1
+(0.14.0, migration 007, on the branch `phase-3d1`; `docs/phase3d1-plan.md`; no phone install until
+after the owner's trip)
                                                               ↓
 Next:                          3D-1 Payments → 3D-2 Responsibility/Splits → 3E Balances
                                    ↓                 ↓                 ↓                     ↓

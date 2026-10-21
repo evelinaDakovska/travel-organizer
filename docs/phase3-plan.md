@@ -481,6 +481,9 @@ migration 007 is approved.
   the booking's price once; paid = its payments + linked expenses in the same currency; spending =
   unlinked expenses only) is the starting point.
 
+**3D-1 as proposed, answered and built:** [`phase3d1-plan.md`](phase3d1-plan.md) (2026-10-21) —
+it supersedes §8's DDL and §17 for 3D-1.
+
 ## 19. Phase 3C — pre-coding schema check (2026-10-20, at `2b8a648`)
 
 Asked by the owner (§18 C-4) before any 3C code. Read in the code; nothing changed.

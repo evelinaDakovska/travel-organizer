@@ -88,6 +88,25 @@
 
 ---
 
+### Built in 0.14.0 (roadmap 3D-1) — on the branch `phase-3d1`, verified on emulators, not on a phone
+
+Not on any phone until after the owner's trip (owner, 2026-10-21): it brings migration 007.
+
+- **Payments on a booking**: *Add a payment* records an amount (starting at what is left), who paid
+  (*Not recorded* unless picked; the last payer is offered, never chosen) and a date. A deposit and
+  the balance are two payments; the booking shows *Paid EUR 100 of 250 · To pay EUR 150*.
+- **One cost per booking**: a booking costs its price once; its payments and linked expenses are
+  never spending. A EUR 250 booking paid as 100 + 150 is EUR 250, paid in full.
+- **An expense can pay for a booking** (*For a booking*), and can be unlinked again. A new expense
+  whose amount matches a booking's price or balance asks *Is this a payment for …?* — never merged
+  by itself. An expense can name who paid.
+- **Old *Paid* is kept**: a booking marked *Paid* with nothing recorded reads *Paid — not recorded by
+  whom*; with some records, the rest is *not recorded by whom*. Nothing is invented.
+- **Money history is never deleted by accident**: a booking with payments cannot be deleted (cancel
+  it, or remove the payments first); a payer cannot be removed from the trip; deleting a whole trip
+  names the payments and expenses it removes. A payment must be in the booking's currency.
+- **Backup format 8**: 0.13.0 refuses backups and trip files from 0.14.0; 0.14.0 reads all older ones.
+
 ### Built in 0.13.0 (roadmap 3C) — verified on emulators, not yet on a phone
 
 - **Price breakdowns by audience**: a rate can be **for** an Adult, a Child or Anyone; a rate of 0
