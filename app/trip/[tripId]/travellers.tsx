@@ -492,8 +492,8 @@ export default function TripTravellersScreen() {
           <View style={styles.cover}>
             <Text style={[type.label, { color: c.textMuted }]}>Covered by</Text>
             <Text style={[type.caption, { color: c.textMuted }]}>
-              Whose costs {editingMember.name}’s share of a split is on this trip. Several adults share
-              it equally. A split can name someone else for one cost.
+              Who pays {editingMember.name}’s share when a cost on this trip is split. Several adults
+              share it equally; a split can name someone else for one cost.
             </Text>
             {members.some((m) => m.classification === 'adult') ? (
               <MultiChoiceField

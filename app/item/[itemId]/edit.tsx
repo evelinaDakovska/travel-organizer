@@ -133,9 +133,11 @@ export default function EditItem() {
               ? overpaidWarning(item.recordedPaid, input.priceAmount, input.priceCurrency)
               : null;
           if (overpaid && !(await confirmOverpaid(overpaid))) return;
-          // A split by amounts that the new price no longer matches: said first (3D-2 §4).
+          // A split by amounts that the new price no longer matches: said first (3D-2 §4). A new
+          // currency is not warned about here — with a split by amounts it is refused on save.
           if (
             input.priceCurrency &&
+            input.priceCurrency === item.priceCurrency &&
             !(await confirmSplitMismatch(await itemSplitFacts(db, item.id), input.priceAmount, input.priceCurrency))
           ) {
             return;

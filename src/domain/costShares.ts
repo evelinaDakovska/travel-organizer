@@ -74,7 +74,12 @@ export const splitInputSchema = z.object({
     .array(
       z.object({
         travellerId: z.string().min(1),
-        amount: z.number().int().nonnegative().nullable(),
+        // An empty or unreadable box arrives as NaN: said in words, never as a type error.
+        amount: z
+          .number({ error: 'Give everyone an amount, or split it equally.' })
+          .int('Use whole cents.')
+          .nonnegative('An amount cannot be below zero.')
+          .nullable(),
         coveredBy: z.string().min(1).nullable(),
       }),
     )
@@ -335,7 +340,7 @@ export function splitMismatchWarning(
   if (split.allocated === nextTotal) return null;
   const difference = nextTotal - split.allocated;
   return difference > 0
-    ? `The split adds up to ${formatMoney(split.allocated, currency)}. With this cost, ${formatMoney(difference, currency)} will be not allocated until you edit the split.`
+    ? `The split adds up to ${formatMoney(split.allocated, currency)}. With this cost, ${formatMoney(difference, currency)} will be left unallocated until you edit the split.`
     : `The split adds up to ${formatMoney(split.allocated, currency)}, ${formatMoney(-difference, currency)} more than this cost, until you edit the split.`;
 }
 

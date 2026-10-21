@@ -208,8 +208,14 @@ describe('a split as saved', () => {
         members,
       ),
     ).toMatch(/everyone an amount/);
-    expect(splitRefusal(byAmounts(['ev', -1], ['ana', 9001]), 9000, 'EUR', members)).not.toBeNull();
-    expect(splitRefusal(byAmounts(['ev', 4500.5], ['ana', 4499.5]), 9000, 'EUR', members)).not.toBeNull();
+    expect(splitRefusal(byAmounts(['ev', -1], ['ana', 9001]), 9000, 'EUR', members)).toBe(
+      'An amount cannot be below zero.',
+    );
+    expect(splitRefusal(byAmounts(['ev', 4500.5], ['ana', 4499.5]), 9000, 'EUR', members)).toBe('Use whole cents.');
+    // An empty amount box (found on the emulator): words, not a type error.
+    expect(splitRefusal(byAmounts(['ev', Number.NaN], ['ana', 9000]), 9000, 'EUR', members)).toBe(
+      'Give everyone an amount, or split it equally.',
+    );
   });
 
   it('an override only on a child’s share, by an adult of the trip', () => {
@@ -256,7 +262,7 @@ describe('editing a split cost', () => {
 
   it('warns, never refuses, when a new cost no longer matches a split by amounts', () => {
     expect(splitMismatchWarning({ mode: 'amounts', allocated: 9000 }, 10000, 'EUR')).toMatch(
-      /EUR 10.00 will be not allocated/,
+      /EUR 10.00 will be left unallocated/,
     );
     expect(splitMismatchWarning({ mode: 'amounts', allocated: 9000 }, 8000, 'EUR')).toMatch(/EUR 10.00 more/);
     expect(splitMismatchWarning({ mode: 'amounts', allocated: 9000 }, 9000, 'EUR')).toBeNull();

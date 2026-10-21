@@ -59,9 +59,15 @@ export default function EditExpense() {
         defaultValues={expenseFormValues(expense)}
         money={money}
         onSubmit={async (input) => {
-          // A split by amounts that the new amount no longer matches: said first (3D-2 §4).
+          // A split by amounts that the new amount no longer matches: said first (3D-2 §4). A new
+          // currency is not warned about here — with a split by amounts it is refused on save.
           const split = await expenseSplitFacts(db, expense.id);
-          if (!(await confirmSplitMismatch(split, input.amount, input.currency))) return;
+          if (
+            input.currency === expense.currency &&
+            !(await confirmSplitMismatch(split, input.amount, input.currency))
+          ) {
+            return;
+          }
           try {
             await updateExpense(db, expense.id, input);
           } catch (error) {
