@@ -186,7 +186,7 @@ export async function updateTripItem(
 export async function deleteTripItem(db: SQLiteDatabase, id: string): Promise<void> {
   await db.withTransactionAsync(async () => {
     const item = await getTripItem(db, id);
-    const refusal = item ? deleteRefusal(item.title, await moneyRecords(db, id)) : null;
+    const refusal = item ? deleteRefusal(item.title, await moneyRecords(db, id), item.status) : null;
     if (refusal) throw new MoneyRuleError(refusal);
     await db.runAsync(`DELETE FROM trip_items WHERE id = ?`, id);
   });

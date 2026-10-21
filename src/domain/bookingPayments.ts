@@ -135,9 +135,15 @@ export function recordsText(records: MoneyRecords): string {
  * Why a booking cannot be deleted, or null (L-1): its money history would go with it. Cancelling
  * keeps the booking and its records; removing the records one by one is the other way.
  */
-export function deleteRefusal(title: string, records: MoneyRecords): string | null {
+export function deleteRefusal(
+  title: string,
+  records: MoneyRecords,
+  status: TripItem['status'] = 'confirmed',
+): string | null {
   if (!hasRecords(records)) return null;
-  return `“${title}” has ${recordsText(records)}. To keep the money history, cancel the booking instead, or remove those records first.`;
+  return status === 'cancelled'
+    ? `“${title}” has ${recordsText(records)}. A cancelled booking keeps its money history — remove those records first to delete it.`
+    : `“${title}” has ${recordsText(records)}. To keep the money history, cancel the booking instead, or remove those records first.`;
 }
 
 /**

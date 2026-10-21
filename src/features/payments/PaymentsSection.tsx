@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { paymentSummary, type PaymentSummary } from '../../domain/bookingCosts';
+import { countsAsSpent, paymentSummary, type PaymentSummary } from '../../domain/bookingCosts';
 import { formatMoment, formatMoney } from '../../domain/format';
 import { expenseTitle } from '../../domain/spending';
 import type { TripItem } from '../../domain/tripItem';
@@ -48,7 +48,9 @@ export function PaymentsSection({ item }: Props) {
   return (
     <View style={styles.section}>
       <SectionLabel>Payments</SectionLabel>
-      <Text style={[type.body, { color: c.text }]}>{summaryText(summary)}</Text>
+      <Text style={[type.body, { color: c.text }]}>
+        {countsAsSpent(item) ? summaryText(summary) : notCountedText(summary)}
+      </Text>
       {summary.overpaid > 0 ? (
         <Text style={[type.caption, { color: c.attention }]}>
           {formatMoney(summary.overpaid, summary.currency)} more than the price is recorded.
@@ -96,6 +98,16 @@ export function summaryText(s: PaymentSummary): string {
   if (s.toPay === 0) return `Paid in full · ${money(s.price)}`;
   if (s.paid === 0) return `To pay ${money(s.price)} · nothing recorded yet`;
   return `Paid ${money(s.paid)} of ${money(s.price)} · To pay ${money(s.toPay)}`;
+}
+
+/**
+ * A cancellation that is refundable, or whose refund nobody set, owes nothing and is not in the
+ * totals; what was paid on it stays recorded. Refunds themselves are outside Phase 3.
+ */
+function notCountedText(s: PaymentSummary): string {
+  return s.recorded > 0
+    ? `Cancelled · ${formatMoney(s.recorded, s.currency)} recorded as paid · not counted in the totals`
+    : 'Cancelled · nothing to pay';
 }
 
 const styles = StyleSheet.create({

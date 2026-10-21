@@ -1,5 +1,6 @@
 import {
   bookingPaymentInputSchema,
+  deleteRefusal,
   editRefusal,
   linkableBookings,
   overpaidWarning,
@@ -117,6 +118,15 @@ describe('overpaidWarning', () => {
     expect(overpaidWarning(10000, 25000, 'EUR')).toBeNull();
     expect(overpaidWarning(10000, 10000, 'EUR')).toBeNull();
     expect(overpaidWarning(10000, 8000, 'EUR')).toMatch(/overpaid/);
+  });
+});
+
+describe('deleteRefusal', () => {
+  it('offers cancelling for a booking, and removing the records for a cancelled one', () => {
+    expect(deleteRefusal('Hotel', none)).toBeNull();
+    expect(deleteRefusal('Hotel', two)).toMatch(/cancel the booking instead/);
+    expect(deleteRefusal('Hotel', two, 'cancelled')).toMatch(/A cancelled booking keeps its money history/);
+    expect(deleteRefusal('Hotel', two, 'cancelled')).not.toMatch(/cancel the booking instead/);
   });
 });
 

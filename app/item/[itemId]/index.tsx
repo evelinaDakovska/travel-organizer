@@ -178,7 +178,7 @@ export default function ItemDetail() {
     // Money history is never deleted with a booking (L-1): explained, with the way out offered.
     const records = await countMoneyRecords(db, item.id);
     if (hasRecords(records)) {
-      Alert.alert('This booking cannot be deleted', deleteRefusal(item.title, records)!, [
+      Alert.alert('This booking cannot be deleted', deleteRefusal(item.title, records, item.status)!, [
         { text: 'Close', style: 'cancel' },
         ...(item.status === 'confirmed'
           ? [
