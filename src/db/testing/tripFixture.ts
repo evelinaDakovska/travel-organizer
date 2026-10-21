@@ -113,6 +113,18 @@ export function snapshot(): ExportTables {
     { id: 'bp2', trip_id: 'lap', trip_item_id: 'leg1', payer_id: null, amount: 5000, currency: 'EUR', paid_on: null, note: null, created_at: now, updated_at: now },
     { id: 'bp-rome', trip_id: 'rome', trip_item_id: 'colosseum', payer_id: 'stranger', amount: 3000, currency: 'EUR', paid_on: null, note: null, created_at: now, updated_at: now },
   ];
+  // Split (3D-2): the safari equally, Mitko's share covered by Misho; the groceries by amount.
+  const share = (id: string, tripId: string, owner: { item?: string; expense?: string }, who: string, extra: { amount?: number; coveredBy?: string; order?: number } = {}) => ({
+    id, trip_id: tripId, trip_item_id: owner.item ?? null, expense_id: owner.expense ?? null, traveller_id: who,
+    amount: extra.amount ?? null, covered_by: extra.coveredBy ?? null, sort_order: extra.order ?? 0, created_at: now, updated_at: now,
+  });
+  t.costShares = [
+    share('cs1', 'lap', { item: 'safari' }, 'ev'),
+    share('cs2', 'lap', { item: 'safari' }, 'kid', { coveredBy: 'mi', order: 1 }),
+    share('cs3', 'lap', { expense: 'e1' }, 'mi', { amount: 1250 }),
+    share('cs-rome', 'rome', { item: 'colosseum' }, 'stranger'),
+  ];
+  t.tripCover = [{ trip_id: 'lap', child_id: 'kid', adult_id: 'ev', sort_order: 0 }];
   t.payments = [
     { id: 'p1', trip_id: 'lap', from_name: 'Misho', to_name: 'Evelina', amount: 500, currency: 'EUR', created_at: now },
   ];

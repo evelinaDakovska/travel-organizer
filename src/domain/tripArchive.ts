@@ -63,6 +63,8 @@ const TABLE_KEYS = [
   'expenses',
   'payments',
   'bookingPayments',
+  'costShares',
+  'tripCover',
   'travellers',
   'tripTravellers',
   'itemParticipants',
@@ -83,6 +85,9 @@ const tablesSchema = z.object({
   payments: z.array(ROW_SCHEMAS.payments),
   // Absent before row format 8 (3D-1).
   bookingPayments: z.array(ROW_SCHEMAS.bookingPayments).default([]),
+  // Absent before row format 9 (3D-2): nothing split, nobody covered.
+  costShares: z.array(ROW_SCHEMAS.costShares).default([]),
+  tripCover: z.array(ROW_SCHEMAS.tripCover).default([]),
   travellers: z.array(ROW_SCHEMAS.travellers),
   tripTravellers: z.array(ROW_SCHEMAS.tripTravellers),
   itemParticipants: z.array(ROW_SCHEMAS.itemParticipants),
@@ -229,6 +234,8 @@ export function buildTripArchive(
     expenses: one.expenses,
     payments: one.payments,
     bookingPayments: one.bookingPayments,
+    costShares: one.costShares,
+    tripCover: one.tripCover,
     travellers: one.travellers,
     tripTravellers: one.tripTravellers,
     itemParticipants: one.itemParticipants,
@@ -477,6 +484,7 @@ export function checkTripArchive(
     unique(t.expenses, 'expenses') ??
     unique(t.payments, 'payments') ??
     unique(t.bookingPayments, 'booking payments') ??
+    unique(t.costShares, 'shares') ??
     unique(t.travellers, 'travellers') ??
     unique(t.lists, 'lists') ??
     unique(t.listItems, 'list items');
@@ -497,6 +505,8 @@ export function checkTripArchive(
   if (!ownedByTrip(t.expenses)) return 'an expense belongs to another trip';
   if (!ownedByTrip(t.payments)) return 'a payment belongs to another trip';
   if (!ownedByTrip(t.bookingPayments)) return 'a booking payment belongs to another trip';
+  if (!ownedByTrip(t.costShares)) return 'a share belongs to another trip';
+  if (!ownedByTrip(t.tripCover)) return 'who covers a child belongs to another trip';
   if (!ownedByTrip(t.lists)) return 'a list belongs to another trip';
   if (!ownedByTrip(t.tripTravellers)) return 'a traveller is listed on another trip';
   if (!ownedByTrip(t.templateUses)) return 'a template record belongs to another trip';
@@ -519,6 +529,7 @@ export function checkTripArchive(
   // A payer is on the trip (invariant P); members are remapped with the same choices, so they
   // stay on it here.
   const members = new Set(t.tripTravellers.map((row) => row.traveller_id));
+  const pairs = (rows: readonly string[]) => new Set(rows).size === rows.length;
   for (const row of t.bookingPayments) {
     if (!items.has(row.trip_item_id)) return 'a payment is for a missing booking';
     if (row.payer_id !== null && !travellers.has(row.payer_id)) {
@@ -539,8 +550,25 @@ export function checkTripArchive(
       return 'an expense names a payer who is not on the trip';
     }
   }
+  // Shares and covers name members of the trip only (3D-2; the database checks it too).
+  for (const row of t.costShares) {
+    if ((row.trip_item_id === null) === (row.expense_id === null)) return 'a share has no single cost';
+    if (row.trip_item_id !== null && !items.has(row.trip_item_id)) return 'a share is for a missing plan';
+    if (row.expense_id !== null && !expenses.has(row.expense_id)) return 'a share is for a missing expense';
+    if (!members.has(row.traveller_id)) return 'a share names someone who is not on the trip';
+    if (row.covered_by !== null && !members.has(row.covered_by)) {
+      return 'a share is covered by someone who is not on the trip';
+    }
+  }
+  if (!pairs(t.costShares.map((row) => `${row.trip_item_id ?? row.expense_id}|${row.traveller_id}`))) {
+    return 'someone has two shares of one cost';
+  }
+  for (const row of t.tripCover) {
+    if (!members.has(row.child_id) || !members.has(row.adult_id) || row.child_id === row.adult_id) {
+      return 'who covers a child names someone who is not on the trip';
+    }
+  }
 
-  const pairs = (rows: readonly string[]) => new Set(rows).size === rows.length;
   if (!t.tripTravellers.every((row) => travellers.has(row.traveller_id))) {
     return 'the trip names a traveller who is not in the archive';
   }
@@ -583,6 +611,8 @@ export type TripArchiveSummary = {
   payments: number;
   /** Payments recorded against bookings (3D-1); `payments` is the legacy, unused table. */
   bookingPayments: number;
+  /** Bookings and expenses with a split (3D-2). */
+  splitCosts: number;
   filesIncluded: number;
   /** Files that will not be on the phone after the import, with the reason. */
   unavailable: { name: string; reason: 'excluded' | 'missing' | 'damaged' }[];
@@ -613,6 +643,7 @@ export function summariseTripArchive(archive: OpenedTripArchive): TripArchiveSum
     expenses: t.expenses.length,
     payments: t.payments.length,
     bookingPayments: t.bookingPayments.length,
+    splitCosts: new Set(t.costShares.map((row) => row.trip_item_id ?? row.expense_id)).size,
     filesIncluded: archive.files.size,
     unavailable,
   };
@@ -689,6 +720,7 @@ export function planTripImport(
   const expenseIds = mapIds(t.expenses);
   const paymentIds = mapIds(t.payments);
   const bookingPaymentIds = mapIds(t.bookingPayments);
+  const costShareIds = mapIds(t.costShares);
   const resourceIds = mapIds(t.resources);
   const listIds = mapIds(t.lists);
   const listItemIds = mapIds(t.listItems);
@@ -791,6 +823,35 @@ export function planTripImport(
         trip_item_id: must(itemIds, row.trip_item_id, 'plan'),
         payer_id: row.payer_id === null ? null : must(travellerIds, row.payer_id, 'traveller'),
       })),
+      costShares: t.costShares.map((row) => {
+        const mapped = {
+          ...row,
+          id: must(costShareIds, row.id, 'share'),
+          trip_id: tripId,
+          trip_item_id: row.trip_item_id === null ? null : must(itemIds, row.trip_item_id, 'plan'),
+          expense_id: row.expense_id === null ? null : must(expenseIds, row.expense_id, 'expense'),
+          traveller_id: must(travellerIds, row.traveller_id, 'traveller'),
+          covered_by: row.covered_by === null ? null : must(travellerIds, row.covered_by, 'traveller'),
+        };
+        // Never merged: two people's amounts cannot become one person's, nor a child cover their
+        // own share (the preview refuses the choice that would do it — one profile for two people
+        // in the file).
+        if (
+          !once(`cs|${mapped.trip_item_id ?? mapped.expense_id}|${mapped.traveller_id}`) ||
+          mapped.covered_by === mapped.traveller_id
+        ) {
+          throw new Error('Two people in the file are linked to one profile here, and a split names both');
+        }
+        return mapped;
+      }),
+      tripCover: t.tripCover
+        .map((row) => ({
+          ...row,
+          trip_id: tripId,
+          child_id: must(travellerIds, row.child_id, 'traveller'),
+          adult_id: must(travellerIds, row.adult_id, 'traveller'),
+        }))
+        .filter((row) => row.child_id !== row.adult_id && once(`tc|${row.child_id}|${row.adult_id}`)),
       travellers: newTravellers,
       // Two archive travellers linked to one profile here become one member, one participant.
       tripTravellers: t.tripTravellers

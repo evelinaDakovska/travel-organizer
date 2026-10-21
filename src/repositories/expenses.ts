@@ -6,9 +6,12 @@ import {
   DELETE_EXPENSE,
   INSERT_EXPENSE,
   SELECT_EXPENSE,
+  SELECT_SPLIT_FACTS,
   SELECT_EXPENSES_FOR_TRIP,
   UPDATE_EXPENSE,
 } from '../db/queries';
+import { MoneyRuleError } from '../domain/bookingPayments';
+import { expenseSplitEditRefusal, splitFactsFrom } from '../domain/costShares';
 import type { ResourceInput } from '../domain/resource';
 import { parseExpenseRow, type Expense, type ExpenseInput, type ExpenseRow } from '../domain/spending';
 import { bookingForRecord, checkPayer } from './payments';
@@ -59,6 +62,27 @@ async function checkLink(db: SQLiteDatabase, tripId: string, input: ExpenseInput
   }
 }
 
+/** How the expense is split (3D-2), for the edit rules and the amount-change warning. */
+export async function expenseSplitFacts(db: SQLiteDatabase, expenseId: string) {
+  return splitFactsFrom(await db.getFirstAsync(SELECT_SPLIT_FACTS, { $itemId: null, $expenseId: expenseId }));
+}
+
+/**
+ * A split expense keeps its currency while split by amounts, and is not linked to a booking —
+ * a payment for a booking is split with the booking (3D-2).
+ */
+async function checkSplit(db: SQLiteDatabase, saved: Expense, input: ExpenseInput): Promise<void> {
+  const split = await expenseSplitFacts(db, saved.id);
+  if (split.mode === null) return;
+  if (input.tripItemId !== null && saved.tripItemId === null) {
+    throw new MoneyRuleError(
+      `This expense is split between ${split.people} ${split.people === 1 ? 'person' : 'people'}. A payment for a booking is split with the booking — remove this split first.`,
+    );
+  }
+  const refusal = expenseSplitEditRefusal(saved, input, split);
+  if (refusal) throw new MoneyRuleError(refusal);
+}
+
 /**
  * The expense and its receipts in one transaction: either all of it is saved or none. The
  * receipt files are already copied in, so a failed save leaves only orphans the sweep collects.
@@ -91,12 +115,13 @@ export async function updateExpense(
     if (saved) {
       await checkLink(db, saved.tripId, input);
       await checkPayer(db, saved.tripId, input.payerId, saved.payerId);
+      await checkSplit(db, saved, input);
     }
     await db.runAsync(UPDATE_EXPENSE, { $id: id, ...bindings(input) });
   });
 }
 
-/** Receipt rows cascade. Their files are reclaimed by the start-up sweep, not here. */
+/** Receipt rows and its split cascade. Their files are reclaimed by the start-up sweep, not here. */
 export async function deleteExpense(db: SQLiteDatabase, id: string): Promise<void> {
   await db.runAsync(DELETE_EXPENSE, { $id: id });
 }

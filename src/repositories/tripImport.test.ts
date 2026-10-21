@@ -171,7 +171,7 @@ describe('importing a trip archive into a database', () => {
   it('carries payments and linked expenses with new ids, on the copied bookings and payers (3D-1)', async () => {
     const { raw, db } = await setup();
     const { archive } = await archiveFrom(db);
-    expect(archive.manifest.rowFormat).toBe(8);
+    expect(archive.manifest.rowFormat).toBe(9);
     // Evelina is linked to the profile here; Misho comes in as a new one.
     const plan = await importInto(db, archive, new Map([['ev', { kind: 'existing', id: 'ev' }]]));
     const one = (sql: string) => raw.prepare(sql).all(plan.tripId);
@@ -213,6 +213,44 @@ describe('importing a trip archive into a database', () => {
               AND NOT EXISTS (SELECT 1 FROM trip_travellers m
                                WHERE m.trip_id = r.trip_id AND m.traveller_id = r.payer_id)`),
     ).toEqual([]);
+    expect(raw.pragma('foreign_key_check')).toEqual([]);
+    expect(await verifyTripImport(db, plan)).toEqual({ ok: true });
+  });
+
+  it('carries splits and covers with new ids, on the copied costs and people (3D-2)', async () => {
+    const { raw, db } = await setup();
+    const { archive } = await archiveFrom(db);
+    // The Rome trip's split stays out of a Lapland export.
+    expect(archive.tables.costShares.map((row) => row.id).sort()).toEqual(['cs1', 'cs2', 'cs3']);
+    const plan = await importInto(db, archive, new Map([['ev', { kind: 'existing', id: 'ev' }]]));
+    const one = (sql: string) => raw.prepare(sql).all(plan.tripId);
+
+    expect(
+      one(`SELECT COALESCE(i.title, e.label) AS cost, t.name AS who, c.name AS covered_by, s.amount, s.sort_order
+             FROM cost_shares s
+             LEFT JOIN trip_items i ON i.id = s.trip_item_id
+             LEFT JOIN expenses e ON e.id = s.expense_id
+             JOIN travellers t ON t.id = s.traveller_id
+             LEFT JOIN travellers c ON c.id = s.covered_by
+            WHERE s.trip_id = ? ORDER BY cost, s.sort_order`),
+    ).toEqual([
+      { cost: 'K-Market', who: 'Misho', covered_by: null, amount: 1250, sort_order: 0 },
+      { cost: 'safari', who: 'Evelina', covered_by: null, amount: null, sort_order: 0 },
+      { cost: 'safari', who: 'Mitko', covered_by: 'Misho', amount: null, sort_order: 1 },
+    ]);
+    const shares = one(`SELECT id, trip_item_id, traveller_id FROM cost_shares WHERE trip_id = ?`) as {
+      id: string;
+      trip_item_id: string | null;
+      traveller_id: string;
+    }[];
+    expect(shares.some((row) => ['cs1', 'cs2', 'cs3'].includes(row.id) || row.trip_item_id === 'safari')).toBe(false);
+    // Evelina linked by choice keeps the profile here; the others are new profiles.
+    expect(shares.map((row) => row.traveller_id)).toContain('ev');
+    expect(
+      one(`SELECT c.name AS child, a.name AS adult FROM trip_cover tc
+             JOIN travellers c ON c.id = tc.child_id JOIN travellers a ON a.id = tc.adult_id
+            WHERE tc.trip_id = ?`),
+    ).toEqual([{ child: 'Mitko', adult: 'Evelina' }]);
     expect(raw.pragma('foreign_key_check')).toEqual([]);
     expect(await verifyTripImport(db, plan)).toEqual({ ok: true });
   });

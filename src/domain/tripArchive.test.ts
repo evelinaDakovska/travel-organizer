@@ -204,6 +204,7 @@ describe('opening a trip archive', () => {
       expenses: 2,
       payments: 1,
       bookingPayments: 2,
+      splitCosts: 2,
       filesIncluded: 2,
       unavailable: [],
     });
@@ -275,14 +276,16 @@ describe('opening a trip archive', () => {
     }
   });
 
-  it('writes row format 8, and still opens a trip exported by 0.13.0 (row format 7)', async () => {
+  it('writes row format 9, and still opens trips exported by 0.14.0 (8) and 0.13.0 (7)', async () => {
     const entries = goodEntries();
     const manifest = manifestOf(entries);
-    expect(manifest.rowFormat).toBe(8);
-    const older = await open(rawZip(replace(entries, MANIFEST_NAME, json({ ...manifest, rowFormat: 7 }))));
-    expect(older.ok).toBe(true);
-    // What 0.13.0 does with this app's archives: its own check, with its own number.
-    expect(manifest.rowFormat).toBeGreaterThan(7);
+    expect(manifest.rowFormat).toBe(9);
+    for (const rowFormat of [8, 7]) {
+      const older = await open(rawZip(replace(entries, MANIFEST_NAME, json({ ...manifest, rowFormat }))));
+      expect(older.ok).toBe(true);
+    }
+    // What 0.14.0 does with this app's archives: its own check, with its own number.
+    expect(manifest.rowFormat).toBeGreaterThan(8);
   });
 
   it('refuses trip data that does not match its checksum', async () => {
@@ -348,6 +351,14 @@ describe('checkTripArchive — every reference resolves inside the archive', () 
     ['a payment by someone not in it', (t: any) => (t.bookingPayments[0].payer_id = 'ghost'), 'a payment names a payer who is not in the archive'],
     ['a payment by someone not on the trip', (t: any) => (guest(t), (t.bookingPayments[0].payer_id = 'guest')), 'a payment names a payer who is not on the trip'],
     ['an expense by someone not on the trip', (t: any) => (guest(t), (t.expenses.find((e: any) => e.payer_id).payer_id = 'guest')), 'an expense names a payer who is not on the trip'],
+    // 3D-2: shares and covers name members of the trip, for one cost each.
+    ['a share for someone not on the trip', (t: any) => (guest(t), (t.costShares[0].traveller_id = 'guest')), 'a share names someone who is not on the trip'],
+    ['a share covered by someone not on the trip', (t: any) => (guest(t), (t.costShares[1].covered_by = 'guest')), 'a share is covered by someone who is not on the trip'],
+    ['a share of a missing plan', (t: any) => (t.costShares[0].trip_item_id = 'ghost'), 'a share is for a missing plan'],
+    ['a share of a missing expense', (t: any) => (t.costShares[2].expense_id = 'ghost'), 'a share is for a missing expense'],
+    ['a share of two costs', (t: any) => (t.costShares[0].expense_id = 'e1'), 'a share has no single cost'],
+    ['two shares of one cost for one person', (t: any) => t.costShares.push({ ...t.costShares[0], id: 'cs9' }), 'someone has two shares of one cost'],
+    ['a cover by someone not on the trip', (t: any) => (guest(t), (t.tripCover[0].adult_id = 'guest')), 'who covers a child names someone who is not on the trip'],
   ])('refuses %s', (_what, tamper, reason) => {
     const { manifest, tables } = parts();
     tamper(tables);
@@ -456,6 +467,27 @@ describe('planning an import: a new trip, new ids for everything', () => {
     );
     expect(p.tables.tripTravellers.filter((row) => row.traveller_id === 'here')).toHaveLength(1);
     expect(p.tables.listItemRecipients.filter((row) => row.traveller_id === 'here')).toHaveLength(1);
+  });
+
+  it('never merges two people’s shares of one cost into one profile (3D-2)', async () => {
+    // Evelina and Mitko both have a share of the safari; Misho covers Mitko's.
+    const both = (a: string, b: string) =>
+      new Map([
+        [a, { kind: 'existing' as const, id: 'here' }],
+        [b, { kind: 'existing' as const, id: 'here' }],
+      ]);
+    await expect(plan(both('ev', 'kid'))).rejects.toThrow(/a split names both/);
+    await expect(plan(both('kid', 'mi'))).rejects.toThrow(/a split names both/);
+  });
+
+  it('remaps splits and covers through the same choices, with new ids', async () => {
+    const p = await plan(new Map([['ev', { kind: 'existing', id: 'here-evelina' }]]));
+    expect(p.tables.costShares).toHaveLength(3);
+    expect(p.tables.costShares.every((row) => row.trip_id === p.tripId && !row.id.startsWith('cs'))).toBe(true);
+    expect(p.tables.costShares.map((row) => row.traveller_id)).toContain('here-evelina');
+    expect(p.tables.tripCover).toEqual([
+      { trip_id: p.tripId, child_id: expect.stringMatching(/^new-/), adult_id: 'here-evelina', sort_order: 0 },
+    ]);
   });
 
   it('clears what names the other phone: the legacy list column and a list’s source; keeps template provenance', async () => {

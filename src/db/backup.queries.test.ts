@@ -405,15 +405,23 @@ describe('the backup round trip', () => {
     expect(item).toEqual({ details, price_amount: 34000, is_paid: 1 });
   });
 
-  it('writes format 8, and still restores a format-7 backup from 0.13.0', async () => {
+  it('writes format 9, and still restores format 8 (0.14.0) and format 7 (0.13.0)', async () => {
     const source = fresh();
     seed(source);
     const current = JSON.parse(JSON.stringify(await documentFrom(source)));
-    expect(current.formatVersion).toBe(8);
-    const fromOlder = parseExportDocument({ ...current, formatVersion: 7 });
-    expect(fromOlder.ok).toBe(true);
-    // 0.13.0 refuses anything above its own 7 — this app's backups included.
-    expect(current.formatVersion).toBeGreaterThan(7);
+    expect(current.formatVersion).toBe(9);
+    // An older file has no shares or covers at all: they read as empty.
+    const { costShares: _shares, tripCover: _cover, ...olderTables } = current.tables;
+    for (const formatVersion of [8, 7]) {
+      const fromOlder = parseExportDocument({ ...current, formatVersion, tables: olderTables });
+      expect(fromOlder.ok).toBe(true);
+      if (fromOlder.ok) {
+        expect(fromOlder.document.tables.costShares).toEqual([]);
+        expect(fromOlder.document.tables.tripCover).toEqual([]);
+      }
+    }
+    // 0.14.0 refuses anything above its own 8 — this app's backups included.
+    expect(current.formatVersion).toBeGreaterThan(8);
   });
 
   it('rejects a backup from a future format with a clear message', async () => {
@@ -836,5 +844,90 @@ describe('money records linked to bookings (format 8, 3D-1)', () => {
     expect(one.bookingPayments.map((row) => row.id).sort()).toEqual(['bp1', 'bp2']);
     expect(one.travellers.map((t) => t.id).sort()).toEqual(['ev', 'friend', 'mia']);
     expect(filterTablesForTrip(await readAll(source), 't2').bookingPayments).toEqual([]);
+  });
+});
+
+describe('splits and cover (format 9, 3D-2)', () => {
+  function seedSplits(db: Database.Database) {
+    run(db, `UPDATE trip_travellers SET classification = 'child' WHERE trip_id = 't1' AND traveller_id = 'mia'`);
+    run(db, `UPDATE trip_travellers SET classification = 'adult' WHERE trip_id = 't1' AND traveller_id = 'ev'`);
+    run(
+      db,
+      `INSERT INTO cost_shares (id, trip_id, trip_item_id, expense_id, traveller_id, amount, covered_by,
+                                sort_order, created_at, updated_at)
+       VALUES ('s1', 't1', 'i1', NULL, 'ev', NULL, NULL, 0, ?, ?),
+              ('s2', 't1', 'i1', NULL, 'mia', NULL, 'ev', 1, ?, ?),
+              ('s3', 't1', NULL, 'e1', 'ev', 1000, NULL, 0, ?, ?)`,
+      now,
+      now,
+      now,
+      now,
+      now,
+      now,
+    );
+    run(db, `INSERT INTO trip_cover (trip_id, child_id, adult_id, sort_order) VALUES ('t1', 'mia', 'ev', 0)`);
+  }
+
+  it('restores splits and covers into an empty app, byte for byte', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    seedSplits(source);
+    const target = fresh();
+
+    await restoreInto(target, source, 'merge');
+
+    const restored = await readAll(target);
+    expect(restored).toEqual(await readAll(source));
+    expect(restored.costShares).toHaveLength(3);
+    expect(restored.tripCover).toHaveLength(1);
+    expect(target.pragma('foreign_key_check')).toEqual([]);
+  });
+
+  it('replace overwrites a trip whose costs are split on this phone', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    const target = fresh();
+    seed(target);
+    seedFieldbook(target);
+    seedSplits(target);
+
+    await restoreInto(target, source, 'replace');
+
+    expect(await readAll(target)).toEqual(await readAll(source));
+    expect(target.prepare(`SELECT COUNT(*) AS n FROM cost_shares`).get()).toEqual({ n: 0 });
+    expect(target.prepare(`SELECT COUNT(*) AS n FROM trip_cover`).get()).toEqual({ n: 0 });
+  });
+
+  it('merge leaves a trip already here, splits and all, exactly as it is', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    const target = fresh();
+    seed(target);
+    seedFieldbook(target);
+    seedSplits(target);
+    const before = await readAll(target);
+
+    await restoreInto(target, source, 'merge');
+
+    expect(await readAll(target)).toEqual(before);
+  });
+
+  it('a one-trip selection carries its splits and covers, and no other trip’s', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    seedSplits(source);
+
+    expect(filterTablesForTrip(await readAll(source), 't1').costShares.map((row) => row.id)).toEqual([
+      's1',
+      's2',
+      's3',
+    ]);
+    expect(filterTablesForTrip(await readAll(source), 't1').tripCover).toHaveLength(1);
+    expect(filterTablesForTrip(await readAll(source), 't2').costShares).toEqual([]);
+    expect(filterTablesForTrip(await readAll(source), 't2').tripCover).toEqual([]);
   });
 });

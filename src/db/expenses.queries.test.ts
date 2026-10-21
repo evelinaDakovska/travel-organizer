@@ -142,6 +142,7 @@ describe('expenses', () => {
       files: 2,
       expenses: 2,
       payments: 0,
+      splits: 0,
     });
   });
 });

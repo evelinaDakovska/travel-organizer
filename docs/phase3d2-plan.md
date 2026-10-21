@@ -214,7 +214,7 @@ CREATE INDEX idx_trip_cover_adult ON trip_cover(trip_id, adult_id);
 
 ## 10. Branch, version, tests, verification
 
-- **Branch `phase-3d2`, from `phase-3d1`.** 3D-1 stays reviewable on its own; `main` stays at
+- **On `phase-3d1`** (owner, §11.1 *5*; proposed here as a separate `phase-3d2`). `main` stays at
   0.13.0; **no phone install until after the owner's trip** (owner, 2026-10-21) and then only with
   the separate approvals for the backup, the structure-only check and the rehearsal. **0.15.0**,
   versionCode 22.
@@ -257,3 +257,21 @@ CREATE INDEX idx_trip_cover_adult ON trip_cover(trip_id, adult_id);
    **recommended** (a split is part of the cost, not money that moved) — or blocked like payments.
 5. **Migration 008 as in §5**, built on `phase-3d2` from `phase-3d1`, emulator only (debug-signed
    test build on `TO_2B_Test` as for 3D-1), no phone install until after the trip — to approve.
+
+### 11.1 The owner's answers (2026-10-21)
+
+1. **Equally and By amounts**, with *Fill from prices* writing editable amounts; an equal split
+   follows the current price, a split by amounts stays as saved and shows when it no longer adds up.
+2. (with 1) as recommended.
+3. **One or more adults per child**, sharing equally; a one-adult override per cost.
+4. **The split goes with a deleted booking or expense**, named in the confirmation.
+5. Migration 008: *"i approve, but again only if it will not make any risk for my real data on the
+   physical phone. i think we already have a branch with change in the tables that is waiting for my
+   trip to pass, maybe build there and wait as well?"*
+
+   Applied: building and testing happen only on emulators, which cannot reach the phone. 3D-2 is
+   built **on `phase-3d1` itself**, not a new branch, and waits with 3D-1 for the trip to pass.
+   `main` stays at 0.13.0. 3D-1's review range ends at `da6b2a7`; 3D-2's commits follow it.
+   **Consequence:** the phone is on 0.13.0 (schema 6), so its eventual install runs migrations 007
+   and 008 together. The 6 → 8 path is tested directly (Node, and the emulator rehearsal), not
+   only 7 → 8.

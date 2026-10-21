@@ -22,6 +22,9 @@ const ORDER: readonly (readonly [keyof TripArchiveTables, ExportTableName])[] = 
   ['expenses', 'expenses'],
   ['payments', 'payments'],
   ['bookingPayments', 'booking_payments'],
+  // After the members, plans and expenses they name.
+  ['costShares', 'cost_shares'],
+  ['tripCover', 'trip_cover'],
   ['resources', 'resources'],
   ['lists', 'lists'],
   ['listItems', 'list_items'],
@@ -90,6 +93,8 @@ export async function verifyTripImport(
       plan.tables.bookingPayments.length,
       `SELECT COUNT(*) AS n FROM booking_payments WHERE trip_id = $trip`,
     ],
+    ['shares', plan.tables.costShares.length, `SELECT COUNT(*) AS n FROM cost_shares WHERE trip_id = $trip`],
+    ['covers', plan.tables.tripCover.length, `SELECT COUNT(*) AS n FROM trip_cover WHERE trip_id = $trip`],
     [
       'documents',
       plan.tables.resources.length,

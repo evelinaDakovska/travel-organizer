@@ -5,7 +5,7 @@ import { getSetting, setSetting } from './settings';
 import { markLegacyTravellerConverted } from './trips';
 
 import {
-  COUNT_PAYER_RECORDS,
+  COUNT_HOLDS,
   COUNT_TRAVELLER_ITEMS,
   DELETE_ITEM_PARTICIPANTS,
   DELETE_TRIP_TRAVELLER,
@@ -24,7 +24,8 @@ import {
   UPDATE_TRAVELLER_CLASSIFICATION,
   UPDATE_TRIP_TRAVELLER_CLASSIFICATION,
 } from '../db/queries';
-import { leaveRefusal, MoneyRuleError } from '../domain/bookingPayments';
+import { MoneyRuleError } from '../domain/bookingPayments';
+import { holdsRefusal, type MoneyHolds } from '../domain/costShares';
 import { joinCandidates, type JoinCandidates } from '../domain/participation';
 import { parseTripItemRow, type TripItem, type TripItemRow } from '../domain/tripItem';
 import {
@@ -240,22 +241,23 @@ export async function createTripTraveller(
 }
 
 /**
- * Why this member cannot leave the trip, or null: they are the payer on its money records
- * (invariant I). Asked before anything is written, so a refusal changes nothing.
+ * Why this member cannot leave the trip, or null: its money records name them — as the payer
+ * (3D-1), in a split, or covering a child's share by override (3D-2) — invariant I. Asked before
+ * anything is written, so a refusal changes nothing; the database's keys are the last word.
  */
 export async function leaveTripRefusal(
   db: SQLiteDatabase,
   tripId: string,
   travellerId: string,
 ): Promise<string | null> {
-  const row = await db.getFirstAsync<{ n: number }>(COUNT_PAYER_RECORDS, {
+  const holds = await db.getFirstAsync<MoneyHolds>(COUNT_HOLDS, {
     $tripId: tripId,
     $travellerId: travellerId,
   });
   const name = await db.getFirstAsync<{ name: string }>(`SELECT name FROM travellers WHERE id = $id`, {
     $id: travellerId,
   });
-  return leaveRefusal(name?.name ?? 'This traveller', row?.n ?? 0);
+  return holdsRefusal(name?.name ?? 'This traveller', holds ?? { paid: 0, shares: 0, covers: 0 });
 }
 
 /**

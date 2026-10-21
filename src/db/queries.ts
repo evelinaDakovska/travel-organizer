@@ -15,7 +15,9 @@ SELECT
        AND (r.trip_id = $id
             OR r.trip_item_id IN (SELECT id FROM trip_items WHERE trip_id = $id))) AS files,
   (SELECT COUNT(*) FROM expenses WHERE trip_id = $id) AS expenses,
-  (SELECT COUNT(*) FROM booking_payments WHERE trip_id = $id) AS payments
+  (SELECT COUNT(*) FROM booking_payments WHERE trip_id = $id) AS payments,
+  (SELECT COUNT(DISTINCT COALESCE(trip_item_id, expense_id)) FROM cost_shares WHERE trip_id = $id)
+    AS splits
 `;
 
 /**
@@ -565,6 +567,10 @@ export const EXPORT_COLUMNS = {
   list_item_recipients: ['list_item_id', 'traveller_id'],
   booking_payments: ['id', 'trip_id', 'trip_item_id', 'payer_id', 'amount', 'currency', 'paid_on',
                      'note', 'created_at', 'updated_at'],
+  // Format 9 (migration 008, 3D-2).
+  cost_shares: ['id', 'trip_id', 'trip_item_id', 'expense_id', 'traveller_id', 'amount',
+                'covered_by', 'sort_order', 'created_at', 'updated_at'],
+  trip_cover: ['trip_id', 'child_id', 'adult_id', 'sort_order'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type ExportTableName = keyof typeof EXPORT_COLUMNS;
@@ -725,4 +731,83 @@ SELECT 1 AS yes FROM trip_travellers WHERE trip_id = $tripId AND traveller_id = 
 export const COUNT_PAYER_RECORDS = `
 SELECT (SELECT COUNT(*) FROM booking_payments WHERE trip_id = $tripId AND payer_id = $travellerId)
      + (SELECT COUNT(*) FROM expenses WHERE trip_id = $tripId AND payer_id = $travellerId) AS n
+`;
+
+// ─── Splits and cover (3D-2) ────────────────────────────────────────────────────────────────────
+
+/** A booking's or an expense's split, in its order. Exactly one of the two ids is bound. */
+export const SELECT_SHARES = `
+SELECT * FROM cost_shares
+ WHERE ($itemId IS NOT NULL AND trip_item_id = $itemId) OR ($expenseId IS NOT NULL AND expense_id = $expenseId)
+ ORDER BY sort_order
+`;
+
+/** Every split on a trip: the Expenses tab marks split costs, and leaving names them. */
+export const SELECT_TRIP_SHARES = `
+SELECT * FROM cost_shares WHERE trip_id = $tripId ORDER BY sort_order
+`;
+
+/** How a cost is split, for the edit rules: how many people, how many with an amount, their sum. */
+export const SELECT_SPLIT_FACTS = `
+SELECT COUNT(*) AS people,
+       COALESCE(SUM(amount IS NOT NULL), 0) AS withAmount,
+       COALESCE(SUM(amount), 0) AS allocated
+  FROM cost_shares
+ WHERE ($itemId IS NOT NULL AND trip_item_id = $itemId) OR ($expenseId IS NOT NULL AND expense_id = $expenseId)
+`;
+
+export const DELETE_SHARES = `
+DELETE FROM cost_shares
+ WHERE ($itemId IS NOT NULL AND trip_item_id = $itemId) OR ($expenseId IS NOT NULL AND expense_id = $expenseId)
+`;
+
+export const INSERT_COST_SHARE = `
+INSERT INTO cost_shares
+  (id, trip_id, trip_item_id, expense_id, traveller_id, amount, covered_by, sort_order, created_at,
+   updated_at)
+VALUES
+  ($id, $tripId, $itemId, $expenseId, $travellerId, $amount, $coveredBy, $sortOrder, $now, $now)
+`;
+
+export const SELECT_TRIP_COVER = `
+SELECT child_id, adult_id, sort_order FROM trip_cover WHERE trip_id = $tripId ORDER BY sort_order
+`;
+
+export const DELETE_CHILD_COVER = `
+DELETE FROM trip_cover WHERE trip_id = $tripId AND child_id = $childId
+`;
+
+export const INSERT_TRIP_COVER = `
+INSERT INTO trip_cover (trip_id, child_id, adult_id, sort_order)
+VALUES ($tripId, $childId, $adultId, $sortOrder)
+`;
+
+/** What holds someone on a trip (invariant I): paid, in a split, covering a share by override. */
+export const COUNT_HOLDS = `
+SELECT (SELECT COUNT(*) FROM booking_payments WHERE trip_id = $tripId AND payer_id = $travellerId)
+     + (SELECT COUNT(*) FROM expenses WHERE trip_id = $tripId AND payer_id = $travellerId) AS paid,
+       (SELECT COUNT(*) FROM cost_shares WHERE trip_id = $tripId AND traveller_id = $travellerId) AS shares,
+       (SELECT COUNT(*) FROM cost_shares WHERE trip_id = $tripId AND covered_by = $travellerId) AS covers
+`;
+
+/**
+ * Each record that holds someone on a trip, with what to open: a payment opens itself, an expense
+ * or a split opens its expense or booking. Titles fall back to the expense's category.
+ */
+export const SELECT_HOLDS = `
+SELECT 'paid' AS kind, p.id AS payment_id, p.trip_item_id AS item_id, NULL AS expense_id,
+       i.title AS title, p.amount AS amount, p.currency AS currency
+  FROM booking_payments p JOIN trip_items i ON i.id = p.trip_item_id
+ WHERE p.trip_id = $tripId AND p.payer_id = $travellerId
+UNION ALL
+SELECT 'paid', NULL, NULL, e.id, COALESCE(e.label, e.category), e.amount, e.currency
+  FROM expenses e WHERE e.trip_id = $tripId AND e.payer_id = $travellerId
+UNION ALL
+SELECT CASE WHEN s.traveller_id = $travellerId THEN 'share' ELSE 'covers' END, NULL,
+       s.trip_item_id, s.expense_id, COALESCE(i.title, e.label, e.category), s.amount,
+       COALESCE(i.price_currency, e.currency)
+  FROM cost_shares s
+  LEFT JOIN trip_items i ON i.id = s.trip_item_id
+  LEFT JOIN expenses e ON e.id = s.expense_id
+ WHERE s.trip_id = $tripId AND (s.traveller_id = $travellerId OR s.covered_by = $travellerId)
 `;

@@ -46,6 +46,7 @@ describe('migrations', () => {
       .sort();
     expect(tables).toEqual([
       'booking_payments',
+      'cost_shares',
       'expenses',
       'item_participants',
       'list_item_recipients',
@@ -57,6 +58,7 @@ describe('migrations', () => {
       'template_uses',
       'templates',
       'travellers',
+      'trip_cover',
       'trip_items',
       'trip_notes',
       'trip_travellers',

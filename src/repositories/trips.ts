@@ -140,8 +140,11 @@ export async function deleteTrip(db: SQLiteDatabase, id: string): Promise<void> 
   await db.runAsync(`DELETE FROM trips WHERE id = ?`, id);
 }
 
-/** `payments`: recorded against bookings (3D-1) — named in the deletion's confirmation. */
-type TripContents = { items: number; files: number; expenses: number; payments: number };
+/**
+ * `payments`: recorded against bookings (3D-1); `splits`: bookings and expenses split (3D-2) —
+ * named in the deletion's confirmation.
+ */
+type TripContents = { items: number; files: number; expenses: number; payments: number; splits: number };
 
 export async function countTripContents(
   db: SQLiteDatabase,
@@ -153,6 +156,7 @@ export async function countTripContents(
     files: row?.files ?? 0,
     expenses: row?.expenses ?? 0,
     payments: row?.payments ?? 0,
+    splits: row?.splits ?? 0,
   };
 }
 

@@ -146,15 +146,6 @@ export function deleteRefusal(
     : `“${title}” has ${recordsText(records)}. To keep the money history, cancel the booking instead, or remove those records first.`;
 }
 
-/**
- * Why someone cannot leave a trip, or null (invariant I): what they paid on it would point at
- * nobody. 3D-2 designs the full resolution; until then the payer is changed by hand first.
- */
-export function leaveRefusal(name: string, payerRecords: number): string | null {
-  if (payerRecords === 0) return null;
-  return `${name} is the payer on ${count(payerRecords, 'money record', 'money records')} on this trip. Change the payer on ${payerRecords === 1 ? 'it' : 'those'} first — money history is never moved or deleted by itself.`;
-}
-
 type SavedBooking = Pick<TripItem, 'status' | 'priceAmount' | 'priceCurrency'>;
 type EditedBooking = {
   status: TripItem['status'];

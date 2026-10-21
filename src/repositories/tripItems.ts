@@ -14,6 +14,7 @@ import {
   SELECT_KNOWN_PLACES,
   SELECT_PLACES,
   SELECT_REMINDER_CANDIDATES,
+  SELECT_SPLIT_FACTS,
   SELECT_TRIP_ITEM,
   SELECT_TRIP_ITEMS,
   SET_TASK_COMPLETED,
@@ -27,6 +28,7 @@ import {
   MoneyRuleError,
   type MoneyRecords,
 } from '../domain/bookingPayments';
+import { bookingSplitEditRefusal, splitFactsFrom } from '../domain/costShares';
 import { parseNoteRow, type Note, type NoteRow } from '../domain/note';
 import type { KnownPlace } from '../domain/places';
 import { searchPattern } from '../domain/search';
@@ -141,7 +143,15 @@ async function moneyRecords(db: SQLiteDatabase, itemId: string): Promise<MoneyRe
   return { payments: row?.payments ?? 0, linkedExpenses: row?.linkedExpenses ?? 0 };
 }
 
-/** Refuses, with the reason, an edit that would strand the item's money records (3D-1). */
+/** How the booking is split (3D-2), for the edit rules and the price-change warning. */
+export async function itemSplitFacts(db: SQLiteDatabase, itemId: string) {
+  return splitFactsFrom(await db.getFirstAsync(SELECT_SPLIT_FACTS, { $itemId: itemId, $expenseId: null }));
+}
+
+/**
+ * Refuses, with the reason, an edit that would strand the item's money records (3D-1) or its
+ * split (3D-2).
+ */
 async function guardEdit(
   db: SQLiteDatabase,
   id: string,
@@ -149,7 +159,9 @@ async function guardEdit(
 ): Promise<void> {
   const saved = await getTripItem(db, id);
   if (!saved) return;
-  const refusal = editRefusal(saved, next, await moneyRecords(db, id));
+  const refusal =
+    editRefusal(saved, next, await moneyRecords(db, id)) ??
+    bookingSplitEditRefusal(saved, next, await itemSplitFacts(db, id));
   if (refusal) throw new MoneyRuleError(refusal);
 }
 
@@ -181,7 +193,8 @@ export async function updateTripItem(
 
 /**
  * Refused while payments or linked expenses point at it (L-1) — here with the reason, and by the
- * database's NO ACTION references whatever calls this. Never cascades money history away.
+ * database's NO ACTION references whatever calls this. Never cascades money history away. A split
+ * is part of the cost and goes with it (3D-2); the screen's confirmation names it.
  */
 export async function deleteTripItem(db: SQLiteDatabase, id: string): Promise<void> {
   await db.withTransactionAsync(async () => {
