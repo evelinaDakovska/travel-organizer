@@ -2,9 +2,15 @@ import { randomUUID } from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { COUNT_TRIP_CONTENTS } from '../db/queries';
+import { MoneyRuleError } from '../domain/bookingPayments';
 import { parseTripRow, type Trip, type TripInput, type TripRow } from '../domain/trip';
 import { recomputeTripInstants } from './tripItems';
-import { addTripTraveller, listTripTravellers, removeTripTraveller } from './travellers';
+import {
+  addTripTraveller,
+  leaveTripRefusal,
+  listTripTravellers,
+  removeTripTraveller,
+} from './travellers';
 
 export const TRIP_TABLES = ['trips', 'trip_travellers'] as const;
 
@@ -101,6 +107,12 @@ export async function updateTripWithMembers(
   input: TripInput,
   newTravellerIds: readonly string[],
 ): Promise<void> {
+  // Nobody who paid on this trip can be unticked: refused before anything is saved (3D-1).
+  for (const member of await listTripTravellers(db, tripId)) {
+    if (newTravellerIds.includes(member.id)) continue;
+    const refusal = await leaveTripRefusal(db, tripId, member.id);
+    if (refusal) throw new MoneyRuleError(refusal);
+  }
   await updateTrip(db, tripId, input);
   const currentMembers = await listTripTravellers(db, tripId);
   const currentMemberMap = new Map(currentMembers.map((m) => [m.id, m]));
@@ -126,14 +138,20 @@ export async function deleteTrip(db: SQLiteDatabase, id: string): Promise<void> 
   await db.runAsync(`DELETE FROM trips WHERE id = ?`, id);
 }
 
-type TripContents = { items: number; files: number; expenses: number };
+/** `payments`: recorded against bookings (3D-1) — named in the deletion's confirmation. */
+type TripContents = { items: number; files: number; expenses: number; payments: number };
 
 export async function countTripContents(
   db: SQLiteDatabase,
   id: string,
 ): Promise<TripContents> {
   const row = await db.getFirstAsync<TripContents>(COUNT_TRIP_CONTENTS, { $id: id });
-  return { items: row?.items ?? 0, files: row?.files ?? 0, expenses: row?.expenses ?? 0 };
+  return {
+    items: row?.items ?? 0,
+    files: row?.files ?? 0,
+    expenses: row?.expenses ?? 0,
+    payments: row?.payments ?? 0,
+  };
 }
 
 function serialiseTravellers(names: string[] | undefined): string | null {

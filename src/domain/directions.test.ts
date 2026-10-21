@@ -266,7 +266,7 @@ describe('resolveItemEndpoint', () => {
     details: null,
     priceAmount: null,
     priceCurrency: null,
-    isPaid: false,
+    isPaid: false, recordedPaid: 0,
     createdAt: '2026-10-13T10:00:00Z',
     updatedAt: '2026-10-13T10:00:00Z',
   };
@@ -389,7 +389,7 @@ describe('findTimelineConnectors', () => {
     details: null,
     priceAmount: null,
     priceCurrency: null,
-    isPaid: false,
+    isPaid: false, recordedPaid: 0,
     createdAt: '2026-10-13T10:00:00Z',
     updatedAt: '2026-10-13T10:00:00Z',
   };
@@ -753,7 +753,7 @@ describe('findTripStays, findStayForDay and findTripSavedPlaces', () => {
     details: null,
     priceAmount: null,
     priceCurrency: null,
-    isPaid: false,
+    isPaid: false, recordedPaid: 0,
     createdAt: '2026-10-13T10:00:00Z',
     updatedAt: '2026-10-13T10:00:00Z',
   };
@@ -845,7 +845,7 @@ describe('Route-day hotel selection and item detail directions', () => {
     details: null,
     priceAmount: null,
     priceCurrency: null,
-    isPaid: false,
+    isPaid: false, recordedPaid: 0,
     createdAt: '2026-10-13T10:00:00Z',
     updatedAt: '2026-10-13T10:00:00Z',
   };

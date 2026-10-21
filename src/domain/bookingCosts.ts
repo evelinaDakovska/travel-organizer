@@ -23,7 +23,12 @@ export function withRefundable(
   return Object.keys(next).length > 0 ? next : undefined;
 }
 
-type Priced = Pick<TripItem, 'status' | 'priceAmount' | 'priceCurrency' | 'isPaid' | 'details'>;
+/**
+ * `recordedPaid` is what payments and linked expenses add up to (3D-1); absent means nothing is
+ * recorded, as for every item before 3D-1.
+ */
+type Priced = Pick<TripItem, 'status' | 'priceAmount' | 'priceCurrency' | 'isPaid' | 'details'> &
+  Partial<Pick<TripItem, 'recordedPaid'>>;
 
 /**
  * A price that is money: a positive amount in a currency. A free booking (price 0) costs nothing
@@ -41,6 +46,57 @@ export function countsAsSpent(item: Priced): boolean {
   if (!hasCost(item)) return false;
   if (item.status === 'confirmed') return true;
   return item.status === 'cancelled' && refundableOf(item.details) === false;
+}
+
+type Paying = Pick<TripItem, 'priceAmount' | 'priceCurrency' | 'isPaid'> &
+  Partial<Pick<TripItem, 'recordedPaid'>>;
+
+/**
+ * How much of a booking's price is paid (`docs/phase3d1-plan.md` §3). The *Paid* switch means
+ * fully paid, whatever is recorded — the owner's rule: records describe the part that is known,
+ * and never turn a booking marked *Paid* back into *To pay*. Without the switch, what is recorded,
+ * never more than the price. A booking and its payments are one cost: this is never added to it.
+ */
+export function paidOf(item: Paying): number {
+  if (!hasCost(item)) return 0;
+  const price = item.priceAmount!;
+  return item.isPaid ? price : Math.min(item.recordedPaid ?? 0, price);
+}
+
+/** Paid in full: by the switch, or because the records reach the price. */
+export function isFullyPaid(item: Paying): boolean {
+  if (item.isPaid) return true;
+  return hasCost(item) && (item.recordedPaid ?? 0) >= item.priceAmount!;
+}
+
+export type PaymentSummary = {
+  currency: string;
+  price: number;
+  /** Payments plus linked expenses. */
+  recorded: number;
+  paid: number;
+  toPay: number;
+  /** Recorded beyond the price: shown, never added to any total. */
+  overpaid: number;
+  /** Marked *Paid* but not all of it recorded: the part paid "not recorded by whom". */
+  notRecorded: number;
+};
+
+/** The working behind a booking's paid state, for its screen. Null without a price. */
+export function paymentSummary(item: Paying): PaymentSummary | null {
+  if (!hasCost(item)) return null;
+  const price = item.priceAmount!;
+  const recorded = item.recordedPaid ?? 0;
+  const paid = paidOf(item);
+  return {
+    currency: item.priceCurrency!,
+    price,
+    recorded,
+    paid,
+    toPay: price - paid,
+    overpaid: Math.max(recorded - price, 0),
+    notRecorded: item.isPaid ? Math.max(price - recorded, 0) : 0,
+  };
 }
 
 export type CurrencyTotal = {
@@ -71,8 +127,9 @@ export function tripExpenses(items: readonly Priced[]): CurrencyTotal[] {
       items: 0,
     };
     line.total += amount;
-    if (item.isPaid) line.paid += amount;
-    else line.toPay += amount;
+    const paid = paidOf(item);
+    line.paid += paid;
+    line.toPay += amount - paid;
     if (item.status === 'cancelled') line.lost += amount;
     line.items += 1;
     byCurrency.set(currency, line);
@@ -113,14 +170,15 @@ export type ExpenseGroups<T> = { toPay: T[]; paid: T[] };
 export function expenseGroups<T extends Priced>(items: readonly T[]): ExpenseGroups<T> {
   const groups: ExpenseGroups<T> = { toPay: [], paid: [] };
   for (const item of items) {
-    if (countsAsSpent(item)) (item.isPaid ? groups.paid : groups.toPay).push(item);
+    if (countsAsSpent(item)) (isFullyPaid(item) ? groups.paid : groups.toPay).push(item);
   }
   return groups;
 }
 
 export type PaymentStatus = 'paid' | 'toPay';
 
-type Payable = Pick<TripItem, 'status' | 'priceAmount' | 'priceCurrency' | 'isPaid'>;
+type Payable = Pick<TripItem, 'status' | 'priceAmount' | 'priceCurrency' | 'isPaid'> &
+  Partial<Pick<TripItem, 'recordedPaid'>>;
 
 /**
  * Paid or not, for the pill on a card (F7, D29). Only a confirmed item owes anything: an idea's
@@ -130,7 +188,7 @@ type Payable = Pick<TripItem, 'status' | 'priceAmount' | 'priceCurrency' | 'isPa
  */
 export function paymentStatus(item: Payable): PaymentStatus | null {
   if (item.status !== 'confirmed') return null;
-  if (item.isPaid) return 'paid';
+  if (isFullyPaid(item)) return 'paid';
   return hasCost(item) ? 'toPay' : null;
 }
 

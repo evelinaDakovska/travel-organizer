@@ -2,6 +2,7 @@ import { randomUUID } from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import {
+  COUNT_ITEM_MONEY_RECORDS,
   INSERT_TRIP_ITEM,
   SCHEDULE_TRIP_ITEM,
   SEARCH_TRIP_ITEMS,
@@ -20,6 +21,12 @@ import {
   UPDATE_TRIP_ITEM,
   UPDATE_TRIP_ITEM_STATUS,
 } from '../db/queries';
+import {
+  deleteRefusal,
+  editRefusal,
+  MoneyRuleError,
+  type MoneyRecords,
+} from '../domain/bookingPayments';
 import { parseNoteRow, type Note, type NoteRow } from '../domain/note';
 import type { KnownPlace } from '../domain/places';
 import { searchPattern } from '../domain/search';
@@ -128,9 +135,26 @@ export async function createTripItems(
   return ids;
 }
 
+async function moneyRecords(db: SQLiteDatabase, itemId: string): Promise<MoneyRecords> {
+  const row = await db.getFirstAsync<MoneyRecords>(COUNT_ITEM_MONEY_RECORDS, { $itemId: itemId });
+  return { payments: row?.payments ?? 0, linkedExpenses: row?.linkedExpenses ?? 0 };
+}
+
+/** Refuses, with the reason, an edit that would strand the item's money records (3D-1). */
+async function guardEdit(
+  db: SQLiteDatabase,
+  id: string,
+  next: { status: TripItemStatus; priceAmount?: number | null; priceCurrency?: string | null },
+): Promise<void> {
+  const saved = await getTripItem(db, id);
+  if (!saved) return;
+  const refusal = editRefusal(saved, next, await moneyRecords(db, id));
+  if (refusal) throw new MoneyRuleError(refusal);
+}
+
 /**
  * Saves an edit. `participants` replaces who takes part, in the same transaction; left out, they
- * are not touched.
+ * are not touched. An edit that would strand payments is refused (`MoneyRuleError`).
  */
 export async function updateTripItem(
   db: SQLiteDatabase,
@@ -140,6 +164,11 @@ export async function updateTripItem(
 ): Promise<void> {
   const defaultTz = await itemDefaultTz(db, id);
   await db.withTransactionAsync(async () => {
+    await guardEdit(db, id, {
+      status: input.status,
+      priceAmount: input.priceAmount ?? null,
+      priceCurrency: input.priceAmount === undefined ? null : (input.priceCurrency ?? null),
+    });
     await db.runAsync(UPDATE_TRIP_ITEM, {
       $id: id,
       $now: new Date().toISOString(),
@@ -149,8 +178,17 @@ export async function updateTripItem(
   });
 }
 
+/**
+ * Refused while payments or linked expenses point at it (L-1) — here with the reason, and by the
+ * database's NO ACTION references whatever calls this. Never cascades money history away.
+ */
 export async function deleteTripItem(db: SQLiteDatabase, id: string): Promise<void> {
-  await db.runAsync(`DELETE FROM trip_items WHERE id = ?`, id);
+  await db.withTransactionAsync(async () => {
+    const item = await getTripItem(db, id);
+    const refusal = item ? deleteRefusal(item.title, await moneyRecords(db, id)) : null;
+    if (refusal) throw new MoneyRuleError(refusal);
+    await db.runAsync(`DELETE FROM trip_items WHERE id = ?`, id);
+  });
 }
 
 /** Cancel or restore. Dates, notes and attachments are left as they were. */
@@ -159,10 +197,16 @@ export async function setTripItemStatus(
   id: string,
   status: TripItemStatus,
 ): Promise<void> {
-  await db.runAsync(UPDATE_TRIP_ITEM_STATUS, {
-    $id: id,
-    $status: status,
-    $now: new Date().toISOString(),
+  await db.withTransactionAsync(async () => {
+    const saved = await getTripItem(db, id);
+    if (saved) {
+      await guardEdit(db, id, { status, priceAmount: saved.priceAmount, priceCurrency: saved.priceCurrency });
+    }
+    await db.runAsync(UPDATE_TRIP_ITEM_STATUS, {
+      $id: id,
+      $status: status,
+      $now: new Date().toISOString(),
+    });
   });
 }
 

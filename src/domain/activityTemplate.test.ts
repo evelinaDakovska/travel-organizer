@@ -112,7 +112,7 @@ describe('schema and parser agree', () => {
       startTzOverride: 'Europe/Sofia', endTzOverride: 'Europe/Helsinki', completedAt: null,
       locationName: 'SOF', address: 'Sofia Airport', latitude: 42.69, longitude: 23.41,
       confirmationCode: 'X', notes: 'n', details: { from: 'SOF', to: 'RVN' }, priceAmount: 12345,
-      priceCurrency: 'EUR', isPaid: true, createdAt: '', updatedAt: '',
+      priceCurrency: 'EUR', isPaid: true, recordedPaid: 0, createdAt: '', updatedAt: '',
     } as TripItem;
     const built = buildActivityExport([item], new Map([['x', [{ label: 'L', url: 'https://a.b', subtype: 'website' as const }]]]), trip);
     expect(validate(built.document)).toBe(true);

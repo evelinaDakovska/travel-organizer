@@ -107,6 +107,11 @@ export type TripItem = {
   priceAmount: number | null;
   priceCurrency: string | null;
   isPaid: boolean;
+  /**
+   * Minor units recorded as paid towards the price (3D-1): payments plus linked expenses, in the
+   * price's currency. Read-only, derived by the query; 0 when nothing is recorded.
+   */
+  recordedPaid: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -141,6 +146,8 @@ export type TripItemRow = {
   is_paid: number;
   created_at: string;
   updated_at: string;
+  /** Not a column: derived by the item queries (`ITEM_COLUMNS`); absent from a bare row. */
+  recorded_paid?: number;
 };
 
 /**
@@ -363,6 +370,7 @@ export function parseTripItemRow(row: TripItemRow, defaultTz: string): TripItem 
     priceAmount: row.price_amount,
     priceCurrency: row.price_currency,
     isPaid: row.is_paid === 1,
+    recordedPaid: row.recorded_paid ?? 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

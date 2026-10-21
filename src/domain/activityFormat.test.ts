@@ -446,7 +446,7 @@ function item(extra: Partial<TripItem>): TripItem {
     details: null,
     priceAmount: null,
     priceCurrency: null,
-    isPaid: false,
+    isPaid: false, recordedPaid: 0,
     createdAt: '2026-10-19T09:00:00.000Z',
     updatedAt: '2026-10-19T09:00:00.000Z',
     ...extra,

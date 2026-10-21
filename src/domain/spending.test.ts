@@ -21,6 +21,8 @@ const expense = (over: Partial<Expense> = {}): Expense => ({
   currency: 'EUR',
   spentOn: '2026-11-02',
   notes: null,
+  tripItemId: null,
+  payerId: null,
   createdAt: '2026-11-02T12:00:00.000Z',
   updatedAt: '2026-11-02T12:00:00.000Z',
   ...over,
@@ -45,6 +47,8 @@ describe('expenseInputSchema', () => {
       ...valid,
       label: undefined,
       notes: undefined,
+      payerId: null,
+      tripItemId: null,
     });
   });
 
@@ -94,6 +98,8 @@ describe('rows and form values', () => {
         currency: 'EUR',
         spent_on: '2026-11-02',
         notes: null,
+        trip_item_id: null,
+        payer_id: null,
         created_at: '2026-11-02T12:00:00.000Z',
         updated_at: '2026-11-02T12:00:00.000Z',
       }),
@@ -109,7 +115,23 @@ describe('rows and form values', () => {
       currency: 'EUR',
       spentOn: '2026-11-02',
       notes: 'To the hotel',
+      payerId: null,
+      tripItemId: null,
     });
+  });
+
+  it('round-trips a payer and a booking link (3D-1)', () => {
+    const saved = expense({ payerId: 'ev', tripItemId: 'hotel' });
+    expect(expenseInputSchema.parse(expenseFormValues(saved))).toMatchObject({
+      payerId: 'ev',
+      tripItemId: 'hotel',
+    });
+  });
+
+  it('defaults a quick expense to no payer and no booking', () => {
+    expect(
+      expenseInputSchema.parse({ category: 'food', amount: 100, currency: 'EUR', spentOn: '2026-11-02' }),
+    ).toMatchObject({ payerId: null, tripItemId: null });
   });
 });
 
@@ -255,6 +277,8 @@ describe('Quick Expense calculations & receipt independence', () => {
       currency: 'EUR',
       spent_on: '2026-10-10',
       notes: null,
+      trip_item_id: null,
+      payer_id: null,
       created_at: '2026-10-10T08:00:00.000Z',
       updated_at: '2026-10-10T08:00:00.000Z',
     };
@@ -269,6 +293,8 @@ describe('Quick Expense calculations & receipt independence', () => {
       currency: 'EUR',
       spentOn: '2026-10-10',
       notes: null,
+      tripItemId: null,
+      payerId: null,
       createdAt: '2026-10-10T08:00:00.000Z',
       updatedAt: '2026-10-10T08:00:00.000Z',
     });
@@ -276,5 +302,12 @@ describe('Quick Expense calculations & receipt independence', () => {
     expect(spendingTotals([parsed])).toEqual([
       { currency: 'EUR', total: 500, categories: [{ category: 'other', total: 500 }] },
     ]);
+  });
+
+  it('leaves an expense that pays for a booking out of spending (3D-1)', () => {
+    expect(
+      spendingTotals([expense({ amount: 2400 }), expense({ id: 'e2', amount: 10000, tripItemId: 'hotel' })]),
+    ).toEqual([{ currency: 'EUR', total: 2400, categories: [{ category: 'food', total: 2400 }] }]);
+    expect(spendingTotals([expense({ tripItemId: 'hotel' })])).toEqual([]);
   });
 });

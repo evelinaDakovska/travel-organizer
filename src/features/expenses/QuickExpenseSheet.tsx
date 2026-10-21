@@ -167,6 +167,8 @@ export function QuickExpenseSheet({
           spentOn,
           label: label.trim() || undefined,
           notes: notes.trim() || undefined,
+          payerId: null,
+          tripItemId: null,
         },
         receipts,
       );

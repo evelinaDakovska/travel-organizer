@@ -46,6 +46,13 @@ export type Expense = {
   /** Local date, YYYY-MM-DD. */
   spentOn: string;
   notes: string | null;
+  /**
+   * The booking this expense pays for (3D-1): then it is a payment towards that booking, never
+   * spending of its own. Null: standalone spending — every expense from before 3D-1.
+   */
+  tripItemId: string | null;
+  /** Who paid; null: not recorded. The legacy text column `paid_by` is never read. */
+  payerId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -59,6 +66,8 @@ export type ExpenseRow = {
   currency: string;
   spent_on: string;
   notes: string | null;
+  trip_item_id: string | null;
+  payer_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -74,6 +83,8 @@ export function parseExpenseRow(row: ExpenseRow): Expense {
     currency: row.currency,
     spentOn: row.spent_on,
     notes: row.notes,
+    tripItemId: row.trip_item_id,
+    payerId: row.payer_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -103,6 +114,9 @@ export const expenseInputSchema = z.object({
     .regex(/^[A-Z]{3}$/, 'Three letters, like EUR'),
   spentOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Pick a date'),
   notes: optionalText(2000),
+  // 3D-1. Absent in the quick sheet: not recorded, and standalone.
+  payerId: z.string().min(1).nullable().default(null),
+  tripItemId: z.string().min(1).nullable().default(null),
 });
 
 export type ExpenseInput = z.output<typeof expenseInputSchema>;
@@ -116,6 +130,8 @@ export function expenseFormValues(expense: Expense): ExpenseFormValues {
     currency: expense.currency,
     spentOn: expense.spentOn,
     notes: expense.notes ?? undefined,
+    payerId: expense.payerId,
+    tripItemId: expense.tripItemId,
   };
 }
 
@@ -158,13 +174,22 @@ export function expensesByDay<T extends Pick<Expense, 'spentOn' | 'createdAt'>>(
 export type CategoryTotal = { category: ExpenseCategory; total: number };
 export type SpendingTotal = { currency: string; total: number; categories: CategoryTotal[] };
 
-/** One line per currency, the largest first, each broken down by category, the largest first. */
+/** Spending of its own: an expense that pays for a booking is part of that booking instead. */
+export function isStandalone(expense: Partial<Pick<Expense, 'tripItemId'>>): boolean {
+  return (expense.tripItemId ?? null) === null;
+}
+
+/**
+ * One line per currency, the largest first, each broken down by category, the largest first.
+ * Standalone expenses only: a linked one is paid towards its booking, whose price already counts.
+ */
 export function spendingTotals(
-  expenses: readonly Pick<Expense, 'category' | 'amount' | 'currency'>[],
+  expenses: readonly (Pick<Expense, 'category' | 'amount' | 'currency'> &
+    Partial<Pick<Expense, 'tripItemId'>>)[],
 ): SpendingTotal[] {
   const byCurrency = new Map<string, Map<ExpenseCategory, number>>();
 
-  for (const { currency, category, amount } of expenses) {
+  for (const { currency, category, amount } of expenses.filter(isStandalone)) {
     const categories = byCurrency.get(currency) ?? new Map<ExpenseCategory, number>();
     categories.set(category, (categories.get(category) ?? 0) + amount);
     byCurrency.set(currency, categories);

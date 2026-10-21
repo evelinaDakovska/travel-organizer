@@ -323,7 +323,7 @@ describe('withMomentZone', () => {
     details: { from: 'Munich', to: 'Helsinki', reminder: 'off' },
     priceAmount: null,
     priceCurrency: null,
-    isPaid: false,
+    isPaid: false, recordedPaid: 0,
     createdAt: '',
     updatedAt: '',
   };

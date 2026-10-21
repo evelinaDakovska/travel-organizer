@@ -53,7 +53,7 @@ const item = (over: Partial<TripItem> & { id: string; title: string }): TripItem
   details: null,
   priceAmount: null,
   priceCurrency: null,
-  isPaid: false,
+  isPaid: false, recordedPaid: 0,
   createdAt: '',
   updatedAt: '',
   ...over,

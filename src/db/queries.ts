@@ -14,11 +14,20 @@ SELECT
      WHERE r.kind = 'file'
        AND (r.trip_id = $id
             OR r.trip_item_id IN (SELECT id FROM trip_items WHERE trip_id = $id))) AS files,
-  (SELECT COUNT(*) FROM expenses WHERE trip_id = $id) AS expenses
+  (SELECT COUNT(*) FROM expenses WHERE trip_id = $id) AS expenses,
+  (SELECT COUNT(*) FROM booking_payments WHERE trip_id = $id) AS payments
 `;
 
-/** Items carry the trip's default zone so an unqualified moment can be resolved on parse. */
-const ITEM_COLUMNS = `i.*, t.default_tz AS trip_default_tz`;
+/**
+ * Items carry the trip's default zone so an unqualified moment can be resolved on parse, and what
+ * is recorded as paid towards their price (3D-1): payments plus linked expenses, in the price's
+ * currency only — the app never adds currencies, and a record in another one cannot be saved.
+ */
+const ITEM_COLUMNS = `i.*, t.default_tz AS trip_default_tz,
+  (SELECT COALESCE(SUM(p.amount), 0) FROM booking_payments p
+    WHERE p.trip_item_id = i.id AND p.currency = i.price_currency)
+  + (SELECT COALESCE(SUM(e.amount), 0) FROM expenses e
+    WHERE e.trip_item_id = i.id AND e.currency = i.price_currency) AS recorded_paid`;
 
 export const SELECT_TRIP_ITEMS = `
 SELECT ${ITEM_COLUMNS}
@@ -247,7 +256,7 @@ SELECT location_name AS name, address
 
 /** Bookings: what is settled. Grouped by kind in the UI, so kind leads the ordering. */
 export const SELECT_BOOKINGS = `
-SELECT i.*, t.default_tz AS trip_default_tz
+SELECT ${ITEM_COLUMNS}
   FROM trip_items i JOIN trips t ON t.id = i.trip_id
  WHERE i.trip_id = $tripId AND i.status = 'confirmed'
  ORDER BY (i.start_utc IS NULL), i.start_utc, i.title
@@ -255,7 +264,7 @@ SELECT i.*, t.default_tz AS trip_default_tz
 
 /** Places: what is only an idea. Unrated sits below maybe rather than among it. */
 export const SELECT_PLACES = `
-SELECT i.*, t.default_tz AS trip_default_tz
+SELECT ${ITEM_COLUMNS}
   FROM trip_items i JOIN trips t ON t.id = i.trip_id
  WHERE i.trip_id = $tripId AND i.status = 'idea'
  ORDER BY CASE i.priority
@@ -279,7 +288,7 @@ UPDATE trip_items SET status = $status, updated_at = $now WHERE id = $id
 
 /** Cancelled rows stay searchable: finding the cancellation document is the point of keeping them. */
 export const SEARCH_TRIP_ITEMS = `
-SELECT i.*, t.default_tz AS trip_default_tz
+SELECT ${ITEM_COLUMNS}
   FROM trip_items i JOIN trips t ON t.id = i.trip_id
  WHERE i.trip_id = $tripId
    AND (i.title             LIKE $q ${LIKE_ESCAPE_CLAUSE}
@@ -619,16 +628,19 @@ SELECT * FROM expenses WHERE id = $id
 
 export const INSERT_EXPENSE = `
 INSERT INTO expenses
-  (id, trip_id, category, label, amount, currency, spent_on, notes, created_at, updated_at)
+  (id, trip_id, category, label, amount, currency, spent_on, notes, payer_id, trip_item_id,
+   created_at, updated_at)
 VALUES
-  ($id, $tripId, $category, $label, $amount, $currency, $spentOn, $notes, $now, $now)
+  ($id, $tripId, $category, $label, $amount, $currency, $spentOn, $notes, $payerId, $tripItemId,
+   $now, $now)
 `;
 
-/** Leaves paid_by and split alone: nothing on the form sets them yet. */
+/** Leaves the legacy paid_by and split alone: they are never read or written (3D-1). */
 export const UPDATE_EXPENSE = `
 UPDATE expenses
    SET category = $category, label = $label, amount = $amount, currency = $currency,
-       spent_on = $spentOn, notes = $notes, updated_at = $now
+       spent_on = $spentOn, notes = $notes, payer_id = $payerId, trip_item_id = $tripItemId,
+       updated_at = $now
  WHERE id = $id
 `;
 
@@ -649,4 +661,63 @@ SELECT r.expense_id, COUNT(*) AS n
 export const SELECT_TRIP_TRAVELLER_CLASSIFICATIONS = `
 SELECT tt.classification FROM trip_travellers tt
  WHERE tt.trip_id = $tripId ORDER BY tt.sort_order, tt.traveller_id
+`;
+
+// ─── Money records linked to bookings (3D-1) ────────────────────────────────────────────────────
+
+/** A booking's payments, oldest first; an undated one after the dated ones. */
+export const SELECT_ITEM_PAYMENTS = `
+SELECT * FROM booking_payments WHERE trip_item_id = $itemId
+ ORDER BY (paid_on IS NULL), paid_on, created_at
+`;
+
+export const SELECT_BOOKING_PAYMENT = `
+SELECT * FROM booking_payments WHERE id = $id
+`;
+
+export const SELECT_LINKED_EXPENSES = `
+SELECT * FROM expenses WHERE trip_item_id = $itemId ORDER BY spent_on, created_at
+`;
+
+export const COUNT_ITEM_MONEY_RECORDS = `
+SELECT (SELECT COUNT(*) FROM booking_payments WHERE trip_item_id = $itemId) AS payments,
+       (SELECT COUNT(*) FROM expenses WHERE trip_item_id = $itemId) AS linkedExpenses
+`;
+
+export const INSERT_BOOKING_PAYMENT = `
+INSERT INTO booking_payments
+  (id, trip_id, trip_item_id, payer_id, amount, currency, paid_on, note, created_at, updated_at)
+VALUES
+  ($id, $tripId, $itemId, $payerId, $amount, $currency, $paidOn, $note, $now, $now)
+`;
+
+/** The booking and the currency never change: a payment stays on the booking it was made for. */
+export const UPDATE_BOOKING_PAYMENT = `
+UPDATE booking_payments
+   SET payer_id = $payerId, amount = $amount, paid_on = $paidOn, note = $note, updated_at = $now
+ WHERE id = $id
+`;
+
+export const DELETE_BOOKING_PAYMENT = `
+DELETE FROM booking_payments WHERE id = $id
+`;
+
+/** Unlinking makes the expense standalone spending again; nothing else about it changes. */
+export const UNLINK_EXPENSE = `
+UPDATE expenses SET trip_item_id = NULL, updated_at = $now WHERE id = $id
+`;
+
+/** The payer last recorded on this trip, offered as a one-tap suggestion — never preselected. */
+export const SELECT_LAST_PAYER = `
+SELECT payer_id FROM (
+  SELECT payer_id, created_at FROM booking_payments WHERE trip_id = $tripId AND payer_id IS NOT NULL
+  UNION ALL
+  SELECT payer_id, created_at FROM expenses WHERE trip_id = $tripId AND payer_id IS NOT NULL
+) ORDER BY created_at DESC LIMIT 1
+`;
+
+/** What someone is recorded as having paid on one trip: they cannot leave it while it stands. */
+export const COUNT_PAYER_RECORDS = `
+SELECT (SELECT COUNT(*) FROM booking_payments WHERE trip_id = $tripId AND payer_id = $travellerId)
+     + (SELECT COUNT(*) FROM expenses WHERE trip_id = $tripId AND payer_id = $travellerId) AS n
 `;

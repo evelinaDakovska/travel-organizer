@@ -1,8 +1,11 @@
 import {
   countsAsSpent,
   expenseGroups,
+  isFullyPaid,
+  paidOf,
   paymentStatus,
   paymentStatuses,
+  paymentSummary,
   refundableOf,
   refundNotSaid,
   tripExpenses,
@@ -226,5 +229,92 @@ describe('paymentStatuses', () => {
     ]);
     expect(statuses.has('b')).toBe(false);
     expect(statuses.has('c')).toBe(false);
+  });
+});
+
+describe('payments recorded against a booking (3D-1)', () => {
+  it('is one EUR 250 cost with EUR 250 paid — a deposit and a final payment, never EUR 500', () => {
+    const booking = priced({ priceAmount: 25000, recordedPaid: 10000 + 15000 });
+    expect(tripExpenses([booking])).toEqual([
+      { currency: 'EUR', total: 25000, paid: 25000, toPay: 0, lost: 0, items: 1 },
+    ]);
+    expect(paymentStatus(booking)).toBe('paid');
+    expect(expenseGroups([booking]).paid).toEqual([booking]);
+  });
+
+  it('a deposit leaves the rest to pay', () => {
+    const booking = priced({ priceAmount: 25000, recordedPaid: 10000 });
+    expect(paidOf(booking)).toBe(10000);
+    expect(tripExpenses([booking])[0]).toMatchObject({ total: 25000, paid: 10000, toPay: 15000 });
+    expect(paymentStatus(booking)).toBe('toPay');
+    expect(paymentSummary(booking)).toEqual({
+      currency: 'EUR',
+      price: 25000,
+      recorded: 10000,
+      paid: 10000,
+      toPay: 15000,
+      overpaid: 0,
+      notRecorded: 0,
+    });
+  });
+
+  it('the Paid switch means paid in full; records describe the known part', () => {
+    const legacy = priced({ priceAmount: 25000, isPaid: true });
+    expect(paymentSummary(legacy)).toMatchObject({ paid: 25000, toPay: 0, recorded: 0, notRecorded: 25000 });
+    const partlyKnown = priced({ priceAmount: 25000, isPaid: true, recordedPaid: 10000 });
+    expect(paymentSummary(partlyKnown)).toMatchObject({
+      paid: 25000,
+      toPay: 0,
+      recorded: 10000,
+      notRecorded: 15000,
+    });
+    expect(paymentStatus(partlyKnown)).toBe('paid');
+    expect(tripExpenses([partlyKnown])[0]).toMatchObject({ paid: 25000, toPay: 0 });
+  });
+
+  it('shows what is paid beyond the price, and never counts it', () => {
+    const booking = priced({ priceAmount: 25000, recordedPaid: 27000 });
+    expect(paymentSummary(booking)).toMatchObject({ paid: 25000, toPay: 0, overpaid: 2000 });
+    expect(tripExpenses([booking])[0]).toMatchObject({ total: 25000, paid: 25000 });
+  });
+
+  it('a cancelled booking keeps its records, and counts only where the booking counts', () => {
+    const refundable = priced({ status: 'cancelled', details: { refundable: true }, recordedPaid: 1000 });
+    const lost = priced({ status: 'cancelled', details: { refundable: false }, recordedPaid: 400 });
+    expect(tripExpenses([refundable])).toEqual([]);
+    expect(tripExpenses([lost])[0]).toMatchObject({ total: 1000, paid: 400, toPay: 600, lost: 1000 });
+    expect(paymentStatus(refundable)).toBeNull();
+  });
+
+  it('nothing recorded on a free or unpriced booking is ever paid or owed', () => {
+    expect(paidOf(priced({ priceAmount: 0, recordedPaid: 500 }))).toBe(0);
+    expect(paymentSummary(priced({ priceAmount: null, priceCurrency: null }))).toBeNull();
+    expect(isFullyPaid(priced({ priceAmount: null, priceCurrency: null }))).toBe(false);
+  });
+
+  it('per currency, paid plus to pay is always the cost, whatever is recorded', () => {
+    let seed = 7;
+    const random = (n: number) => {
+      seed = (seed * 48271) % 2147483647;
+      return seed % n;
+    };
+    for (let round = 0; round < 200; round++) {
+      const items = Array.from({ length: 1 + random(8) }, () => {
+        const priceAmount = random(4) === 0 ? null : 1 + random(50000);
+        return priced({
+          priceAmount,
+          priceCurrency: priceAmount === null ? null : ['EUR', 'BGN'][random(2)],
+          isPaid: random(3) === 0,
+          recordedPaid: random(2) === 0 ? 0 : random(60000),
+          status: (['confirmed', 'cancelled', 'idea'] as const)[random(3)],
+          details: random(2) === 0 ? { refundable: false } : null,
+        });
+      });
+      for (const line of tripExpenses(items)) {
+        expect(line.paid + line.toPay).toBe(line.total);
+        expect(line.paid).toBeGreaterThanOrEqual(0);
+        expect(line.toPay).toBeGreaterThanOrEqual(0);
+      }
+    }
   });
 });

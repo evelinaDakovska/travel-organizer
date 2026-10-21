@@ -73,7 +73,7 @@ describe('bookedPlaces', () => {
     details: null,
     priceAmount: null,
     priceCurrency: null,
-    isPaid: false,
+    isPaid: false, recordedPaid: 0,
     createdAt: '',
     updatedAt: '',
   };

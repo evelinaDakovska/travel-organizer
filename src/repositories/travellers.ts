@@ -5,6 +5,7 @@ import { getSetting, setSetting } from './settings';
 import { markLegacyTravellerConverted } from './trips';
 
 import {
+  COUNT_PAYER_RECORDS,
   COUNT_TRAVELLER_ITEMS,
   DELETE_ITEM_PARTICIPANTS,
   DELETE_TRIP_TRAVELLER,
@@ -23,6 +24,7 @@ import {
   UPDATE_TRAVELLER_CLASSIFICATION,
   UPDATE_TRIP_TRAVELLER_CLASSIFICATION,
 } from '../db/queries';
+import { leaveRefusal, MoneyRuleError } from '../domain/bookingPayments';
 import { joinCandidates, type JoinCandidates } from '../domain/participation';
 import { parseTripItemRow, type TripItem, type TripItemRow } from '../domain/tripItem';
 import {
@@ -237,7 +239,29 @@ export async function createTripTraveller(
   return id;
 }
 
-/** Off the trip and off its items, in one step; the profile itself stays. */
+/**
+ * Why this member cannot leave the trip, or null: they are the payer on its money records
+ * (invariant I). Asked before anything is written, so a refusal changes nothing.
+ */
+export async function leaveTripRefusal(
+  db: SQLiteDatabase,
+  tripId: string,
+  travellerId: string,
+): Promise<string | null> {
+  const row = await db.getFirstAsync<{ n: number }>(COUNT_PAYER_RECORDS, {
+    $tripId: tripId,
+    $travellerId: travellerId,
+  });
+  const name = await db.getFirstAsync<{ name: string }>(`SELECT name FROM travellers WHERE id = $id`, {
+    $id: travellerId,
+  });
+  return leaveRefusal(name?.name ?? 'This traveller', row?.n ?? 0);
+}
+
+/**
+ * Off the trip and off its items, in one step; the profile itself stays. Refused
+ * (`MoneyRuleError`) while they are the payer on the trip's money records.
+ */
 export async function removeTripTraveller(
   db: SQLiteDatabase,
   tripId: string,
@@ -245,6 +269,8 @@ export async function removeTripTraveller(
 ): Promise<void> {
   const params = { $tripId: tripId, $travellerId: travellerId };
   await db.withTransactionAsync(async () => {
+    const refusal = await leaveTripRefusal(db, tripId, travellerId);
+    if (refusal) throw new MoneyRuleError(refusal);
     await db.runAsync(DELETE_TRIP_TRAVELLER_PARTICIPATION, params);
     await db.runAsync(DELETE_TRIP_TRAVELLER, params);
   });
