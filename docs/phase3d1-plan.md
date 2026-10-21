@@ -231,3 +231,12 @@ migrated database directly needs a debug-signed debuggable build on the emulator
 
 The resolution workflow (§6) and the definitions (§2) are also approved with this plan, unless the
 owner changes them.
+
+### 10.1 The owner's answers (2026-10-21)
+
+| # | Answer |
+|---|---|
+| 1 | Migration 007 **approved, but only if there is no risk to the real data already in the app**; if there is risk, it waits until after the owner's trip. **How this is applied:** building and testing on the emulator can't touch the phone. Installing on the phone is not risk-free, though: the migration is additive and atomic, so a failure would leave the data as it was, but the app would not open until a fixed build arrived, and an install can't be rolled back without an uninstall. So 3D-1 is built and verified on the branch **`phase-3d1`**, `main` stays at 0.13.0 for any fix during the trip, and **no phone install happens until after the trip**, with the separate approvals in §15 *11* |
+| 2 | **Whole-trip deletion allowed**, with an explicit confirmation naming the money history |
+| 3 | **The *Paid* switch wins.** Records describe the known part; the rest is *not recorded by whom* |
+| 4 | **Debug-signed debuggable build approved, on the emulator only**, to read the migrated database |

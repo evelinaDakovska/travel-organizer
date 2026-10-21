@@ -104,7 +104,14 @@ export function snapshot(): ExportTables {
     { id: 'n2', trip_id: 'rome', title: 'Rome secret', body: 'x', pinned: 0, sort_order: 0, created_at: now, updated_at: now },
   ];
   t.expenses = [
-    { id: 'e1', trip_id: 'lap', category: 'groceries', label: 'K-Market', amount: 1250, currency: 'EUR', spent_on: '2026-11-21', notes: null, paid_by: 'Evelina', split: null, created_at: now, updated_at: now },
+    { id: 'e1', trip_id: 'lap', category: 'groceries', label: 'K-Market', amount: 1250, currency: 'EUR', spent_on: '2026-11-21', notes: null, paid_by: 'Evelina', split: null, created_at: now, updated_at: now, trip_item_id: null, payer_id: null },
+    // Pays for the safari (3D-1): linked, with its payer.
+    { id: 'e2', trip_id: 'lap', category: 'activities', label: 'Safari balance', amount: 6000, currency: 'EUR', spent_on: '2026-11-22', notes: null, paid_by: null, split: null, created_at: now, updated_at: now, trip_item_id: 'safari', payer_id: 'mi' },
+  ];
+  t.bookingPayments = [
+    { id: 'bp1', trip_id: 'lap', trip_item_id: 'leg1', payer_id: 'ev', amount: 20000, currency: 'EUR', paid_on: '2026-10-01', note: 'Deposit', created_at: now, updated_at: now },
+    { id: 'bp2', trip_id: 'lap', trip_item_id: 'leg1', payer_id: null, amount: 5000, currency: 'EUR', paid_on: null, note: null, created_at: now, updated_at: now },
+    { id: 'bp-rome', trip_id: 'rome', trip_item_id: 'colosseum', payer_id: 'stranger', amount: 3000, currency: 'EUR', paid_on: null, note: null, created_at: now, updated_at: now },
   ];
   t.payments = [
     { id: 'p1', trip_id: 'lap', from_name: 'Misho', to_name: 'Evelina', amount: 500, currency: 'EUR', created_at: now },

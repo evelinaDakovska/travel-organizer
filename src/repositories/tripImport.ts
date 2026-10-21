@@ -21,6 +21,7 @@ const ORDER: readonly (readonly [keyof TripArchiveTables, ExportTableName])[] = 
   ['tripNotes', 'trip_notes'],
   ['expenses', 'expenses'],
   ['payments', 'payments'],
+  ['bookingPayments', 'booking_payments'],
   ['resources', 'resources'],
   ['lists', 'lists'],
   ['listItems', 'list_items'],
@@ -84,6 +85,11 @@ export async function verifyTripImport(
     ['notes', plan.tables.tripNotes.length, `SELECT COUNT(*) AS n FROM trip_notes WHERE trip_id = $trip`],
     ['expenses', plan.tables.expenses.length, `SELECT COUNT(*) AS n FROM expenses WHERE trip_id = $trip`],
     ['payments', plan.tables.payments.length, `SELECT COUNT(*) AS n FROM payments WHERE trip_id = $trip`],
+    [
+      'booking payments',
+      plan.tables.bookingPayments.length,
+      `SELECT COUNT(*) AS n FROM booking_payments WHERE trip_id = $trip`,
+    ],
     [
       'documents',
       plan.tables.resources.length,

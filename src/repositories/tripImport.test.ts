@@ -41,7 +41,7 @@ async function setup() {
 const TABLES = [
   'trips', 'trip_items', 'trip_notes', 'resources', 'expenses', 'payments', 'travellers',
   'trip_travellers', 'item_participants', 'lists', 'list_items', 'list_item_recipients',
-  'templates', 'template_uses',
+  'templates', 'template_uses', 'booking_payments',
 ];
 const dump = (raw: Database.Database) =>
   Object.fromEntries(TABLES.map((t) => [t, raw.prepare(`SELECT * FROM ${t} ORDER BY rowid`).all()]));
@@ -155,7 +155,7 @@ describe('importing a trip archive into a database', () => {
       )
       .run(JSON.stringify(pricing), id);
     const { archive } = await archiveFrom(db);
-    expect(archive.manifest.rowFormat).toBe(7);
+    expect(archive.manifest.rowFormat).toBeGreaterThanOrEqual(7);
 
     const plan = await importInto(db, archive);
     const copies = raw
@@ -166,6 +166,47 @@ describe('importing a trip archive into a database', () => {
       .all(plan.tripId) as { pricing: string; price_amount: number }[];
     expect(copies).toHaveLength(1);
     expect(JSON.parse(copies[0].pricing)).toEqual(pricing);
+  });
+
+  it('carries payments and linked expenses with new ids, on the copied bookings and payers (3D-1)', async () => {
+    const { raw, db } = await setup();
+    const { archive } = await archiveFrom(db);
+    expect(archive.manifest.rowFormat).toBe(8);
+    // Evelina is linked to the profile here; Misho comes in as a new one.
+    const plan = await importInto(db, archive, new Map([['ev', { kind: 'existing', id: 'ev' }]]));
+    const one = (sql: string) => raw.prepare(sql).all(plan.tripId);
+
+    expect(
+      one(`SELECT i.title, t.name AS payer, p.amount, p.note FROM booking_payments p
+             JOIN trip_items i ON i.id = p.trip_item_id
+             LEFT JOIN travellers t ON t.id = p.payer_id
+            WHERE p.trip_id = ? ORDER BY p.amount DESC`),
+    ).toEqual([
+      { title: 'leg1', payer: 'Evelina', amount: 20000, note: 'Deposit' },
+      { title: 'leg1', payer: null, amount: 5000, note: null },
+    ]);
+    const payments = one(`SELECT id, trip_item_id, payer_id FROM booking_payments WHERE trip_id = ?`) as {
+      id: string;
+      trip_item_id: string;
+      payer_id: string | null;
+    }[];
+    // New ids throughout; the payer linked by choice keeps the existing profile.
+    expect(payments.some((row) => ['bp1', 'bp2'].includes(row.id) || row.trip_item_id === 'leg1')).toBe(false);
+    expect(payments.map((row) => row.payer_id)).toContain('ev');
+    // The Rome trip's payment stays out of a Lapland export.
+    expect(archive.tables.bookingPayments.map((row) => row.id).sort()).toEqual(['bp1', 'bp2']);
+
+    expect(
+      one(`SELECT e.label, i.title, t.name AS payer, t.id = 'mi' AS same_profile FROM expenses e
+             LEFT JOIN trip_items i ON i.id = e.trip_item_id
+             LEFT JOIN travellers t ON t.id = e.payer_id
+            WHERE e.trip_id = ? ORDER BY e.label`),
+    ).toEqual([
+      { label: 'K-Market', title: null, payer: null, same_profile: null },
+      { label: 'Safari balance', title: 'safari', payer: 'Misho', same_profile: 0 },
+    ]);
+    expect(raw.pragma('foreign_key_check')).toEqual([]);
+    expect(await verifyTripImport(db, plan)).toEqual({ ok: true });
   });
 
   it('rebuilds the derived instants from the trip’s zone rather than trusting the file', async () => {

@@ -45,6 +45,7 @@ describe('migrations', () => {
       .map((r: any) => r.name)
       .sort();
     expect(tables).toEqual([
+      'booking_payments',
       'expenses',
       'item_participants',
       'list_item_recipients',

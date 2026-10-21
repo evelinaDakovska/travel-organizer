@@ -62,6 +62,7 @@ const TABLE_KEYS = [
   'resources',
   'expenses',
   'payments',
+  'bookingPayments',
   'travellers',
   'tripTravellers',
   'itemParticipants',
@@ -80,6 +81,8 @@ const tablesSchema = z.object({
   resources: z.array(ROW_SCHEMAS.resources),
   expenses: z.array(ROW_SCHEMAS.expenses),
   payments: z.array(ROW_SCHEMAS.payments),
+  // Absent before row format 8 (3D-1).
+  bookingPayments: z.array(ROW_SCHEMAS.bookingPayments).default([]),
   travellers: z.array(ROW_SCHEMAS.travellers),
   tripTravellers: z.array(ROW_SCHEMAS.tripTravellers),
   itemParticipants: z.array(ROW_SCHEMAS.itemParticipants),
@@ -225,6 +228,7 @@ export function buildTripArchive(
     resources,
     expenses: one.expenses,
     payments: one.payments,
+    bookingPayments: one.bookingPayments,
     travellers: one.travellers,
     tripTravellers: one.tripTravellers,
     itemParticipants: one.itemParticipants,
@@ -472,6 +476,7 @@ export function checkTripArchive(
     unique(t.resources, 'documents') ??
     unique(t.expenses, 'expenses') ??
     unique(t.payments, 'payments') ??
+    unique(t.bookingPayments, 'booking payments') ??
     unique(t.travellers, 'travellers') ??
     unique(t.lists, 'lists') ??
     unique(t.listItems, 'list items');
@@ -491,6 +496,7 @@ export function checkTripArchive(
   if (!ownedByTrip(t.tripNotes)) return 'a note belongs to another trip';
   if (!ownedByTrip(t.expenses)) return 'an expense belongs to another trip';
   if (!ownedByTrip(t.payments)) return 'a payment belongs to another trip';
+  if (!ownedByTrip(t.bookingPayments)) return 'a booking payment belongs to another trip';
   if (!ownedByTrip(t.lists)) return 'a list belongs to another trip';
   if (!ownedByTrip(t.tripTravellers)) return 'a traveller is listed on another trip';
   if (!ownedByTrip(t.templateUses)) return 'a template record belongs to another trip';
@@ -508,6 +514,21 @@ export function checkTripArchive(
       return 'a document points at a file the manifest does not list';
     }
     if (row.kind !== 'file' && row.kind !== 'link') return 'a document is of an unknown kind';
+  }
+
+  for (const row of t.bookingPayments) {
+    if (!items.has(row.trip_item_id)) return 'a payment is for a missing booking';
+    if (row.payer_id !== null && !travellers.has(row.payer_id)) {
+      return 'a payment names a payer who is not in the archive';
+    }
+  }
+  for (const row of t.expenses) {
+    if (row.trip_item_id !== null && !items.has(row.trip_item_id)) {
+      return 'an expense pays for a missing booking';
+    }
+    if (row.payer_id !== null && !travellers.has(row.payer_id)) {
+      return 'an expense names a payer who is not in the archive';
+    }
   }
 
   const pairs = (rows: readonly string[]) => new Set(rows).size === rows.length;
@@ -551,6 +572,8 @@ export type TripArchiveSummary = {
   receipts: number;
   expenses: number;
   payments: number;
+  /** Payments recorded against bookings (3D-1); `payments` is the legacy, unused table. */
+  bookingPayments: number;
   filesIncluded: number;
   /** Files that will not be on the phone after the import, with the reason. */
   unavailable: { name: string; reason: 'excluded' | 'missing' | 'damaged' }[];
@@ -580,6 +603,7 @@ export function summariseTripArchive(archive: OpenedTripArchive): TripArchiveSum
     receipts: t.resources.filter((row) => row.expense_id !== null).length,
     expenses: t.expenses.length,
     payments: t.payments.length,
+    bookingPayments: t.bookingPayments.length,
     filesIncluded: archive.files.size,
     unavailable,
   };
@@ -655,6 +679,7 @@ export function planTripImport(
   const noteIds = mapIds(t.tripNotes);
   const expenseIds = mapIds(t.expenses);
   const paymentIds = mapIds(t.payments);
+  const bookingPaymentIds = mapIds(t.bookingPayments);
   const resourceIds = mapIds(t.resources);
   const listIds = mapIds(t.lists);
   const listItemIds = mapIds(t.listItems);
@@ -742,11 +767,20 @@ export function planTripImport(
         ...row,
         id: must(expenseIds, row.id, 'expense'),
         trip_id: tripId,
+        trip_item_id: row.trip_item_id === null ? null : must(itemIds, row.trip_item_id, 'plan'),
+        payer_id: row.payer_id === null ? null : must(travellerIds, row.payer_id, 'traveller'),
       })),
       payments: t.payments.map((row) => ({
         ...row,
         id: must(paymentIds, row.id, 'payment'),
         trip_id: tripId,
+      })),
+      bookingPayments: t.bookingPayments.map((row) => ({
+        ...row,
+        id: must(bookingPaymentIds, row.id, 'booking payment'),
+        trip_id: tripId,
+        trip_item_id: must(itemIds, row.trip_item_id, 'plan'),
+        payer_id: row.payer_id === null ? null : must(travellerIds, row.payer_id, 'traveller'),
       })),
       travellers: newTravellers,
       // Two archive travellers linked to one profile here become one member, one participant.

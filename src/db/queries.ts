@@ -538,7 +538,9 @@ export const EXPORT_COLUMNS = {
               'stored_path', 'file_name', 'mime_type', 'size_bytes', 'sort_order', 'created_at',
               'expense_id'],
   expenses: ['id', 'trip_id', 'category', 'label', 'amount', 'currency', 'spent_on', 'notes',
-             'paid_by', 'split', 'created_at', 'updated_at'],
+             'paid_by', 'split', 'created_at', 'updated_at',
+             // Format 8 (migration 007, 3D-1).
+             'trip_item_id', 'payer_id'],
   payments: ['id', 'trip_id', 'from_name', 'to_name', 'amount', 'currency', 'created_at'],
   settings: ['key', 'value'],
   // Format 3 (Fieldbook, migration 003). Format 4 adds classification (migration 004).
@@ -552,6 +554,8 @@ export const EXPORT_COLUMNS = {
   templates: ['id', 'name', 'content', 'created_at', 'updated_at'],
   template_uses: ['trip_id', 'template_id', 'applied_at'],
   list_item_recipients: ['list_item_id', 'traveller_id'],
+  booking_payments: ['id', 'trip_id', 'trip_item_id', 'payer_id', 'amount', 'currency', 'paid_on',
+                     'note', 'created_at', 'updated_at'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type ExportTableName = keyof typeof EXPORT_COLUMNS;

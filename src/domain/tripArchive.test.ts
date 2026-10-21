@@ -201,8 +201,9 @@ describe('opening a trip archive', () => {
       documents: 2,
       links: 1,
       receipts: 1,
-      expenses: 1,
+      expenses: 2,
       payments: 1,
+      bookingPayments: 2,
       filesIncluded: 2,
       unavailable: [],
     });
@@ -274,14 +275,14 @@ describe('opening a trip archive', () => {
     }
   });
 
-  it('writes row format 7, and still opens a trip exported by 0.12.0 (row format 6)', async () => {
+  it('writes row format 8, and still opens a trip exported by 0.13.0 (row format 7)', async () => {
     const entries = goodEntries();
     const manifest = manifestOf(entries);
-    expect(manifest.rowFormat).toBe(7);
-    const older = await open(rawZip(replace(entries, MANIFEST_NAME, json({ ...manifest, rowFormat: 6 }))));
+    expect(manifest.rowFormat).toBe(8);
+    const older = await open(rawZip(replace(entries, MANIFEST_NAME, json({ ...manifest, rowFormat: 7 }))));
     expect(older.ok).toBe(true);
-    // What 0.12.0 does with this app's archives: its own check, with its own number.
-    expect(manifest.rowFormat).toBeGreaterThan(6);
+    // What 0.13.0 does with this app's archives: its own check, with its own number.
+    expect(manifest.rowFormat).toBeGreaterThan(7);
   });
 
   it('refuses trip data that does not match its checksum', async () => {

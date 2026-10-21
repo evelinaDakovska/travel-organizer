@@ -104,6 +104,8 @@ const expense = (id: string, tripId: string) => ({
   notes: null,
   paid_by: null,
   split: null,
+  trip_item_id: null,
+  payer_id: null,
   created_at: now,
   updated_at: now,
 });

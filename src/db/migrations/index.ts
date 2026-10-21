@@ -4,6 +4,7 @@ import { sql as m003 } from './003-fieldbook';
 import { sql as m004 } from './004-traveller-classification';
 import { sql as m005 } from './005-converted-travellers';
 import { sql as m006 } from './006-list-item-recipients';
+import { sql as m007 } from './007-booking-payments';
 
 export type Migration = { version: number; sql: string };
 
@@ -15,6 +16,7 @@ export const MIGRATIONS: Migration[] = [
   { version: 4, sql: m004 },
   { version: 5, sql: m005 },
   { version: 6, sql: m006 },
+  { version: 7, sql: m007 },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

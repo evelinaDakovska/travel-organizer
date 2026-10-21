@@ -14,11 +14,12 @@ import { travellerClassificationSchema } from './traveller';
  * converted_travellers (migration 005); 6 added list_item_recipients (migration 006, 2B-0); 7 has
  * the same tables and columns, but price lines in `trip_items.details` may carry who they are for,
  * group prices and extras (3C) — raised so an older app refuses the file rather than dropping
- * those on its next edit. Formats 1–6 still import: their missing tables or columns default
+ * those on its next edit; 8 added booking_payments and `expenses.trip_item_id` / `payer_id`
+ * (migration 007, 3D-1). Formats 1–7 still import: their missing tables or columns default
  * safely, and a format-5-or-earlier list item's one `traveller_id` becomes its one recipient
  * (`upgradeDocument`).
  */
-export const EXPORT_FORMAT_VERSION = 7;
+export const EXPORT_FORMAT_VERSION = 8;
 export const EXPORT_APP = 'travel-organizer';
 
 const nullableString = z.string().nullable();
@@ -113,6 +114,22 @@ const expenseRowSchema = z.object({
   split: nullableString,
   created_at: z.string(),
   updated_at: z.string(),
+  // Absent before format 8: every older expense is standalone spending with no payer recorded.
+  trip_item_id: nullableString.default(null),
+  payer_id: nullableString.default(null),
+});
+
+const bookingPaymentRowSchema = z.object({
+  id: z.string().min(1),
+  trip_id: z.string().min(1),
+  trip_item_id: z.string().min(1),
+  payer_id: nullableString,
+  amount: z.number(),
+  currency: z.string(),
+  paid_on: nullableString,
+  note: nullableString,
+  created_at: z.string(),
+  updated_at: z.string(),
 });
 
 const paymentRowSchema = z.object({
@@ -204,6 +221,7 @@ export const ROW_SCHEMAS = {
   resources: resourceRowSchema,
   expenses: expenseRowSchema,
   payments: paymentRowSchema,
+  bookingPayments: bookingPaymentRowSchema,
   travellers: travellerRowSchema,
   tripTravellers: tripTravellerRowSchema,
   itemParticipants: itemParticipantRowSchema,
@@ -220,6 +238,7 @@ export type ResourceExportRow = z.infer<typeof resourceRowSchema>;
 export type SettingExportRow = z.infer<typeof settingRowSchema>;
 export type ExpenseExportRow = z.infer<typeof expenseRowSchema>;
 export type PaymentExportRow = z.infer<typeof paymentRowSchema>;
+export type BookingPaymentExportRow = z.infer<typeof bookingPaymentRowSchema>;
 export type TravellerExportRow = z.infer<typeof travellerRowSchema>;
 export type TripTravellerExportRow = z.infer<typeof tripTravellerRowSchema>;
 export type ItemParticipantExportRow = z.infer<typeof itemParticipantRowSchema>;
@@ -235,6 +254,7 @@ export type ExportTables = {
   tripNotes: NoteExportRow[];
   expenses: ExpenseExportRow[];
   payments: PaymentExportRow[];
+  bookingPayments: BookingPaymentExportRow[];
   resources: ResourceExportRow[];
   settings: SettingExportRow[];
   travellers: TravellerExportRow[];
@@ -283,6 +303,8 @@ export const exportDocumentSchema = z.object({
     listItemRecipients: z.array(listItemRecipientRowSchema).default([]),
     templates: z.array(templateRowSchema).default([]),
     templateUses: z.array(templateUseRowSchema).default([]),
+    // Absent before format 8.
+    bookingPayments: z.array(bookingPaymentRowSchema).default([]),
   }),
   files: z.array(fileManifestEntrySchema),
 });
@@ -297,6 +319,7 @@ export function emptyExportTables(): ExportTables {
     tripNotes: [],
     expenses: [],
     payments: [],
+    bookingPayments: [],
     resources: [],
     settings: [],
     travellers: [],
@@ -316,6 +339,7 @@ export const EXPORT_TABLE_ORDER = [
   'tripNotes',
   'expenses',
   'payments',
+  'bookingPayments',
   'resources',
   'settings',
   'travellers',
@@ -419,8 +443,12 @@ export function filterTablesForTrip(tables: ExportTables, tripId: string): Expor
   const listItemRecipients = tables.listItemRecipients.filter((row) =>
     listItemIds.has(row.list_item_id),
   );
+  const expenses = tables.expenses.filter((expense) => expense.trip_id === tripId);
+  const bookingPayments = tables.bookingPayments.filter((payment) => payment.trip_id === tripId);
   const usedTravellers = new Set([
     ...tripTravellers.map((member) => member.traveller_id),
+    ...expenses.flatMap((expense) => (expense.payer_id ? [expense.payer_id] : [])),
+    ...bookingPayments.flatMap((payment) => (payment.payer_id ? [payment.payer_id] : [])),
     ...itemParticipants.map((part) => part.traveller_id),
     ...listItems.flatMap((item) => (item.traveller_id ? [item.traveller_id] : [])),
     ...listItemRecipients.map((row) => row.traveller_id),
@@ -430,8 +458,9 @@ export function filterTablesForTrip(tables: ExportTables, tripId: string): Expor
     trips: tables.trips.filter((trip) => trip.id === tripId),
     tripItems: tables.tripItems.filter((item) => item.trip_id === tripId),
     tripNotes: tables.tripNotes.filter((note) => note.trip_id === tripId),
-    expenses: tables.expenses.filter((expense) => expense.trip_id === tripId),
+    expenses,
     payments: tables.payments.filter((payment) => payment.trip_id === tripId),
+    bookingPayments,
     resources: tables.resources.filter(
       (resource) =>
         resource.trip_id === tripId ||
@@ -527,6 +556,9 @@ export function planImport(
       tripNotes: document.tables.tripNotes.filter((note) => keptTripIds.has(note.trip_id)),
       expenses: document.tables.expenses.filter((expense) => keptTripIds.has(expense.trip_id)),
       payments: document.tables.payments.filter((payment) => keptTripIds.has(payment.trip_id)),
+      bookingPayments: document.tables.bookingPayments.filter((payment) =>
+        keptTripIds.has(payment.trip_id),
+      ),
       resources,
       settings: document.tables.settings,
       travellers: tables.travellers.filter(missing(existingShared.travellers)),

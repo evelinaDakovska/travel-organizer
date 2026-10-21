@@ -24,6 +24,8 @@ const TABLES: readonly (readonly [keyof ExportTables, ExportTableName])[] = [
   // Before resources: a receipt names its expense.
   ['expenses', 'expenses'],
   ['payments', 'payments'],
+  // After the bookings and the travellers they name.
+  ['bookingPayments', 'booking_payments'],
   ['resources', 'resources'],
   ['lists', 'lists'],
   ['listItems', 'list_items'],

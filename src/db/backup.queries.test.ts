@@ -405,15 +405,15 @@ describe('the backup round trip', () => {
     expect(item).toEqual({ details, price_amount: 34000, is_paid: 1 });
   });
 
-  it('writes format 7, and still restores a format-6 backup from 0.12.0', async () => {
+  it('writes format 8, and still restores a format-7 backup from 0.13.0', async () => {
     const source = fresh();
     seed(source);
     const current = JSON.parse(JSON.stringify(await documentFrom(source)));
-    expect(current.formatVersion).toBe(7);
-    const fromOlder = parseExportDocument({ ...current, formatVersion: 6 });
+    expect(current.formatVersion).toBe(8);
+    const fromOlder = parseExportDocument({ ...current, formatVersion: 7 });
     expect(fromOlder.ok).toBe(true);
-    // 0.12.0 refuses anything above its own 6 — this app's backups included.
-    expect(current.formatVersion).toBeGreaterThan(6);
+    // 0.13.0 refuses anything above its own 7 — this app's backups included.
+    expect(current.formatVersion).toBeGreaterThan(7);
   });
 
   it('rejects a backup from a future format with a clear message', async () => {
@@ -727,5 +727,114 @@ describe('who a list item is for (format 6)', () => {
       { list_item_id: 'm1', traveller_id: 'ev' },
     ]);
     expect(one.travellers.map((t) => t.id).sort()).toEqual(['aunt', 'ev', 'mia']);
+  });
+});
+
+describe('money records linked to bookings (format 8, 3D-1)', () => {
+  function seedMoney(db: Database.Database) {
+    run(
+      db,
+      `INSERT INTO booking_payments (id, trip_id, trip_item_id, payer_id, amount, currency, paid_on,
+                                     note, created_at, updated_at)
+       VALUES ('bp1', 't1', 'i1', 'ev', 10000, 'EUR', '2026-08-01', 'Deposit', ?, ?),
+              ('bp2', 't1', 'i1', NULL, 4000, 'EUR', NULL, NULL, ?, ?)`,
+      now,
+      now,
+      now,
+      now,
+    );
+    run(db, `UPDATE expenses SET trip_item_id = 'i1', payer_id = 'mia' WHERE id = 'e1'`);
+  }
+
+  it('restores payments, links and payers into an empty app, byte for byte', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    seedMoney(source);
+    const target = fresh();
+
+    await restoreInto(target, source, 'merge');
+
+    expect(await readAll(target)).toEqual(await readAll(source));
+    expect((await readAll(target)).bookingPayments).toHaveLength(2);
+  });
+
+  it('restores a format-7 backup with every expense standalone and no payer recorded', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    const current = JSON.parse(JSON.stringify(await documentFrom(source)));
+    // A backup written by 0.13.0: no booking payments, no link or payer on an expense.
+    const { bookingPayments: _gone, ...olderTables } = current.tables;
+    const older = {
+      ...current,
+      formatVersion: 7,
+      tables: {
+        ...olderTables,
+        expenses: current.tables.expenses.map(
+          ({ trip_item_id: _item, payer_id: _payer, ...row }: Record<string, unknown>) => row,
+        ),
+      },
+    };
+    const parsed = parseExportDocument(older);
+    if (!parsed.ok) throw new Error(parsed.reason);
+    const target = fresh();
+    await applyImport(target, planImport(parsed.document, [], 'merge', [], sharedIds(target)));
+
+    expect(target.prepare(`SELECT id, trip_item_id, payer_id, paid_by FROM expenses`).all()).toEqual([
+      { id: 'e1', trip_item_id: null, payer_id: null, paid_by: 'Evelina' },
+    ]);
+    expect(target.prepare(`SELECT COUNT(*) AS n FROM booking_payments`).get()).toEqual({ n: 0 });
+  });
+
+  it('replace overwrites a trip whose bookings have payments on this phone', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    const target = fresh();
+    seed(target);
+    seedFieldbook(target);
+    seedMoney(target);
+
+    await restoreInto(target, source, 'replace');
+
+    expect(await readAll(target)).toEqual(await readAll(source));
+    expect(target.prepare(`SELECT COUNT(*) AS n FROM booking_payments`).get()).toEqual({ n: 0 });
+  });
+
+  it('merge leaves a trip already here, payments and all, exactly as it is', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    const target = fresh();
+    seed(target);
+    seedFieldbook(target);
+    seedMoney(target);
+    const before = await readAll(target);
+
+    await restoreInto(target, source, 'merge');
+
+    expect(await readAll(target)).toEqual(before);
+  });
+
+  it('a one-trip selection carries its payments and the payers they name', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    run(
+      source,
+      `INSERT INTO travellers (id, name, sort_order, created_at, updated_at)
+       VALUES ('friend', 'Friend', 9, ?, ?)`,
+      now,
+      now,
+    );
+    seedMoney(source);
+    run(source, `UPDATE booking_payments SET payer_id = 'friend' WHERE id = 'bp2'`);
+
+    const one = filterTablesForTrip(await readAll(source), 't1');
+
+    expect(one.bookingPayments.map((row) => row.id).sort()).toEqual(['bp1', 'bp2']);
+    expect(one.travellers.map((t) => t.id).sort()).toEqual(['ev', 'friend', 'mia']);
+    expect(filterTablesForTrip(await readAll(source), 't2').bookingPayments).toEqual([]);
   });
 });
