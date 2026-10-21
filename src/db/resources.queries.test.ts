@@ -316,6 +316,7 @@ describe('one attachment on the trip and on an item (U4)', () => {
       items: 1 + 1,
       files: 1,
       expenses: 0,
+      payments: 0,
     });
 
     db.prepare('DELETE FROM trips WHERE id = ?').run('t1');

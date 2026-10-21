@@ -467,6 +467,7 @@ describe('activityFromItem', () => {
         endTzOverride: 'Europe/Helsinki',
         confirmationCode: 'ABC123',
         isPaid: true,
+        recordedPaid: 7300,
         priceAmount: 18000,
         priceCurrency: 'EUR',
         notes: 'Window seat',
@@ -498,7 +499,8 @@ describe('activityFromItem', () => {
       transport: { from: 'SOF', to: 'RVN', carrier: 'Finnair', number: 'AY1' },
     });
     const text = JSON.stringify(activity);
-    for (const secret of ['ABC123', '12A', 'j1', 'secret', 'pay.google', 'isPaid', 'i1', 'lap']) {
+    // 3D-1: what is recorded as paid is private too.
+    for (const secret of ['ABC123', '12A', 'j1', 'secret', 'pay.google', 'isPaid', 'i1', 'lap', 'recorded', '73']) {
       expect(text).not.toContain(secret);
     }
   });

@@ -52,7 +52,9 @@ describe('readPlanningInput', () => {
     for (const stays of [false, true]) {
       for (const travellers of [false, true]) {
         const text = buildPlanningContext(input, { ...DEFAULT_PLANNING_OPTIONS, stays, travellers });
-        for (const secret of ['ABC123', 'Evelina', 'Misho', 'Mitko', 'Rome only', 'Door code', '4417', 'Rome secret', 'K-Market', 'media/', 'ticket.pdf', 'receipt', 'example.com', 'colosseum', 'j-1', '180.00', 'EUR', 'me_traveller']) {
+        for (const secret of ['ABC123', 'Evelina', 'Misho', 'Mitko', 'Rome only', 'Door code', '4417', 'Rome secret', 'K-Market', 'media/', 'ticket.pdf', 'receipt', 'example.com', 'colosseum', 'j-1', '180.00', 'EUR', 'me_traveller',
+          // 3D-1: payments and linked expenses are in the fixture and never in the context.
+          'Deposit', 'Safari balance', '200.00', '50.00', '60.00']) {
           expect([secret, text.includes(secret)]).toEqual([secret, false]);
         }
       }

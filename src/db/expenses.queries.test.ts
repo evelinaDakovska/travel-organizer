@@ -40,6 +40,8 @@ function setup() {
       currency: 'EUR',
       spentOn: '2026-11-02',
       notes: null,
+      payerId: null,
+      tripItemId: null,
       now,
       ...values,
     });
@@ -109,6 +111,8 @@ describe('expenses', () => {
       currency: 'HUF',
       spentOn: '2026-11-03',
       notes: 'To the airport',
+      payerId: null,
+      tripItemId: null,
       now: '2026-11-03T10:00:00.000Z',
     });
 
@@ -137,6 +141,7 @@ describe('expenses', () => {
       items: 0,
       files: 2,
       expenses: 2,
+      payments: 0,
     });
   });
 });
