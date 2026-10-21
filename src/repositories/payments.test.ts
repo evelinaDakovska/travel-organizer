@@ -3,6 +3,7 @@ import Database from 'better-sqlite3';
 import { MIGRATIONS } from '../db/migrations';
 import { asyncDatabase } from '../db/testing/asyncDatabase';
 import { tripItemInputSchema } from '../domain/tripItem';
+import { MoneyRuleError } from '../domain/bookingPayments';
 import { createExpense, getExpense, updateExpense } from './expenses';
 import {
   countMoneyRecords,
@@ -124,8 +125,10 @@ describe('payments against a booking', () => {
   it('writes nothing when the insert itself fails', async () => {
     const { raw, db } = setup();
     const { hotelId } = await hotel(db);
+    raw.exec(`CREATE TEMP TRIGGER fail_insert BEFORE INSERT ON booking_payments
+              BEGIN SELECT RAISE(ABORT, 'injected: insert'); END`);
     const before = snapshot(raw);
-    await expect(createBookingPayment(db, hotelId, pay(100, 'nobody'))).rejects.toThrow(/FOREIGN KEY/);
+    await expect(createBookingPayment(db, hotelId, pay(100))).rejects.toThrow('injected: insert');
     expect(snapshot(raw)).toEqual(before);
   });
 
@@ -321,3 +324,194 @@ describe('leaving a trip as a payer (invariant I)', () => {
     expect(snapshot(raw)).toEqual(before);
   });
 });
+
+describe('editing a payment: the same checks as recording one, at the repository', () => {
+  async function recorded(db: Db) {
+    const fixture = await hotel(db);
+    const id = await createBookingPayment(db, fixture.hotelId, pay(10000, fixture.ev, '2026-08-01'));
+    return { ...fixture, id };
+  }
+
+  it('saves a valid edit, and only amount, payer, date and note', async () => {
+    const { raw, db } = setup();
+    const { ana, hotelId, id } = await recorded(db);
+    await updateBookingPayment(db, id, { amount: 12000, payerId: ana, paidOn: null, note: 'Card' });
+    expect(
+      raw
+        .prepare(`SELECT trip_id, trip_item_id, payer_id, amount, currency, paid_on, note FROM booking_payments`)
+        .get(),
+    ).toEqual({
+      trip_id: 'lapland',
+      trip_item_id: hotelId,
+      payer_id: ana,
+      amount: 12000,
+      currency: 'EUR',
+      paid_on: null,
+      note: 'Card',
+    });
+  });
+
+  it('refuses a payment that is not there, writing nothing', async () => {
+    const { raw, db } = setup();
+    await recorded(db);
+    const before = snapshot(raw);
+    await expect(updateBookingPayment(db, 'ghost', pay(100))).rejects.toThrow(/not here any more/);
+    expect(snapshot(raw)).toEqual(before);
+  });
+
+  it.each([
+    ['zero', 0],
+    ['a negative amount', -500],
+    ['a fraction of a cent', 10.5],
+    ['not a number', Number.NaN],
+  ])('refuses %s, keeping the record as it was', async (_what, amount) => {
+    const { raw, db } = setup();
+    const { id } = await recorded(db);
+    const before = snapshot(raw);
+    await expect(updateBookingPayment(db, id, pay(amount))).rejects.toThrow(MoneyRuleError);
+    expect(snapshot(raw)).toEqual(before);
+  });
+
+  it('refuses a malformed date, keeping the record as it was', async () => {
+    const { raw, db } = setup();
+    const { id } = await recorded(db);
+    const before = snapshot(raw);
+    await expect(updateBookingPayment(db, id, pay(100, null, '1 Aug'))).rejects.toThrow(/Pick a date/);
+    expect(snapshot(raw)).toEqual(before);
+  });
+
+  it('refuses a payer who does not exist, or who is on another trip only', async () => {
+    const { raw, db } = setup();
+    const { id } = await recorded(db);
+    const romeOnly = await createTripTraveller(db, 'milan', 'Rome only', 'adult');
+    const before = snapshot(raw);
+    await expect(updateBookingPayment(db, id, pay(100, 'nobody'))).rejects.toThrow(/must be on this trip/);
+    await expect(updateBookingPayment(db, id, pay(100, romeOnly))).rejects.toThrow(/must be on this trip/);
+    expect(snapshot(raw)).toEqual(before);
+  });
+
+  it('refuses someone who has left the trip; not recorded is always allowed', async () => {
+    const { raw, db } = setup();
+    const { ana, id } = await recorded(db);
+    await removeTripTraveller(db, 'lapland', ana);
+    const before = snapshot(raw);
+    await expect(updateBookingPayment(db, id, pay(100, ana))).rejects.toThrow(/must be on this trip/);
+    expect(snapshot(raw)).toEqual(before);
+    await updateBookingPayment(db, id, pay(100, null));
+    expect(paymentRow(raw, id)).toMatchObject({ amount: 100, payer_id: null });
+  });
+
+  it('keeps a payer the record already names, even one no longer on the trip (restored data)', async () => {
+    const { raw, db } = setup();
+    const { ana, id } = await recorded(db);
+    // Not reachable through the app (a payer cannot leave); only a restored record could look like this.
+    raw.prepare(`UPDATE booking_payments SET payer_id = ? WHERE id = ?`).run(ana, id);
+    raw.prepare(`DELETE FROM trip_travellers WHERE traveller_id = ?`).run(ana);
+    await updateBookingPayment(db, id, { ...pay(10000, ana), note: 'Fixed note' });
+    expect(paymentRow(raw, id)).toMatchObject({ payer_id: ana, note: 'Fixed note' });
+  });
+
+  it('refuses an edit once the booking is no longer eligible, keeping the record', async () => {
+    const { raw, db } = setup();
+    const { id, hotelId } = await recorded(db);
+    // The repositories never allow these (editRefusal); only data from elsewhere could hold them.
+    const cases: [string, RegExp][] = [
+      [`UPDATE trip_items SET status = 'idea' WHERE id = ?`, /saved place/],
+      [`UPDATE trip_items SET status = 'confirmed', price_currency = 'BGN' WHERE id = ?`, /never converted/],
+      [`UPDATE trip_items SET price_currency = 'EUR', price_amount = NULL WHERE id = ?`, /Add the price/],
+    ];
+    for (const [sql, reason] of cases) {
+      raw.prepare(sql).run(hotelId);
+      const before = snapshot(raw);
+      await expect(updateBookingPayment(db, id, pay(100))).rejects.toThrow(reason);
+      expect(snapshot(raw)).toEqual(before);
+    }
+  });
+
+  it('cannot move a payment to another booking, trip or currency', async () => {
+    const { raw, db } = setup();
+    const { hotelId, id } = await recorded(db);
+    const duomo = await createTripItem(db, 'milan', plan('Duomo', { priceAmount: 2000, priceCurrency: 'EUR' }));
+    const sneaky = { ...pay(100), tripItemId: duomo, tripId: 'milan', currency: 'BGN' } as never;
+    await updateBookingPayment(db, id, sneaky);
+    expect(paymentRow(raw, id)).toMatchObject({
+      trip_id: 'lapland',
+      trip_item_id: hotelId,
+      currency: 'EUR',
+      amount: 100,
+    });
+  });
+
+  it('rolls back when the write itself fails after the checks', async () => {
+    const { raw, db } = setup();
+    const { id } = await recorded(db);
+    raw.exec(`CREATE TEMP TRIGGER fail_edit BEFORE UPDATE ON booking_payments
+              BEGIN SELECT RAISE(ABORT, 'injected: edit'); END`);
+    const before = snapshot(raw);
+    await expect(updateBookingPayment(db, id, pay(100))).rejects.toThrow('injected: edit');
+    expect(snapshot(raw)).toEqual(before);
+  });
+});
+
+describe('a payer is on the record’s trip (invariant P)', () => {
+  it('a new payment: refuses another trip’s traveller and a bad amount; accepts a member or nobody', async () => {
+    const { raw, db } = setup();
+    const { ev, hotelId } = await hotel(db);
+    const romeOnly = await createTripTraveller(db, 'milan', 'Rome only', 'adult');
+    const before = snapshot(raw);
+    await expect(createBookingPayment(db, hotelId, pay(100, romeOnly))).rejects.toThrow(/must be on this trip/);
+    await expect(createBookingPayment(db, hotelId, pay(0))).rejects.toThrow(/above zero/);
+    await expect(createBookingPayment(db, hotelId, pay(10.5))).rejects.toThrow(MoneyRuleError);
+    expect(snapshot(raw)).toEqual(before);
+    await createBookingPayment(db, hotelId, pay(100, ev));
+    await createBookingPayment(db, hotelId, pay(100));
+    expect(raw.prepare(`SELECT payer_id FROM booking_payments ORDER BY rowid`).all()).toEqual([
+      { payer_id: ev },
+      { payer_id: null },
+    ]);
+  });
+
+  it('a new expense, linked or standalone: refuses another trip’s traveller', async () => {
+    const { raw, db } = setup();
+    const { ana, hotelId } = await hotel(db);
+    const romeOnly = await createTripTraveller(db, 'milan', 'Rome only', 'adult');
+    const before = snapshot(raw);
+    await expect(createExpense(db, 'lapland', spend(500, { payerId: romeOnly }))).rejects.toThrow(
+      /must be on this trip/,
+    );
+    await expect(
+      createExpense(db, 'lapland', spend(500, { payerId: romeOnly, tripItemId: hotelId })),
+    ).rejects.toThrow(/must be on this trip/);
+    expect(snapshot(raw)).toEqual(before);
+    const id = await createExpense(db, 'lapland', spend(500, { payerId: ana }));
+    expect(await getExpense(db, id)).toMatchObject({ payerId: ana, tripItemId: null });
+  });
+
+  it('an edited expense: refuses a new payer off the trip, keeps the one it names', async () => {
+    const { raw, db } = setup();
+    const { ana } = await hotel(db);
+    const romeOnly = await createTripTraveller(db, 'milan', 'Rome only', 'adult');
+    const id = await createExpense(db, 'lapland', spend(500, { payerId: ana }));
+    const before = snapshot(raw);
+    await expect(updateExpense(db, id, spend(500, { payerId: romeOnly }))).rejects.toThrow(/must be on this trip/);
+    expect(snapshot(raw)).toEqual(before);
+    // Restored data only: the payer is no longer a member; editing the amount keeps them.
+    raw.prepare(`DELETE FROM trip_travellers WHERE traveller_id = ?`).run(ana);
+    await updateExpense(db, id, spend(700, { payerId: ana }));
+    expect(await getExpense(db, id)).toMatchObject({ amount: 700, payerId: ana });
+  });
+
+  it('unlinking keeps the payer and changes nothing else', async () => {
+    const { db } = setup();
+    const { ana, hotelId } = await hotel(db);
+    const id = await createExpense(db, 'lapland', spend(15000, { payerId: ana, tripItemId: hotelId }));
+    const before = await getExpense(db, id);
+    await unlinkExpense(db, id);
+    const after = await getExpense(db, id);
+    expect({ ...after, tripItemId: hotelId, updatedAt: before!.updatedAt }).toEqual(before);
+  });
+});
+
+function paymentRow(raw: Database.Database, id: string) {
+  return raw.prepare(`SELECT * FROM booking_payments WHERE id = ?`).get(id);
+}

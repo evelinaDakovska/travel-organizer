@@ -267,13 +267,16 @@ export async function removeTripTraveller(
   tripId: string,
   travellerId: string,
 ): Promise<void> {
+  await db.withTransactionAsync(() => leaveTrip(db, tripId, travellerId));
+}
+
+/** `removeTripTraveller` inside the caller's transaction — the trip form's save (`trips.ts`). */
+export async function leaveTrip(db: SQLiteDatabase, tripId: string, travellerId: string): Promise<void> {
   const params = { $tripId: tripId, $travellerId: travellerId };
-  await db.withTransactionAsync(async () => {
-    const refusal = await leaveTripRefusal(db, tripId, travellerId);
-    if (refusal) throw new MoneyRuleError(refusal);
-    await db.runAsync(DELETE_TRIP_TRAVELLER_PARTICIPATION, params);
-    await db.runAsync(DELETE_TRIP_TRAVELLER, params);
-  });
+  const refusal = await leaveTripRefusal(db, tripId, travellerId);
+  if (refusal) throw new MoneyRuleError(refusal);
+  await db.runAsync(DELETE_TRIP_TRAVELLER_PARTICIPATION, params);
+  await db.runAsync(DELETE_TRIP_TRAVELLER, params);
 }
 
 export async function listItemParticipants(

@@ -10,10 +10,12 @@ import {
   SELECT_ITEM_PAYMENTS,
   SELECT_LAST_PAYER,
   SELECT_LINKED_EXPENSES,
+  SELECT_TRIP_MEMBER,
   UNLINK_EXPENSE,
   UPDATE_BOOKING_PAYMENT,
 } from '../db/queries';
 import {
+  bookingPaymentInputSchema,
   MoneyRuleError,
   parseBookingPaymentRow,
   recordRefusal,
@@ -87,6 +89,33 @@ export async function bookingForRecord(
   return booking;
 }
 
+/**
+ * A payer is someone on the record's trip (invariant P); null — not recorded — always passes, and
+ * nobody is chosen for the person. The payer a record already names is accepted unchanged, so a
+ * record restored as it was is never locked against editing its note.
+ */
+export async function checkPayer(
+  db: SQLiteDatabase,
+  tripId: string,
+  payerId: string | null,
+  current: string | null = null,
+): Promise<void> {
+  if (payerId === null || payerId === current) return;
+  const member = await db.getFirstAsync(SELECT_TRIP_MEMBER, { $tripId: tripId, $travellerId: payerId });
+  if (!member) {
+    throw new MoneyRuleError(
+      'Whoever paid must be on this trip. Add them to the trip first, or leave the payer as not recorded.',
+    );
+  }
+}
+
+/** The form's own schema, again at the boundary: a whole, positive amount, a date or none. */
+function validInput(input: BookingPaymentInput): BookingPaymentInput {
+  const result = bookingPaymentInputSchema.safeParse(input);
+  if (!result.success) throw new MoneyRuleError(result.error.issues[0]?.message ?? 'Check the payment.');
+  return result.data;
+}
+
 const bindings = (input: BookingPaymentInput) => ({
   $payerId: input.payerId,
   $amount: input.amount,
@@ -102,27 +131,40 @@ export async function createBookingPayment(
   input: BookingPaymentInput,
 ): Promise<string> {
   const id = randomUUID();
+  const valid = validInput(input);
   await db.withTransactionAsync(async () => {
     const item = await getTripItem(db, itemId);
     if (!item) throw new MoneyRuleError('That booking is not here any more.');
     const booking = await bookingForRecord(db, itemId, item.tripId);
+    await checkPayer(db, booking.tripId, valid.payerId);
     await db.runAsync(INSERT_BOOKING_PAYMENT, {
       $id: id,
       $tripId: booking.tripId,
       $itemId: itemId,
       $currency: booking.priceCurrency!,
-      ...bindings(input),
+      ...bindings(valid),
     });
   });
   return id;
 }
 
+/**
+ * Amount, payer, date and note only: the payment stays on its booking, trip and currency. The same
+ * checks as recording one, inside the write's transaction; a refusal changes nothing.
+ */
 export async function updateBookingPayment(
   db: SQLiteDatabase,
   id: string,
   input: BookingPaymentInput,
 ): Promise<void> {
-  await db.runAsync(UPDATE_BOOKING_PAYMENT, { $id: id, ...bindings(input) });
+  const valid = validInput(input);
+  await db.withTransactionAsync(async () => {
+    const payment = await getBookingPayment(db, id);
+    if (!payment) throw new MoneyRuleError('That payment is not here any more.');
+    await bookingForRecord(db, payment.tripItemId, payment.tripId, payment.currency);
+    await checkPayer(db, payment.tripId, valid.payerId, payment.payerId);
+    await db.runAsync(UPDATE_BOOKING_PAYMENT, { $id: id, ...bindings(valid) });
+  });
 }
 
 /** The person's own record, removed only when they say so. Never turned into an expense. */

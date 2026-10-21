@@ -265,5 +265,27 @@ database unchanged, backup format 8 and 1–7, archive rowFormat 8 remap, 2C/2D 
 Emulator E2E: `%USERPROFILE%\Pictures\TravelOrganizer-0.14.0-3D1-e2e\E2E-LOG.md` — migration 6 → 7
 on a debug-signed build over a real-shaped synthetic database with every old row identical; 15 UI
 checks; release `install -r` over 0.13.0 with identical screens; 0.13.0 refuses format-8 files.
-Release APK `%USERPROFILE%\.travel-organizer	ravel-organizer-0.14.0.apk` (versionCode 21, release key),
+Release APK `%USERPROFILE%\.travel-organizer\travel-organizer-0.14.0.apk` (versionCode 21, release key),
 **on no phone**.
+
+### 11.1 Corrective pass after the code review (2026-10-21, branch `phase-3d1`)
+
+No schema, format or behaviour change for valid input; migration 007, backup format 8 and archive
+rowFormat 8 are unchanged.
+
+- **The trip form's save is one transaction.** `updateTripWithMembers` used to commit the trip's
+  fields, then each removal, in separate transactions, so a failure part-way could keep a partial
+  edit. Now the payer check, the fields (and a new zone's instants), the removals and the additions
+  run in one `withTransactionAsync`; the inner steps (`writeTrip`, `leaveTrip`, `addTripTraveller`)
+  open no transaction of their own, so nothing nests.
+- **Editing a payment is checked at the repository.** `updateBookingPayment` wrote straight through;
+  now, in one transaction: the payment exists; its booking exists, is on the payment's trip, can
+  take payments and is still in the payment's currency (`bookingForRecord`); the input passes
+  `bookingPaymentInputSchema` (a whole, positive amount; a date or none); the payer passes
+  `checkPayer`. Booking, trip and currency are never written by the update.
+- **Invariant P — a payer is on the record's trip.** `checkPayer` (null always passes) on creating
+  and editing a payment, and creating and editing an expense. A payer the record already names is
+  accepted unchanged, so a record restored as it was is never locked against editing its note.
+  `checkTripArchive` refuses an archive whose payment or expense names a payer who is not on its
+  trip (the remap keeps members and payers together). A backup restore copies records as they are
+  — it is not refused or altered for this.

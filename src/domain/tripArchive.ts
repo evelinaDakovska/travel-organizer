@@ -516,10 +516,16 @@ export function checkTripArchive(
     if (row.kind !== 'file' && row.kind !== 'link') return 'a document is of an unknown kind';
   }
 
+  // A payer is on the trip (invariant P); members are remapped with the same choices, so they
+  // stay on it here.
+  const members = new Set(t.tripTravellers.map((row) => row.traveller_id));
   for (const row of t.bookingPayments) {
     if (!items.has(row.trip_item_id)) return 'a payment is for a missing booking';
     if (row.payer_id !== null && !travellers.has(row.payer_id)) {
       return 'a payment names a payer who is not in the archive';
+    }
+    if (row.payer_id !== null && !members.has(row.payer_id)) {
+      return 'a payment names a payer who is not on the trip';
     }
   }
   for (const row of t.expenses) {
@@ -528,6 +534,9 @@ export function checkTripArchive(
     }
     if (row.payer_id !== null && !travellers.has(row.payer_id)) {
       return 'an expense names a payer who is not in the archive';
+    }
+    if (row.payer_id !== null && !members.has(row.payer_id)) {
+      return 'an expense names a payer who is not on the trip';
     }
   }
 

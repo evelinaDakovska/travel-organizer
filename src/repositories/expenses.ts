@@ -11,7 +11,7 @@ import {
 } from '../db/queries';
 import type { ResourceInput } from '../domain/resource';
 import { parseExpenseRow, type Expense, type ExpenseInput, type ExpenseRow } from '../domain/spending';
-import { bookingForRecord } from './payments';
+import { bookingForRecord, checkPayer } from './payments';
 import { createResource } from './resources';
 
 export const EXPENSE_TABLES = ['expenses'] as const;
@@ -72,6 +72,7 @@ export async function createExpense(
   const id = randomUUID();
   await db.withTransactionAsync(async () => {
     await checkLink(db, tripId, input);
+    await checkPayer(db, tripId, input.payerId);
     await db.runAsync(INSERT_EXPENSE, { $id: id, $tripId: tripId, ...bindings(input) });
     for (const receipt of receipts) {
       await createResource(db, { scope: 'expense', id }, receipt);
@@ -87,7 +88,10 @@ export async function updateExpense(
 ): Promise<void> {
   await db.withTransactionAsync(async () => {
     const saved = await getExpense(db, id);
-    if (saved) await checkLink(db, saved.tripId, input);
+    if (saved) {
+      await checkLink(db, saved.tripId, input);
+      await checkPayer(db, saved.tripId, input.payerId, saved.payerId);
+    }
     await db.runAsync(UPDATE_EXPENSE, { $id: id, ...bindings(input) });
   });
 }

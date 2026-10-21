@@ -341,6 +341,18 @@ describe('checkTripArchive — every reference resolves inside the archive', () 
     tamper(tables);
     expect(checkTripArchive(manifest, tables)).not.toBeNull();
   });
+
+  // Invariant P: a payer is on the trip, not merely somewhere in the archive.
+  const guest = (t: any) => t.travellers.push({ ...t.travellers[0], id: 'guest', name: 'Guest' });
+  it.each([
+    ['a payment by someone not in it', (t: any) => (t.bookingPayments[0].payer_id = 'ghost'), 'a payment names a payer who is not in the archive'],
+    ['a payment by someone not on the trip', (t: any) => (guest(t), (t.bookingPayments[0].payer_id = 'guest')), 'a payment names a payer who is not on the trip'],
+    ['an expense by someone not on the trip', (t: any) => (guest(t), (t.expenses.find((e: any) => e.payer_id).payer_id = 'guest')), 'an expense names a payer who is not on the trip'],
+  ])('refuses %s', (_what, tamper, reason) => {
+    const { manifest, tables } = parts();
+    tamper(tables);
+    expect(checkTripArchive(manifest, tables)).toBe(reason);
+  });
 });
 
 describe('planning an import: a new trip, new ids for everything', () => {

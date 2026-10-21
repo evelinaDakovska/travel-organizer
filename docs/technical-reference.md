@@ -1633,3 +1633,10 @@ trip's payments with it in one statement.
 **Screens.** Booking: *Payments* section (`features/payments/PaymentsSection`), `app/payment/new`,
 `app/payment/[paymentId]`. Expense form: *For a booking*, *Paid by* (`PayerField`). Expense detail:
 *Paid by*, *Pays for*, **Unlink**. 2C and 2D carry none of it (tests).
+
+**Invariant P and atomic saves (corrective pass, 2026-10-21).** A non-null payer is a member of the
+record's trip: `payments.checkPayer` on create/edit of payments and expenses (a payer the record
+already names is kept), `checkTripArchive` on archives; backup restore copies as-is. Payment edits
+re-run the booking, currency and input-schema checks inside their transaction and never move a
+payment. `updateTripWithMembers` is one transaction (fields, removals, additions); its inner steps
+open none of their own. Detail: `docs/phase3d1-plan.md` §11.1.

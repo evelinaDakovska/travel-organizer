@@ -716,6 +716,11 @@ SELECT payer_id FROM (
 ) ORDER BY created_at DESC LIMIT 1
 `;
 
+/** Whether someone is on a trip: a payer must be (invariant P). */
+export const SELECT_TRIP_MEMBER = `
+SELECT 1 AS yes FROM trip_travellers WHERE trip_id = $tripId AND traveller_id = $travellerId
+`;
+
 /** What someone is recorded as having paid on one trip: they cannot leave it while it stands. */
 export const COUNT_PAYER_RECORDS = `
 SELECT (SELECT COUNT(*) FROM booking_payments WHERE trip_id = $tripId AND payer_id = $travellerId)

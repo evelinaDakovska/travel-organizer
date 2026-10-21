@@ -5,12 +5,7 @@ import { COUNT_TRIP_CONTENTS } from '../db/queries';
 import { MoneyRuleError } from '../domain/bookingPayments';
 import { parseTripRow, type Trip, type TripInput, type TripRow } from '../domain/trip';
 import { recomputeTripInstants } from './tripItems';
-import {
-  addTripTraveller,
-  leaveTripRefusal,
-  listTripTravellers,
-  removeTripTraveller,
-} from './travellers';
+import { addTripTraveller, leaveTrip, leaveTripRefusal, listTripTravellers } from './travellers';
 
 export const TRIP_TABLES = ['trips', 'trip_travellers'] as const;
 
@@ -70,67 +65,74 @@ export async function updateTrip(
   id: string,
   input: TripInput,
 ): Promise<void> {
+  // One transaction: items whose instants were derived from the old zone must not survive
+  // a crash between the two writes, because nothing would recompute them later.
+  await db.withTransactionAsync(() => writeTrip(db, id, input));
+}
+
+/** The trip's fields and, on a new zone, its items' instants. Inside the caller's transaction. */
+async function writeTrip(db: SQLiteDatabase, id: string, input: TripInput): Promise<void> {
   const previous = await db.getFirstAsync<{ default_tz: string }>(
     `SELECT default_tz FROM trips WHERE id = ?`,
     id,
   );
   const zoneChanged = previous !== null && previous.default_tz !== input.defaultTz;
 
-  // One transaction: items whose instants were derived from the old zone must not survive
-  // a crash between the two writes, because nothing would recompute them later.
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
-      `UPDATE trips SET
-         name = ?, destination = ?, start_date = ?, end_date = ?, default_tz = ?,
-         notes = ?, traveller_count = ?, travellers = ?, updated_at = ?
-       WHERE id = ?`,
-      input.name,
-      input.destination ?? null,
-      input.startDate,
-      input.endDate,
-      input.defaultTz,
-      input.notes ?? null,
-      input.travellerCount ?? null,
-      serialiseTravellers(input.travellers),
-      new Date().toISOString(),
-      id,
-    );
+  await db.runAsync(
+    `UPDATE trips SET
+       name = ?, destination = ?, start_date = ?, end_date = ?, default_tz = ?,
+       notes = ?, traveller_count = ?, travellers = ?, updated_at = ?
+     WHERE id = ?`,
+    input.name,
+    input.destination ?? null,
+    input.startDate,
+    input.endDate,
+    input.defaultTz,
+    input.notes ?? null,
+    input.travellerCount ?? null,
+    serialiseTravellers(input.travellers),
+    new Date().toISOString(),
+    id,
+  );
 
-    if (zoneChanged) await recomputeTripInstants(db, id);
-  });
+  if (zoneChanged) await recomputeTripInstants(db, id);
 }
 
-/** Updates trip fields and synchronises traveller memberships preserving classification overrides. */
+/**
+ * Updates trip fields and synchronises traveller memberships preserving classification overrides.
+ * One transaction for the whole save: a refusal or a failed write part-way leaves the trip, its
+ * members and their participation exactly as they were.
+ */
 export async function updateTripWithMembers(
   db: SQLiteDatabase,
   tripId: string,
   input: TripInput,
   newTravellerIds: readonly string[],
 ): Promise<void> {
-  // Nobody who paid on this trip can be unticked: refused before anything is saved (3D-1).
-  for (const member of await listTripTravellers(db, tripId)) {
-    if (newTravellerIds.includes(member.id)) continue;
-    const refusal = await leaveTripRefusal(db, tripId, member.id);
-    if (refusal) throw new MoneyRuleError(refusal);
-  }
-  await updateTrip(db, tripId, input);
-  const currentMembers = await listTripTravellers(db, tripId);
-  const currentMemberMap = new Map(currentMembers.map((m) => [m.id, m]));
-  const newIdSet = new Set(newTravellerIds);
+  await db.withTransactionAsync(async () => {
+    const currentMembers = await listTripTravellers(db, tripId);
+    const newIdSet = new Set(newTravellerIds);
 
-  // Remove members who were unselected
-  for (const member of currentMembers) {
-    if (!newIdSet.has(member.id)) {
-      await removeTripTraveller(db, tripId, member.id);
+    // Nobody who paid on this trip can be unticked: refused before anything is written (3D-1).
+    for (const member of currentMembers) {
+      if (newIdSet.has(member.id)) continue;
+      const refusal = await leaveTripRefusal(db, tripId, member.id);
+      if (refusal) throw new MoneyRuleError(refusal);
     }
-  }
 
-  // Add newly selected members (snapshots current profile classification)
-  for (const travellerId of newTravellerIds) {
-    if (!currentMemberMap.has(travellerId)) {
-      await addTripTraveller(db, tripId, travellerId);
+    await writeTrip(db, tripId, input);
+
+    // Remove members who were unselected
+    for (const member of currentMembers) {
+      if (!newIdSet.has(member.id)) await leaveTrip(db, tripId, member.id);
     }
-  }
+
+    // Add newly selected members (snapshots current profile classification)
+    const currentIds = new Set(currentMembers.map((m) => m.id));
+    for (const travellerId of newIdSet) {
+      if (!currentIds.has(travellerId)) await addTripTraveller(db, tripId, travellerId);
+    }
+  });
 }
 
 /** Rows cascade. Files on disk are reclaimed by the GC sweep, not here. */

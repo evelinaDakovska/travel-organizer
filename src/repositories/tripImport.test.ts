@@ -205,6 +205,14 @@ describe('importing a trip archive into a database', () => {
       { label: 'K-Market', title: null, payer: null, same_profile: null },
       { label: 'Safari balance', title: 'safari', payer: 'Misho', same_profile: 0 },
     ]);
+    // Invariant P holds after the remap: every payer is on the new trip.
+    expect(
+      one(`SELECT payer_id FROM (SELECT trip_id, payer_id FROM booking_payments
+                                 UNION ALL SELECT trip_id, payer_id FROM expenses) r
+            WHERE r.trip_id = ? AND r.payer_id IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM trip_travellers m
+                               WHERE m.trip_id = r.trip_id AND m.traveller_id = r.payer_id)`),
+    ).toEqual([]);
     expect(raw.pragma('foreign_key_check')).toEqual([]);
     expect(await verifyTripImport(db, plan)).toEqual({ ok: true });
   });

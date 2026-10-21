@@ -5,6 +5,7 @@ import { Alert, Text } from 'react-native';
 
 import { formatMoney } from '../../src/domain/format';
 import { PaymentForm } from '../../src/features/payments/PaymentForm';
+import { alertRefusal } from '../../src/features/payments/refusal';
 import { queryView } from '../../src/hooks/queryView';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
 import {
@@ -113,7 +114,12 @@ export default function PaymentDetail() {
           ) : null
         }
         onSubmit={async (input) => {
-          await updateBookingPayment(db, payment.id, input);
+          try {
+            await updateBookingPayment(db, payment.id, input);
+          } catch (error) {
+            if (alertRefusal(error)) return;
+            throw error;
+          }
           router.back();
         }}
         secondaryActions={<Button label="Delete payment" variant="danger" onPress={confirmDelete} />}

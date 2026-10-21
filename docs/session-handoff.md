@@ -392,7 +392,7 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
   built on **`phase-3d1`**, `main` stays at 0.13.0 (a trip fix needs no migration), and **no phone
   install until after the owner's trip**, then with the separate approvals of `phase3-plan.md` §15 *11*.
 - 0.14.0 / versionCode 21: migration 007, backup and archive format 8. APK
-  `%USERPROFILE%\.travel-organizer	ravel-organizer-0.14.0.apk` (release key), on no phone. E2E log:
+  `%USERPROFILE%\.travel-organizer\travel-organizer-0.14.0.apk` (release key), on no phone. E2E log:
   `%USERPROFILE%\Pictures\TravelOrganizer-0.14.0-3D1-e2e\E2E-LOG.md`.
 - The owner **approved a debug-signed debuggable build on the emulator only** for DB inspection; it
   was built with the E2E-INJECT edit, used on `TO_2B_Test`, and `build.gradle` restored.
