@@ -9,6 +9,22 @@ this plan (§11 lists the questions).
 Where this plan and `phase3-plan.md` §7 (*Balances*) or `expenses-spec.md` (*Settle up*) differ,
 this plan is the proposal and those are history.
 
+**Status (2026-10-22, revision 2).** The owner reviewed revision 1 and approved the direction, but
+did **not** authorise migration 009 or any implementation. Their answers are in §11.1. Refinements
+A–F are worked into §§3–8, and §12 lists the contradictions that are still open. Two gates come
+before any code:
+
+1. **The independent review of `a44dd6d`** (the final 3D-2 corrective) is finished and has passed.
+   Any confirmed findings are fixed in their own commit **before migration 009 is written** (F).
+2. **The owner explicitly authorises the implementation** of this revision, including the answer
+   to §12.1.
+
+**Real data (owner, 2026-10-22).** The phone holds real data. A schema migration is a risk to it by
+definition, so everything in 3E stays on `phase-3d1`, separate from `main`. `main` stays at 0.13.0,
+schema 6. Nothing is merged and nothing is installed on the phone until the owner's trip has passed.
+Then it happens only with the separate approvals of `phase3-plan.md` §15 *11*. All testing is
+synthetic and on emulators only.
+
 ## 1. Scope
 
 **In 3E:**
@@ -84,6 +100,23 @@ Positive means *is owed*. Negative means *owes*. Zero means *settled*. Currencie
 together, each gets its own section. Everyone a balance names is on the trip, because payers, shares,
 covers and settlements all require trip membership (3D-1 invariant P, 3D-2 §5, §6 here).
 
+**Recorded payments never disappear (A).** Eligibility decides only what goes into the *net*. It
+never decides what is shown. A EUR 250 booking with a EUR 100 deposit by Ana still reads *Paid EUR
+100 of 250 · To pay EUR 150* on its screen, in the Bookings view and in the trip total, exactly as
+in 3D-1. On *Settle up* it is listed under *Not in the balances yet* with its recorded payments
+(*Hotel Aurora · EUR 250 · paid EUR 100 (Ana) · EUR 150 to pay*). Ana's explanation screen has a
+separate part, *Paid on costs not in the balances yet*, which shows that EUR 100 and is not added
+to her net. Nothing outside *Settle up* reads eligibility.
+
+**A partial picture is never shown as a final one (A, D).** In each currency, the nets are labelled
+by what they cover:
+
+| The currency has | Heading over the nets | Suggested transfers |
+|---|---|---|
+| Only complete costs (plus any not split, Q2) | *Balances* | shown |
+| Complete costs **and** costs waiting for another reason | *Balances so far — 2 costs not included yet* | per §12.1 |
+| Settlements but no complete costs | *Settlements only — no costs in the balances* (B, §6) | **none** |
+
 ## 4. Who owes whom (suggested transfers)
 
 Per currency, from the nets: the largest debtor pays the largest creditor
@@ -91,6 +124,9 @@ Per currency, from the nets: the largest debtor pays the largest creditor
 so the result is deterministic. It produces at most *people with a non-zero net − 1* transfers.
 This is the usual greedy method from `expenses-spec.md`. It is **few** transfers, not always the
 fewest, since finding the fewest is a much harder problem. The screen says *suggested*.
+
+No suggestions are made in a currency that has settlements but no complete costs (B, §6), or in
+one where a child's net is below zero (E, §7). §12.1 covers a currency that has waiting costs.
 
 A suggestion is only a reading and nothing writes it. **Record** opens the settlement form already
 filled in with *from*, *to*, the amount and the currency, and the person can edit any of them. A
@@ -118,12 +154,23 @@ that applies and what to open:
   other reason is shown open, because it is unfinished work.
 - **To pay** is normal before the trip, since nobody has paid yet. It is listed in the muted style,
   not as a warning.
-- A cancelled booking that is *refundable* or has *refund not set* is not spent (`countsAsSpent`),
-  so it is not listed here. Refunds stay out of Phase 3. A *refund not set* booking that has payments
-  is named once, beside the existing *Not counted* line (R10).
-- **All settled up** is shown only when every net is zero **and** nothing is waiting apart from
-  not-split costs. If nets are zero but something else waits, the screen reads *Settled for
-  everything complete — 2 costs wait*.
+- Every waiting line shows **what is recorded on it** — *paid EUR 100 (Ana)*, *paid EUR 60, payer
+  not recorded* — so a deposit stays visible while the cost waits (A).
+- A cancelled booking that is *refundable* or has *refund not set* is not spent (`countsAsSpent`).
+  If it has recorded payments, it is still listed, with the reason *Cancelled — refund expected* or
+  *Cancelled — refund not set*, and its payments are shown. It never goes into a net, because
+  refunds stay out of Phase 3. Without payments it is not listed here, and the existing *Not
+  counted* line (R10) stays as it is.
+
+**Status wording (D).** The screen never says *All settled up* on its own. Per currency:
+
+| Nets | Waiting (other than not split) | Not split | Reads |
+|---|---|---|---|
+| all zero | none | none | *All settled up in EUR* |
+| all zero | none | some | *Settled up for the shared costs · 12 costs not split, not part of this* |
+| all zero | some | any | *Settled for the 4 complete costs · 2 costs not included yet* |
+| not zero | — | — | the balances and §4 |
+| no complete costs, no settlements | — | — | *Nothing to settle yet in EUR* plus the waiting list |
 
 ## 6. Migration 009 — exact DDL [for approval]
 
@@ -157,7 +204,9 @@ CREATE INDEX idx_settlements_to   ON settlements(trip_id, to_id);
 | **The same pattern as `cost_shares`** | Composite keys to `trip_travellers`' primary key. The database refuses a settlement involving anyone not on the trip. NO ACTION means someone with a settlement cannot leave the trip alone, while deleting the whole trip removes both rows in one statement. This was already verified for 008, and the same probe is repeated here as tests |
 | **Leaving the trip** | `leaveTripRefusal` / `moneyHolds` / `listHolds` count settlements as a fourth hold: *Settled · Ana → Ben · EUR 30.00 → open*. The person edits or deletes the settlement. Nothing is moved by itself |
 | **Deleting a profile** | Already refused while the profile is on any trip, so a settlement never points at a deleted profile |
-| **Currency** | Free, like an expense, and filled from the suggestion. A settlement in a currency with no costs simply makes balances in that currency. Nothing is converted |
+| **Currency (B)** | Free, like an expense, and filled from the suggestion. Nothing is converted. A settlement in a currency **with no complete costs** on the trip is a fact, but it is not an ordinary debt. Its effect on that currency's nets is plain arithmetic (sender +, receiver −). Its section reads *Settlements only — no costs in the balances. Check the currency, or complete the costs it pays back*, and **no transfer is suggested** in that currency, so nobody is told to pay a settlement back. Before saving such a settlement, the form warns: *There are no NOK costs in the balances. Save anyway?* Other currencies are never affected |
+| **Deleting the whole trip (C)** | An explicitly confirmed destructive operation. The trip-delete confirmation already names the money records (3D-1 Q2), and 3E adds settlements: *This also deletes 3 payments, 7 expenses, 4 splits and 2 settlements — the trip's money history.* The same naming is added to a backup restore with *Replace* and a trip-archive import that replaces a trip, because both delete the old trip's settlements |
+| **Nothing else deletes a settlement (C)** | A settlement is never linked to a booking or an expense, so deleting either cannot touch one. Removing someone from the trip is refused while they have one, and deleting a profile is refused while it is on a trip. The only ways a settlement goes are its own **Delete** (confirmed) and the whole trip (confirmed) |
 | **Why no link to a cost** | A settlement squares a balance and does not pay for a booking. Paying a vendor is a payment (3D-1). A link would let one transfer be counted as both |
 | **Old `payments` table** | The name-based N5 `payments` table stays untouched, unread and still exported (§15 *7*). Tests include unexpected non-null rows in it |
 | **Existing rows** | None written. Every trip starts with no settlements |
@@ -172,16 +221,35 @@ CREATE INDEX idx_settlements_to   ON settlements(trip_id, to_id);
 |---|---|
 | Save a settlement | *from* = *to*; either person is not on the trip; the amount is not above 0; the date is not a date |
 | Save a settlement that leaves a **child** owing | A child's net in that currency would fall below zero: *Mia would owe money. A child never owes — record it with the adult who covers her.* (invariant D). A child can be a creditor, because 3D-1 allows a child as payer (a known limitation) |
-| Save a settlement for **more** than the suggestion | **Allowed, with a warning first**: *That is EUR 20.00 more than Ben owes Ana; afterwards Ana will owe Ben EUR 20.00. Save anyway?* (Q4) |
+| Save a settlement for **more** than the suggestion | **Allowed, with a warning first** (Q4). The warning shows the resulting balances in that currency, not only the difference: *That is EUR 20.00 more than Ben owes Ana. Afterwards: Ana owes EUR 20.00 · Ben is owed EUR 20.00 · Cara settled. Save anyway?* The same preview of the resulting balances is shown before any settlement that is not exactly a suggestion |
+| Save a settlement in a currency with no complete costs | Allowed, with the warning in §6 (B) |
 | Edit a settlement | The same rules, worked out without the settlement's own old values |
 | Delete a settlement | Always allowed after a confirmation that names it. It is the person's own record |
 | Remove someone from the trip | Refused while they have settlements (§6), listed with the other holds |
 | AI import (2C) / *Plan with AI* (2D) | Never write or read settlements. A test asserts it |
 
-**A child below zero after a later edit.** Suppose a child's payment is deleted after a settlement to
-them was recorded. The balance is not shown as a debt. It reads *Mia received EUR 10.00 more than
-she paid — check the settlement*. That currency then shows no suggestions until the person fixes it,
-because a suggestion would make the child a debtor.
+**A child below zero after a later edit (E).** The save rule covers only the moment a settlement is
+saved. Later edits elsewhere can still push a child's net below zero, with nothing in the
+settlement changing:
+- a payment by the child is deleted, its amount lowered, or its payer changed;
+- a cost the child paid for stops being complete (a price edit, a removed split), so it leaves the
+  balances;
+- someone who was an adult when they settled is reclassified as a child on the trip.
+
+What happens then, in every case:
+- **Nothing is modified.** No settlement, payment, share or cover is changed, moved or deleted by
+  the app.
+- The child is **never shown as owing**. Their row reads *Mia — received EUR 10.00 more than she
+  paid · check her settlements*, in the attention style, with the settlements listed and each one
+  openable. The arithmetic stays the same, because Σ net = 0 still holds, but the child's line is
+  never worded or styled as a debt.
+- That currency shows **no suggested transfers** until the person resolves it, because any
+  suggestion would make the child a debtor. The other currencies are unaffected.
+- The person resolves it by their own edit: change or delete the settlement, or restore what
+  changed.
+
+Tests cover each of the three causes. The settlement rows are byte-identical before and after, the
+child's line is the flagged reading, and no suggestion appears in that currency.
 
 ## 8. Screens
 
@@ -253,7 +321,16 @@ it in the share sheet. The PDF stays without names or balances (Q6, §15 *7*).
   - every §7 refusal leaves every table byte-identical; the holds list and `leaveTripRefusal` include
     settlements;
   - backup 10 round trip, and formats 1–9; archive rowFormat 10 remap, the refusals, FK closure;
-    2C/2D carry nothing.
+    2C/2D carry nothing;
+  - revision 2:
+    - (A) a cost that waits still reports its recorded payments, and the 3D-1 readings (`paymentSummary`,
+      the Bookings view, the trip total) are identical with and without 3E;
+    - (B) a settlement-only currency gets the flagged heading and no suggestion;
+    - (C) the trip-delete, *Replace* restore and archive-replace confirmations count settlements, and
+      deleting a booking or an expense, or a refused leave, leaves `settlements` byte-identical;
+    - (D) each row of the status-wording table;
+    - (E) the three causes of a child below zero;
+    - §12.1 the pre-settlement case, with no false debtor suggested.
 - **Emulator E2E** (as for 3D-1/3D-2): a debug-signed, debuggable build on `TO_2B_Test` for the 8 → 9
   database diff (Q7). Synthetic families: solo (no view); 3 adults; 2 adults + 1 child covered by
   both; 2 adults + 3 children with two different covering adults; two currencies. Every worked
@@ -277,6 +354,8 @@ it in the share sheet. The PDF stays without names or balances (Q6, §15 *7*).
 | …Ben settles 100 instead | warning, then saved | Ana −20 · Ben +20 | Ana → Ben 20 |
 | A EUR and a NOK cost | — | two sections, never added | per currency |
 | A family trip, nothing split | — | no balances; *12 costs not split* (collapsed) | — |
+| Hotel 250, deposit 100 by Ana, split Ana + Ben; Ben gives Ana 50 now | hotel waits; settlement 50 | *Balances so far*: Ben +50 · Ana −50; hotel listed with *paid EUR 100 (Ana)* | none (§12.1 a) |
+| Ben gives Ana NOK 500, no NOK costs | settlement only | *Settlements only — no costs in the balances* | none (B) |
 
 ## 11. Questions for the owner (recommendation first)
 
@@ -301,3 +380,65 @@ it in the share sheet. The PDF stays without names or balances (Q6, §15 *7*).
    if wanted.
 7. **Test build:** the same debug-signed, debuggable build on the emulator `TO_2B_Test` only, for the
    database diff, as approved for 3D-1 and 3D-2 — to approve.
+
+### 11.1 The owner's answers (2026-10-22, on revision 1)
+
+0. **The 3D-2 review has not fully passed.** The corrective commit was inspected, but its domain and
+   repository behaviour still needs independent verification. That is a gate (F), not a formality.
+1. **Complete costs only — approved for v1.** Recorded deposits and partial payments must stay
+   clearly visible elsewhere. Exclusion from settle-up must not hide them (A).
+2. **Not-split costs outside the balances — approved**, collapsed, with an explanation and access to
+   the costs. Never assume the payer bears the whole cost.
+3. **Migration 009 — acceptable in principle, not approved for implementation.** First the review
+   findings and this update. Additive, history preserved, both 8 → 9 and 6 → 9 tested.
+4. **Over-settlement — approved: warn and allow.** Show the resulting balances before confirming;
+   never silently create a child debtor. A settlement in a currency with no eligible costs is clearly
+   flagged (B).
+5. **Settle up as the third view under Expenses**, on trips with two or more people — approved.
+6. **Privacy — approved.** No balances or names in the PDF; sharing needs an explicit action.
+7. **Emulator — approved:** the debug-signed, debuggable build on `TO_2B_Test`, synthetic data only.
+   No physical phone, no real data, no personal backup.
+
+Refinements A–F were required. In this revision, A is in §3 and §5, B in §3, §4, §6 and §7, C in
+§6, D in §3 and §5, E in §7, and F is the status note at the top. On real data, the owner says: if a
+change is a risk to the phone's data, it waits for the trip, separate from `main`. This is applied
+in the status note.
+
+## 12. Remaining contradictions (for the owner)
+
+### 12.1 Settlements made before a cost is complete — **needs an answer**
+
+*Complete costs only* (Q1) and *settlements are facts* (Q4) clash in one ordinary case. Ana pays a
+EUR 250 hotel deposit of EUR 100, and Ben gives Ana EUR 50 straight away for his half of it. The
+hotel waits (EUR 150 to pay), so it is not in the nets, but Ben's settlement is. The nets read
+**Ben +50 · Ana −50**, and the suggestion would be *Ana pays Ben EUR 50*. That is a false debtor,
+which the exit criteria forbid. A cost that was complete when someone settled and later stops being
+complete (a price edit, a removed split) does the same.
+
+Neither fix bends a rule:
+- **(a) Recommended: no suggestions while costs wait.** In a currency where any cost waits for a
+  reason other than *not split*, the nets are shown under *Balances so far — 2 costs not included
+  yet*, with the waiting list directly under them. No transfers are suggested, only *Suggestions
+  appear once these are complete*. Settlements can still be recorded by hand. This holds back
+  suggestions only in that currency. At the end of a trip, once everything is paid and split, they
+  appear. Before the trip, *To pay* bookings keep them hidden, which is fair, because nothing is
+  owed between people for a booking nobody has paid yet.
+- **(b) Suggestions always, labelled provisional.** More convenient during the trip, but it can
+  suggest the false transfer above, with only a label to say it is not final. The owner's rule *do
+  not present partial balances as complete financial obligations* argues against it.
+
+### 12.2 Points checked and found consistent — no answer needed
+
+- **Live equal splits and *Covered by* vs recorded settlements.** A price change or a new *Covered
+  by* changes the nets after a settlement. This is by design: 3D-2 Q2 made equal splits and covers
+  live, settlements stay as recorded, and the nets are worked out again. It can produce an
+  over-settlement (§7) or a child below zero (§7, E), and both are handled without changing a
+  record.
+- **Children as payers** (3D-1 known limitation) are kept. A child can be owed but is never shown as
+  owing (E).
+- **`main` and real data.** Migration 009 is additive, but any migration runs on the phone's real
+  database at install, so it waits on `phase-3d1` with 007 and 008. No 3E change needs anything on
+  `main`.
+- **Review independence (F).** The review of `a44dd6d` should not be done by the session that wrote
+  it. It can be done in a separate conversation (as before) or by a fresh review agent in this one
+  if the owner asks. Either way, findings are fixed in their own commit before 009 is written.
