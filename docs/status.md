@@ -37,7 +37,10 @@ Verified against the repo on 2026-10-20, on Windows: **1153 tests passing across
   owner's trip** (owner, 2026-10-21). **3D-2 is built as 0.15.0 on the same branch** (owner's wish;
   migration 008, backup format 9 — [`phase3d2-plan.md`](phase3d2-plan.md), D41), verified on emulators
   including the phone's 0.13.0 → 0.15.0 path; on no phone. Two corrective passes after independent
-  review (`4a1758e`, `a44dd6d`; plan §12.1–12.2) wait for review; the 0.15.0 APK predates them.
+  review (`4a1758e`, `a44dd6d`; plan §12.1–12.2); the review of `a44dd6d` passed (owner, 2026-10-22).
+  **3E is built as 0.16.0 on the same branch** (migration 009, backup format 10 —
+  [`phase3e-plan.md`](phase3e-plan.md), D42), verified on emulators including the phone's 0.13.0 → 0.16.0
+  path; on no phone, waiting for the owner's independent review.
 
 ---
 
@@ -632,8 +635,8 @@ only when the owner asks.
 | **P3·3C** | Adult/child pricing: rates **for** Adult / Child / Anyone, free lines, group prices, extras; *Price for who's going* (suggestion, Apply only when not paid); paid-price warning; *Estimate* on ideas; backup/archive format 7, no migration. **0.13.0**, emulator E2E + in-place upgrade from 0.12.0 and older-app rejection; not on a phone ([`phase3c-plan.md`](phase3c-plan.md), D39) | ✅ |
 | **P3·3D-1** | Money records linked to bookings: payments against a booking (deposits, payer, date), expenses linked to a booking, a payer on an expense (*Not recorded* by default); one cost per booking, legacy *Paid* kept; deletion of a booking with records blocked, whole-trip deletion named; a payer cannot leave the trip; duplicate warning offers a link. Migration 007, backup/archive format 8. **0.14.0 on branch `phase-3d1`**, Node tests on synthetic v6 databases, emulator E2E incl. migration diff on a debug-signed build and release `install -r` over 0.13.0; **not on a phone — waits until after the owner's trip** ([`phase3d1-plan.md`](phase3d1-plan.md), D40) | ✅ |
 | **P3·3D-2** | Who a cost is for: a booking or a standalone expense split equally or by amounts (*Fill from prices*, *Who's going* as fills), *Not split* by default; *Covered by* one or more adults per child on a trip, a per-cost override, *not covered* shown; leaving a trip blocked while records name someone, with each record listed and opened; *Paid by* on the quick sheet. Migration 008, backup/archive format 9. **0.15.0 on `phase-3d1`**, Node tests incl. 6 → 8, emulator E2E incl. a debug-signed 7 → 8 diff and release 0.13.0 → 0.15.0 rehearsal; **not on a phone** ([`phase3d2-plan.md`](phase3d2-plan.md), D41) | ✅ |
-| **P3·3E** | Balances and settlements — plan revision 3 (`docs/phase3e-plan.md`): direction approved, §12.1 decided (a), independent review of `a44dd6d` passed; migration 009 and code **not** authorised until the owner says so. Stays on `phase-3d1`, off `main`, until after the trip | ⬜ |
-| **P3** | Travellers, pricing & shared expenses (replaces N5b) — 3A, 3B, 3C, 3D-1, 3D-2 done (3D-1 and 3D-2 on `phase-3d1`); 3E to come | ⬜ |
+| **P3·3E** | Balances and settlements: per currency, per person — paid, share (a child's by who covers it), settled, the net — from complete costs only; everything else listed with what is recorded on it and why it waits; no suggested transfers while a shared cost in that currency waits (*Balances so far*, never worded as debt); unsplit costs collapsed and never blocking; settlements recorded, partial or over (warned with the result), never leaving a child owing; a child below zero after later edits flagged, nothing changed; a person's working line by line; share as text. Migration 009, backup/archive format 10. **0.16.0 on `phase-3d1`**, Node tests incl. 8 → 9 and 6 → 9, emulator E2E incl. a debug-signed 8 → 9 diff and release 0.15.0 → 0.16.0 and 0.13.0 → 0.16.0 rehearsals; **not on a phone** ([`phase3e-plan.md`](phase3e-plan.md), D42) | ✅ |
+| **P3** | Travellers, pricing & shared expenses (replaces N5b) — 3A–3E done (3D-1, 3D-2 and 3E on `phase-3d1`, waiting for the trip) | ✅ |
 | **P4** | Currency conversion | ⬜ |
 | **P5** | Full-day map | ⬜ |
 | **P6** | Trips without fixed dates | ⬜ |

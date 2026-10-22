@@ -691,3 +691,27 @@ changes.
 - Someone who paid, is in a split or covers a share cannot be removed from the trip. **See the
   records** lists each one; change them, then remove the person.
 - Deleting a booking, an expense or a trip tells you which splits go with it.
+
+## Who owes whom (0.16.0, not yet on your phone)
+
+- On a trip with two or more people, **Expenses → Settle up** shows, for each currency, what each
+  person paid, their share (their own, and a child's they cover), what they settled, and where they
+  stand. Tap a person to see every line behind it.
+- Only **complete** costs count: split, adding up, every child covered, every payment with a payer,
+  and paid in full. Anything else is listed under **Not in the balances yet** with why — *EUR 150.00
+  to pay*, *Paid — not recorded by whom*, *not covered* — and what has been paid on it. Tap it to finish
+  it. Costs nobody split are folded away under **Not split**; they never count.
+- While a cost in a currency is not complete, that currency shows **Balances so far** and suggests
+  nothing: the figures read *+… so far* or *−… so far*, not debts. Once everything is complete it shows
+  **Balances** and **Suggested transfers** (*Ben pays Ana EUR 15.00*). Each currency on its own;
+  nothing is converted.
+- Tap a suggestion to record it — change the amount for a part payment — or **Record a settlement**
+  for any money one person gave another. If it is more than they owed, or in a currency with no
+  costs, the app shows the result and asks first. A settlement that would leave a child owing is
+  refused.
+- A settlement is not a cost: the trip total and each booking's paid state stay as they are. Open
+  one from the list to change or delete it. Someone with a settlement cannot be removed from the
+  trip; deleting the whole trip, or replacing it from a backup, deletes its settlements, and the
+  confirmation says so.
+- **Share who owes whom** sends the suggested transfers as text; a currency that is not final is
+  one line without numbers. Names and balances never go into the PDF.

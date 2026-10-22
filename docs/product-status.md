@@ -88,6 +88,28 @@
 
 ---
 
+### Built in 0.16.0 (roadmap 3E) — on the branch `phase-3d1`, verified on emulators, not on a phone
+
+Not on any phone until after the owner's trip; it brings migration 009 (and 007 and 008 with it).
+
+- **Settle up** (Expenses, trips of two or more): per currency, what each person paid, their share
+  (a child's share counted for the adults who cover it), what they settled, and the net. Tap a person
+  for every line behind it.
+- **Only complete costs count** — split, adding up, every child covered, every payment with a payer,
+  paid in full. The rest is listed with what was paid on it and why it waits; a deposit never
+  disappears. Unsplit costs are folded away and never count.
+- **No suggestions while a shared cost waits** in that currency: *Balances so far*, figures as *± … so
+  far*, never *owes*. Once complete: *Suggested transfers* (*Ben pays Ana EUR 15.00*), each currency
+  on its own, nothing converted.
+- **Settlements:** record a suggestion in full or in part, or any transfer; more than owed, or a
+  currency with no costs, asks first with the result. Never leaves a child owing; a child pushed below
+  zero by a later edit is flagged and nothing is changed. Delete from its own screen.
+- **Not a cost:** the trip total, Bookings, Spending, the booking screens and the PDF are unchanged.
+  Someone with a settlement cannot leave the trip; deleting a trip or replacing it from a backup names
+  the settlements it deletes.
+- **Share who owes whom** as text, only when tapped. **Backup format 10**: 0.15.0 refuses 0.16.0's
+  files (checked); 0.16.0 reads all older ones.
+
 ### Built in 0.15.0 (roadmap 3D-2) — on the branch `phase-3d1`, verified on emulators, not on a phone
 
 Not on any phone until after the owner's trip; it brings migration 008 (and 007 with it).

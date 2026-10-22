@@ -1675,3 +1675,56 @@ membership). `countTripContents` adds `splits`. 2C and 2D carry none of it (test
 
 **Screens.** `features/split/SplitSection` (booking, standalone expense), `app/split/edit`,
 `app/trip/[tripId]/holds`, *Covered by* on the trip Travellers sheet, *Paid by* on the quick sheet.
+
+## 23. Balances and settlements (3E, 0.16.0, migration 009)
+
+Branch `phase-3d1`. Plan, the owner's answers and the as-built record: `docs/phase3e-plan.md`.
+
+**Schema (009).** `settlements (id, trip_id → trips CASCADE, from_id, to_id, amount > 0, currency,
+settled_on NULL, note NULL, created_at, updated_at)`, `from_id ≠ to_id`, `(trip_id, from_id)` and
+`(trip_id, to_id)` → `trip_travellers` (NO ACTION). Indexes on `trip_id`, `(trip_id, from_id)`,
+`(trip_id, to_id)`. No row written by the migration; no existing table altered. The legacy name-based
+`payments` table stays untouched and unread.
+
+**Balances are never stored.** `repositories/settlements.balanceInput(db, tripId)` reads members (trip
+classification), `trip_cover`, items, expenses, booking payments, shares and settlements;
+`domain/balances` works everything out on each read:
+
+- `balanceCosts` — one `BalanceCost` per priced, non-idea, non-task booking (its payments and linked
+  expenses as `records`) and per standalone expense (itself as its one record).
+- `waitReason(cost, …)` — null when the cost enters the nets, else the first of: `cancelled`
+  (not spent but has records), `notSplit`, `splitMismatch`, `notCovered`, `payerMissing`, `overpaid`,
+  `paidNotRecorded` (legacy *Paid* not reached by records), `toPay`.
+- `tripBalances(input)` — per currency (order of first appearance): people (`paid`, `borne`, `sent`,
+  `received`, `net = paid − borne + sent − received`, `paidWaiting` shown apart), `complete`,
+  `waiting`, `notSplit`, `settlements`, `childrenBelowZero`, `state` and `transfers`.
+  - `state`: `soFar` when anything but *not split* waits; else `final` with a complete cost; else
+    `settlementsOnly` with settlements; else `nothing`.
+  - Transfers only when `state` is `final` and no child is below zero (`heldBecause` says why not).
+  - A child's share is borne by `coverOf` (override, else the trip's adults, equally, leftover cents
+    in order); a child never bears. Σ net = 0 per currency (property-tested).
+- `settleUp(people)` — greedy, largest debtor to largest creditor, member-order ties; at most
+  n − 1 transfers.
+- `explainBalance` — the lines behind one person's net, and their payments on waiting costs.
+- `settlementRefusal` (two different members, an amount, never leaving the receiving child owing);
+  `previewSettlement` (the currency's balances after saving, `overBy`, `noCosts`, `matchesSuggestion`).
+- Words: `netText` (*is owed / owes / settled* only when final; *±X so far* otherwise; a child below
+  zero *received X more than paid*), `balancesHeading`, `statusText`, `waitText`, `recordedText`,
+  `settleUpText`.
+
+**Rules** (`MoneyRuleError`, inside the write's transaction): `createSettlement` / `updateSettlement`
+re-read `balanceInput` and apply `settlementRefusal` (an edit is judged without its own old values).
+`deleteSettlement` is the person's own act. `COUNT_HOLDS` / `SELECT_HOLDS` count and list settlements
+(`Hold.kind = 'settled'`, `settlementId`), so `leaveTripRefusal` blocks someone with one.
+
+**Formats.** Backup **format 10** (`settlements`; empty for 1–9); trip archive **rowFormat 10** (new ids,
+people through the traveller choices; a settlement mapped onto one profile is refused;
+`checkTripArchive` refuses one off the trip, to oneself, or of nothing). `countTripContents` adds
+`settlements`; `summariseImportPlan` names them and says a *Replace* deletes the money records here.
+2C and 2D carry none (tests).
+
+**Screens.** The Expenses tab's third view *Settle up* (`features/settle/SettleUpView`, trips of two or
+more), *Share* in its header (`settleUpText` via `Share.share`), `app/trip/[tripId]/balance` (one
+person, one currency), `app/settlement/new` and `app/settlement/[settlementId]`
+(`features/settle/SettlementForm`, with the live preview and the warnings). Nothing else reads
+`settlements`: the trip total, Bookings, Spending, booking screens and the PDF are unchanged.

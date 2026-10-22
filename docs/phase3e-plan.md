@@ -488,3 +488,53 @@ obligations* rules it out.
   `main`.
 - **Review independence (F).** The review of `a44dd6d` was done outside the coding session. The
   owner reports it complete with no findings (2026-10-22).
+
+## 13. As built (0.16.0, on `phase-3d1`, 2026-10-22)
+
+As planned in revision 3, with the owner's answers (§11.1, §12.1) and authorisation (2026-10-22).
+Where the build settled a detail:
+
+- **Migration 009** exactly as §6; `src/db/migrations/009-settlements.ts`. Tested 8 → 9 and 6 → 9 over
+  synthetic phone-shaped databases with 3D-1/3D-2 records and odd legacy `payments` / `split` /
+  `paid_by` values; a failed batch leaves 8; a second start-up does nothing.
+- **Domain** `src/domain/balances.ts` (pure): `balanceCosts`, `waitReason`, `tripBalances`, `settleUp`,
+  `explainBalance`, `settlementRefusal`, `previewSettlement`, and the words (`netText`,
+  `balancesHeading`, `statusText`, `waitText`, `recordedText`, `settleUpText`).
+- **Repositories** `src/repositories/settlements.ts`: `balanceInput`, create / update / delete / list,
+  every rule re-checked inside the write's transaction. Holds (`COUNT_HOLDS`, `SELECT_HOLDS`) count and
+  list settlements; `countTripContents` and `summariseImportPlan` name them.
+- **Screens:** *Settle up* (third view of Expenses, trips of two or more), the per-person balance
+  screen, the settlement form (new / edit / delete). *Share who owes whom* is a button inside *Settle
+  up*, not a header action (see below).
+- **Formats:** backup 10, archive rowFormat 10, as §10.
+
+**Details settled during the build (deviations, for review):**
+
+1. **"Settlements only" (B) means no cost that could be shared at all.** §6 said "no complete costs";
+   the §12.1 hotel example (no complete EUR cost, the hotel waiting, a settlement) reads *Balances so
+   far*. The build follows the example: *Settlements only* applies when a currency has neither a
+   complete nor a waiting cost — only settlements, perhaps beside costs left unsplit.
+2. **"The split removed"** (one of the five complete → incomplete edits in §12.1) does not make the
+   currency *Balances so far*: rule 4 says an unsplit cost never blocks, so the cost leaves the
+   balances. With no other cost in the currency it reads *Settlements only* and nothing is suggested
+   (tested). **Known limitation:** if the currency has *other* complete costs, a settlement made for
+   the cost whose split was removed stays in the nets and can produce a suggestion that is not
+   wanted. The app cannot tell a split removed by mistake from a cost meant to be unsplit; the
+   settlement shows in the list and in each person's working. Raised for the owner (report).
+3. **Share** moved from the Expenses header to a button under *Record a settlement*: on a 360 dp screen
+   at font 2.0 the extra header action crushed the trip title (emulator run).
+4. **Balance rows** show the net and the working on full-width lines under the name, rather than the
+   net on the right: at 360 dp and font 2.0 the working was cut (emulator run).
+5. A cancelled booking that is not spent (refundable / refund not set) **with recorded payments**
+   waits as *Cancelled — refund expected / not set* and blocks suggestions in its currency, as §12.1
+   rule 2 says; without payments it is not listed.
+
+**Verification.** 1461 Node tests (migration, domain incl. property tests, repositories, formats);
+typecheck clean. Emulator E2E: `%USERPROFILE%\Pictures\TravelOrganizer-0.16.0-3E-e2e\E2E-LOG.md` —
+8 → 9 on a debug-signed build (18/18 tables identical, `settlements` new and empty); 20 UI checks
+incl. both §12.1 regressions, E, C and 360 dp / font 2.0 / dark (two layout fixes, `8d21a2f`); release
+0.15.0 refusing format-10 backups and rowFormat-10 archives; release 0.15.0 → 0.16.0 and the phone's
+0.13.0 → 0.16.0 (migrations 007–009 in one start-up) with every captured screen the same apart from
+the expected *Settle up* tab and 3D-1's Spending hint, alarms unchanged. Release APK
+`%USERPROFILE%\.travel-organizer\travel-organizer-0.16.0.apk` (versionCode 23, release key
+`638dc686…35e7`), **on no phone**.

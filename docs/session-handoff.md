@@ -385,7 +385,32 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ## 11. Where the last session stopped (2026-10-19) — read this first
 
-### 11.0000000000000 Latest (2026-10-22) — two 3D-2 corrective passes; waiting for review
+### 11.00000000000000 Latest (2026-10-22, evening) — 3E built as 0.16.0; waiting for review
+
+- The owner approved the 3E plan (`docs/phase3e-plan.md`, revisions 1–3: answers §11.1, §12.1 option
+  a), reported the independent review of `a44dd6d` passed, and authorised migration 009 and 3E.
+- Built on `phase-3d1`: `e6ad0ef` (migration 009, backup 10, archive rowFormat 10, `domain/balances`,
+  `repositories/settlements`), `cea08cd` (screens, 0.16.0 / versionCode 23), `8d21a2f` (fixes from the
+  emulator run), then the docs commit. Plan §13 is the as-built record, with five details settled during
+  the build for the owner to review — notably **"split removed"** leaves the balances rather than
+  making them *so far* (rule 4), with a known limitation when other complete costs share the currency.
+- Verified: 1461 Node tests; typecheck clean; emulator E2E on `TO_2B_Test` (debug-signed, 8 → 9 diff:
+  18/18 tables identical) and release rehearsals 0.15.0 → 0.16.0 (`TO_3D2_Rehearsal`) and
+  0.13.0 → 0.16.0 (`Pixel_10_Pro`, the phone's path). Log and screenshots:
+  `%USERPROFILE%\Pictures\TravelOrganizer-0.16.0-3E-e2e\E2E-LOG.md`. Release APK
+  `%USERPROFILE%\.travel-organizer\travel-organizer-0.16.0.apk` (release key `638dc686…35e7`).
+- Emulators now: `TO_2B_Test` debug-signed 0.16.0 with *3E Hotel deposit*, *3E Family*, *3E Solo*;
+  `TO_3D2_Rehearsal` release 0.16.0 over 0.15.0; `Pixel_10_Pro` release 0.16.0 over 0.13.0 (fresh,
+  sample backup + 3C backup). `build.gradle` has 0 E2E-INJECT lines. All shut down.
+- Tooling that worked, in the session scratchpad (recreate): `ts-run.js` runs a `.ts` file importing
+  `src/domain` with the repo's own `@babel/core` (no tsx installed); `make-trips.ts` writes synthetic
+  trip archives through `buildTripArchive`; `dbdiff.js` compares two pulled databases table by table;
+  `capture.sh` dumps every tab of a trip for before/after comparison. Write multi-line edits with a
+  quoted heredoc into a `.js` file, never inline `node -e` with backticks.
+- **Next:** the owner's independent review of 3E. Fix only what it finds. No merge into `main` (still
+  0.13.0), no phone, no real data — each needs the owner's separate approval after the trip.
+
+### 11.0000000000000 Earlier (2026-10-22) — two 3D-2 corrective passes; waiting for review
 
 - **Corrective pass 1** (`4a1758e`, after an independent review; plan §12.1): *Fill from prices*
   refuses when any person rate is unmarked (3C's *Price for who's going* unchanged, on purpose); the

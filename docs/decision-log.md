@@ -929,3 +929,38 @@ default cover is a setting and goes with the person, named in the confirmation.
 
 **Built on `phase-3d1`** (owner, 2026-10-21): both stages wait for the trip together; the phone's
 install runs 007 and 008 in one start-up, so that path was rehearsed (release 0.13.0 → 0.15.0).
+
+## D42 — 3E: balances and settlements (0.16.0, migration 009)
+
+Plan, the owner's answers (§11.1, §12.1) and the as-built record: `docs/phase3e-plan.md`.
+
+**Only complete costs enter a balance** (owner, Q1). A cost counts when it is spent, split, the split
+adds up, every child is covered, every payment has a payer and the payments are exactly the cost.
+Counting a part payment would mean guessing how it divides between the people who share the cost;
+every other cost waits, named, with what is recorded on it, so a deposit never disappears (A).
+
+**Unsplit costs stay out and never block** (owner, Q2). Not split means nobody said whose it is; treating
+it as the payer's own would turn *unknown* into a decision. It is shown collapsed, because a family
+trip that never splits should not look broken.
+
+**No suggestions while a shared cost waits** (owner, §12.1 option a). A settlement recorded before its
+cost is complete would otherwise produce a false debtor (Ben pays half the deposit; the hotel still
+waits; the app tells Ana to pay Ben). The nets are still shown, as *Balances so far*, worded without
+*owes*. Per currency, never across currencies.
+
+**A settlement is a fact, not a cost** (owner, Q4). Over-settling is allowed after a warning that shows
+the resulting balances; a currency with no costs is flagged and gets no suggestion (B). The one hard
+refusal is a settlement that leaves the receiving child owing (invariant D). Later edits that push a
+child below zero are flagged and change no record (E).
+
+**Same database pattern as `cost_shares`.** Both people reference `trip_travellers(trip_id,
+traveller_id)`: SQLite refuses anyone off the trip, NO ACTION keeps someone with a settlement on the
+trip, a whole-trip delete still removes everything in one statement. Nothing else deletes a
+settlement: it is never linked to a booking or an expense (C).
+
+**Derived, never stored** (invariant J): `tripBalances` runs on every read over the records, so an edit
+anywhere — a price, a split, a cover — is reflected at once and no stored balance can disagree.
+
+**Built on `phase-3d1`** (owner, 2026-10-22): a migration is a risk to the phone's real data by
+definition, so 3E waits with 3D-1 and 3D-2 for the trip; the phone's install runs 007, 008 and 009 in
+one start-up, and that path was rehearsed on an emulator.
