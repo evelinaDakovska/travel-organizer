@@ -385,7 +385,35 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ## 11. Where the last session stopped (2026-10-19) — read this first
 
-### 11.000000000000 Latest (2026-10-21, later) — 3D-1 corrective pass; 3D-2 built as 0.15.0
+### 11.0000000000000 Latest (2026-10-22) — two 3D-2 corrective passes; waiting for review
+
+- **Corrective pass 1** (`4a1758e`, after an independent review; plan §12.1): *Fill from prices*
+  refuses when any person rate is unmarked (3C's *Price for who's going* unchanged, on purpose); the
+  split editor keeps its draft on every refresh, says what changed under it (`splitDraftConflicts`),
+  refuses Save until *Keep my changes* or *Start again from the saved split*; `saveSplit(…, seen)`
+  re-checks inside its transaction.
+- **Final corrective pass** (`a44dd6d`, plan §12.2): *Keep my changes* could silently drop a ticked
+  traveller who had left the trip (reproduced at `4a1758e`). Now `keptBasis` keeps them, Save stays
+  refused, and only **Take {name} out** (`goneFromDraft`) clears it — their amount is left to split,
+  never moved; a child they covered follows the trip's *Covered by*, shown. No repository change
+  needed. 1385 tests pass; typecheck clean.
+- Emulator run on `TO_2B_Test` (debug-signed 0.15.0, synthetic trip *3D2 Editor check* from
+  `3D2-editor-trip.zip`): data changed under the open editor via the app's own deep links
+  (`travelorganizer://split/edit?itemId=…`, `…/trip/<id>/travellers`, `…/item/<id>/edit`), no
+  debug-only code. Log: `%USERPROFILE%\Pictures\TravelOrganizer-0.15.0-3D2-final-e2e\E2E-LOG.md`.
+  `build.gradle` restored (0 E2E-INJECT lines); emulator and Gradle stopped.
+- Unchanged: migrations 001–008 (no 009), schema 8, backup/archive format 9, 0.15.0 / versionCode 22.
+  The release APK was not rebuilt — **if the review passes, the 0.15.0 APK at
+  `%USERPROFILE%\.travel-organizer\` predates both corrective passes and must be rebuilt** (release
+  key, check SHA-256 `638dc686…`) before any rehearsal or install.
+- Known limitations: no component-test setup (screens checked on the emulator only); an *unticked*
+  member leaving now shows a notice that one *Keep my changes* clears; an adult reclassified as a child
+  (pass 1 note) still applies; children can still be payers.
+- **Next:** the independent review of `a44dd6d`. Fix only what it finds, one corrective commit, push,
+  stop. **3E (balances and settlements) only when the owner asks**, plan first. No merge into `main`
+  (still `46d256a`, 0.13.0), no phone, no real backup — each needs the owner's separate approval.
+
+### 11.000000000000 Earlier (2026-10-21, later) — 3D-1 corrective pass; 3D-2 built as 0.15.0
 
 - **3D-1 corrective pass** (`57535ff`, after an independent review): the trip form's save is one
   transaction; payment edits are checked at the repository; a payer must be on the record's trip.

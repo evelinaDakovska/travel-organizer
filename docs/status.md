@@ -36,7 +36,8 @@ Verified against the repo on 2026-10-20, on Windows: **1153 tests passing across
   D40), verified on emulators; `main` stays at 0.13.0, and **no phone install until after the
   owner's trip** (owner, 2026-10-21). **3D-2 is built as 0.15.0 on the same branch** (owner's wish;
   migration 008, backup format 9 — [`phase3d2-plan.md`](phase3d2-plan.md), D41), verified on emulators
-  including the phone's 0.13.0 → 0.15.0 path; on no phone.
+  including the phone's 0.13.0 → 0.15.0 path; on no phone. Two corrective passes after independent
+  review (`4a1758e`, `a44dd6d`; plan §12.1–12.2) wait for review; the 0.15.0 APK predates them.
 
 ---
 
