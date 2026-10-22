@@ -172,7 +172,7 @@ that applies and what to open:
 |---|---|---|---|
 | all zero | none | none | *All settled up in EUR* |
 | all zero | none | some | *Settled up for the shared costs · 12 costs not split, not part of this* |
-| all zero | some | any | *Settled for the 4 complete costs · 2 costs not included yet* |
+| all zero | some | any | *Balances so far: all at zero · 2 costs not included yet* (§12.1) |
 | not zero | — | — | the balances and §4 |
 | no complete costs, no settlements | — | — | *Nothing to settle yet in EUR* plus the waiting list |
 
