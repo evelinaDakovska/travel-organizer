@@ -1663,8 +1663,10 @@ or all amounts adding up, override only on a child's share by an adult of the tr
 its currency), linking a split expense refused, `holdsRefusal` for leaving (`COUNT_HOLDS`: paid,
 shares, covers by override). `splitMismatchWarning` before a new cost on a split by amounts (same
 currency only). `saveSplit(db, owner, input, seen?)`: with `seen` (what the split screen's draft was
-made against), refused when `splitDraftConflicts` finds the cost, its currency, the saved split's
-content, or someone the draft names (in it or covering) changed since. `fillFromPrices` matches only
+made against), refused when `splitDraftConflicts` finds the cost, its currency or the saved split's
+content changed, anyone seen no longer on the trip, or someone the draft names (in it or covering)
+reclassified. *Keep my changes* is `keptBasis`, which never drops someone who left while the draft
+names them; only *Take … out* (`goneFromDraft`) does. `fillFromPrices` matches only
 person rates marked Adult / Child / Anyone; an unmarked one refuses the fill (corrective, plan §12.1).
 
 **Formats.** Backup **format 9** (`costShares`, `tripCover`; empty for 1–8); trip archive **rowFormat 9**

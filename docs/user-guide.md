@@ -680,7 +680,9 @@ changes.
   *Child* or *Anyone*; if one is not, it says so and you split equally or type the amounts.
 - If the price, its currency or the saved split changes while the split screen is open, or someone
   you ticked leaves the trip or changes between adult and child, the screen says what changed and
-  will not save until you choose *Keep my changes* or *Start again from the saved split*.
+  will not save until you choose *Keep my changes* or *Start again from the saved split*. Someone
+  who left the trip stays in your changes until you tap *Take … out*; what they had is then left to
+  split, never given to someone else.
 - **Covered by:** on the trip's Travellers, tap a child to choose the adult or adults who cover their
   share (several share it equally). On one cost you can name someone else. A child's share nobody
   covers says *not covered*.

@@ -10,6 +10,8 @@ import {
   holdsRefusal,
   shareAmounts,
   splitEqually,
+  goneFromDraft,
+  keptBasis,
   splitDraftConflicts,
   splitMismatchWarning,
   splitMode,
@@ -484,14 +486,15 @@ describe('a split draft and the data under it (3D-2 corrective)', () => {
     ]);
   });
 
-  it('3. someone in the draft leaving the trip is said; someone not in it is not', () => {
+  it('3. anyone leaving the trip is said; someone in the draft or covering in it, with what to do', () => {
     const gone = basis({ members: [ev, ana, mia] });
-    expect(splitDraftConflicts(basis(), gone, draft('ev', 'leo'))).toEqual(['Leo is no longer on this trip.']);
-    expect(splitDraftConflicts(basis(), gone, draft('ev', 'ana'))).toEqual([]);
-    // Covering a child in the draft counts as being named.
+    expect(splitDraftConflicts(basis(), gone, draft('ev', 'leo'))).toEqual([
+      'Leo is no longer on this trip but is still in this split. Take them out, or start again from the saved split.',
+    ]);
+    expect(splitDraftConflicts(basis(), gone, draft('ev', 'ana'))).toEqual(['Leo is no longer on this trip.']);
     const anaGone = basis({ members: [ev, mia, leo] });
     expect(splitDraftConflicts(basis(), anaGone, [{ travellerId: 'mia', coveredBy: 'ana' }])).toEqual([
-      'Ana is no longer on this trip.',
+      'Ana covers Mia here and is no longer on this trip. Take them out to choose again, or start again from the saved split.',
     ]);
   });
 
@@ -531,12 +534,71 @@ describe('a split draft and the data under it (3D-2 corrective)', () => {
     const many = basis({ total: 10000, members: [ev, ana], shares: shares(['ev', null]) });
     expect(splitDraftConflicts(basis(), many, draft('ev', 'mia'))).toEqual([
       'The cost is now EUR 100.00, not EUR 90.00.',
-      'Mia is no longer on this trip.',
+      'Mia is no longer on this trip but is still in this split. Take them out, or start again from the saved split.',
+      'Leo is no longer on this trip.',
       'The saved split was changed somewhere else.',
     ]);
   });
 
   it('9. nothing changed: no conflict', () => {
     expect(splitDraftConflicts(basis(), basis(), draft('ev', 'ana', 'mia'))).toEqual([]);
+  });
+});
+
+describe('keeping my changes never drops anyone (3D-2 final corrective)', () => {
+  const basis = (members: Member[], extra: Partial<SplitBasis> = {}): SplitBasis => ({
+    total: 9000,
+    currency: 'EUR',
+    members,
+    shares: [],
+    ...extra,
+  });
+  const seen = basis([ev, ana, mia, leo]);
+  const draft = (...ids: string[]) => ids.map((travellerId) => ({ travellerId, coveredBy: null }));
+
+  it('someone in the draft who left stays in what was kept, so the conflict stays', () => {
+    const now = basis([ev, ana, mia]);
+    const kept = keptBasis(seen, now, draft('ev', 'leo'));
+    expect(kept.members.map((m) => m.id)).toEqual(['ev', 'ana', 'mia', 'leo']);
+    expect(goneFromDraft(seen, now, draft('ev', 'leo'))).toEqual([leo]);
+    // Kept again and again: still said, whether the draft still names Leo or not.
+    expect(splitDraftConflicts(kept, now, draft('ev', 'leo'))).toEqual([
+      'Leo is no longer on this trip but is still in this split. Take them out, or start again from the saved split.',
+    ]);
+    expect(splitDraftConflicts(kept, now, draft('ev'))).toEqual(['Leo is no longer on this trip.']);
+    expect(splitDraftConflicts(keptBasis(kept, now, draft('ev', 'leo')), now, draft('ev', 'leo'))).toHaveLength(1);
+  });
+
+  it('taking them out is the person’s step: then nothing is left to say', () => {
+    const now = basis([ev, ana, mia]);
+    const kept = keptBasis(seen, now, draft('ev', 'leo'));
+    const takenOut = { ...kept, members: kept.members.filter((m) => m.id !== 'leo') };
+    expect(splitDraftConflicts(takenOut, now, draft('ev'))).toEqual([]);
+  });
+
+  it('someone who left and is not in the draft is dropped by Keep, with nothing to take out', () => {
+    const now = basis([ev, ana, mia]);
+    expect(goneFromDraft(seen, now, draft('ev', 'ana'))).toEqual([]);
+    expect(splitDraftConflicts(keptBasis(seen, now, draft('ev', 'ana')), now, draft('ev', 'ana'))).toEqual([]);
+  });
+
+  it('an adult covering a child in the draft who left stays until taken out; the cover is never swapped', () => {
+    const now = basis([ev, mia, leo]);
+    const covering = [{ travellerId: 'mia', coveredBy: 'ana' }];
+    expect(goneFromDraft(seen, now, covering)).toEqual([ana]);
+    const kept = keptBasis(seen, now, covering);
+    expect(splitDraftConflicts(kept, now, covering)).toHaveLength(1);
+    // Clearing the cover alone, without taking Ana out of what was seen, is still refused.
+    expect(splitDraftConflicts(kept, now, draft('mia'))).toEqual(['Ana is no longer on this trip.']);
+  });
+
+  it('someone named whom neither the draft’s data nor the trip has is never saved quietly', () => {
+    expect(splitDraftConflicts(seen, seen, draft('ev', 'ghost'))).toEqual(['Someone in this split is not on this trip.']);
+  });
+
+  it('a harmless refresh — a rename, someone joining — still keeps without a word', () => {
+    const now = basis([{ ...ev, name: 'Eve' }, ana, mia, leo, sam]);
+    expect(splitDraftConflicts(seen, now, draft('ev', 'mia'))).toEqual([]);
+    expect(keptBasis(seen, now, draft('ev', 'mia'))).toEqual(now);
   });
 });

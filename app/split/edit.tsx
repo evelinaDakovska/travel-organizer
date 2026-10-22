@@ -9,6 +9,8 @@ import {
   fillFromPrices,
   shareAmounts,
   changedWhileEditing,
+  goneFromDraft,
+  keptBasis,
   splitDraftConflicts,
   splitMode,
   splitRefusal,
@@ -190,9 +192,15 @@ function SplitEditor({ owner, data, onStartAgain }: { owner: CostOwner; data: Lo
   const byId = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
   const adults = members.filter((m) => m.classification === 'adult');
   const chosen = members.filter((m) => selected.has(m.id));
+  // The draft is everyone ticked, including anyone who has left the trip since: they stay in it,
+  // and in what is sent to save, until the person takes them out. Never rebuilt from the trip alone.
+  const gone = reviewed.members.filter((m) => !byId.has(m.id) && selected.has(m.id));
+  const drafted = [...chosen, ...gone];
+  const nameOf = (id: string) =>
+    byId.get(id)?.name ?? reviewed.members.find((m) => m.id === id)?.name ?? 'Someone not on this trip';
 
   const input: SplitInput = {
-    people: chosen.map((m) => ({
+    people: drafted.map((m) => ({
       travellerId: m.id,
       amount: mode === 'amounts' ? (amounts[m.id] ?? Number.NaN) : null,
       coveredBy: m.classification === 'child' ? (overrides[m.id] ?? null) : null,
@@ -203,18 +211,20 @@ function SplitEditor({ owner, data, onStartAgain }: { owner: CostOwner; data: Lo
       ? new Map(
           shareAmounts(
             total,
-            chosen.map((m, sortOrder) => ({ travellerId: m.id, amount: null, sortOrder })),
+            drafted.map((m, sortOrder) => ({ travellerId: m.id, amount: null, sortOrder })),
           ).shares.map((s) => [s.travellerId, s.amount]),
         )
       : null;
-  const conflicts = saving
-    ? []
-    : splitDraftConflicts(
-        reviewed,
-        basisOf(data),
-        [...selected].map((travellerId) => ({ travellerId, coveredBy: overrides[travellerId] ?? null })),
-      );
-  const typed = chosen.reduce((sum, m) => sum + (Number.isFinite(amounts[m.id]) ? amounts[m.id]! : 0), 0);
+  const now = basisOf(data);
+  const conflicts = saving ? [] : splitDraftConflicts(reviewed, now, input.people);
+  const toTakeOut = saving ? [] : goneFromDraft(reviewed, now, input.people);
+  const typed = drafted.reduce((sum, m) => sum + (Number.isFinite(amounts[m.id]) ? amounts[m.id]! : 0), 0);
+  /** *Take … out*: off the draft and its covers, by the person's tap. Nothing else changes. */
+  const takeOut = (id: string) => {
+    setSelected((prev) => new Set([...prev].filter((x) => x !== id)));
+    setOverrides((prev) => Object.fromEntries(Object.entries(prev).map(([k, v]) => [k, v === id ? null : v])));
+    setReviewed((prev) => ({ ...prev, members: prev.members.filter((m) => m.id !== id) }));
+  };
 
   if (data.refusal !== null) {
     return (
@@ -272,7 +282,14 @@ function SplitEditor({ owner, data, onStartAgain }: { owner: CostOwner; data: Lo
               {conflicts.join(' ')} Your changes are kept below — check them before saving.
             </Text>
             <View style={styles.fills}>
-              <Button label="Keep my changes" variant="secondary" onPress={() => setReviewed(basisOf(data))} />
+              {toTakeOut.map((m) => (
+                <Button key={m.id} label={`Take ${m.name} out`} variant="secondary" onPress={() => takeOut(m.id)} />
+              ))}
+              <Button
+                label="Keep my changes"
+                variant="secondary"
+                onPress={() => setReviewed(keptBasis(reviewed, now, input.people))}
+              />
               <Button label="Start again from the saved split" variant="secondary" onPress={onStartAgain} />
             </View>
           </Notice>
@@ -347,7 +364,9 @@ function SplitEditor({ owner, data, onStartAgain }: { owner: CostOwner; data: Lo
                   label={`Covered by, for this cost`}
                   hint={
                     overrides[member.id]
-                      ? undefined
+                      ? byId.has(overrides[member.id]!)
+                        ? undefined
+                        : `${nameOf(overrides[member.id]!)} — no longer on this trip`
                       : tripAdults.length > 0
                         ? `The trip’s: ${tripAdults.join(' and ')}`
                         : 'Not covered — nobody is set on the trip (Travellers)'
@@ -355,7 +374,7 @@ function SplitEditor({ owner, data, onStartAgain }: { owner: CostOwner; data: Lo
                   <ChoiceField
                     value={overrides[member.id] ?? null}
                     options={adults.map((a) => a.id)}
-                    labelFor={(id) => byId.get(id)?.name ?? id}
+                    labelFor={nameOf}
                     onChange={(value) => setOverrides((prev) => ({ ...prev, [member.id]: value }))}
                     clearable
                   />
@@ -365,7 +384,7 @@ function SplitEditor({ owner, data, onStartAgain }: { owner: CostOwner; data: Lo
           );
         })}
 
-        {mode === 'amounts' && chosen.length > 0 ? (
+        {mode === 'amounts' && drafted.length > 0 ? (
           <Text style={[type.caption, { color: typed === total ? c.textMuted : c.attention }]}>
             {typed === total
               ? `Adds up to ${formatMoney(total, currency)}`

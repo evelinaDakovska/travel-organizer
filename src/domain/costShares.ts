@@ -471,18 +471,18 @@ const sharesKey = (shares: SplitBasis['shares']) =>
     [...shares].sort((a, b) => a.sortOrder - b.sortOrder).map((s) => [s.travellerId, s.amount, s.coveredBy]),
   );
 
+/** One person in a split draft: who, and the adult picked to cover them here (a child's share). */
+export type DraftPerson = { travellerId: string; coveredBy: string | null };
+
 /**
  * What changed since a split draft was made that the draft depends on, in words; empty when
- * nothing did (3D-2 corrective). The cost, its currency and the saved split always count; someone
- * leaving the trip or changing adult/child counts only when the draft names them, in the split or
- * as covering a child. The trip's *Covered by*, a name or someone joining never count: the screen
- * shows them as they are, and nothing about them is saved with the split.
+ * nothing did (3D-2 corrective). The cost, its currency and the saved split always count; so does
+ * anyone seen who is no longer on the trip — for someone the draft names, in the split or covering
+ * a child, until the person takes them out of the draft (`keptBasis` never drops them). Changing
+ * adult/child counts only for someone the draft names. The trip's *Covered by*, a name or someone
+ * joining never count: the screen shows them as they are, and nothing of them is saved.
  */
-export function splitDraftConflicts(
-  seen: SplitBasis,
-  now: SplitBasis,
-  draft: readonly { travellerId: string; coveredBy: string | null }[],
-): string[] {
+export function splitDraftConflicts(seen: SplitBasis, now: SplitBasis, draft: readonly DraftPerson[]): string[] {
   const conflicts: string[] = [];
   if (seen.total !== now.total || seen.currency !== now.currency) {
     conflicts.push(
@@ -491,20 +491,57 @@ export function splitDraftConflicts(
         : 'The cost has no price now.',
     );
   }
-  const named = new Set(draft.flatMap((p) => (p.coveredBy ? [p.travellerId, p.coveredBy] : [p.travellerId])));
   const current = new Map(now.members.map((m) => [m.id, m]));
+  const known = new Map([...seen.members, ...now.members].map((m) => [m.id, m.name]));
+  const inSplit = new Set(draft.map((p) => p.travellerId));
   for (const before of seen.members) {
-    if (!named.has(before.id)) continue;
     const after = current.get(before.id);
-    if (!after) conflicts.push(`${before.name} is no longer on this trip.`);
-    else if (after.classification !== before.classification) {
+    const covered = draft.filter((p) => p.coveredBy === before.id).map((p) => known.get(p.travellerId) ?? 'a child');
+    if (!after) {
+      if (inSplit.has(before.id)) {
+        conflicts.push(
+          `${before.name} is no longer on this trip but is still in this split. Take them out, or start again from the saved split.`,
+        );
+      } else if (covered.length > 0) {
+        conflicts.push(
+          `${before.name} covers ${joinAnd(covered)} here and is no longer on this trip. Take them out to choose again, or start again from the saved split.`,
+        );
+      } else {
+        conflicts.push(`${before.name} is no longer on this trip.`);
+      }
+    } else if (after.classification !== before.classification && (inSplit.has(before.id) || covered.length > 0)) {
       conflicts.push(`${after.name} is now ${classificationWords(after.classification)} on this trip.`);
     }
   }
+  // Someone the draft names whom neither the draft's data nor the trip has: never saved quietly.
+  const unknown = draft.flatMap((p) => [p.travellerId, ...(p.coveredBy ? [p.coveredBy] : [])]).some((id) => !known.has(id));
+  if (unknown) conflicts.push('Someone in this split is not on this trip.');
   if (sharesKey(seen.shares) !== sharesKey(now.shares)) {
     conflicts.push('The saved split was changed somewhere else.');
   }
   return conflicts;
+}
+
+/**
+ * *Keep my changes*: the data as it is now becomes what the draft was checked against — except
+ * that anyone who left and whom the draft still names stays in it, so their leaving is still said
+ * and the save still refused until the person takes them out. Keeping never drops a share or a
+ * cover by itself.
+ */
+export function keptBasis(seen: SplitBasis, now: SplitBasis, draft: readonly DraftPerson[]): SplitBasis {
+  const current = new Set(now.members.map((m) => m.id));
+  const named = new Set(draft.flatMap((p) => (p.coveredBy ? [p.travellerId, p.coveredBy] : [p.travellerId])));
+  const gone = seen.members.filter((m) => !current.has(m.id) && named.has(m.id));
+  return { ...now, members: [...now.members, ...gone] };
+}
+
+/** Who the draft names that is no longer on the trip: each to be taken out by the person. */
+export function goneFromDraft(
+  seen: SplitBasis,
+  now: SplitBasis,
+  draft: readonly DraftPerson[],
+): Pick<Member, 'id' | 'name'>[] {
+  return keptBasis(seen, now, draft).members.filter((m) => !now.members.some((n) => n.id === m.id));
 }
 
 /** The refusal when a draft's data changed under it: what changed, and that nothing was saved. */

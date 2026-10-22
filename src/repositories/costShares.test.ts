@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 
 import { MIGRATIONS } from '../db/migrations';
 import { asyncDatabase } from '../db/testing/asyncDatabase';
-import { shareAmounts, type SplitBasis } from '../domain/costShares';
+import { keptBasis, shareAmounts, splitDraftConflicts, type SplitBasis } from '../domain/costShares';
 import { tripItemInputSchema } from '../domain/tripItem';
 import {
   listHolds,
@@ -514,5 +514,143 @@ describe('saving a draft made against older data (3D-2 corrective)', () => {
     const saved = await listShares(db, { itemId: safari });
     expect(shareAmounts(9000, saved).shares.map((s) => s.amount)).toEqual([3000, 3000, 3000]);
     expect(saved.map((s) => s.coveredBy)).toEqual([null, null, null]);
+  });
+});
+
+describe('Keep my changes never drops a traveller or a cover (3D-2 final corrective)', () => {
+  /** What the split screen read, as it passes it to the save. */
+  async function basisNow(db: Db, safari: string): Promise<SplitBasis> {
+    const item = await getTripItem(db, safari);
+    return {
+      total: item!.priceAmount!,
+      currency: item!.priceCurrency!,
+      members: await listTripTravellers(db, 'lapland'),
+      shares: await listShares(db, { itemId: safari }),
+    };
+  }
+  const draftOf = (input: { people: { travellerId: string; coveredBy: string | null }[] }) => input.people;
+  const takeOut = (basis: SplitBasis, id: string): SplitBasis => ({
+    ...basis,
+    members: basis.members.filter((m) => m.id !== id),
+  });
+
+  it('1–4. a ticked traveller leaves; Keep my changes still refuses, with them in the draft or quietly left out (equal)', async () => {
+    const { raw, db } = setup();
+    const { ev, ana, leo, safari } = await family(db);
+    const seen = await basisNow(db, safari);
+    const draft = equal(ev, ana, leo);
+    await removeTripTraveller(db, 'lapland', leo);
+    const now = await basisNow(db, safari);
+    // 2. Detected.
+    expect(splitDraftConflicts(seen, now, draftOf(draft))).toEqual([expect.stringMatching(/^Leo is no longer on this trip/)]);
+    // 3. Keep my changes does not resolve it.
+    const kept = keptBasis(seen, now, draftOf(draft));
+    expect(splitDraftConflicts(kept, now, draftOf(draft))).toHaveLength(1);
+    // 4. Refused: Leo still in the draft, or dropped from it without being taken out.
+    const before = snapshot(raw);
+    await expect(saveSplit(db, { itemId: safari }, draft, kept)).rejects.toThrow(/Leo is no longer on this trip/);
+    await expect(saveSplit(db, { itemId: safari }, equal(ev, ana), kept)).rejects.toThrow(/Leo is no longer on this trip/);
+    expect(snapshot(raw)).toEqual(before);
+  });
+
+  it('1–5. the same by amounts: refused until Leo is taken out, then only once the amounts add up again', async () => {
+    const { raw, db } = setup();
+    const { ev, ana, leo, safari } = await family(db);
+    const seen = await basisNow(db, safari);
+    const draft = byAmounts([ev, 4000], [ana, 3000], [leo, 2000]);
+    await removeTripTraveller(db, 'lapland', leo);
+    const now = await basisNow(db, safari);
+    const kept = keptBasis(seen, now, draftOf(draft));
+    const before = snapshot(raw);
+    await expect(saveSplit(db, { itemId: safari }, draft, kept)).rejects.toThrow(/Leo is no longer on this trip/);
+    await expect(saveSplit(db, { itemId: safari }, byAmounts([ev, 4000], [ana, 3000]), kept)).rejects.toThrow(
+      /Leo is no longer on this trip/,
+    );
+    // 5. Taken out by the person: Leo's EUR 20.00 is not moved to anyone, so it does not add up yet.
+    const takenOut = takeOut(kept, leo);
+    await expect(saveSplit(db, { itemId: safari }, byAmounts([ev, 4000], [ana, 3000]), takenOut)).rejects.toThrow(
+      /EUR 20.00 is left to split/,
+    );
+    expect(snapshot(raw)).toEqual(before);
+    await saveSplit(db, { itemId: safari }, byAmounts([ev, 5000], [ana, 4000]), takenOut);
+    expect((await listShares(db, { itemId: safari })).map((s) => [s.travellerId, s.amount])).toEqual([
+      [ev, 5000],
+      [ana, 4000],
+    ]);
+  });
+
+  it('5. equal: once Leo is taken out, the rest of the draft saves as it is', async () => {
+    const { db } = setup();
+    const { ev, ana, leo, safari } = await family(db);
+    const seen = await basisNow(db, safari);
+    await removeTripTraveller(db, 'lapland', leo);
+    const now = await basisNow(db, safari);
+    const takenOut = takeOut(keptBasis(seen, now, draftOf(equal(ev, ana, leo))), leo);
+    await saveSplit(db, { itemId: safari }, equal(ev, ana), takenOut);
+    expect((await listShares(db, { itemId: safari })).map((s) => s.travellerId)).toEqual([ev, ana]);
+  });
+
+  it('6. start again: the saved split is there unchanged after every refusal, and saves from a fresh read', async () => {
+    const { db } = setup();
+    const { ev, ana, mia, leo, safari } = await family(db);
+    await saveSplit(db, { itemId: safari }, equal(ev, ana, mia));
+    const savedBefore = await listShares(db, { itemId: safari });
+    const seen = await basisNow(db, safari);
+    await removeTripTraveller(db, 'lapland', leo);
+    const now = await basisNow(db, safari);
+    const kept = keptBasis(seen, now, draftOf(equal(ev, ana, mia, leo)));
+    await expect(saveSplit(db, { itemId: safari }, equal(ev, ana, mia, leo), kept)).rejects.toThrow(/Leo/);
+    expect(await listShares(db, { itemId: safari })).toEqual(savedBefore);
+    // Start again = a new draft from the saved split and a fresh read.
+    const fresh = await basisNow(db, safari);
+    const restarted = { people: savedBefore.map((s) => ({ travellerId: s.travellerId, amount: s.amount, coveredBy: s.coveredBy })) };
+    expect(splitDraftConflicts(fresh, fresh, restarted.people)).toEqual([]);
+    await saveSplit(db, { itemId: safari }, restarted, fresh);
+    expect((await listShares(db, { itemId: safari })).map((s) => s.travellerId)).toEqual([ev, ana, mia]);
+  });
+
+  it('7–8. the adult picked to cover a child here leaves: never silently not covered, never another adult', async () => {
+    const { raw, db } = setup();
+    const { ev, ana, mia, safari } = await family(db);
+    await setTripCover(db, 'lapland', mia, [ev]);
+    const seen = await basisNow(db, safari);
+    const draft = {
+      people: [
+        { travellerId: ev, amount: null, coveredBy: null },
+        { travellerId: mia, amount: null, coveredBy: ana },
+      ],
+    };
+    await removeTripTraveller(db, 'lapland', ana);
+    const now = await basisNow(db, safari);
+    expect(splitDraftConflicts(seen, now, draftOf(draft))).toEqual([expect.stringMatching(/^Ana covers Mia here/)]);
+    const kept = keptBasis(seen, now, draftOf(draft));
+    const before = snapshot(raw);
+    // Ana still picked: refused. Ana's pick dropped without taking her out (the old screen's way): refused.
+    await expect(saveSplit(db, { itemId: safari }, draft, kept)).rejects.toThrow(/Ana covers Mia here/);
+    await expect(saveSplit(db, { itemId: safari }, equal(ev, mia), kept)).rejects.toThrow(/Ana is no longer on this trip/);
+    // No other adult is put in by itself: nothing was written.
+    expect(snapshot(raw)).toEqual(before);
+    // Taken out by the person: Mia's share follows the trip's Covered by, as the screen says.
+    await saveSplit(db, { itemId: safari }, equal(ev, mia), takeOut(kept, ana));
+    expect((await listShares(db, { itemId: safari })).map((s) => s.coveredBy)).toEqual([null, null]);
+  });
+
+  it('9. a harmless refresh (a rename, someone joining) needs no Keep and saves the draft', async () => {
+    const { raw, db } = setup();
+    const { ev, ana, safari } = await family(db);
+    const seen = await basisNow(db, safari);
+    await createTripTraveller(db, 'lapland', 'Sam', 'unspecified');
+    raw.prepare(`UPDATE travellers SET name = 'Eve' WHERE id = ?`).run(ev);
+    expect(splitDraftConflicts(seen, await basisNow(db, safari), [{ travellerId: ev, coveredBy: null }])).toEqual([]);
+    await saveSplit(db, { itemId: safari }, byAmounts([ev, 5000], [ana, 4000]), seen);
+    expect(await listShares(db, { itemId: safari })).toHaveLength(2);
+  });
+
+  it('10. a normal save goes through as before, with and without seen', async () => {
+    const { db } = setup();
+    const { ev, ana, mia, safari } = await family(db);
+    await saveSplit(db, { itemId: safari }, equal(ev, ana), await basisNow(db, safari));
+    await saveSplit(db, { itemId: safari }, byAmounts([ev, 3000], [ana, 3000], [mia, 3000]));
+    expect((await listShares(db, { itemId: safari })).map((s) => s.amount)).toEqual([3000, 3000, 3000]);
   });
 });

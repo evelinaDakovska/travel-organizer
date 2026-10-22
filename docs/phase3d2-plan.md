@@ -334,3 +334,28 @@ Two P2 findings, both confirmed; schema 8 and format 9 unchanged, no migration t
   save is refused too. The screen's own save or removal is not taken for someone else's change.
 - In today's navigation the split screen covers the screens that change these, so this is mostly
   defence in depth; it is checked in Node (domain and repository), not on an emulator.
+
+### 12.2 Final corrective pass (2026-10-22)
+
+One P2 finding, confirmed (reproduced at `4a1758e` in Node: the conflict is said, *Keep my changes*
+clears it, and the split saves without the person who left). The screen built what it saved from the
+trip's members as they are now, so someone ticked who had left fell out of it; and *Keep my changes*
+took the current data as reviewed, so nothing remembered them.
+
+- The draft is now everyone ticked, including anyone who has left since; that is what is sent to save.
+- `keptBasis`: *Keep my changes* keeps anyone who left and whom the draft still names (in the split,
+  or covering a child here) in what was reviewed, so the conflict stays and Save stays refused.
+- `splitDraftConflicts` says every seen member who left, with what to do for someone the draft names;
+  the repository therefore refuses while `seen` holds anyone off the trip — whether the draft still
+  lists them or quietly dropped them. Someone named whom neither has is refused too.
+- **Take {name} out** (`goneFromDraft`) is the only way past it: off the draft, off any child's cover
+  here, and out of what was reviewed — by the person's tap. Their amount is not moved to anyone (*EUR
+  10.00 left to split*); a child they covered follows the trip's *Covered by*, shown, until the person
+  picks someone. A child's field names an adult picked here who has left (*Sam — no longer on this
+  trip*).
+- Unchanged: someone joining or renamed needs nothing; *Start again from the saved split*.
+
+Checked in Node (domain and repository, every refused save compared table by table) and on an
+emulator (`TO_2B_Test`, debug-signed, synthetic data): the data was changed in the app's own screens
+opened on top of the open editor by its deep links, no debug-only code.
+`%USERPROFILE%\Pictures\TravelOrganizer-0.15.0-3D2-final-e2e\E2E-LOG.md`.
