@@ -9,15 +9,15 @@ this plan (§11 lists the questions).
 Where this plan and `phase3-plan.md` §7 (*Balances*) or `expenses-spec.md` (*Settle up*) differ,
 this plan is the proposal and those are history.
 
-**Status (2026-10-22, revision 2).** The owner reviewed revision 1 and approved the direction, but
-did **not** authorise migration 009 or any implementation. Their answers are in §11.1. Refinements
-A–F are worked into §§3–8, and §12 lists the contradictions that are still open. Two gates come
+**Status (2026-10-22, revision 3).** The owner reviewed revision 1 and approved the direction
+(§11.1). Refinements A–F are worked into §§3–8. The owner decided §12.1 as option (a). Two gates come
 before any code:
 
-1. **The independent review of `a44dd6d`** (the final 3D-2 corrective) is finished and has passed.
-   Any confirmed findings are fixed in their own commit **before migration 009 is written** (F).
-2. **The owner explicitly authorises the implementation** of this revision, including the answer
-   to §12.1.
+1. ✅ **The independent review of `a44dd6d`** (the final 3D-2 corrective) was done outside the coding
+   session. The owner reports it complete with no findings (2026-10-22), so there is no corrective
+   commit (F).
+2. ⬜ **The owner explicitly authorises migration 009 and the implementation** of this revision. Until
+   then, nothing is written.
 
 **Real data (owner, 2026-10-22).** The phone holds real data. A schema migration is a risk to it by
 definition, so everything in 3E stays on `phase-3d1`, separate from `main`. `main` stays at 0.13.0,
@@ -114,7 +114,7 @@ by what they cover:
 | The currency has | Heading over the nets | Suggested transfers |
 |---|---|---|
 | Only complete costs (plus any not split, Q2) | *Balances* | shown |
-| Complete costs **and** costs waiting for another reason | *Balances so far — 2 costs not included yet* | per §12.1 |
+| Any cost waiting for a reason other than *not split* | *Balances so far — 2 costs not included yet*, with the waiting list directly under it | **none** until they are complete (§12.1) |
 | Settlements but no complete costs | *Settlements only — no costs in the balances* (B, §6) | **none** |
 
 ## 4. Who owes whom (suggested transfers)
@@ -125,8 +125,12 @@ so the result is deterministic. It produces at most *people with a non-zero net 
 This is the usual greedy method from `expenses-spec.md`. It is **few** transfers, not always the
 fewest, since finding the fewest is a much harder problem. The screen says *suggested*.
 
-No suggestions are made in a currency that has settlements but no complete costs (B, §6), or in
-one where a child's net is below zero (E, §7). §12.1 covers a currency that has waiting costs.
+Suggestions are made per currency, and only when that currency has:
+- **no waiting cost** other than *not split* (§12.1);
+- **at least one complete cost** (B, §6);
+- **no child below zero** (E, §7).
+
+One currency's state never holds back another's.
 
 A suggestion is only a reading and nothing writes it. **Record** opens the settlement form already
 filled in with *from*, *to*, the amount and the currency, and the person can edit any of them. A
@@ -330,7 +334,8 @@ it in the share sheet. The PDF stays without names or balances (Q6, §15 *7*).
       deleting a booking or an expense, or a refused leave, leaves `settlements` byte-identical;
     - (D) each row of the status-wording table;
     - (E) the three causes of a child below zero;
-    - §12.1 the pre-settlement case, with no false debtor suggested.
+    - §12.1 — the two regression tests written out there (the hotel deposit; complete, then
+      incomplete after an edit), and per-currency independence.
 - **Emulator E2E** (as for 3D-1/3D-2): a debug-signed, debuggable build on `TO_2B_Test` for the 8 → 9
   database diff (Q7). Synthetic families: solo (no view); 3 adults; 2 adults + 1 child covered by
   both; 2 adults + 3 children with two different covering adults; two currencies. Every worked
@@ -354,7 +359,8 @@ it in the share sheet. The PDF stays without names or balances (Q6, §15 *7*).
 | …Ben settles 100 instead | warning, then saved | Ana −20 · Ben +20 | Ana → Ben 20 |
 | A EUR and a NOK cost | — | two sections, never added | per currency |
 | A family trip, nothing split | — | no balances; *12 costs not split* (collapsed) | — |
-| Hotel 250, deposit 100 by Ana, split Ana + Ben; Ben gives Ana 50 now | hotel waits; settlement 50 | *Balances so far*: Ben +50 · Ana −50; hotel listed with *paid EUR 100 (Ana)* | none (§12.1 a) |
+| Hotel 250, deposit 100 by Ana, split Ana + Ben; Ben gives Ana 50 now | hotel waits; settlement 50 | *Balances so far*: Ben +50.00 so far · Ana −50.00 so far; hotel listed with *paid EUR 100 (Ana)* | none (§12.1) |
+| …then Ben pays the 150 | payments 100 Ana, 150 Ben; settlement 50 | Ana −75 · Ben +75 | Ana → Ben 75 |
 | Ben gives Ana NOK 500, no NOK costs | settlement only | *Settlements only — no costs in the balances* | none (B) |
 
 ## 11. Questions for the owner (recommendation first)
@@ -406,26 +412,67 @@ in the status note.
 
 ## 12. Remaining contradictions (for the owner)
 
-### 12.1 Settlements made before a cost is complete — **needs an answer**
+### 12.1 Settlements made before a cost is complete — **decided: option (a)** (owner, 2026-10-22)
 
-*Complete costs only* (Q1) and *settlements are facts* (Q4) clash in one ordinary case. Ana pays a
-EUR 250 hotel deposit of EUR 100, and Ben gives Ana EUR 50 straight away for his half of it. The
-hotel waits (EUR 150 to pay), so it is not in the nets, but Ben's settlement is. The nets read
-**Ben +50 · Ana −50**, and the suggestion would be *Ana pays Ben EUR 50*. That is a false debtor,
-which the exit criteria forbid. A cost that was complete when someone settled and later stops being
-complete (a price edit, a removed split) does the same.
+**The case.** *Complete costs only* (Q1) and *settlements are facts* (Q4) clash in one ordinary
+case:
+- Ana pays a EUR 100 deposit on a EUR 250 hotel, and Ben gives Ana EUR 50 straight away for his half
+  of it.
+- The hotel still waits (*EUR 150 to pay*), so it is not in the nets. Ben's settlement is.
+- The nets read Ben +50 · Ana −50, and a suggestion would be *Ana pays Ben EUR 50*. That is a false
+  debtor.
 
-Neither fix bends a rule:
-- **(a) Recommended: no suggestions while costs wait.** In a currency where any cost waits for a
-  reason other than *not split*, the nets are shown under *Balances so far — 2 costs not included
-  yet*, with the waiting list directly under them. No transfers are suggested, only *Suggestions
-  appear once these are complete*. Settlements can still be recorded by hand. This holds back
-  suggestions only in that currency. At the end of a trip, once everything is paid and split, they
-  appear. Before the trip, *To pay* bookings keep them hidden, which is fair, because nothing is
-  owed between people for a booking nobody has paid yet.
-- **(b) Suggestions always, labelled provisional.** More convenient during the trip, but it can
-  suggest the false transfer above, with only a label to say it is not final. The owner's rule *do
-  not present partial balances as complete financial obligations* argues against it.
+A cost that was complete when someone settled, and later stops being complete, does the same.
+
+**The rule, as decided:**
+1. **Balances** are worked out from the complete costs and the recorded settlements, exactly as in
+   §3. Nothing about that changes.
+2. **A currency with any waiting cost** that could otherwise be shared shows **Balances so far**,
+   with the excluded costs listed directly under the nets. That means any reason in §5 except *not
+   split*, including a refundable or *refund not set* cancellation with recorded payments.
+3. **No suggested transfers in that currency** until those costs are complete. They are neither
+   worked out nor shown. In their place it reads: *Suggested transfers appear once these 2 costs are
+   complete.*
+4. **Costs left unsplit on purpose do not block** suggestions (Q2).
+5. **Each currency on its own:** a waiting EUR cost never holds back NOK suggestions.
+6. **Recording a settlement by hand stays possible**, with the validations of §7: membership, no
+   child left owing, the over-settlement warning and the settlement-only-currency warning. The
+   preview of the resulting balances (Q4) is headed *Balances so far* too.
+7. **Recorded payments and settle-up balances stay apart.** A waiting cost shows what was recorded
+   on it (A). *Paid* in a balance row counts only costs in the balances. Payments on waiting costs
+   appear only in the waiting list and in the person's *Paid on costs not in the balances yet*.
+   They never appear in a net.
+8. **A provisional negative is never presented as a debt.** Under *Balances so far*, rows read
+   *Ana · −EUR 50.00 so far* and *Ben · +EUR 50.00 so far*. The words *owes* and *is owed* are
+   never used, the attention/debt colour is never applied, and the share text leaves such a currency
+   out, apart from one line: *EUR: not final — 2 costs not complete*. *Owes* and *is owed* appear
+   only under *Balances*, where nothing waits.
+
+**Why (b) was not chosen:** always suggesting, labelled provisional, could still show the false
+transfer above. The owner's rule *do not present partial balances as complete financial
+obligations* rules it out.
+
+**Regression tests** (Node, synthetic; both are acceptance criteria for 3E):
+- **The hotel deposit.**
+  - Ana's EUR 100 payment on a EUR 250 hotel split equally between Ana and Ben, plus Ben's EUR 50
+    settlement to Ana. EUR is *so far*: Ben +50, Ana −50, worded without *owes*. There is **no
+    suggestion**. The hotel is listed with *paid EUR 100 (Ana) · EUR 150 to pay*. `paymentSummary`
+    and the trip total are unchanged by the settlement.
+  - Then Ben's EUR 150 payment is recorded, and EUR becomes *Balances*:
+    - Ana paid 100, bears 125 and received 50: 100 − 125 − 50 = −75.
+    - Ben paid 150, bears 125 and sent 50: 150 − 125 + 50 = +75.
+    - The suggestion is *Ana pays Ben EUR 75.00*, and Σ = 0.
+  - A NOK cost on the same trip keeps its suggestions throughout.
+- **Complete, then incomplete after an edit.**
+  - A complete, settled EUR cost (suggestions shown) is made incomplete by each of these in turn:
+    the price raised so the payments no longer reach it; the split removed; a payment's payer
+    cleared; the split by amounts no longer adding up; a covering adult taken off a child's
+    *Covered by*.
+  - Each time, EUR turns to *Balances so far*, the cost appears in the waiting list with its
+    reason, and the suggestions disappear.
+  - Every `settlements`, `booking_payments`, `expenses` and `cost_shares` row is **byte-identical**
+    before and after the read, because nothing is written.
+  - Undoing the edit brings the suggestions back unchanged.
 
 ### 12.2 Points checked and found consistent — no answer needed
 
@@ -439,6 +486,5 @@ Neither fix bends a rule:
 - **`main` and real data.** Migration 009 is additive, but any migration runs on the phone's real
   database at install, so it waits on `phase-3d1` with 007 and 008. No 3E change needs anything on
   `main`.
-- **Review independence (F).** The review of `a44dd6d` should not be done by the session that wrote
-  it. It can be done in a separate conversation (as before) or by a fresh review agent in this one
-  if the owner asks. Either way, findings are fixed in their own commit before 009 is written.
+- **Review independence (F).** The review of `a44dd6d` was done outside the coding session. The
+  owner reports it complete with no findings (2026-10-22).
