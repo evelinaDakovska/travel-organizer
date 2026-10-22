@@ -111,7 +111,7 @@ export default function ExpensesScreen() {
   const canSettle = members.length >= 2;
   const views = canSettle ? (['bookings', 'spending', 'settle'] as const) : (['bookings', 'spending'] as const);
   const shown: ExpenseView = view === 'settle' && !canSettle ? 'bookings' : view;
-  // Names leave the phone only from here, and only when the person taps Share (§9).
+  // Names leave the phone only from Settle up's Share button, when the person taps it (§9).
   const share = () => {
     const nameOf = (id: string) => members.find((member) => member.id === id)?.name ?? 'Someone';
     void Share.share({ message: settleUpText(trip?.name ?? 'Trip', balances, nameOf) });
@@ -125,9 +125,6 @@ export default function ExpensesScreen() {
         action={
           <View style={styles.headerActions}>
             <SearchButton tripId={tripId} />
-            {shown === 'settle' && balances.length > 0 ? (
-              <HeaderAction icon="share" label="Share" accessibilityLabel="Share who owes whom" onPress={share} />
-            ) : null}
             <HeaderAction
               icon="add"
               label="Add"
@@ -153,7 +150,7 @@ export default function ExpensesScreen() {
           />
 
           {shown === 'settle' ? (
-            <SettleUpView tripId={tripId} balances={balances} members={members} />
+            <SettleUpView tripId={tripId} balances={balances} members={members} onShare={share} />
           ) : shown === 'spending' ? (
             <SpendingView
               // An expense that pays for a booking is listed on that booking (3D-1).

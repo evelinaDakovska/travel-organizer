@@ -735,7 +735,7 @@ export function settleUpText(tripName: string, balances: readonly CurrencyBalanc
     }
     if (entry.notSplit.length > 0) notes.push(`${plural(entry.notSplit.length, 'cost', 'costs')} in ${entry.currency} not split`);
   }
-  const lines = [`${tripName} — settle up (suggested)`, '', sections.join('\n\n')];
+  const lines = [`${tripName} — settle up (suggested)`, '', sections.join('\n\n') || 'Nothing to settle yet.'];
   if (notes.length > 0) lines.push('', `Not included: ${notes.join(', ')}.`);
   return lines.join('\n');
 }

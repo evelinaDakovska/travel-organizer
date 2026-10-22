@@ -25,6 +25,8 @@ type Props = {
   tripId: string;
   balances: readonly CurrencyBalances[];
   members: readonly Member[];
+  /** Shares the suggested transfers as text; names leave the phone only from here (§9). */
+  onShare: () => void;
 };
 
 /**
@@ -33,7 +35,7 @@ type Props = {
  * recorded on it and where to finish it. Suggested transfers appear only where nothing waits but
  * costs left unsplit (§12.1): a provisional figure is never worded or coloured as a debt.
  */
-export function SettleUpView({ tripId, balances, members }: Props) {
+export function SettleUpView({ tripId, balances, members, onShare }: Props) {
   const c = useColors();
   const router = useRouter();
   const byId = new Map(members.map((member) => [member.id, member]));
@@ -58,6 +60,7 @@ export function SettleUpView({ tripId, balances, members }: Props) {
         <CurrencySection key={entry.currency} tripId={tripId} entry={entry} byId={byId} nameOf={nameOf} />
       ))}
       <Button label="Record a settlement" variant="secondary" onPress={record} />
+      <Button label="Share who owes whom" variant="ghost" onPress={onShare} />
       <Text style={[type.caption, { color: c.textMuted }]}>
         Only costs that are split, fully paid and with every payer recorded count here. Money between travellers is
         not a cost: the trip total stays as it is. Nothing is converted between currencies.
@@ -100,22 +103,29 @@ function CurrencySection({
               row.received > 0 ? `${money(row.received)} received` : null,
             ].filter((part): part is string => part !== null);
             return (
+              // The net and its working on full-width lines under the name: a narrow screen at a large
+              // font must not cut either (plan §10, 360 dp · font 2.0).
               <ListRow
                 key={row.travellerId}
                 title={nameOf(row.travellerId)}
-                subtitle={working.join(' · ') || null}
-                detail={
-                  row.paidWaiting > 0 ? `Also paid ${money(row.paidWaiting)} on costs not in the balances yet` : null
-                }
-                trailing={
-                  <Text
-                    style={[
-                      type.label,
-                      styles.net,
-                      { color: owes || flagged ? c.attention : entry.state === 'final' ? c.text : c.textMuted },
-                    ]}>
-                    {netText(row, entry.currency, entry.state, isChild)}
-                  </Text>
+                footer={
+                  <View style={styles.working}>
+                    <Text
+                      style={[
+                        type.label,
+                        { color: owes || flagged ? c.attention : entry.state === 'final' ? c.text : c.textMuted },
+                      ]}>
+                      {netText(row, entry.currency, entry.state, isChild)}
+                    </Text>
+                    {working.length > 0 ? (
+                      <Text style={[type.caption, { color: c.textMuted }]}>{working.join(' · ')}</Text>
+                    ) : null}
+                    {row.paidWaiting > 0 ? (
+                      <Text style={[type.caption, { color: c.textMuted }]}>
+                        Also paid {money(row.paidWaiting)} on costs not in the balances yet
+                      </Text>
+                    ) : null}
+                  </View>
                 }
                 onPress={() =>
                   router.push({
@@ -278,5 +288,5 @@ const styles = StyleSheet.create({
   view: { gap: spacing.xl },
   section: { gap: spacing.md },
   block: { gap: spacing.xs },
-  net: { textAlign: 'right', maxWidth: 160 },
+  working: { gap: 2 },
 });

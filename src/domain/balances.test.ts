@@ -778,6 +778,13 @@ describe('settlement rules (§7)', () => {
 });
 
 describe('share text (§9)', () => {
+  it('says there is nothing to settle rather than leaving a gap', () => {
+    const balances = tripBalances(inputOf({ expenses: [expense('soup', 1000, 'ana')] }));
+    expect(settleUpText('Rome', balances, nameOf)).toBe(
+      'Rome — settle up (suggested)\n\nNothing to settle yet.\n\nNot included: 1 cost in EUR not split.',
+    );
+  });
+
   it('gives suggestions, a not-final line without numbers, and what is not included', () => {
     const balances = tripBalances(
       inputOf({
