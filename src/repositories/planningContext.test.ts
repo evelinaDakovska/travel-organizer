@@ -56,7 +56,9 @@ describe('readPlanningInput', () => {
           // 3D-1: payments and linked expenses are in the fixture and never in the context.
           'Deposit', 'Safari balance', '200.00', '50.00', '60.00',
           // 3D-2: splits and covers are in the fixture and never in the context.
-          'cs1', 'cs2', 'cs3', '12.50', 'covered', 'split', 'share']) {
+          'cs1', 'cs2', 'cs3', '12.50', 'covered', 'split', 'share',
+          // 3E: a settlement is in the fixture and never in the context.
+          'st1', '5.00', 'settle', 'owes', 'owed']) {
           expect([secret, text.includes(secret)]).toEqual([secret, false]);
         }
       }

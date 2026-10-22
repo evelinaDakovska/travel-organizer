@@ -405,23 +405,29 @@ describe('the backup round trip', () => {
     expect(item).toEqual({ details, price_amount: 34000, is_paid: 1 });
   });
 
-  it('writes format 9, and still restores format 8 (0.14.0) and format 7 (0.13.0)', async () => {
+  it('writes format 10, and still restores format 9 (0.15.0), 8 (0.14.0) and 7 (0.13.0)', async () => {
     const source = fresh();
     seed(source);
     const current = JSON.parse(JSON.stringify(await documentFrom(source)));
-    expect(current.formatVersion).toBe(9);
-    // An older file has no shares or covers at all: they read as empty.
-    const { costShares: _shares, tripCover: _cover, ...olderTables } = current.tables;
+    expect(current.formatVersion).toBe(10);
+    // A format-9 file has no settlements: they read as empty.
+    const { settlements: _settlements, ...nineTables } = current.tables;
+    const fromNine = parseExportDocument({ ...current, formatVersion: 9, tables: nineTables });
+    expect(fromNine.ok).toBe(true);
+    if (fromNine.ok) expect(fromNine.document.tables.settlements).toEqual([]);
+    // An older file has no shares, covers or settlements at all: they read as empty.
+    const { costShares: _shares, tripCover: _cover, ...olderTables } = nineTables;
     for (const formatVersion of [8, 7]) {
       const fromOlder = parseExportDocument({ ...current, formatVersion, tables: olderTables });
       expect(fromOlder.ok).toBe(true);
       if (fromOlder.ok) {
         expect(fromOlder.document.tables.costShares).toEqual([]);
         expect(fromOlder.document.tables.tripCover).toEqual([]);
+        expect(fromOlder.document.tables.settlements).toEqual([]);
       }
     }
-    // 0.14.0 refuses anything above its own 8 — this app's backups included.
-    expect(current.formatVersion).toBeGreaterThan(8);
+    // 0.15.0 refuses anything above its own 9 — this app's backups included.
+    expect(current.formatVersion).toBeGreaterThan(9);
   });
 
   it('rejects a backup from a future format with a clear message', async () => {
@@ -929,5 +935,79 @@ describe('splits and cover (format 9, 3D-2)', () => {
     expect(filterTablesForTrip(await readAll(source), 't1').tripCover).toHaveLength(1);
     expect(filterTablesForTrip(await readAll(source), 't2').costShares).toEqual([]);
     expect(filterTablesForTrip(await readAll(source), 't2').tripCover).toEqual([]);
+  });
+});
+
+describe('settlements (format 10, 3E)', () => {
+  function seedSettlements(db: Database.Database) {
+    run(
+      db,
+      `INSERT INTO settlements (id, trip_id, from_id, to_id, amount, currency, settled_on, note,
+                                created_at, updated_at)
+       VALUES ('st1', 't1', 'mia', 'ev', 5000, 'EUR', '2026-11-24', 'Hotel half', ?, ?),
+              ('st2', 't1', 'ev', 'mia', 700, 'NOK', NULL, NULL, ?, ?)`,
+      now,
+      now,
+      now,
+      now,
+    );
+  }
+
+  it('restores settlements into an empty app, byte for byte', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    seedSettlements(source);
+    const target = fresh();
+
+    await restoreInto(target, source, 'merge');
+
+    const restored = await readAll(target);
+    expect(restored).toEqual(await readAll(source));
+    expect(restored.settlements).toHaveLength(2);
+    expect(target.pragma('foreign_key_check')).toEqual([]);
+  });
+
+  it('replace overwrites a trip with settlements on this phone, as its confirmation says', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    const target = fresh();
+    seed(target);
+    seedFieldbook(target);
+    seedSettlements(target);
+
+    await restoreInto(target, source, 'replace');
+
+    expect(await readAll(target)).toEqual(await readAll(source));
+    expect(target.prepare(`SELECT COUNT(*) AS n FROM settlements`).get()).toEqual({ n: 0 });
+  });
+
+  it('merge leaves a trip already here, settlements and all, exactly as it is', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    const target = fresh();
+    seed(target);
+    seedFieldbook(target);
+    seedSettlements(target);
+    const before = await readAll(target);
+
+    await restoreInto(target, source, 'merge');
+
+    expect(await readAll(target)).toEqual(before);
+  });
+
+  it('a one-trip selection carries its settlements, and no other trip’s', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    seedSettlements(source);
+
+    expect(filterTablesForTrip(await readAll(source), 't1').settlements.map((row) => row.id)).toEqual([
+      'st1',
+      'st2',
+    ]);
+    expect(filterTablesForTrip(await readAll(source), 't2').settlements).toEqual([]);
   });
 });

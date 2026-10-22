@@ -205,6 +205,7 @@ describe('opening a trip archive', () => {
       payments: 1,
       bookingPayments: 2,
       splitCosts: 2,
+      settlements: 1,
       filesIncluded: 2,
       unavailable: [],
     });
@@ -276,16 +277,16 @@ describe('opening a trip archive', () => {
     }
   });
 
-  it('writes row format 9, and still opens trips exported by 0.14.0 (8) and 0.13.0 (7)', async () => {
+  it('writes row format 10, and still opens trips exported by 0.15.0 (9), 0.14.0 (8) and 0.13.0 (7)', async () => {
     const entries = goodEntries();
     const manifest = manifestOf(entries);
-    expect(manifest.rowFormat).toBe(9);
-    for (const rowFormat of [8, 7]) {
+    expect(manifest.rowFormat).toBe(10);
+    for (const rowFormat of [9, 8, 7]) {
       const older = await open(rawZip(replace(entries, MANIFEST_NAME, json({ ...manifest, rowFormat }))));
       expect(older.ok).toBe(true);
     }
-    // What 0.14.0 does with this app's archives: its own check, with its own number.
-    expect(manifest.rowFormat).toBeGreaterThan(8);
+    // What 0.15.0 does with this app's archives: its own check, with its own number.
+    expect(manifest.rowFormat).toBeGreaterThan(9);
   });
 
   it('refuses trip data that does not match its checksum', async () => {
@@ -359,6 +360,13 @@ describe('checkTripArchive — every reference resolves inside the archive', () 
     ['a share of two costs', (t: any) => (t.costShares[0].expense_id = 'e1'), 'a share has no single cost'],
     ['two shares of one cost for one person', (t: any) => t.costShares.push({ ...t.costShares[0], id: 'cs9' }), 'someone has two shares of one cost'],
     ['a cover by someone not on the trip', (t: any) => (guest(t), (t.tripCover[0].adult_id = 'guest')), 'who covers a child names someone who is not on the trip'],
+    // 3E: a settlement is between two different members of the trip.
+    ['a settlement from someone not on the trip', (t: any) => (guest(t), (t.settlements[0].from_id = 'guest')), 'a settlement names someone who is not on the trip'],
+    ['a settlement to someone not in it', (t: any) => (t.settlements[0].to_id = 'ghost'), 'a settlement names someone who is not on the trip'],
+    ['a settlement to oneself', (t: any) => (t.settlements[0].to_id = t.settlements[0].from_id), 'a settlement is from someone to themselves'],
+    ['a settlement of nothing', (t: any) => (t.settlements[0].amount = 0), 'a settlement has no amount'],
+    ['a settlement of another trip', (t: any) => (t.settlements[0].trip_id = 'rome'), 'a settlement belongs to another trip'],
+    ['two settlements with one id', (t: any) => t.settlements.push({ ...t.settlements[0] }), 'two settlements share an id'],
   ])('refuses %s', (_what, tamper, reason) => {
     const { manifest, tables } = parts();
     tamper(tables);
@@ -488,6 +496,27 @@ describe('planning an import: a new trip, new ids for everything', () => {
     expect(p.tables.tripCover).toEqual([
       { trip_id: p.tripId, child_id: expect.stringMatching(/^new-/), adult_id: 'here-evelina', sort_order: 0 },
     ]);
+  });
+
+  it('remaps settlements through the same choices, with new ids (3E)', async () => {
+    const p = await plan(new Map([['ev', { kind: 'existing', id: 'here-evelina' }]]));
+    expect(p.tables.settlements).toEqual([
+      expect.objectContaining({ trip_id: p.tripId, from_id: expect.stringMatching(/^new-/), to_id: 'here-evelina', amount: 500 }),
+    ]);
+    expect(p.tables.settlements[0].id).not.toBe('st1');
+  });
+
+  it('never turns a settlement into one from someone to themselves (3E)', async () => {
+    const both = new Map([
+      ['ev', { kind: 'existing' as const, id: 'here' }],
+      ['kid', { kind: 'existing' as const, id: 'here' }],
+    ]);
+    // Without the splits, so the settlement is what refuses.
+    const archive = await opened(zipOf(build()));
+    archive.tables.costShares = [];
+    expect(() => planTripImport(archive, { newId, now, tripName: 'Lapland (2)', choices: both })).toThrow(
+      /a settlement names both/,
+    );
   });
 
   it('clears what names the other phone: the legacy list column and a list’s source; keeps template provenance', async () => {

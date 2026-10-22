@@ -187,20 +187,26 @@ export async function setTripCover(
   });
 }
 
-/** What holds someone on a trip: they paid, are in a split, or cover a share by override. */
+/** What holds someone on a trip: they paid, are in a split, cover a share by override, or settled. */
 export async function moneyHolds(
   db: SQLiteDatabase,
   tripId: string,
   travellerId: string,
 ): Promise<MoneyHolds> {
   const row = await db.getFirstAsync<MoneyHolds>(COUNT_HOLDS, { $tripId: tripId, $travellerId: travellerId });
-  return { paid: row?.paid ?? 0, shares: row?.shares ?? 0, covers: row?.covers ?? 0 };
+  return {
+    paid: row?.paid ?? 0,
+    shares: row?.shares ?? 0,
+    covers: row?.covers ?? 0,
+    settlements: row?.settlements ?? 0,
+  };
 }
 
 export type Hold = {
-  kind: 'paid' | 'share' | 'covers';
-  /** What to open: the payment, else the expense, else the booking. */
+  kind: 'paid' | 'share' | 'covers' | 'settled';
+  /** What to open: the payment or the settlement, else the expense, else the booking. */
   paymentId: string | null;
+  settlementId: string | null;
   itemId: string | null;
   expenseId: string | null;
   title: string;
@@ -214,6 +220,7 @@ export async function listHolds(db: SQLiteDatabase, tripId: string, travellerId:
   const rows = await db.getAllAsync<{
     kind: Hold['kind'];
     payment_id: string | null;
+    settlement_id: string | null;
     item_id: string | null;
     expense_id: string | null;
     title: string;
@@ -223,6 +230,7 @@ export async function listHolds(db: SQLiteDatabase, tripId: string, travellerId:
   return rows.map((row) => ({
     kind: row.kind,
     paymentId: row.payment_id,
+    settlementId: row.settlement_id,
     itemId: row.item_id,
     expenseId: row.expense_id,
     title: row.title,

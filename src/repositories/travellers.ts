@@ -257,7 +257,7 @@ export async function leaveTripRefusal(
   const name = await db.getFirstAsync<{ name: string }>(`SELECT name FROM travellers WHERE id = $id`, {
     $id: travellerId,
   });
-  return holdsRefusal(name?.name ?? 'This traveller', holds ?? { paid: 0, shares: 0, covers: 0 });
+  return holdsRefusal(name?.name ?? 'This traveller', holds ?? { paid: 0, shares: 0, covers: 0, settlements: 0 });
 }
 
 /**

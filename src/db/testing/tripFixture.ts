@@ -125,6 +125,10 @@ export function snapshot(): ExportTables {
     share('cs-rome', 'rome', { item: 'colosseum' }, 'stranger'),
   ];
   t.tripCover = [{ trip_id: 'lap', child_id: 'kid', adult_id: 'ev', sort_order: 0 }];
+  // Settled (3E): Mitko gave Evelina back what he owed.
+  t.settlements = [
+    { id: 'st1', trip_id: 'lap', from_id: 'kid', to_id: 'ev', amount: 500, currency: 'EUR', settled_on: '2026-11-24', note: null, created_at: now, updated_at: now },
+  ];
   t.payments = [
     { id: 'p1', trip_id: 'lap', from_name: 'Misho', to_name: 'Evelina', amount: 500, currency: 'EUR', created_at: now },
   ];

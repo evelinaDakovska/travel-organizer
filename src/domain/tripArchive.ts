@@ -10,7 +10,7 @@
  * Layout (docs/phase2-plan.md §4, technical reference §17):
  *
  *   manifest.json   what this is, which version, which trip, every file with size and SHA-256
- *   trip.json       the trip's rows, in the full backup's raw row shapes (`EXPORT_FORMAT_VERSION`, 7)
+ *   trip.json       the trip's rows, in the full backup's raw row shapes (`EXPORT_FORMAT_VERSION`)
  *   files/NNN.ext   each attached file once, however many records point at it
  */
 
@@ -65,6 +65,7 @@ const TABLE_KEYS = [
   'bookingPayments',
   'costShares',
   'tripCover',
+  'settlements',
   'travellers',
   'tripTravellers',
   'itemParticipants',
@@ -88,6 +89,8 @@ const tablesSchema = z.object({
   // Absent before row format 9 (3D-2): nothing split, nobody covered.
   costShares: z.array(ROW_SCHEMAS.costShares).default([]),
   tripCover: z.array(ROW_SCHEMAS.tripCover).default([]),
+  // Absent before row format 10 (3E): nobody has settled anything.
+  settlements: z.array(ROW_SCHEMAS.settlements).default([]),
   travellers: z.array(ROW_SCHEMAS.travellers),
   tripTravellers: z.array(ROW_SCHEMAS.tripTravellers),
   itemParticipants: z.array(ROW_SCHEMAS.itemParticipants),
@@ -236,6 +239,7 @@ export function buildTripArchive(
     bookingPayments: one.bookingPayments,
     costShares: one.costShares,
     tripCover: one.tripCover,
+    settlements: one.settlements,
     travellers: one.travellers,
     tripTravellers: one.tripTravellers,
     itemParticipants: one.itemParticipants,
@@ -485,6 +489,7 @@ export function checkTripArchive(
     unique(t.payments, 'payments') ??
     unique(t.bookingPayments, 'booking payments') ??
     unique(t.costShares, 'shares') ??
+    unique(t.settlements, 'settlements') ??
     unique(t.travellers, 'travellers') ??
     unique(t.lists, 'lists') ??
     unique(t.listItems, 'list items');
@@ -507,6 +512,7 @@ export function checkTripArchive(
   if (!ownedByTrip(t.bookingPayments)) return 'a booking payment belongs to another trip';
   if (!ownedByTrip(t.costShares)) return 'a share belongs to another trip';
   if (!ownedByTrip(t.tripCover)) return 'who covers a child belongs to another trip';
+  if (!ownedByTrip(t.settlements)) return 'a settlement belongs to another trip';
   if (!ownedByTrip(t.lists)) return 'a list belongs to another trip';
   if (!ownedByTrip(t.tripTravellers)) return 'a traveller is listed on another trip';
   if (!ownedByTrip(t.templateUses)) return 'a template record belongs to another trip';
@@ -568,6 +574,14 @@ export function checkTripArchive(
       return 'who covers a child names someone who is not on the trip';
     }
   }
+  // Settlements name two different members of the trip (3E; the database checks it too).
+  for (const row of t.settlements) {
+    if (!members.has(row.from_id) || !members.has(row.to_id)) {
+      return 'a settlement names someone who is not on the trip';
+    }
+    if (row.from_id === row.to_id) return 'a settlement is from someone to themselves';
+    if (!Number.isInteger(row.amount) || row.amount <= 0) return 'a settlement has no amount';
+  }
 
   if (!t.tripTravellers.every((row) => travellers.has(row.traveller_id))) {
     return 'the trip names a traveller who is not in the archive';
@@ -613,6 +627,8 @@ export type TripArchiveSummary = {
   bookingPayments: number;
   /** Bookings and expenses with a split (3D-2). */
   splitCosts: number;
+  /** Settlements between travellers (3E). */
+  settlements: number;
   filesIncluded: number;
   /** Files that will not be on the phone after the import, with the reason. */
   unavailable: { name: string; reason: 'excluded' | 'missing' | 'damaged' }[];
@@ -644,6 +660,7 @@ export function summariseTripArchive(archive: OpenedTripArchive): TripArchiveSum
     payments: t.payments.length,
     bookingPayments: t.bookingPayments.length,
     splitCosts: new Set(t.costShares.map((row) => row.trip_item_id ?? row.expense_id)).size,
+    settlements: t.settlements.length,
     filesIncluded: archive.files.size,
     unavailable,
   };
@@ -721,6 +738,7 @@ export function planTripImport(
   const paymentIds = mapIds(t.payments);
   const bookingPaymentIds = mapIds(t.bookingPayments);
   const costShareIds = mapIds(t.costShares);
+  const settlementIds = mapIds(t.settlements);
   const resourceIds = mapIds(t.resources);
   const listIds = mapIds(t.lists);
   const listItemIds = mapIds(t.listItems);
@@ -852,6 +870,21 @@ export function planTripImport(
           adult_id: must(travellerIds, row.adult_id, 'traveller'),
         }))
         .filter((row) => row.child_id !== row.adult_id && once(`tc|${row.child_id}|${row.adult_id}`)),
+      settlements: t.settlements.map((row) => {
+        const mapped = {
+          ...row,
+          id: must(settlementIds, row.id, 'settlement'),
+          trip_id: tripId,
+          from_id: must(travellerIds, row.from_id, 'traveller'),
+          to_id: must(travellerIds, row.to_id, 'traveller'),
+        };
+        // Never merged into one person: a settlement from someone to themselves means nothing (the
+        // preview refuses the choice that would do it — one profile for two people in the file).
+        if (mapped.from_id === mapped.to_id) {
+          throw new Error('Two people in the file are linked to one profile here, and a settlement names both');
+        }
+        return mapped;
+      }),
       travellers: newTravellers,
       // Two archive travellers linked to one profile here become one member, one participant.
       tripTravellers: t.tripTravellers

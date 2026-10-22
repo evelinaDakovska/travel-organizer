@@ -29,6 +29,8 @@ const TABLES: readonly (readonly [keyof ExportTables, ExportTableName])[] = [
   // After the members, bookings and expenses they name.
   ['costShares', 'cost_shares'],
   ['tripCover', 'trip_cover'],
+  // After the members they name.
+  ['settlements', 'settlements'],
   ['resources', 'resources'],
   ['lists', 'lists'],
   ['listItems', 'list_items'],

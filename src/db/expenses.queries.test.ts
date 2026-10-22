@@ -143,6 +143,7 @@ describe('expenses', () => {
       expenses: 2,
       payments: 0,
       splits: 0,
+      settlements: 0,
     });
   });
 });

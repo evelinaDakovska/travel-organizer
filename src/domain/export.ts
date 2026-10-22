@@ -15,11 +15,12 @@ import { travellerClassificationSchema } from './traveller';
  * the same tables and columns, but price lines in `trip_items.details` may carry who they are for,
  * group prices and extras (3C) — raised so an older app refuses the file rather than dropping
  * those on its next edit; 8 added booking_payments and `expenses.trip_item_id` / `payer_id`
- * (migration 007, 3D-1); 9 added cost_shares and trip_cover (migration 008, 3D-2). Formats 1–8
+ * (migration 007, 3D-1); 9 added cost_shares and trip_cover (migration 008, 3D-2); 10 added
+ * settlements (migration 009, 3E). Formats 1–9
  * still import: their missing tables or columns default safely, and a format-5-or-earlier list item's one `traveller_id` becomes its one recipient
  * (`upgradeDocument`).
  */
-export const EXPORT_FORMAT_VERSION = 9;
+export const EXPORT_FORMAT_VERSION = 10;
 export const EXPORT_APP = 'travel-organizer';
 
 const nullableString = z.string().nullable();
@@ -152,6 +153,19 @@ const tripCoverRowSchema = z.object({
   sort_order: z.number(),
 });
 
+const settlementRowSchema = z.object({
+  id: z.string().min(1),
+  trip_id: z.string().min(1),
+  from_id: z.string().min(1),
+  to_id: z.string().min(1),
+  amount: z.number(),
+  currency: z.string(),
+  settled_on: nullableString,
+  note: nullableString,
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
 const paymentRowSchema = z.object({
   id: z.string().min(1),
   trip_id: z.string().min(1),
@@ -244,6 +258,7 @@ export const ROW_SCHEMAS = {
   bookingPayments: bookingPaymentRowSchema,
   costShares: costShareRowSchema,
   tripCover: tripCoverRowSchema,
+  settlements: settlementRowSchema,
   travellers: travellerRowSchema,
   tripTravellers: tripTravellerRowSchema,
   itemParticipants: itemParticipantRowSchema,
@@ -263,6 +278,7 @@ export type PaymentExportRow = z.infer<typeof paymentRowSchema>;
 export type BookingPaymentExportRow = z.infer<typeof bookingPaymentRowSchema>;
 export type CostShareExportRow = z.infer<typeof costShareRowSchema>;
 export type TripCoverExportRow = z.infer<typeof tripCoverRowSchema>;
+export type SettlementExportRow = z.infer<typeof settlementRowSchema>;
 export type TravellerExportRow = z.infer<typeof travellerRowSchema>;
 export type TripTravellerExportRow = z.infer<typeof tripTravellerRowSchema>;
 export type ItemParticipantExportRow = z.infer<typeof itemParticipantRowSchema>;
@@ -281,6 +297,7 @@ export type ExportTables = {
   bookingPayments: BookingPaymentExportRow[];
   costShares: CostShareExportRow[];
   tripCover: TripCoverExportRow[];
+  settlements: SettlementExportRow[];
   resources: ResourceExportRow[];
   settings: SettingExportRow[];
   travellers: TravellerExportRow[];
@@ -334,6 +351,8 @@ export const exportDocumentSchema = z.object({
     // Absent before format 9: nothing split, nobody covered.
     costShares: z.array(costShareRowSchema).default([]),
     tripCover: z.array(tripCoverRowSchema).default([]),
+    // Absent before format 10: nobody has settled anything.
+    settlements: z.array(settlementRowSchema).default([]),
   }),
   files: z.array(fileManifestEntrySchema),
 });
@@ -351,6 +370,7 @@ export function emptyExportTables(): ExportTables {
     bookingPayments: [],
     costShares: [],
     tripCover: [],
+    settlements: [],
     resources: [],
     settings: [],
     travellers: [],
@@ -373,6 +393,7 @@ export const EXPORT_TABLE_ORDER = [
   'bookingPayments',
   'costShares',
   'tripCover',
+  'settlements',
   'resources',
   'settings',
   'travellers',
@@ -480,6 +501,7 @@ export function filterTablesForTrip(tables: ExportTables, tripId: string): Expor
   const bookingPayments = tables.bookingPayments.filter((payment) => payment.trip_id === tripId);
   const costShares = tables.costShares.filter((share) => share.trip_id === tripId);
   const tripCover = tables.tripCover.filter((cover) => cover.trip_id === tripId);
+  const settlements = tables.settlements.filter((settlement) => settlement.trip_id === tripId);
   const usedTravellers = new Set([
     ...tripTravellers.map((member) => member.traveller_id),
     ...expenses.flatMap((expense) => (expense.payer_id ? [expense.payer_id] : [])),
@@ -498,6 +520,7 @@ export function filterTablesForTrip(tables: ExportTables, tripId: string): Expor
     bookingPayments,
     costShares,
     tripCover,
+    settlements,
     resources: tables.resources.filter(
       (resource) =>
         resource.trip_id === tripId ||
@@ -598,6 +621,7 @@ export function planImport(
       ),
       costShares: document.tables.costShares.filter((share) => keptTripIds.has(share.trip_id)),
       tripCover: document.tables.tripCover.filter((cover) => keptTripIds.has(cover.trip_id)),
+      settlements: document.tables.settlements.filter((settlement) => keptTripIds.has(settlement.trip_id)),
       resources,
       settings: document.tables.settings,
       travellers: tables.travellers.filter(missing(existingShared.travellers)),

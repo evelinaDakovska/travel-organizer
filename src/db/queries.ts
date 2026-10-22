@@ -17,7 +17,8 @@ SELECT
   (SELECT COUNT(*) FROM expenses WHERE trip_id = $id) AS expenses,
   (SELECT COUNT(*) FROM booking_payments WHERE trip_id = $id) AS payments,
   (SELECT COUNT(DISTINCT COALESCE(trip_item_id, expense_id)) FROM cost_shares WHERE trip_id = $id)
-    AS splits
+    AS splits,
+  (SELECT COUNT(*) FROM settlements WHERE trip_id = $id) AS settlements
 `;
 
 /**
@@ -571,6 +572,9 @@ export const EXPORT_COLUMNS = {
   cost_shares: ['id', 'trip_id', 'trip_item_id', 'expense_id', 'traveller_id', 'amount',
                 'covered_by', 'sort_order', 'created_at', 'updated_at'],
   trip_cover: ['trip_id', 'child_id', 'adult_id', 'sort_order'],
+  // Format 10 (migration 009, 3E).
+  settlements: ['id', 'trip_id', 'from_id', 'to_id', 'amount', 'currency', 'settled_on', 'note',
+                'created_at', 'updated_at'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type ExportTableName = keyof typeof EXPORT_COLUMNS;
@@ -782,32 +786,77 @@ INSERT INTO trip_cover (trip_id, child_id, adult_id, sort_order)
 VALUES ($tripId, $childId, $adultId, $sortOrder)
 `;
 
-/** What holds someone on a trip (invariant I): paid, in a split, covering a share by override. */
+/**
+ * What holds someone on a trip (invariant I): paid, in a split, covering a share by override, or
+ * a settlement either way (3E).
+ */
 export const COUNT_HOLDS = `
 SELECT (SELECT COUNT(*) FROM booking_payments WHERE trip_id = $tripId AND payer_id = $travellerId)
      + (SELECT COUNT(*) FROM expenses WHERE trip_id = $tripId AND payer_id = $travellerId) AS paid,
        (SELECT COUNT(*) FROM cost_shares WHERE trip_id = $tripId AND traveller_id = $travellerId) AS shares,
-       (SELECT COUNT(*) FROM cost_shares WHERE trip_id = $tripId AND covered_by = $travellerId) AS covers
+       (SELECT COUNT(*) FROM cost_shares WHERE trip_id = $tripId AND covered_by = $travellerId) AS covers,
+       (SELECT COUNT(*) FROM settlements
+         WHERE trip_id = $tripId AND (from_id = $travellerId OR to_id = $travellerId)) AS settlements
 `;
 
 /**
- * Each record that holds someone on a trip, with what to open: a payment opens itself, an expense
- * or a split opens its expense or booking. Titles fall back to the expense's category.
+ * Each record that holds someone on a trip, with what to open: a payment or a settlement opens
+ * itself, an expense or a split opens its expense or booking. Titles fall back to the expense's
+ * category; a settlement's is who paid whom.
  */
 export const SELECT_HOLDS = `
-SELECT 'paid' AS kind, p.id AS payment_id, p.trip_item_id AS item_id, NULL AS expense_id,
-       i.title AS title, p.amount AS amount, p.currency AS currency
+SELECT 'paid' AS kind, p.id AS payment_id, NULL AS settlement_id, p.trip_item_id AS item_id,
+       NULL AS expense_id, i.title AS title, p.amount AS amount, p.currency AS currency
   FROM booking_payments p JOIN trip_items i ON i.id = p.trip_item_id
  WHERE p.trip_id = $tripId AND p.payer_id = $travellerId
 UNION ALL
-SELECT 'paid', NULL, NULL, e.id, COALESCE(e.label, e.category), e.amount, e.currency
+SELECT 'paid', NULL, NULL, NULL, e.id, COALESCE(e.label, e.category), e.amount, e.currency
   FROM expenses e WHERE e.trip_id = $tripId AND e.payer_id = $travellerId
 UNION ALL
-SELECT CASE WHEN s.traveller_id = $travellerId THEN 'share' ELSE 'covers' END, NULL,
+SELECT CASE WHEN s.traveller_id = $travellerId THEN 'share' ELSE 'covers' END, NULL, NULL,
        s.trip_item_id, s.expense_id, COALESCE(i.title, e.label, e.category), s.amount,
        COALESCE(i.price_currency, e.currency)
   FROM cost_shares s
   LEFT JOIN trip_items i ON i.id = s.trip_item_id
   LEFT JOIN expenses e ON e.id = s.expense_id
  WHERE s.trip_id = $tripId AND (s.traveller_id = $travellerId OR s.covered_by = $travellerId)
+UNION ALL
+SELECT 'settled', NULL, st.id, NULL, NULL,
+       (SELECT name FROM travellers WHERE id = st.from_id) || ' → ' ||
+       (SELECT name FROM travellers WHERE id = st.to_id), st.amount, st.currency
+  FROM settlements st
+ WHERE st.trip_id = $tripId AND (st.from_id = $travellerId OR st.to_id = $travellerId)
+`;
+
+// ─── Settlements (3E) ────────────────────────────────────────────────────────────────────────────
+
+export const SELECT_TRIP_SETTLEMENTS = `
+SELECT * FROM settlements WHERE trip_id = $tripId ORDER BY (settled_on IS NULL), settled_on, created_at
+`;
+
+export const SELECT_SETTLEMENT = `
+SELECT * FROM settlements WHERE id = $id
+`;
+
+export const INSERT_SETTLEMENT = `
+INSERT INTO settlements
+  (id, trip_id, from_id, to_id, amount, currency, settled_on, note, created_at, updated_at)
+VALUES
+  ($id, $tripId, $fromId, $toId, $amount, $currency, $settledOn, $note, $now, $now)
+`;
+
+export const UPDATE_SETTLEMENT = `
+UPDATE settlements
+   SET from_id = $fromId, to_id = $toId, amount = $amount, currency = $currency,
+       settled_on = $settledOn, note = $note, updated_at = $now
+ WHERE id = $id
+`;
+
+export const DELETE_SETTLEMENT = `
+DELETE FROM settlements WHERE id = $id
+`;
+
+/** Every booking payment on a trip, for its balances. */
+export const SELECT_TRIP_BOOKING_PAYMENTS = `
+SELECT * FROM booking_payments WHERE trip_id = $tripId ORDER BY (paid_on IS NULL), paid_on, created_at
 `;

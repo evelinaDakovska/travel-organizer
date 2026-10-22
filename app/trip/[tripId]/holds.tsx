@@ -17,6 +17,7 @@ const ACTION: Record<Hold['kind'], string> = {
   paid: 'Paid by them · open to change who paid',
   share: 'In the split · open to take them out of it',
   covers: 'Covers a child’s share here · open to change who covers',
+  settled: 'A settlement · open to change or delete it',
 };
 
 /**
@@ -40,7 +41,7 @@ export default function MoneyHolds() {
       },
       [tripId, travellerId],
     ),
-    [...SHARE_TABLES, 'booking_payments', 'travellers'],
+    [...SHARE_TABLES, 'booking_payments', 'settlements', 'travellers'],
     [tripId, travellerId],
   );
 
@@ -53,7 +54,8 @@ export default function MoneyHolds() {
   }
 
   const open = (hold: Hold) => {
-    if (hold.paymentId) router.push(`/payment/${hold.paymentId}`);
+    if (hold.settlementId) router.push({ pathname: '/trip/[tripId]/expenses', params: { tripId } });
+    else if (hold.paymentId) router.push(`/payment/${hold.paymentId}`);
     else if (hold.kind === 'paid' && hold.expenseId) router.push(`/expense/${hold.expenseId}`);
     else if (hold.itemId) router.push({ pathname: '/split/edit', params: { itemId: hold.itemId } });
     else if (hold.expenseId) router.push({ pathname: '/split/edit', params: { expenseId: hold.expenseId } });

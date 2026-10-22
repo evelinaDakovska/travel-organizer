@@ -346,22 +346,26 @@ export function splitMismatchWarning(
 
 // ─── Removing someone from the trip ──────────────────────────────────────────────────────────────
 
-/** What holds someone on a trip (invariant I): records that name them. */
-export type MoneyHolds = { paid: number; shares: number; covers: number };
+/** What holds someone on a trip (invariant I): records that name them. Settlements since 3E. */
+export type MoneyHolds = { paid: number; shares: number; covers: number; settlements?: number };
 
-export const hasHolds = (holds: MoneyHolds) => holds.paid + holds.shares + holds.covers > 0;
+export const hasHolds = (holds: MoneyHolds) =>
+  holds.paid + holds.shares + holds.covers + (holds.settlements ?? 0) > 0;
 
 /**
  * Why someone cannot leave a trip, or null: money records of the trip name them as the payer, a
- * person in a split, or the adult covering a child's share there. Nothing is moved or deleted by
- * itself — each record is opened and changed by the person (`docs/phase3d2-plan.md` §7).
+ * person in a split, the adult covering a child's share there, or one side of a settlement (3E).
+ * Nothing is moved or deleted by itself — each record is opened and changed by the person
+ * (`docs/phase3d2-plan.md` §7, `docs/phase3e-plan.md` §6).
  */
 export function holdsRefusal(name: string, holds: MoneyHolds): string | null {
   if (!hasHolds(holds)) return null;
+  const settlements = holds.settlements ?? 0;
   const parts = [
     holds.paid > 0 ? `the payer on ${count(holds.paid, 'money record')}` : null,
     holds.shares > 0 ? `in ${count(holds.shares, 'split')}` : null,
     holds.covers > 0 ? `covering a child’s share on ${count(holds.covers, 'cost')}` : null,
+    settlements > 0 ? `on ${count(settlements, 'settlement')}` : null,
   ].filter((part): part is string => part !== null);
   return `${name} is ${joinAnd(parts)} on this trip. Change those first — money history is never moved or deleted by itself.`;
 }

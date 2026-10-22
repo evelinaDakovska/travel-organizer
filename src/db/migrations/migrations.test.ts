@@ -55,6 +55,7 @@ describe('migrations', () => {
       'payments',
       'resources',
       'settings',
+      'settlements',
       'template_uses',
       'templates',
       'travellers',

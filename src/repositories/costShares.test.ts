@@ -323,8 +323,8 @@ describe('leaving a trip with money on it (invariant I, §7)', () => {
       ],
     });
     const taxi = await createExpense(db, 'lapland', spend(1000, { payerId: ana }));
-    expect(await moneyHolds(db, 'lapland', ana)).toEqual({ paid: 1, shares: 0, covers: 1 });
-    expect(await moneyHolds(db, 'lapland', mia)).toEqual({ paid: 0, shares: 1, covers: 0 });
+    expect(await moneyHolds(db, 'lapland', ana)).toEqual({ paid: 1, shares: 0, covers: 1, settlements: 0 });
+    expect(await moneyHolds(db, 'lapland', mia)).toEqual({ paid: 0, shares: 1, covers: 0, settlements: 0 });
     const before = snapshot(raw);
     await expect(removeTripTraveller(db, 'lapland', ana)).rejects.toThrow(
       'Ana is the payer on 1 money record and covering a child’s share on 1 cost on this trip.',
@@ -353,7 +353,7 @@ describe('leaving a trip with money on it (invariant I, §7)', () => {
     await saveSplit(db, { itemId: safari }, equal(ev));
     await removeTripTraveller(db, 'lapland', mia);
     expect(raw.prepare(`SELECT traveller_id FROM trip_travellers WHERE traveller_id = ?`).all(mia)).toEqual([]);
-    expect(await moneyHolds(db, 'lapland', ana)).toEqual({ paid: 0, shares: 0, covers: 0 });
+    expect(await moneyHolds(db, 'lapland', ana)).toEqual({ paid: 0, shares: 0, covers: 0, settlements: 0 });
   });
 
   it('a default cover is a setting: it goes with the adult, leaving the child not covered', async () => {
