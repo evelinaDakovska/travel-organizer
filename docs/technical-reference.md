@@ -1662,7 +1662,10 @@ or all amounts adding up, override only on a child's share by an adult of the tr
 `bookingSplitEditRefusal` / `expenseSplitEditRefusal` (stays a booking with a price; by amounts keeps
 its currency), linking a split expense refused, `holdsRefusal` for leaving (`COUNT_HOLDS`: paid,
 shares, covers by override). `splitMismatchWarning` before a new cost on a split by amounts (same
-currency only).
+currency only). `saveSplit(db, owner, input, seen?)`: with `seen` (what the split screen's draft was
+made against), refused when `splitDraftConflicts` finds the cost, its currency, the saved split's
+content, or someone the draft names (in it or covering) changed since. `fillFromPrices` matches only
+person rates marked Adult / Child / Anyone; an unmarked one refuses the fill (corrective, plan §12.1).
 
 **Formats.** Backup **format 9** (`costShares`, `tripCover`; empty for 1–8); trip archive **rowFormat 9**
 (new share ids, people through the traveller choices, never merged; `checkTripArchive` checks

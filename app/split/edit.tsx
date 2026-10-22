@@ -8,11 +8,14 @@ import {
   expenseSplitRefusal,
   fillFromPrices,
   shareAmounts,
+  changedWhileEditing,
+  splitDraftConflicts,
   splitMode,
   splitRefusal,
   whoIsGoing,
   type CostShare,
   type Member,
+  type SplitBasis,
   type SplitInput,
   type SplitMode,
   type TripCover,
@@ -67,11 +70,18 @@ type Loaded = {
  * cost. Nobody is ticked until the person says; *Who's going*, *Everyone* and *Fill from prices*
  * are fills shown before saving, never saved by themselves. A child's share is covered by the
  * trip's *Covered by* unless an adult is picked here for this cost.
+ *
+ * The draft is kept while the data under it refreshes. When something it depends on changes —
+ * the cost, its currency, the saved split, or someone it names leaving the trip or changing adult
+ * or child — the screen says what, and Save is refused until the person keeps their changes or
+ * starts again from the saved split. The repository checks the same again inside the save.
  */
 export default function EditSplit() {
   const { itemId, expenseId } = useLocalSearchParams<{ itemId?: string; expenseId?: string }>();
   const owner: CostOwner | null = itemId ? { itemId } : expenseId ? { expenseId } : null;
   const key = itemId ?? expenseId ?? '';
+  // Bumped by *Start again from the saved split*: the only time a draft is thrown away.
+  const [generation, setGeneration] = useState(0);
 
   const query = useLiveQuery(
     useCallback(
@@ -139,11 +149,24 @@ export default function EditSplit() {
       />
     );
   }
-  // Keyed: a fresh editor when the saved split changes underneath, never a stale one.
-  return <SplitEditor key={data.shares.map((s) => s.id).join()} owner={owner} data={data} />;
+  return (
+    <SplitEditor
+      key={`${key}-${generation}`}
+      owner={owner}
+      data={data}
+      onStartAgain={() => setGeneration((n) => n + 1)}
+    />
+  );
 }
 
-function SplitEditor({ owner, data }: { owner: CostOwner; data: Loaded }) {
+const basisOf = (data: Loaded): SplitBasis => ({
+  total: data.total,
+  currency: data.currency,
+  members: data.members,
+  shares: data.shares,
+});
+
+function SplitEditor({ owner, data, onStartAgain }: { owner: CostOwner; data: Loaded; onStartAgain: () => void }) {
   const c = useColors();
   const db = useSQLiteContext();
   const router = useRouter();
@@ -159,7 +182,10 @@ function SplitEditor({ owner, data }: { owner: CostOwner; data: Loaded }) {
   );
   // Remounts the amount boxes after a fill, so they show the filled amounts.
   const [fillCount, setFillCount] = useState(0);
+  // Set while this screen's own save or removal runs: its write is not someone else's change.
   const [saving, setSaving] = useState(false);
+  // What the draft was last checked against: where it started, or what the person kept it over.
+  const [reviewed, setReviewed] = useState<SplitBasis>(() => basisOf(data));
 
   const byId = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
   const adults = members.filter((m) => m.classification === 'adult');
@@ -181,6 +207,13 @@ function SplitEditor({ owner, data }: { owner: CostOwner; data: Loaded }) {
           ).shares.map((s) => [s.travellerId, s.amount]),
         )
       : null;
+  const conflicts = saving
+    ? []
+    : splitDraftConflicts(
+        reviewed,
+        basisOf(data),
+        [...selected].map((travellerId) => ({ travellerId, coveredBy: overrides[travellerId] ?? null })),
+      );
   const typed = chosen.reduce((sum, m) => sum + (Number.isFinite(amounts[m.id]) ? amounts[m.id]! : 0), 0);
 
   if (data.refusal !== null) {
@@ -192,7 +225,7 @@ function SplitEditor({ owner, data }: { owner: CostOwner; data: Loaded }) {
         </View>
         {data.shares.length > 0 ? (
           <View style={styles.notice}>
-            <Button label="Remove split" variant="danger" onPress={() => confirmRemove(db, owner, router.back)} />
+            <Button label="Remove split" variant="danger" onPress={() => confirmRemove(db, owner, setSaving, router.back)} />
           </View>
         ) : null}
       </Screen>
@@ -214,19 +247,18 @@ function SplitEditor({ owner, data }: { owner: CostOwner; data: Loaded }) {
   };
 
   const save = async () => {
-    const problem = splitRefusal(input, total, currency, byId);
+    const problem = conflicts.length > 0 ? changedWhileEditing(conflicts) : splitRefusal(input, total, currency, byId);
     if (problem) {
       Alert.alert('Not saved', problem);
       return;
     }
     setSaving(true);
     try {
-      await saveSplit(db, owner, input);
+      await saveSplit(db, owner, input, reviewed);
       router.back();
     } catch (error) {
-      if (!alertRefusal(error)) throw error;
-    } finally {
       setSaving(false);
+      if (!alertRefusal(error)) throw error;
     }
   };
 
@@ -234,6 +266,18 @@ function SplitEditor({ owner, data }: { owner: CostOwner; data: Loaded }) {
     <Screen>
       <ScreenHeader title="Split" subtitle={data.title} leading="close" />
       <FormScroll footer={<Button label="Save split" busy={saving} onPress={() => void save()} />}>
+        {conflicts.length > 0 ? (
+          <Notice title="Changed while you were editing">
+            <Text style={[type.caption, { color: c.text }]}>
+              {conflicts.join(' ')} Your changes are kept below — check them before saving.
+            </Text>
+            <View style={styles.fills}>
+              <Button label="Keep my changes" variant="secondary" onPress={() => setReviewed(basisOf(data))} />
+              <Button label="Start again from the saved split" variant="secondary" onPress={onStartAgain} />
+            </View>
+          </Notice>
+        ) : null}
+
         <Text style={[type.caption, { color: c.textMuted }]}>
           Cost {formatMoney(total, currency)} · who it is for, not who went or who paid
         </Text>
@@ -332,21 +376,32 @@ function SplitEditor({ owner, data }: { owner: CostOwner; data: Loaded }) {
         ) : null}
 
         {data.shares.length > 0 ? (
-          <Button label="Remove split" variant="danger" onPress={() => confirmRemove(db, owner, router.back)} />
+          <Button label="Remove split" variant="danger" onPress={() => confirmRemove(db, owner, setSaving, router.back)} />
         ) : null}
       </FormScroll>
     </Screen>
   );
 }
 
-function confirmRemove(db: ReturnType<typeof useSQLiteContext>, owner: CostOwner, done: () => void) {
+function confirmRemove(
+  db: ReturnType<typeof useSQLiteContext>,
+  owner: CostOwner,
+  setBusy: (busy: boolean) => void,
+  done: () => void,
+) {
   Alert.alert('Remove the split?', 'It will read Not split again. Nothing paid changes.', [
     { text: 'Keep it', style: 'cancel' },
     {
       text: 'Remove',
       style: 'destructive',
       onPress: async () => {
-        await removeSplit(db, owner);
+        setBusy(true);
+        try {
+          await removeSplit(db, owner);
+        } catch (error) {
+          setBusy(false);
+          throw error;
+        }
         done();
       },
     },

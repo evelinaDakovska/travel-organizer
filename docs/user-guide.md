@@ -676,7 +676,11 @@ changes.
 - On a booking or an expense, **Split it** says who the cost is for. *Equally* divides the price;
   *By amounts* lets you type each share, and tells you what is left until it adds up. Nothing is
   split unless you do it — *Who's going*, *Everyone on the trip* and *Fill from prices* only fill the
-  screen for you to check.
+  screen for you to check. *Fill from prices* needs each person rate on the price marked *Adult*,
+  *Child* or *Anyone*; if one is not, it says so and you split equally or type the amounts.
+- If the price, its currency or the saved split changes while the split screen is open, or someone
+  you ticked leaves the trip or changes between adult and child, the screen says what changed and
+  will not save until you choose *Keep my changes* or *Start again from the saved split*.
 - **Covered by:** on the trip's Travellers, tap a child to choose the adult or adults who cover their
   share (several share it equally). On one cost you can name someone else. A child's share nobody
   covers says *not covered*.

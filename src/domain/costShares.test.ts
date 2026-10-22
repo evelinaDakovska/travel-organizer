@@ -10,6 +10,7 @@ import {
   holdsRefusal,
   shareAmounts,
   splitEqually,
+  splitDraftConflicts,
   splitMismatchWarning,
   splitMode,
   splitRefusal,
@@ -17,6 +18,7 @@ import {
   splitSummary,
   whoIsGoing,
   type Member,
+  type SplitBasis,
 } from './costShares';
 import type { Pricing } from './pricing';
 
@@ -342,11 +344,99 @@ describe('suggestions the person asks for', () => {
     expect(fillFromPrices(untagged, [ev, ana], 300, 'EUR')).toMatchObject({ kind: 'refused' });
   });
 
-  it('one untagged rate is for anyone', () => {
-    const one: Pricing = { lines: [{ label: 'Ticket', quantity: 3, unitAmount: 1500 }] } as Pricing;
-    expect(fillFromPrices(one, [ev, mia, sam], 4500, 'EUR')).toMatchObject({
-      amounts: [{ amount: 1500 }, { amount: 1500 }, { amount: 1500 }],
+});
+
+describe('fill from prices: only rates marked Adult, Child or Anyone (3D-2 corrective)', () => {
+  const unmarked =
+    'A rate on this price is not marked Adult, Child or Anyone, so who it is for is not known. Mark it on the booking’s price, or split equally or by amounts here.';
+  const priced = (...lines: object[]) => ({ mode: 'perPerson', lines }) as Pricing;
+
+  it('1. refuses a single unmarked legacy rate — never taken for Anyone', () => {
+    const one = priced({ label: 'Ticket', quantity: 3, unitAmount: 1500 });
+    expect(fillFromPrices(one, [ev, mia, sam], 4500, 'EUR')).toEqual({ kind: 'refused', reason: unmarked });
+    // A label that reads *Adult* is free text, never parsed (3C).
+    const labelled = priced({ label: 'Adult', quantity: 2, unitAmount: 4000 });
+    expect(fillFromPrices(labelled, [ev, ana], 8000, 'EUR')).toEqual({ kind: 'refused', reason: unmarked });
+  });
+
+  it('2. refuses several unmarked rates', () => {
+    const two = priced({ label: 'Adult', quantity: 2, unitAmount: 4000 }, { label: 'Child', quantity: 1, unitAmount: 2000 });
+    expect(fillFromPrices(two, [ev, ana, mia], 10000, 'EUR')).toEqual({ kind: 'refused', reason: unmarked });
+  });
+
+  it('3. fills an explicit Anyone rate for adults, children and people not specified', () => {
+    const any = priced({ label: 'Ticket', quantity: 3, unitAmount: 1500, for: 'any' });
+    expect(fillFromPrices(any, [ev, mia, sam], 4500, 'EUR')).toEqual({
+      kind: 'amounts',
+      amounts: [
+        { travellerId: 'ev', amount: 1500 },
+        { travellerId: 'mia', amount: 1500 },
+        { travellerId: 'sam', amount: 1500 },
+      ],
     });
+  });
+
+  it('4. fills explicit Adult and Child rates, with Anyone for the rest', () => {
+    const three = priced(
+      { quantity: 1, unitAmount: 4000, for: 'adult' },
+      { quantity: 1, unitAmount: 2000, for: 'child' },
+      { quantity: 1, unitAmount: 3000, for: 'any' },
+    );
+    expect(fillFromPrices(three, [ev, mia, sam], 9000, 'EUR')).toMatchObject({
+      amounts: [{ amount: 4000 }, { amount: 2000 }, { amount: 3000 }],
+    });
+  });
+
+  it('5. refuses marked and unmarked rates together, whichever comes first', () => {
+    const adult = { quantity: 2, unitAmount: 4000, for: 'adult' };
+    const ticket = { label: 'Ticket', quantity: 1, unitAmount: 2000 };
+    expect(fillFromPrices(priced(adult, ticket), [ev, ana, mia], 10000, 'EUR')).toEqual({ kind: 'refused', reason: unmarked });
+    expect(fillFromPrices(priced(ticket, adult), [ev, ana, mia], 10000, 'EUR')).toEqual({ kind: 'refused', reason: unmarked });
+  });
+
+  it('6. group prices and extras are divided equally as before, and need no mark', () => {
+    const family = priced({ label: 'Family', quantity: 1, unitAmount: 12000, group: true });
+    expect(fillFromPrices(family, [ev, mia], 12000, 'EUR')).toMatchObject({ amounts: [{ amount: 6000 }, { amount: 6000 }] });
+    const extras = priced(
+      { quantity: 1, unitAmount: 4000, for: 'adult' },
+      { label: 'Sled', quantity: 1, unitAmount: 1001, extra: true },
+      { label: 'Cabin', quantity: 1, unitAmount: 2000, group: true },
+    );
+    expect(fillFromPrices(extras, [ev, ana], 11001, 'EUR')).toMatchObject({
+      amounts: [{ amount: 4000 + 1501 }, { amount: 4000 + 1500 }],
+    });
+    // An unmarked person rate beside them still refuses.
+    const withTicket = priced({ label: 'Ticket', quantity: 1, unitAmount: 1000 }, { label: 'Sled', quantity: 1, unitAmount: 1000, extra: true });
+    expect(fillFromPrices(withTicket, [ev], 2000, 'EUR')).toEqual({ kind: 'refused', reason: unmarked });
+  });
+
+  it('7. refuses a missing or an ambiguous audience, saying which', () => {
+    const adultsOnly = priced({ quantity: 2, unitAmount: 4000, for: 'adult' });
+    expect(fillFromPrices(adultsOnly, [ev, mia], 8000, 'EUR')).toEqual({
+      kind: 'refused',
+      reason: 'There is no rate for everyone ticked. Split by amounts instead.',
+    });
+    expect(fillFromPrices(adultsOnly, [ev, sam], 8000, 'EUR')).toMatchObject({ kind: 'refused' });
+    const twice = priced({ quantity: 1, unitAmount: 4000, for: 'adult' }, { quantity: 1, unitAmount: 3500, for: 'adult' });
+    expect(fillFromPrices(twice, [ev, ana], 7500, 'EUR')).toEqual({
+      kind: 'refused',
+      reason: 'Two rates on this price are marked Adult, so which one applies is not known. Split equally or by amounts instead.',
+    });
+  });
+
+  it('8. a refused fill changes nothing it was given', () => {
+    const lines = [{ label: 'Ticket', quantity: 3, unitAmount: 1500 }];
+    const pricing = priced(...lines);
+    const before = JSON.stringify(pricing);
+    const people = [ev, mia, sam];
+    Object.freeze(pricing);
+    pricing.lines.forEach((line) => Object.freeze(line));
+    Object.freeze(people);
+    expect(fillFromPrices(pricing, people, 4500, 'EUR')).toMatchObject({ kind: 'refused' });
+    expect(JSON.stringify(pricing)).toBe(before);
+    // An equal split or amounts typed by hand stay open for the same people.
+    expect(splitRefusal(equal('ev', 'mia', 'sam'), 4500, 'EUR', members)).toBeNull();
+    expect(splitRefusal(byAmounts(['ev', 2000], ['mia', 1000], ['sam', 1500]), 4500, 'EUR', members)).toBeNull();
   });
 });
 
@@ -366,5 +456,87 @@ describe('reading a split', () => {
     expect(splitGoesText(0)).toBeNull();
     expect(splitGoesText(1)).toBe('Its split between 1 person goes too.');
     expect(splitGoesText(3)).toBe('Its split between 3 people goes too.');
+  });
+});
+
+describe('a split draft and the data under it (3D-2 corrective)', () => {
+  const basis = (extra: Partial<SplitBasis> = {}): SplitBasis => ({
+    total: 9000,
+    currency: 'EUR',
+    members: [ev, ana, mia, leo],
+    shares: [],
+    ...extra,
+  });
+  const draft = (...ids: string[]) => ids.map((travellerId) => ({ travellerId, coveredBy: null }));
+
+  it('1. the cost changing is always said', () => {
+    expect(splitDraftConflicts(basis(), basis({ total: 12000 }), draft('ev'))).toEqual([
+      'The cost is now EUR 120.00, not EUR 90.00.',
+    ]);
+    expect(splitDraftConflicts(basis(), basis({ total: 0, currency: '' }), draft('ev'))).toEqual([
+      'The cost has no price now.',
+    ]);
+  });
+
+  it('2. the currency changing is always said, even at the same amount', () => {
+    expect(splitDraftConflicts(basis(), basis({ currency: 'BGN' }), [])).toEqual([
+      'The cost is now BGN 90.00, not EUR 90.00.',
+    ]);
+  });
+
+  it('3. someone in the draft leaving the trip is said; someone not in it is not', () => {
+    const gone = basis({ members: [ev, ana, mia] });
+    expect(splitDraftConflicts(basis(), gone, draft('ev', 'leo'))).toEqual(['Leo is no longer on this trip.']);
+    expect(splitDraftConflicts(basis(), gone, draft('ev', 'ana'))).toEqual([]);
+    // Covering a child in the draft counts as being named.
+    const anaGone = basis({ members: [ev, mia, leo] });
+    expect(splitDraftConflicts(basis(), anaGone, [{ travellerId: 'mia', coveredBy: 'ana' }])).toEqual([
+      'Ana is no longer on this trip.',
+    ]);
+  });
+
+  it('4. adult or child changing for someone the draft names is said', () => {
+    const grown = basis({ members: [ev, ana, { ...mia, classification: 'adult' }, leo] });
+    expect(splitDraftConflicts(basis(), grown, draft('mia'))).toEqual(['Mia is now an adult on this trip.']);
+    const anaChild = basis({ members: [ev, { ...ana, classification: 'child' }, mia, leo] });
+    expect(splitDraftConflicts(basis(), anaChild, [{ travellerId: 'mia', coveredBy: 'ana' }])).toEqual([
+      'Ana is now a child on this trip.',
+    ]);
+    expect(splitDraftConflicts(basis(), grown, draft('ev'))).toEqual([]);
+  });
+
+  it('5. the trip’s Covered by changing is not a conflict: it is shown live and never saved with a split', () => {
+    // The basis does not carry it at all; a draft over the same cost, people and split is unchanged.
+    expect(splitDraftConflicts(basis(), basis(), draft('mia'))).toEqual([]);
+  });
+
+  it('6. the saved split changing elsewhere is said; the same split saved again under new ids is not', () => {
+    const saved = basis({ shares: shares(['ev', null], ['ana', null]) });
+    const other = basis({ shares: shares(['ev', 5000], ['ana', 4000]) });
+    expect(splitDraftConflicts(saved, other, draft('ev'))).toEqual(['The saved split was changed somewhere else.']);
+    expect(splitDraftConflicts(saved, basis(), draft('ev'))).toEqual(['The saved split was changed somewhere else.']);
+    const override = basis({ shares: [{ travellerId: 'mia', amount: null, coveredBy: 'ana', sortOrder: 0 }] });
+    expect(splitDraftConflicts(basis({ shares: shares(['mia', null]) }), override, draft('mia'))).toEqual([
+      'The saved split was changed somewhere else.',
+    ]);
+    expect(splitDraftConflicts(saved, basis({ shares: shares(['ev', null], ['ana', null]) }), draft('ev'))).toEqual([]);
+  });
+
+  it('7. a harmless refresh — a name, someone joining — is no conflict', () => {
+    const renamed = basis({ members: [{ ...ev, name: 'Eve' }, ana, mia, leo, sam] });
+    expect(splitDraftConflicts(basis(), renamed, draft('ev', 'mia'))).toEqual([]);
+  });
+
+  it('8. several changes are all said, in order', () => {
+    const many = basis({ total: 10000, members: [ev, ana], shares: shares(['ev', null]) });
+    expect(splitDraftConflicts(basis(), many, draft('ev', 'mia'))).toEqual([
+      'The cost is now EUR 100.00, not EUR 90.00.',
+      'Mia is no longer on this trip.',
+      'The saved split was changed somewhere else.',
+    ]);
+  });
+
+  it('9. nothing changed: no conflict', () => {
+    expect(splitDraftConflicts(basis(), basis(), draft('ev', 'ana', 'mia'))).toEqual([]);
   });
 });

@@ -12,7 +12,7 @@
 import { z } from 'zod';
 
 import { formatMoney } from './format';
-import { lineType, type Audience, type Pricing, type RateLine } from './pricing';
+import { AUDIENCE_LABEL, lineType, type Audience, type Pricing, type RateLine } from './pricing';
 import type { TravellerClassification } from './traveller';
 import type { TripItem } from './tripItem';
 
@@ -391,8 +391,9 @@ export type PriceFill =
 /**
  * *Fill from prices* (`docs/phase3d2-plan.md` §4): each person's rate by audience — an adult on
  * the Adult rate, else Anyone; a child on the Child rate, else Anyone; someone not specified on
- * Anyone only, never assumed adult (as *Price for who's going*, 3C). Group prices and extras are
- * divided equally among the people chosen. Proposed as amounts the person can edit; refused, with
+ * Anyone only, never assumed adult (as *Price for who's going*, 3C). Every person rate must be
+ * marked; an unmarked one refuses the fill. Group prices and extras are divided equally among the
+ * people chosen. Proposed as amounts the person can edit; refused, with
  * why, when the lines and the people do not match the price.
  */
 export function fillFromPrices(
@@ -403,13 +404,25 @@ export function fillFromPrices(
 ): PriceFill {
   if (chosen.length === 0) return { kind: 'refused', reason: 'Tick who it is for first.' };
   const personLines = pricing.lines.filter((line) => lineType(line) === 'person');
+  // Only a rate marked Adult, Child or Anyone is matched to people: an unmarked one — a legacy
+  // breakdown, even a lone *Ticket* line — is never taken for Anyone here, because this puts money
+  // on each person (3D-2 corrective; 3C's *Price for who's going* changes only quantities).
   const lineFor = new Map<Audience, RateLine>();
   for (const line of personLines) {
-    const audience = line.for ?? (personLines.length === 1 ? 'any' : undefined);
-    if (audience === undefined || lineFor.has(audience)) {
-      return { kind: 'refused', reason: 'The price lines do not say who each rate is for. Split by amounts instead.' };
+    if (line.for === undefined) {
+      return {
+        kind: 'refused',
+        reason:
+          'A rate on this price is not marked Adult, Child or Anyone, so who it is for is not known. Mark it on the booking’s price, or split equally or by amounts here.',
+      };
     }
-    lineFor.set(audience, line);
+    if (lineFor.has(line.for)) {
+      return {
+        kind: 'refused',
+        reason: `Two rates on this price are marked ${AUDIENCE_LABEL[line.for]}, so which one applies is not known. Split equally or by amounts instead.`,
+      };
+    }
+    lineFor.set(line.for, line);
   }
 
   const any = lineFor.get('any');
@@ -441,6 +454,65 @@ export function fillFromPrices(
   }
   return { kind: 'amounts', amounts };
 }
+
+// ─── A draft and the data it was made against ────────────────────────────────────────────────────
+
+/** What a split draft was made against: the cost, who is on the trip as what, the saved split. */
+export type SplitBasis = {
+  total: number;
+  currency: string;
+  members: readonly Pick<Member, 'id' | 'name' | 'classification'>[];
+  shares: readonly Pick<CostShare, 'travellerId' | 'amount' | 'coveredBy' | 'sortOrder'>[];
+};
+
+/** The saved split's content, without ids: a save of the same split elsewhere is no change. */
+const sharesKey = (shares: SplitBasis['shares']) =>
+  JSON.stringify(
+    [...shares].sort((a, b) => a.sortOrder - b.sortOrder).map((s) => [s.travellerId, s.amount, s.coveredBy]),
+  );
+
+/**
+ * What changed since a split draft was made that the draft depends on, in words; empty when
+ * nothing did (3D-2 corrective). The cost, its currency and the saved split always count; someone
+ * leaving the trip or changing adult/child counts only when the draft names them, in the split or
+ * as covering a child. The trip's *Covered by*, a name or someone joining never count: the screen
+ * shows them as they are, and nothing about them is saved with the split.
+ */
+export function splitDraftConflicts(
+  seen: SplitBasis,
+  now: SplitBasis,
+  draft: readonly { travellerId: string; coveredBy: string | null }[],
+): string[] {
+  const conflicts: string[] = [];
+  if (seen.total !== now.total || seen.currency !== now.currency) {
+    conflicts.push(
+      now.currency && now.total > 0
+        ? `The cost is now ${formatMoney(now.total, now.currency)}, not ${formatMoney(seen.total, seen.currency)}.`
+        : 'The cost has no price now.',
+    );
+  }
+  const named = new Set(draft.flatMap((p) => (p.coveredBy ? [p.travellerId, p.coveredBy] : [p.travellerId])));
+  const current = new Map(now.members.map((m) => [m.id, m]));
+  for (const before of seen.members) {
+    if (!named.has(before.id)) continue;
+    const after = current.get(before.id);
+    if (!after) conflicts.push(`${before.name} is no longer on this trip.`);
+    else if (after.classification !== before.classification) {
+      conflicts.push(`${after.name} is now ${classificationWords(after.classification)} on this trip.`);
+    }
+  }
+  if (sharesKey(seen.shares) !== sharesKey(now.shares)) {
+    conflicts.push('The saved split was changed somewhere else.');
+  }
+  return conflicts;
+}
+
+/** The refusal when a draft's data changed under it: what changed, and that nothing was saved. */
+export const changedWhileEditing = (conflicts: readonly string[]) =>
+  `This changed while you were editing: ${conflicts.join(' ')} Nothing was saved — check the split, then save again.`;
+
+const classificationWords = (c: TravellerClassification) =>
+  c === 'adult' ? 'an adult' : c === 'child' ? 'a child' : 'not set as adult or child';
 
 // ─── Reading ─────────────────────────────────────────────────────────────────────────────────────
 

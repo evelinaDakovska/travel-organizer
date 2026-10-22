@@ -69,7 +69,8 @@ A cancelled booking that does not count (refundable, or refund not set) keeps it
   the trip (adults to adults, children to children, *Anyone* to the rest, in member order); a group
   price or an extra divided equally among those ticked. The person sees and can edit every amount
   before saving; what is saved is a split **by amounts**. When the lines and the people do not
-  match (two child lines, one child ticked), nothing is filled and it says why.
+  match (two child lines, one child ticked), nothing is filled and it says why. Every person rate
+  must be marked: an unmarked one, even alone, refuses the fill (§12.1).
 
 **When the cost changes later** (Q2):
 - **Equally** follows the new price: nothing stored changes, the shares are recomputed.
@@ -309,3 +310,27 @@ debug-signed build with every old row identical; 17 UI checks; two fixes found a
 the phone's own path, release 0.13.0 → 0.15.0 on a fresh emulator, with every captured screen
 identical and 0.13.0 refusing format-9 files. Release APK `%USERPROFILE%\.travel-organizer\travel-organizer-0.15.0.apk`
 (versionCode 22, release key), **on no phone**.
+
+### 12.1 Corrective pass after the independent review (2026-10-22)
+
+Two P2 findings, both confirmed; schema 8 and format 9 unchanged, no migration touched.
+
+- **Fill from prices and unmarked rates.** `fillFromPrices` took a lone person rate with no
+  *Adult / Child / Anyone* mark for *Anyone* — copied from 3C's *Price for who's going*, where it only
+  changes a quantity. Here it puts money on each person, and §4 says the fill uses lines that carry
+  the mark. Now an unmarked rate, alone or beside marked ones, refuses the fill with why (*mark it on
+  the booking's price, or split equally or by amounts here*); two rates for the same audience say
+  which. Group prices and extras are divided as before. 3C's *Price for who's going* is unchanged.
+- **The split screen and data changing under it.** The editor was keyed on the saved shares' ids, so
+  a save elsewhere threw the draft away, while a new price, currency, someone leaving or a
+  reclassification refreshed under a kept draft without a word (someone who left dropped out of an
+  equal split silently). Now the draft is kept on every refresh; `splitDraftConflicts(seen, now,
+  draft)` names what changed that the draft depends on — the cost or its currency, the saved split
+  (by content, not ids), someone the draft names leaving or changing adult/child. The trip's *Covered
+  by*, a name or someone joining never count: they show live and nothing of them is saved with a
+  split. While there is a conflict the screen says what changed, Save is refused, and the person
+  chooses *Keep my changes* or *Start again from the saved split*. `saveSplit(…, seen)` runs the
+  same check inside its transaction, so a change landing between the screen's last read and the
+  save is refused too. The screen's own save or removal is not taken for someone else's change.
+- In today's navigation the split screen covers the screens that change these, so this is mostly
+  defence in depth; it is checked in Node (domain and repository), not on an emulator.

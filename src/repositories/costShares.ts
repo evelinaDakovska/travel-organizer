@@ -19,6 +19,8 @@ import {
   coverRefusal,
   expenseSplitRefusal,
   parseCostShareRow,
+  changedWhileEditing,
+  splitDraftConflicts,
   splitFactsFrom,
   splitRefusal,
   type CostShare,
@@ -26,6 +28,7 @@ import {
   type Member,
   type MoneyHolds,
   type SplitFacts,
+  type SplitBasis,
   type SplitInput,
   type TripCover,
 } from '../domain/costShares';
@@ -111,11 +114,31 @@ async function costOf(
  * Replaces a cost's split with the one given, in its order: every row equal or every row an
  * amount adding up to the cost, everyone on the trip once, an override only on a child's share by
  * an adult. One transaction; a refusal or a failed write leaves the old split exactly as it was.
+ *
+ * `seen` is what the split screen's draft was made against: when the cost, the saved split or
+ * someone the draft names has changed since, the save is refused with what changed — a draft is
+ * never saved over data its person has not seen.
  */
-export async function saveSplit(db: SQLiteDatabase, owner: CostOwner, input: SplitInput): Promise<void> {
+export async function saveSplit(
+  db: SQLiteDatabase,
+  owner: CostOwner,
+  input: SplitInput,
+  seen?: SplitBasis,
+): Promise<void> {
   await db.withTransactionAsync(async () => {
     const cost = await costOf(db, owner);
-    const refusal = splitRefusal(input, cost.total, cost.currency, await membersOf(db, cost.tripId));
+    const members = await membersOf(db, cost.tripId);
+    if (seen) {
+      const now: SplitBasis = {
+        total: cost.total,
+        currency: cost.currency,
+        members: [...members.values()],
+        shares: await listShares(db, owner),
+      };
+      const conflicts = splitDraftConflicts(seen, now, input.people);
+      if (conflicts.length > 0) throw new MoneyRuleError(changedWhileEditing(conflicts));
+    }
+    const refusal = splitRefusal(input, cost.total, cost.currency, members);
     if (refusal) throw new MoneyRuleError(refusal);
     const now = new Date().toISOString();
     await db.runAsync(DELETE_SHARES, ownerBindings(owner));

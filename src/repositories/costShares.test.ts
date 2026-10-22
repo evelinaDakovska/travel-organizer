@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 
 import { MIGRATIONS } from '../db/migrations';
 import { asyncDatabase } from '../db/testing/asyncDatabase';
-import { shareAmounts } from '../domain/costShares';
+import { shareAmounts, type SplitBasis } from '../domain/costShares';
 import { tripItemInputSchema } from '../domain/tripItem';
 import {
   listHolds,
@@ -14,11 +14,12 @@ import {
   setTripCover,
   splitFacts,
 } from './costShares';
-import { createExpense, deleteExpense, updateExpense } from './expenses';
+import { createExpense, deleteExpense, getExpense, updateExpense } from './expenses';
 import { createBookingPayment } from './payments';
 import {
   createTraveller,
   createTripTraveller,
+  listTripTravellers,
   removeTripTraveller,
   updateTripTravellerClassification,
 } from './travellers';
@@ -371,5 +372,147 @@ describe('leaving a trip with money on it (invariant I, §7)', () => {
     const mo = await createTraveller(db, 'Mo', 'adult');
     await updateTripWithMembers(db, 'lapland', { name: 'lapland', startDate: '2026-11-20', endDate: '2026-11-24', defaultTz: 'Europe/Helsinki' }, [ev, ana, mia, leo, mo]);
     expect(snapshot(raw).cost_shares).toEqual(before);
+  });
+});
+
+describe('saving a draft made against older data (3D-2 corrective)', () => {
+  /** What the split screen read when the draft started, as it passes it to the save. */
+  async function seenFor(db: Db, owner: { itemId: string } | { expenseId: string }): Promise<SplitBasis> {
+    const cost =
+      'itemId' in owner
+        ? await getTripItem(db, owner.itemId).then((i) => ({ total: i!.priceAmount!, currency: i!.priceCurrency! }))
+        : await getExpense(db, owner.expenseId).then((e) => ({ total: e!.amount, currency: e!.currency }));
+    return { ...cost, members: await listTripTravellers(db, 'lapland'), shares: await listShares(db, owner) };
+  }
+  const changed = /This changed while you were editing: .* Nothing was saved/;
+
+  it('1. refuses when the price changed after the draft, and leaves everything as it was', async () => {
+    const { raw, db } = setup();
+    const { ev, ana, safari } = await family(db);
+    const seen = await seenFor(db, { itemId: safari });
+    await updateTripItem(db, safari, plan('Husky safari', { priceAmount: 12000, priceCurrency: 'EUR' }));
+    const before = snapshot(raw);
+    await expect(saveSplit(db, { itemId: safari }, equal(ev, ana), seen)).rejects.toThrow(
+      /The cost is now EUR 120.00, not EUR 90.00/,
+    );
+    await expect(saveSplit(db, { itemId: safari }, byAmounts([ev, 6000], [ana, 6000]), seen)).rejects.toThrow(changed);
+    expect(snapshot(raw)).toEqual(before);
+    // An expense's amount, the same way.
+    const taxi = await createExpense(db, 'lapland', spend(1000));
+    const seenTaxi = await seenFor(db, { expenseId: taxi });
+    await updateExpense(db, taxi, spend(1500));
+    await expect(saveSplit(db, { expenseId: taxi }, equal(ev, ana), seenTaxi)).rejects.toThrow(changed);
+    expect(await listShares(db, { expenseId: taxi })).toEqual([]);
+  });
+
+  it('2. refuses when the currency changed, even when the typed amounts add up in the new one', async () => {
+    const { raw, db } = setup();
+    const { ev, ana, safari } = await family(db);
+    const seen = await seenFor(db, { itemId: safari });
+    await updateTripItem(db, safari, plan('Husky safari', { priceAmount: 9000, priceCurrency: 'BGN' }));
+    const before = snapshot(raw);
+    await expect(saveSplit(db, { itemId: safari }, byAmounts([ev, 5000], [ana, 4000]), seen)).rejects.toThrow(
+      /The cost is now BGN 90.00, not EUR 90.00/,
+    );
+    expect(snapshot(raw)).toEqual(before);
+  });
+
+  it('3. refuses when someone in the draft has left the trip', async () => {
+    const { raw, db } = setup();
+    const { ev, ana, leo, safari } = await family(db);
+    const seen = await seenFor(db, { itemId: safari });
+    await removeTripTraveller(db, 'lapland', leo);
+    const before = snapshot(raw);
+    await expect(saveSplit(db, { itemId: safari }, equal(ev, ana, leo), seen)).rejects.toThrow(
+      /Leo is no longer on this trip/,
+    );
+    expect(snapshot(raw)).toEqual(before);
+  });
+
+  it('4. refuses when someone the draft names changed between adult and child', async () => {
+    const { raw, db } = setup();
+    const { ev, ana, mia, safari } = await family(db);
+    const seen = await seenFor(db, { itemId: safari });
+    await updateTripTravellerClassification(db, 'lapland', mia, 'adult');
+    await expect(saveSplit(db, { itemId: safari }, equal(ev, mia), seen)).rejects.toThrow(/Mia is now an adult/);
+    await updateTripTravellerClassification(db, 'lapland', mia, 'child');
+    await updateTripTravellerClassification(db, 'lapland', ana, 'child');
+    const before = snapshot(raw);
+    await expect(
+      saveSplit(db, { itemId: safari }, { people: [{ travellerId: mia, amount: null, coveredBy: ana }] }, seen),
+    ).rejects.toThrow(/Ana is now a child/);
+    expect(snapshot(raw)).toEqual(before);
+  });
+
+  it('5. the trip’s Covered by changing does not stop the save, and is never written into it', async () => {
+    const { db } = setup();
+    const { ev, ana, mia, safari } = await family(db);
+    const seen = await seenFor(db, { itemId: safari });
+    await setTripCover(db, 'lapland', mia, [ana]);
+    await saveSplit(db, { itemId: safari }, equal(ev, mia), seen);
+    expect((await listShares(db, { itemId: safari })).map((s) => s.coveredBy)).toEqual([null, null]);
+    expect(await listTripCover(db, 'lapland')).toMatchObject([{ childId: mia, adultId: ana }]);
+  });
+
+  it('6. refuses when the saved split or an override changed elsewhere; the same split saved again is no change', async () => {
+    const { raw, db } = setup();
+    const { ev, ana, mia, safari } = await family(db);
+    await saveSplit(db, { itemId: safari }, equal(ev, mia));
+    const seen = await seenFor(db, { itemId: safari });
+    // Saved again elsewhere unchanged: new ids, the same split.
+    await saveSplit(db, { itemId: safari }, equal(ev, mia));
+    await saveSplit(db, { itemId: safari }, equal(ev, ana, mia), seen);
+    const seenAgain = await seenFor(db, { itemId: safari });
+    await saveSplit(db, { itemId: safari }, {
+      people: [
+        { travellerId: ev, amount: null, coveredBy: null },
+        { travellerId: ana, amount: null, coveredBy: null },
+        { travellerId: mia, amount: null, coveredBy: ana },
+      ],
+    });
+    const before = snapshot(raw);
+    await expect(saveSplit(db, { itemId: safari }, equal(ev, mia), seenAgain)).rejects.toThrow(
+      /The saved split was changed somewhere else/,
+    );
+    expect(snapshot(raw)).toEqual(before);
+    await removeSplit(db, { itemId: safari });
+    await expect(saveSplit(db, { itemId: safari }, equal(ev, mia), seenAgain)).rejects.toThrow(changed);
+    expect(await listShares(db, { itemId: safari })).toEqual([]);
+  });
+
+  it('7. a harmless change — someone joining, an unnamed member reclassified — saves the draft', async () => {
+    const { db } = setup();
+    const { ev, ana, leo, safari } = await family(db);
+    const seen = await seenFor(db, { itemId: safari });
+    await createTripTraveller(db, 'lapland', 'Sam', 'unspecified');
+    await updateTripTravellerClassification(db, 'lapland', leo, 'adult');
+    await saveSplit(db, { itemId: safari }, byAmounts([ev, 5000], [ana, 4000]), seen);
+    expect((await listShares(db, { itemId: safari })).map((s) => [s.travellerId, s.amount])).toEqual([
+      [ev, 5000],
+      [ana, 4000],
+    ]);
+  });
+
+  it('8. a draft kept over a change (seen taken again) saves, still under every split rule', async () => {
+    const { db } = setup();
+    const { ev, ana, safari } = await family(db);
+    await updateTripItem(db, safari, plan('Husky safari', { priceAmount: 12000, priceCurrency: 'EUR' }));
+    const kept = await seenFor(db, { itemId: safari });
+    await expect(saveSplit(db, { itemId: safari }, byAmounts([ev, 5000], [ana, 4000]), kept)).rejects.toThrow(
+      /EUR 30.00 is left to split/,
+    );
+    await saveSplit(db, { itemId: safari }, byAmounts([ev, 6000], [ana, 6000]), kept);
+    expect(await listShares(db, { itemId: safari })).toHaveLength(2);
+  });
+
+  it('9. an unchanged draft saves as before', async () => {
+    const { db } = setup();
+    const { ev, ana, mia, safari } = await family(db);
+    await setTripCover(db, 'lapland', mia, [ev]);
+    const seen = await seenFor(db, { itemId: safari });
+    await saveSplit(db, { itemId: safari }, equal(ev, ana, mia), seen);
+    const saved = await listShares(db, { itemId: safari });
+    expect(shareAmounts(9000, saved).shares.map((s) => s.amount)).toEqual([3000, 3000, 3000]);
+    expect(saved.map((s) => s.coveredBy)).toEqual([null, null, null]);
   });
 });
