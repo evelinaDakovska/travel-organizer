@@ -161,6 +161,13 @@ describe('summariseImportPlan', () => {
     );
   });
 
+  it('says a replace deletes the money records here, settlements included (3E, C)', () => {
+    expect(summariseImportPlan(planImport(document, ['milan'], 'replace', available))).toMatch(
+      /money records here — payments, splits and settlements — are deleted with it/,
+    );
+    expect(summariseImportPlan(planImport(document, [], 'merge', available))).not.toMatch(/settlement/);
+  });
+
   it('names expenses when the backup has some, receipts counted as saved files', () => {
     const expense = (id: string, tripId: string) => ({
       id,

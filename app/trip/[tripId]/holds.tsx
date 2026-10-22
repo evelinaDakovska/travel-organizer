@@ -21,8 +21,8 @@ const ACTION: Record<Hold['kind'], string> = {
 };
 
 /**
- * What keeps someone on a trip (3D-2, `docs/phase3d2-plan.md` §7): each money record that names
- * them, opened one by one. Nothing is moved or deleted for them, and there is no *move everything
+ * What keeps someone on a trip (3D-2, `docs/phase3d2-plan.md` §7; settlements since 3E): each money
+ * record that names them, opened one by one. Nothing is moved or deleted for them, and there is no *move everything
  * to someone else*: once nothing is listed, they can be removed from the trip as before.
  */
 export default function MoneyHolds() {
@@ -54,7 +54,7 @@ export default function MoneyHolds() {
   }
 
   const open = (hold: Hold) => {
-    if (hold.settlementId) router.push({ pathname: '/trip/[tripId]/expenses', params: { tripId } });
+    if (hold.settlementId) router.push({ pathname: '/settlement/[settlementId]', params: { settlementId: hold.settlementId } });
     else if (hold.paymentId) router.push(`/payment/${hold.paymentId}`);
     else if (hold.kind === 'paid' && hold.expenseId) router.push(`/expense/${hold.expenseId}`);
     else if (hold.itemId) router.push({ pathname: '/split/edit', params: { itemId: hold.itemId } });

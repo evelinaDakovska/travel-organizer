@@ -294,7 +294,9 @@ function Preview({
     `${plural(summary.expenses, 'expense')}, ${plural(summary.bookingPayments, 'payment')} on bookings` +
       (summary.payments > 0 ? `, ${plural(summary.payments, 'older payment record')}` : '') +
       // Splits (3D-2), named only when there are some.
-      (summary.splitCosts > 0 ? `, ${plural(summary.splitCosts, 'split cost')}` : ''),
+      (summary.splitCosts > 0 ? `, ${plural(summary.splitCosts, 'split cost')}` : '') +
+      // Settlements (3E), likewise.
+      (summary.settlements > 0 ? `, ${plural(summary.settlements, 'settlement')}` : ''),
   ];
 
   return (

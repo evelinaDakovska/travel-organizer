@@ -1,11 +1,13 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Share, ScrollView, StyleSheet, View } from 'react-native';
 
+import { settleUpText, tripBalances } from '../../../../src/domain/balances';
 import { refundNotSaid, tripExpenses } from '../../../../src/domain/bookingCosts';
 import { isStandalone, spendingTotals, tripTotals } from '../../../../src/domain/spending';
 import { BookingsView } from '../../../../src/features/expenses/BookingsView';
 import { SpendingView } from '../../../../src/features/expenses/SpendingView';
+import { SettleUpView } from '../../../../src/features/settle/SettleUpView';
 import { TripTotal } from '../../../../src/features/expenses/TripTotal';
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { useTripId } from '../../../../src/features/trips/TripContext';
@@ -19,6 +21,7 @@ import {
   RECEIPT_COUNT_TABLES,
 } from '../../../../src/repositories/expenses';
 import { listTripShares, SHARE_TABLES } from '../../../../src/repositories/costShares';
+import { BALANCE_TABLES, balanceInput } from '../../../../src/repositories/settlements';
 import { listTripItems, TRIP_ITEM_TABLES } from '../../../../src/repositories/tripItems';
 import { getTrip, TRIP_TABLES } from '../../../../src/repositories/trips';
 import { HeaderAction } from '../../../../src/ui/components/HeaderAction';
@@ -27,13 +30,18 @@ import { Screen } from '../../../../src/ui/components/Screen';
 import { Segments } from '../../../../src/ui/components/Segments';
 import { gutter, spacing, useColors } from '../../../../src/ui/tokens';
 
-type ExpenseView = 'bookings' | 'spending';
+type ExpenseView = 'bookings' | 'spending' | 'settle';
 
-const VIEW_LABELS: Record<ExpenseView, string> = { bookings: 'Bookings', spending: 'Spending' };
+const VIEW_LABELS: Record<ExpenseView, string> = {
+  bookings: 'Bookings',
+  spending: 'Spending',
+  settle: 'Settle up',
+};
 
 /**
- * What the trip costs (B8): one expected total, then bookings or spending, one view at a time.
- * Nothing is converted: every amount stays in its own currency.
+ * What the trip costs (B8): one expected total, then bookings or spending, one view at a time —
+ * and, on a trip of two or more, who owes whom (3E). Nothing is converted: every amount stays in
+ * its own currency, and settling up never changes the total.
  */
 export default function ExpensesScreen() {
   const c = useColors();
@@ -68,6 +76,12 @@ export default function ExpensesScreen() {
     SHARE_TABLES,
     [tripId],
   );
+  // Who owes whom (3E): worked out from the records on every change, never stored.
+  const { data: balanceData } = useLiveQuery(
+    useCallback(async (database) => balanceInput(database, tripId), [tripId]),
+    BALANCE_TABLES,
+    [tripId],
+  );
   const itemsQuery = useLiveQuery(
     useCallback((database) => listTripItems(database, tripId), [tripId]),
     TRIP_ITEM_TABLES,
@@ -91,6 +105,18 @@ export default function ExpensesScreen() {
   const notCounted = useMemo(() => refundNotSaid(items ?? []).byCurrency, [items]);
   const addExpense = () => router.push({ pathname: '/expense/new', params: { tripId } });
 
+  const members = balanceData?.members ?? [];
+  const balances = useMemo(() => (balanceData ? tripBalances(balanceData) : []), [balanceData]);
+  // A trip of one has nobody to settle with (plan §8).
+  const canSettle = members.length >= 2;
+  const views = canSettle ? (['bookings', 'spending', 'settle'] as const) : (['bookings', 'spending'] as const);
+  const shown: ExpenseView = view === 'settle' && !canSettle ? 'bookings' : view;
+  // Names leave the phone only from here, and only when the person taps Share (§9).
+  const share = () => {
+    const nameOf = (id: string) => members.find((member) => member.id === id)?.name ?? 'Someone';
+    void Share.share({ message: settleUpText(trip?.name ?? 'Trip', balances, nameOf) });
+  };
+
   return (
     <Screen>
       <TripTabHeader
@@ -99,6 +125,9 @@ export default function ExpensesScreen() {
         action={
           <View style={styles.headerActions}>
             <SearchButton tripId={tripId} />
+            {shown === 'settle' && balances.length > 0 ? (
+              <HeaderAction icon="share" label="Share" accessibilityLabel="Share who owes whom" onPress={share} />
+            ) : null}
             <HeaderAction
               icon="add"
               label="Add"
@@ -117,13 +146,15 @@ export default function ExpensesScreen() {
           ) : null}
 
           <Segments
-            value={view}
-            options={['bookings', 'spending'] as const}
+            value={shown}
+            options={views}
             labelFor={(option) => VIEW_LABELS[option]}
             onChange={setView}
           />
 
-          {view === 'spending' ? (
+          {shown === 'settle' ? (
+            <SettleUpView tripId={tripId} balances={balances} members={members} />
+          ) : shown === 'spending' ? (
             <SpendingView
               // An expense that pays for a booking is listed on that booking (3D-1).
               expenses={standalone}

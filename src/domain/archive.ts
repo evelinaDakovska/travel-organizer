@@ -155,12 +155,16 @@ export function summariseImportPlan(plan: ImportPlan): string {
     plural(write.tripItems.length, 'item'),
     plural(write.tripNotes.length, 'note'),
     ...(write.expenses.length > 0 ? [plural(write.expenses.length, 'expense')] : []),
+    // Settlements (3E) likewise, only when there are some.
+    ...(write.settlements.length > 0 ? [plural(write.settlements.length, 'settlement')] : []),
   ];
   const sentences = [`Adds ${parts.join(', ')} and ${plural(files, 'saved file')}.`];
   if (shared.length > 0) sentences.push(`Also adds ${listPhrase(shared)}.`);
 
   if (mode === 'replace') {
-    sentences.push("Any of these trips already on this phone is replaced by the backup's copy.");
+    sentences.push(
+      "Any of these trips already on this phone is replaced by the backup's copy. Its money records here — payments, splits and settlements — are deleted with it and the backup's are used instead.",
+    );
   } else if (skippedTripIds.length > 0) {
     const one = skippedTripIds.length === 1;
     sentences.push(
