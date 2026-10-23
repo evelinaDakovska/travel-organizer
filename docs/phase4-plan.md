@@ -257,3 +257,88 @@ Built as planned. Implementation details are in technical reference §24.
     007–012) is still to rehearse.
   - **On no phone.** Under the owner's split, this is a risky change: it goes to the husband's phone
     first, and to the primary phone only after the trip.
+
+## 13. Review corrections (2026-10-23) — plan
+
+An independent review of `87bb7df` found two issues and one limitation.
+
+### 13.1 P1 — a rate per currency pair (migration 013)
+
+**The defect.** `trip_rates` has `PRIMARY KEY (trip_id, currency)` although each row names its
+`base_currency`. Saving USD → GBP replaces USD → EUR. So decision P4-5, *a rate set for an earlier
+reporting currency is kept*, held for one switch only.
+
+**Why a migration.** SQLite cannot change a primary key in place, and 012 must not be edited. The
+choices:
+- **(a) Rebuild `trip_rates`** with the new key (create, copy, drop, rename). It is a table rebuild,
+  which this project avoids (D25).
+- **(b) A new table, chosen.** `trip_exchange_rates` gets the key `(trip_id, currency, base_currency)`
+  and a copy of every `trip_rates` row. `trip_rates` stays as it is: frozen, no longer read or written
+  by the app, like the legacy `payments` table. The migration is additive and forward-only, and loses
+  nothing.
+
+```sql
+CREATE TABLE trip_exchange_rates (
+  trip_id       TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+  currency      TEXT NOT NULL CHECK (length(currency) = 3 AND currency = upper(currency)),
+  base_currency TEXT NOT NULL CHECK (length(base_currency) = 3 AND base_currency = upper(base_currency)),
+  rate          TEXT NOT NULL,
+  rate_date     TEXT NOT NULL,
+  updated_at    TEXT NOT NULL,
+  PRIMARY KEY (trip_id, currency, base_currency),
+  CHECK (currency <> base_currency)
+);
+INSERT INTO trip_exchange_rates (trip_id, currency, base_currency, rate, rate_date, updated_at)
+SELECT trip_id, currency, base_currency, rate, rate_date, updated_at FROM trip_rates;
+```
+
+- **On the phone** (schema 6), 012 and 013 run together, and `trip_rates` is still empty when 013
+  copies it.
+- **On a 0.17.0 install,** every saved rate is copied as it is.
+
+**Formats: backup 14, archive rowFormat 14.**
+- They add `tripExchangeRates` and keep carrying `tripRates` raw (frozen rows), so a restore
+  reproduces the database exactly.
+- A format-13 file (no `tripExchangeRates`) is upgraded on reading the way the migration does it:
+  each `tripRates` row becomes an exchange rate.
+- Archive import gives the copies the new trip id.
+- 0.17.0 refuses format 14, as every bump did.
+
+**Code.**
+- The repository reads and writes only `trip_exchange_rates`. Saving upserts by
+  `(currency, base_currency)` and a blank field deletes only that pair.
+- The rates screen shows the rate of the chosen pair and names the trip's rates to other reporting
+  currencies as kept.
+- Switching back to a currency brings its own rates back.
+
+**Tests:**
+- migration 12 → 13 and 6 → 13 (rows copied, nothing else changed), a failed batch, idempotence and
+  the constraints;
+- three reporting currencies in turn (EUR, GBP, USD) with each pair kept;
+- changing one pair, and deleting one pair without the others;
+- backup and archive round trips, and format 13 upgraded on reading.
+
+### 13.2 P2 — a partial total is called one
+
+`ConvertedTotal` gains `complete` (`notIncluded` is empty) and `included` (some amount was counted).
+- **Trip total:** a heading line names the state:
+  - *Total in EUR*, when complete;
+  - *Partial total in EUR*, when anything is not included.
+  - The figure carries ≈ only when a rate was used.
+  - The not-included amounts stay listed.
+  - When nothing at all could be counted, no figure is shown (*No EUR total yet*), so an unknown is
+    never shown as EUR 0.00.
+- **PDF:** the line begins *Partial total:* when incomplete, and names what is not included.
+- **Tests:** the four states (complete/exact, complete/estimated, partial/exact, partial/estimated),
+  plus nothing counted.
+
+### 13.3 P3 — charged amounts after the reporting currency changes
+
+Behaviour is unchanged on purpose. A charged amount keeps its own currency and amount. It counts only
+while that currency is the reporting one. It is never chained through a rate, and never rewritten or
+relabelled.
+- The expense page says so beside an amount that is not counted (*Not counted while the trip reports
+  in EUR*).
+- The form's hint already says so. It now also covers a trip that is not converted.
+- A repository test switches the reporting currency twice and checks that the stored charged amount
+  and currency are byte-identical and are used again on switching back.
