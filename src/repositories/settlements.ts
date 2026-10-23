@@ -12,6 +12,7 @@ import {
 import {
   balanceCosts,
   parseSettlementRow,
+  settlementInputSchema,
   settlementRefusal,
   type BalanceInput,
   type Settlement,
@@ -72,6 +73,13 @@ export async function balanceInput(db: SQLiteDatabase, tripId: string): Promise<
   };
 }
 
+/** The form's own schema, again at the boundary: a caller's types are not a check. */
+function validInput(input: SettlementInput): SettlementInput {
+  const result = settlementInputSchema.safeParse(input);
+  if (!result.success) throw new MoneyRuleError(result.error.issues[0]?.message ?? 'Check the settlement.');
+  return result.data;
+}
+
 function bindings(input: SettlementInput) {
   return {
     $fromId: input.fromId,
@@ -87,8 +95,9 @@ function bindings(input: SettlementInput) {
 export async function createSettlement(
   db: SQLiteDatabase,
   tripId: string,
-  input: SettlementInput,
+  raw: SettlementInput,
 ): Promise<string> {
+  const input = validInput(raw);
   const id = randomUUID();
   await db.withTransactionAsync(async () => {
     const refusal = settlementRefusal(await balanceInput(db, tripId), input);
@@ -104,7 +113,8 @@ export async function createSettlement(
 }
 
 /** Changes a settlement, judged without its own old values. */
-export async function updateSettlement(db: SQLiteDatabase, id: string, input: SettlementInput): Promise<void> {
+export async function updateSettlement(db: SQLiteDatabase, id: string, raw: SettlementInput): Promise<void> {
+  const input = validInput(raw);
   await db.withTransactionAsync(async () => {
     const saved = await getSettlement(db, id);
     if (!saved) throw new MoneyRuleError('That settlement is not here any more.');

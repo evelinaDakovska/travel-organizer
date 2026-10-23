@@ -512,6 +512,36 @@ describe('a payer is on the record’s trip (invariant P)', () => {
   });
 });
 
+describe('an expense is checked at the repository, typed or not (review, P2’s class)', () => {
+  // A fractional amount was stored in an INTEGER column of minor units before this check.
+  const malformed: [string, Record<string, unknown>, RegExp | string][] = [
+    ['a fractional amount', { amount: 10.5 }, /./],
+    ['an amount as text', { amount: '100' }, 'Enter an amount like 12.50'],
+    ['a lowercase currency', { currency: 'eur' }, 'Three letters, like EUR'],
+    ['a date in another format', { spentOn: '21.11.2026' }, 'Pick a date'],
+    ['a label over 120 characters', { label: 'x'.repeat(121) }, /./],
+    ['a category that does not exist', { category: 'nope' }, 'Pick a category'],
+  ];
+
+  it.each(malformed)('create and update refuse %s, every table unchanged', async (_, change, message) => {
+    const { raw, db } = setup();
+    const { ana } = await hotel(db);
+    const id = await createExpense(db, 'lapland', spend(500, { payerId: ana }));
+    const before = snapshot(raw);
+    const input = { ...spend(500, { payerId: ana }), ...change } as never;
+    await expect(createExpense(db, 'lapland', input)).rejects.toThrow(MoneyRuleError);
+    await expect(createExpense(db, 'lapland', input)).rejects.toThrow(message);
+    await expect(updateExpense(db, id, input)).rejects.toThrow(message);
+    expect(snapshot(raw)).toEqual(before);
+  });
+
+  it('stores what the schema makes of the input: the currency trimmed', async () => {
+    const { db } = setup();
+    const id = await createExpense(db, 'lapland', spend(500, { currency: ' NOK ' }));
+    expect(await getExpense(db, id)).toMatchObject({ amount: 500, currency: 'NOK' });
+  });
+});
+
 function paymentRow(raw: Database.Database, id: string) {
   return raw.prepare(`SELECT * FROM booking_payments WHERE id = ?`).get(id);
 }

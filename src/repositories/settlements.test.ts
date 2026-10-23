@@ -3,6 +3,7 @@ import Database from 'better-sqlite3';
 import { MIGRATIONS } from '../db/migrations';
 import { asyncDatabase } from '../db/testing/asyncDatabase';
 import { tripBalances } from '../domain/balances';
+import { MoneyRuleError } from '../domain/bookingPayments';
 import { tripItemInputSchema } from '../domain/tripItem';
 import { listHolds, moneyHolds, saveSplit, setTripCover } from './costShares';
 import { createExpense, deleteExpense } from './expenses';
@@ -250,6 +251,85 @@ describe('balances read from the database', () => {
 
     await updateTripItem(db, safari, plan('Safari', { priceAmount: 9000, priceCurrency: 'EUR' }));
     expect((await eurOf(db)).transfers).toEqual([{ fromId: ben, toId: ana, amount: 2000 }]);
+  });
+});
+
+describe('the repository checks its input itself (review P2)', () => {
+  // Shapes TypeScript would stop, sent anyway: what a caller without the form could pass at runtime.
+  const malformed: [string, Record<string, unknown>, RegExp | string][] = [
+    ['a fractional amount', { amount: 10.5 }, /./],
+    ['a zero amount', { amount: 0 }, 'Enter an amount above zero'],
+    ['a negative amount', { amount: -100 }, 'Enter an amount above zero'],
+    ['an amount as text', { amount: '100' }, 'Enter an amount like 12.50'],
+    ['a missing amount', { amount: undefined }, 'Enter the amount'],
+    ['NaN', { amount: Number.NaN }, /./],
+    ['Infinity', { amount: Number.POSITIVE_INFINITY }, /./],
+    ['a lowercase currency', { currency: 'eur' }, 'Use a three-letter code like EUR'],
+    ['a four-letter currency', { currency: 'EURO' }, 'Use a three-letter code like EUR'],
+    ['an empty currency', { currency: '' }, 'Use a three-letter code like EUR'],
+    ['a currency that is not text', { currency: 978 }, /./],
+    ['a date that does not exist', { settledOn: '2026-02-30' }, 'Pick a date'],
+    ['month 13', { settledOn: '2026-13-01' }, 'Pick a date'],
+    ['a date in another format', { settledOn: '24.11.2026' }, 'Pick a date'],
+    ['a date with a time', { settledOn: '2026-11-24T10:00' }, 'Pick a date'],
+    ['a missing date (not null)', { settledOn: undefined }, /./],
+    ['a note over 500 characters', { note: 'x'.repeat(501) }, /./],
+    ['a note that is not text', { note: 42 }, /./],
+    ['an empty sender', { fromId: '' }, 'Pick who paid'],
+    ['a sender that is not text', { fromId: null }, /./],
+    ['an empty receiver', { toId: '' }, 'Pick who received it'],
+  ];
+
+  it.each(malformed)('create refuses %s, every table unchanged', async (_, change, message) => {
+    const { raw, db } = setup();
+    const { ana, ben } = await people(db);
+    const before = snapshot(raw);
+    const input = settlement(ben, ana, 5000, change) as never;
+    await expect(createSettlement(db, 'lapland', input)).rejects.toThrow(MoneyRuleError);
+    await expect(createSettlement(db, 'lapland', input)).rejects.toThrow(message);
+    expect(snapshot(raw)).toEqual(before);
+  });
+
+  it.each(malformed)('update refuses %s, the saved settlement and every table unchanged', async (_, change, message) => {
+    const { raw, db } = setup();
+    const { ana, ben } = await people(db);
+    const id = await createSettlement(db, 'lapland', settlement(ben, ana, 5000, { note: 'Hotel half' }));
+    const before = snapshot(raw);
+    const input = settlement(ben, ana, 5000, change) as never;
+    await expect(updateSettlement(db, id, input)).rejects.toThrow(MoneyRuleError);
+    await expect(updateSettlement(db, id, input)).rejects.toThrow(message);
+    expect(snapshot(raw)).toEqual(before);
+  });
+
+  it('refuses no input at all, on create and update', async () => {
+    const { raw, db } = setup();
+    const { ana, ben } = await people(db);
+    const id = await createSettlement(db, 'lapland', settlement(ben, ana, 5000));
+    const before = snapshot(raw);
+    await expect(createSettlement(db, 'lapland', null as never)).rejects.toThrow(MoneyRuleError);
+    await expect(updateSettlement(db, id, undefined as never)).rejects.toThrow(MoneyRuleError);
+    expect(snapshot(raw)).toEqual(before);
+  });
+
+  it('stores what the schema makes of the input: the currency trimmed, a blank note as none, nothing extra', async () => {
+    const { raw, db } = setup();
+    const { ana, ben } = await people(db);
+    const input = settlement(ben, ana, 5000, { currency: ' NOK ', note: '   ', tripId: 'milan', id: 'mine' });
+    const id = await createSettlement(db, 'lapland', input as never);
+    expect(id).not.toBe('mine');
+    expect(await getSettlement(db, id)).toMatchObject({ tripId: 'lapland', currency: 'NOK', note: null });
+    await updateSettlement(db, id, settlement(ben, ana, 4000, { currency: 'EUR ', note: '  Paid back  ' }));
+    expect(await getSettlement(db, id)).toMatchObject({ amount: 4000, currency: 'EUR', note: 'Paid back' });
+    expect(raw.prepare(`SELECT COUNT(*) AS n FROM settlements`).get()).toEqual({ n: 1 });
+  });
+
+  it('keeps the money rules after the schema: child and membership refusals read as before', async () => {
+    const { db } = setup();
+    const { ana, mia, outsider } = await people(db);
+    await expect(createSettlement(db, 'lapland', settlement(ana, outsider, 100))).rejects.toThrow(
+      'Both people must be on this trip.',
+    );
+    await expect(createSettlement(db, 'lapland', settlement(ana, mia, 100))).rejects.toThrow(/Mia would owe money/);
   });
 });
 

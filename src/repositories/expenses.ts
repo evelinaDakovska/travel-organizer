@@ -13,7 +13,13 @@ import {
 import { MoneyRuleError } from '../domain/bookingPayments';
 import { expenseSplitEditRefusal, splitFactsFrom } from '../domain/costShares';
 import type { ResourceInput } from '../domain/resource';
-import { parseExpenseRow, type Expense, type ExpenseInput, type ExpenseRow } from '../domain/spending';
+import {
+  expenseInputSchema,
+  parseExpenseRow,
+  type Expense,
+  type ExpenseInput,
+  type ExpenseRow,
+} from '../domain/spending';
 import { bookingForRecord, checkPayer } from './payments';
 import { createResource } from './resources';
 
@@ -42,6 +48,13 @@ export async function countReceipts(
 
 /** The receipt counts join both tables. */
 export const RECEIPT_COUNT_TABLES = ['expenses', 'resources'] as const;
+
+/** The form's own schema, again at the boundary: a whole, positive amount in a three-letter currency. */
+function validInput(input: ExpenseInput): ExpenseInput {
+  const result = expenseInputSchema.safeParse(input);
+  if (!result.success) throw new MoneyRuleError(result.error.issues[0]?.message ?? 'Check the expense.');
+  return result.data;
+}
 
 const bindings = (input: ExpenseInput) => ({
   $category: input.category,
@@ -90,9 +103,10 @@ async function checkSplit(db: SQLiteDatabase, saved: Expense, input: ExpenseInpu
 export async function createExpense(
   db: SQLiteDatabase,
   tripId: string,
-  input: ExpenseInput,
+  raw: ExpenseInput,
   receipts: readonly ResourceInput[] = [],
 ): Promise<string> {
+  const input = validInput(raw);
   const id = randomUUID();
   await db.withTransactionAsync(async () => {
     await checkLink(db, tripId, input);
@@ -108,8 +122,9 @@ export async function createExpense(
 export async function updateExpense(
   db: SQLiteDatabase,
   id: string,
-  input: ExpenseInput,
+  raw: ExpenseInput,
 ): Promise<void> {
+  const input = validInput(raw);
   await db.withTransactionAsync(async () => {
     const saved = await getExpense(db, id);
     if (saved) {

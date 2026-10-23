@@ -20,6 +20,7 @@ import { coverOf, shareAmounts, splitEqually, type CostShare, type Member, type 
 import type { BookingPayment } from './bookingPayments';
 import { formatMoney } from './format';
 import { expenseTitle, type Expense } from './spending';
+import { isValidLocal } from './time';
 import type { TripItem } from './tripItem';
 
 // ─── Settlements ─────────────────────────────────────────────────────────────────────────────────
@@ -67,6 +68,10 @@ export function parseSettlementRow(row: SettlementRow): Settlement {
   };
 }
 
+/**
+ * The form's schema, and the repository's again before every write: whatever reaches the database
+ * passed it, typed or not.
+ */
 export const settlementInputSchema = z.object({
   fromId: z.string().min(1, 'Pick who paid'),
   toId: z.string().min(1, 'Pick who received it'),
@@ -82,7 +87,7 @@ export const settlementInputSchema = z.object({
     .regex(/^[A-Z]{3}$/, 'Use a three-letter code like EUR'),
   settledOn: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Pick a date')
+    .refine((value) => isValidLocal(value, 'date'), 'Pick a date')
     .nullable(),
   note: z
     .string()
