@@ -538,3 +538,81 @@ incl. both §12.1 regressions, E, C and 360 dp / font 2.0 / dark (two layout fix
 the expected *Settle up* tab and 3D-1's Spending hint, alarms unchanged. Release APK
 `%USERPROFILE%\.travel-organizer\travel-organizer-0.16.0.apk` (versionCode 23, release key
 `638dc686…35e7`), **on no phone**.
+
+## 14. Review corrections (2026-10-23) — P2 fixed, P1 decided by the owner
+
+An independent review of the 3D-1 → 3E money flow raised two findings.
+
+### 14.1 P2 — settlement input validated at the repository (done, `c14e297`)
+
+`createSettlement` / `updateSettlement` now parse their input with `settlementInputSchema` before the
+transaction (as booking payments already did); the settlement date must be a real calendar date. The
+same gap was found in `createExpense` / `updateExpense` (a fractional amount reached the INTEGER
+minor-units column) and closed the same way with `expenseInputSchema`. No schema or format change.
+
+### 14.2 P1 — the owner's decision: per-cost confirmation of unsplit costs
+
+**The problem** (§13 item 2): a settlement made for a cost whose split is later removed stays in the
+nets, and with other complete costs in the currency it can produce a transfer nobody owes. Deleting
+a split expense, or moving an equally split expense to another currency, does the same.
+
+**The rule, per currency** (owner, 2026-10-23):
+
+| Currency has | Unsplit costs | Result |
+|---|---|---|
+| no settlements | any | as before: unsplit costs never block |
+| settlements | any **not confirmed** | no suggested transfers; nets read *so far*; the costs are listed *to review* |
+| settlements | all confirmed | suggestions resume, subject to every other rule |
+| a waiting (incomplete) shared cost | — | *Balances so far*, as before; no confirmation overrides it |
+| settlements, no complete or waiting cost | — | *Settlements only*, as before; confirming never creates a suggestion |
+
+Each currency stands alone. A confirmation means *"I reviewed this cost and want it outside the
+shared balances"*; it says nothing about whether past settlements were right, and it never changes a
+settlement, payment, share, payer, cover or any total.
+
+**New state.** `review`: the currency would be final but has settlements and unconfirmed unsplit
+costs. Read like *so far* (no *owes*, no *settled up*); heading *Balances so far · EUR — N unsplit
+costs to review*.
+
+**Persistence: migration 010, one additive table** (no existing table altered, no row written):
+
+```sql
+CREATE TABLE unsplit_confirmations (
+  id           TEXT PRIMARY KEY,
+  trip_id      TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+  trip_item_id TEXT REFERENCES trip_items(id) ON DELETE CASCADE,
+  expense_id   TEXT REFERENCES expenses(id) ON DELETE CASCADE,
+  fingerprint  TEXT NOT NULL,
+  confirmed_at TEXT NOT NULL,
+  CHECK ((trip_item_id IS NULL) <> (expense_id IS NULL))
+);
+-- one per cost; three triggers on cost_shares (insert, update, delete) delete the cost's confirmation
+```
+
+- **One row per cost**, keyed to the booking or the standalone expense, deleted with it (CASCADE), so
+  a confirmation can never move to another cost.
+- **Fingerprint** — the cost's financial facts as balances read them, canonical JSON, no record ids:
+  kind, currency, amount (price or expense amount), whether it counts as spent, the cancellation
+  state, the *Paid* switch, every record as (payment or linked expense, payer, amount), sorted, and
+  the split. A confirmation applies only while the cost's fingerprint equals the stored one, so any
+  financial edit — price, currency, status, refundable on a cancelled booking, *Paid*, a payment or
+  linked expense added, changed or removed, the expense's amount, currency or payer — leaves it
+  stale, with no invalidation calls in the repositories. Title, notes, dates, category: not in it.
+- **A split ends it for good.** The fingerprint alone would bring a confirmation back if a cost were
+  split and then unsplit again — exactly the P1 sequence (split, settle, remove the split). So any
+  write to the cost's split (made, changed or removed) deletes the confirmation, by trigger in the
+  same statement: one place, every write path.
+- **Saving checks the present.** *Keep outside* sends the fingerprint the screen showed; the
+  repository recomputes it from the database inside the write transaction and refuses (nothing
+  written) if it differs, if the cost is split, or if it is no longer a cost.
+- **Archive import** remaps the cost id, and the traveller ids inside the fingerprint, with the same
+  maps as every other row; a backup restores ids as they are. Inserted after the costs and splits.
+
+**Versions:** schema/user_version **10**; backup format **11** and trip archive rowFormat **11**
+(formats ≤ 10 read as no confirmations; 0.16.0 refuses 11); app **0.16.1**, versionCode **24** —
+a correction to 3E, not a new phase. Migrations 001–009 untouched. No release APK is built.
+
+**Screens.** *Settle up* gains a *To review* list for a currency held for review: each cost with
+**Split it** (the existing split editor; nothing changes until saved) and **Keep outside** (a
+confirmation dialog that says what it means, then saves). Confirmed costs stay listed as *Kept
+outside* with **Review again**, which deletes the confirmation.
