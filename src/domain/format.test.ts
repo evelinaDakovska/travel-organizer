@@ -1,5 +1,6 @@
 import {
   amountText,
+  breaksInsideWord,
   countOf,
   formatDateRange,
   formatDayHeading,
@@ -203,5 +204,23 @@ describe('listPhrase', () => {
     expect(listPhrase(['2 items'])).toBe('2 items');
     expect(listPhrase(['2 items', '1 file'])).toBe('2 items and 1 file');
     expect(listPhrase(['2 items', '3 expenses', '1 file'])).toBe('2 items, 3 expenses and 1 file');
+  });
+});
+
+describe('breaksInsideWord', () => {
+  it('finds a word Android split across lines', () => {
+    expect(breaksInsideWord(['Expense', 's'])).toBe(true);
+    expect(breaksInsideWord(['Timeli', 'ne'])).toBe(true);
+    expect(breaksInsideWord(['Notes & ', 'lis', 'ts'])).toBe(true);
+  });
+
+  it('accepts breaks between words and after a hyphen, dash or slash', () => {
+    expect(breaksInsideWord([])).toBe(false);
+    expect(breaksInsideWord(['Expenses'])).toBe(false);
+    expect(breaksInsideWord(['Notes & ', 'lists'])).toBe(false);
+    expect(breaksInsideWord(['Notes &', ' lists'])).toBe(false);
+    expect(breaksInsideWord(['Check-', 'in'])).toBe(false);
+    expect(breaksInsideWord(['Paris –', 'Rome'])).toBe(false);
+    expect(breaksInsideWord(['Food/', 'drink'])).toBe(false);
   });
 });

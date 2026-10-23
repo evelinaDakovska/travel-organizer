@@ -1,7 +1,7 @@
 # Product Status & Feature Matrix
 
 > **The feature-level view** — what a user can do, and where each feature was verified.
-> Last updated: 2026-10-20.
+> Last updated: 2026-10-23.
 > Task-level status, how each piece was built and verified, and which version is where live in
 > [`status.md`](status.md); where the two disagree, `status.md` wins. What comes next is
 > [`roadmap.md`](roadmap.md).
@@ -87,6 +87,14 @@
   per-person pricing lines suggested from it. Migrations 004 and 005, backup format 5.
 
 ---
+
+### Built in 0.16.3 (a header fix; Phase 3 closed) — on the branch `phase-3d1`, verified on emulators, not on a phone
+
+- **Tab headers at a large font:** on a narrow phone at a large font, a tab's title no longer breaks
+  inside a word (*Expense / s*, *Timeli / ne*). When it would, the header's buttons move to a row
+  of their own above the title. Nothing changes at normal sizes. No schema or format change.
+- **Review:** everything from 0.7.4 to 0.16.2 has passed the owner's review (2026-10-23). It still
+  waits for verification on the phone, after the owner's trip.
 
 ### Built in 0.16.2 (settlement review holds, 3E correction) — on the branch `phase-3d1`, verified on emulators, not on a phone
 

@@ -16,7 +16,7 @@ for it. Finishing one is not permission to begin the next. The order was agreed 
 |---|---|---|---|
 | **1** | UI & navigation: trip context in tab headers, a clear active tab, one-line labels, clean sheet corners | **done — 0.7.4** (emulator) | status.md *P1* |
 | **2** | Single-trip export/import and AI JSON import | **complete:** 2A plan; 2B-0 (0.8.0, Me, several people per list item); 2B (0.9.0); 2C (0.10.0); 2D (0.11.0), all on emulators | [`phase2-plan.md`](phase2-plan.md), [`phase2c-plan.md`](phase2c-plan.md), [`phase2d-plan.md`](phase2d-plan.md) |
-| **3** | Travellers, pricing and shared expenses in five stages: 3B participation → 3C adult/child pricing → 3D-1 money records → 3D-2 responsibility and splits → 3E balances and settlements | **3A audit approved; 3B done — 0.12.0; 3C done — 0.13.0** (emulators; [`phase3c-plan.md`](phase3c-plan.md)); **3D-1 done — 0.14.0 on the branch `phase-3d1`** (migration 007; [`phase3d1-plan.md`](phase3d1-plan.md)); **3D-2 done — 0.15.0 on the same branch** (migration 008; [`phase3d2-plan.md`](phase3d2-plan.md)); **3E done — 0.16.0 on the same branch** (migration 009; [`phase3e-plan.md`](phase3e-plan.md)), review corrections 0.16.1 (migration 010) and 0.16.2 (migration 011); on no phone until after the owner's trip | [`phase3-plan.md`](phase3-plan.md) (§15 is the owner's decisions); supersedes N5b and the earlier [`expenses-spec.md`](expenses-spec.md) |
+| **3** | Travellers, pricing and shared expenses in five stages: 3B participation → 3C adult/child pricing → 3D-1 money records → 3D-2 responsibility and splits → 3E balances and settlements | **Closed 2026-10-23: every stage reviewed, exit checks in master §6–§9.** 3A audit approved; 3B done — 0.12.0; 3C done — 0.13.0** (emulators; [`phase3c-plan.md`](phase3c-plan.md)); **3D-1 done — 0.14.0 on the branch `phase-3d1`** (migration 007; [`phase3d1-plan.md`](phase3d1-plan.md)); **3D-2 done — 0.15.0 on the same branch** (migration 008; [`phase3d2-plan.md`](phase3d2-plan.md)); **3E done — 0.16.0 on the same branch** (migration 009; [`phase3e-plan.md`](phase3e-plan.md)), review corrections 0.16.1 (migration 010) and 0.16.2 (migration 011); on no phone until after the owner's trip | [`phase3-plan.md`](phase3-plan.md) (§15 is the owner's decisions); supersedes N5b and the earlier [`expenses-spec.md`](expenses-spec.md) |
 | **4** | Multi-currency integrity and conversion; reverses the earlier rule that currencies are never converted (D25 → D32) | not started | master §10 |
 | **5** | Day route map | not started | master §11 |
 | **6** | Trips without fixed dates (needs a migration: trip dates are `NOT NULL`) | not started | master §12 |
@@ -28,8 +28,9 @@ for it. Finishing one is not permission to begin the next. The order was agreed 
 As of 2026-10-21, every build since 0.7.4 is verified on emulators only and installed on no phone.
 0.14.0 (3D-1) and 0.15.0 (3D-2) live on the branch `phase-3d1`; `main` stays at 0.13.0 so a fix
 during the owner's trip needs no migration. The phone's eventual install runs 007 and 008 together.
-3C (0.13.0) was built on the owner's instruction in the same message as its plan; 3B and 3C both
-await independent review.
+3C (0.13.0) was built on the owner's instruction in the same message as its plan. As of 2026-10-23,
+everything built through 0.16.2 has passed the owner's review. Phase 3 is closed. One step is still
+open: the signed release rehearsal of 0.13.0 → 0.16.x, done before the phone install after the trip.
 
 **Data safety holds for every phase.** The rules: master §3, CLAUDE.md §9 and `phase3-plan.md` §15
 *11*. In short:

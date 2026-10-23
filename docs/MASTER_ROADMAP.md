@@ -46,6 +46,11 @@ Ideas are never removed just to make documents consistent; they move between sta
 
 1. The primary Samsung phone contains irreplaceable real trip information. **No physical-phone install, uninstall, clear data, debug reset, real-data testing, signing/application-ID change, or migration on it without explicit owner permission.** Physical acceptance testing on the primary phone is deferred until the planned feature phases are finished, unless the owner changes that decision.
    - **Secondary beta phone (owner, 20 October 2026):** a separate secondary Android phone may be used for controlled beta testing before the feature phases are finished, but **only in a testing session the owner has explicitly approved**. This permits *planning* early beta testing. It does not permit installing anything now. In such a session: synthetic data only; no access to or installation on the primary Samsung phone; no personal trip backups or production data; verify the application ID, signing, APK source and upgrade behaviour; never uninstall or clear data without explicit approval. Emulators stay the default testing environment.
+   - **How physical testing is split (owner, 23 October 2026):** phones come last, only after the work is done, independently reviewed and tested on emulators. Then:
+     - **the owner's primary phone** (the real trip) gets **only risk-free changes until the trip has passed**. The real data is always defended. The risky changes (migrations and the like) go onto it **after the trip, not before**;
+     - **the secondary phone** (the owner's husband's, no real data) tests **all changes**, including migrations and anything not risk-free.
+
+     Each install still needs the owner's explicit go-ahead.
 2. Use **synthetic fixtures on Android emulators** for development and destructive tests. Avoid opening or altering unidentified archive files, even on emulators.
 3. Preserve existing trip IDs, participants, travellers, prices, payment semantics, receipts, attachments and document references unless the owner explicitly changes them.
 4. Prefer additive SQLite migrations, versioned backups and transactional writes. Rehearse upgrade/restore on synthetic databases representing older schema and backup formats. A backup is not proven safe until a restore is tested.
@@ -75,6 +80,8 @@ The following milestones are **reported complete by Claude**, not independently 
 
 **Reported current schema:** version 6. **Reported latest tests:** 1,153 passing and clean TypeScript typecheck at v0.12.0. These are agent-reported numbers, not tests run by ChatGPT.
 
+**Review state (owner, 2026-10-23):** everything built through 0.16.2 has passed the owner's review: Phase 1, 2B-0 to 2D, and 3B to 3E. What the table lists as *physical UX* and real-world checks is still open, and is done on the phone after the owner's trip. On `phase-3d1` the schema is 11 and there are 1,624 tests.
+
 ### 4.1 Existing UX and semantics to preserve
 
 - Overview supports upcoming/ongoing/past trips and quick access to stays, transport, travellers, lists, documents and notes.
@@ -91,7 +98,7 @@ The following milestones are **reported complete by Claude**, not independently 
 
 ## 5. Roadmap overview and dependency graph
 
-**Current gate:** Independent review of Phase 3B (`991994e`) and Phase 3C (0.13.0, `docs/phase3c-plan.md`, built on the owner's instruction after the owner's answers to the schema check). Do not start 3D-1 until approved; its open design questions are in `docs/phase3-plan.md` §18.2.
+**Current gate (2026-10-23):** Phase 3 is closed. 3B–3E are built and reviewed, and every exit check is in §6–§9. The one item still open is the signed release rehearsal of 0.13.0 → 0.16.x before the phone install, after the owner's trip. Phase 4 and *B1* start only when the owner asks.
 
 ```text
 Completed (reported): Foundations → Phase 1 → Phase 2A → 2B-0 → 2B → 2C → 2D → 3A → 3B → 3C → 3D-1
@@ -99,7 +106,7 @@ Completed (reported): Foundations → Phase 1 → Phase 2A → 2B-0 → 2B → 2
 migration 008, same branch; `docs/phase3d2-plan.md`) → 3E (0.16.0, migration 009, same branch;
 `docs/phase3e-plan.md`; review corrections 0.16.1, migration 010, and 0.16.2, migration 011); no phone install until after the owner's trip
                                                               ↓
-Next:                          review of 3E; Phase 4 only when asked
+Next:                          0.16.x to the phone after the trip (each step approved); Phase 4 only when asked
                                    ↓                 ↓                 ↓                     ↓
 Later:                          Phase 4 Currency ──────────────────────────────────────────────┘
 Independent UI tracks:          Phase 5 Route Map; Phase 6 Undated Trips; Phase 7 Maps Import; Phase 8 ICS
@@ -109,7 +116,7 @@ Deferred / discovery:           Gmail, passports, sync/accounts, automatic booki
 
 Numbering 3B–3E follows the **approved Phase 3 audit**, not a promise of exact calendar dates. Each phase has an explicit exit gate.
 
-## 6. Phase 3C — Adult/Child Pricing [BUILT — v0.13.0; AWAITING INDEPENDENT REVIEW]
+## 6. Phase 3C — Adult/Child Pricing [DONE — v0.13.0; REVIEWED; AWAITING PHYSICAL VERIFICATION]
 
 As built: `docs/phase3c-plan.md` (the owner's answers P-1…P-4, the representation, tests and the emulator E2E). The requirements below are kept as written.
 
@@ -154,11 +161,13 @@ Inspect the actual SQLite columns, pricing-line domain functions, validation, fo
 - Unit tests, TypeScript check, detailed emulator E2E, dark/small/large-font UX and signed release upgrade all pass.
 - Commit, docs and evidence reviewed independently before Phase 3D-1.
 
+**Exit check (2026-10-23): met.** Built as 0.13.0 (`docs/phase3c-plan.md`). Node: 1189 tests at the time, covering pricing, reconciliation, PDF text and the format-7 backup and rowFormat-7 archive round trips (which also read 6). Emulator E2E with a release update over 0.12.0, historical rows unchanged, and 360 dp / font 2.0 / dark: `%USERPROFILE%\Pictures\TravelOrganizer-0.13.0-3C-e2e\E2E-LOG.md`. The owner reviewed 3B and 3C (2026-10-21) before 3D-1 began. The plan records two deviations: no debuggable build (stored JSON was checked through the screens and the Node round trips), and the backup and PDF exports were covered by tests rather than on the device.
+
 ### 6.5 Explicit non-goals
 
 No payer ledger, deposits, responsibility assignment, debt balance, currency conversion or automatic repricing of historic records.
 
-## 7. Phase 3D-1 — Money Records, Deposits and Booking Links [PLANNED]
+## 7. Phase 3D-1 — Money Records, Deposits and Booking Links [DONE — v0.14.0; REVIEWED; AWAITING PHYSICAL VERIFICATION]
 
 ### 7.1 Goal
 
@@ -200,7 +209,9 @@ Represent actual payments independently of booking price. One €250 booking wit
 
 Financial invariants and aggregation tests pass, €250=€100+€150 example passes, historical rows survive, synthetic v0.12+/3C in-place upgrade passes, archive/full-backup round trips pass, and no physical device touched.
 
-## 8. Phase 3D-2 — Financial Responsibility and Splits [PLANNED]
+**Exit check (2026-10-23): met.** Built as 0.14.0 on `phase-3d1` (`docs/phase3d1-plan.md` §9–§11). Node: 1251 tests at the time, covering migration 007 over synthetic v6 databases with legacy values, aggregation (a property test included), the €250 = €100 + €150 example, refused writes leaving the database unchanged, backup format 8 (and 1–7) and archive rowFormat 8. Emulator: 6 → 7 on a debug-signed build with every old row identical, and a release `install -r` over 0.13.0. Log: `%USERPROFILE%\Pictures\TravelOrganizer-0.14.0-3D1-e2e\E2E-LOG.md`. A corrective pass followed the independent review (§11.1). No physical device was touched.
+
+## 8. Phase 3D-2 — Financial Responsibility and Splits [DONE — v0.15.0; REVIEWED; AWAITING PHYSICAL VERIFICATION]
 
 ### 8.1 Goal
 
@@ -222,7 +233,9 @@ Represent who benefits from a cost, who owes the share and which adult covers a 
 
 End-to-end synthetic family scenarios, orphan protection, exact reconciliation, backups/archives and regression tests pass. UI clearly distinguishes **going**, **paid by**, and **covered by**.
 
-## 9. Phase 3E — Balances and Settlements [PLANNED]
+**Exit check (2026-10-23): met.** Built as 0.15.0 on `phase-3d1` (`docs/phase3d2-plan.md` §10–§12). Node: 1347 tests at the time, covering split exactness (a property test: Σ shares = total for 1–12 people), *Covered by*, refused leaves and orphan protection, migration 008, and backup format 9 / archive rowFormat 9. Emulator: synthetic family scenarios, 7 → 8 with every old row identical, and the phone's path, release 0.13.0 → 0.15.0. Logs: `…-0.15.0-3D2-e2e` and `…-0.15.0-3D2-final-e2e`. Two corrective passes followed the independent review, and the review of `a44dd6d` passed (2026-10-22).
+
+## 9. Phase 3E — Balances and Settlements [DONE — v0.16.0–0.16.2; REVIEWED; AWAITING PHYSICAL VERIFICATION]
 
 ### 9.1 Goal
 
@@ -244,6 +257,12 @@ Show understandable financial positions: amount paid, amount owed, net balance a
 ### 9.3 Exit criteria
 
 Reconciled totals in every test fixture, no duplicated cost, no false debtor, settlements don't alter trip cost, readable per-person explanation, archive/backup coverage, regression and emulator upgrade pass.
+
+**Exit check (2026-10-23): met, with one rehearsal still open.** Built as 0.16.0, plus the review corrections 0.16.1 and 0.16.2, on `phase-3d1` (`docs/phase3e-plan.md` §10, §13–§15).
+- **Node:** 1624 tests in 81 suites. Σ net = 0 per currency (property test). A booking, its payments and a linked expense count once. No person shows a non-zero net without a record in that currency. Settlements leave `tripExpenses`, `spendingTotals`, `tripTotals`, `paymentSummary` and the PDF unchanged. A person's working is shown line by line. Backup formats 10–12 and archive rowFormats 10–12 round-trip. Migrations 009–011 run over synthetic data, as 6 → 11 too.
+- **Emulator:** release 0.13.0 → 0.16.0 (migrations 007–009 in one start-up). Debug-signed 8 → 9, 9 → 10 and 10 → 11, with every table identical.
+- **Review:** the owner's independent review of 0.16.2 passed (2026-10-23).
+- **Still open:** a **signed release** in-place upgrade to 0.16.1/0.16.2 (0.13.0 → 0.16.2, migrations 007–011 in one start-up, §19). No release APK exists for either version. The rehearsal belongs to the first step of bringing 0.16.x to the phone, after the owner's trip, and needs its own approval.
 
 ## 10. Phase 4 — Multi-currency Integrity and Conversion [PLANNED]
 
@@ -501,12 +520,17 @@ These are possibilities, not approved implementation work. Reassess value, compl
 
 ## 20. Immediate next actions
 
-1. **Independent review:** inspect actual `991994e` diff and key adjacent traveller/pricing/backup code. Resolve any issues before 3C. If GitHub access fails, obtain a repository ZIP or diff from Claude/user.
-2. **Phase 3C design:** the schema check is done (`docs/phase3-plan.md` §19: no migration; four design questions). After the owner answers them, write the 3C plan for approval.
-3. **Only after approval:** implement 3C with synthetic tests, release-upgrade rehearsal, docs and commit.
-4. **Then:** proceed stage by stage through 3D-1, 3D-2 and 3E, respecting migration gate and explicit financial invariants.
-5. **Later:** independently plan Phases 4–8; do not pre-approve unspecified implementation details.
-6. **Before friends beta:** the feedback deployment and security task (§16.2, *B1*), then controlled testing on the secondary phone in an owner-approved session (§3.1), distribution and privacy requirements.
+*Updated 2026-10-23: Phase 3 is closed (§6–§9 exit checks).*
+
+1. **After the owner's trip, bring 0.16.x to the phone.** Each step needs its own approval:
+   - build a signed release;
+   - rehearse 0.13.0 → 0.16.x on an emulator over synthetic data, with database snapshots compared;
+   - the owner exports a backup;
+   - merge `phase-3d1` into `main`;
+   - install on the phone.
+2. **Phase 4** (§10), only when the owner asks. It needs its own plan, a decision on where exchange rates come from, and a migration review.
+3. **Later:** independently plan Phases 5–8; do not pre-approve unspecified implementation details.
+4. **Before friends beta:** the feedback deployment and security task (§16.2, *B1*), then controlled testing on the secondary phone in an owner-approved session (§3.1), distribution and privacy requirements.
 
 ## 21. Open points from the repository cross-check (20 October 2026) [ANSWERED BY THE OWNER, 20 OCTOBER 2026]
 

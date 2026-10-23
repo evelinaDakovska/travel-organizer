@@ -154,3 +154,17 @@ export function listPhrase(parts: readonly string[]): string {
   if (parts.length <= 1) return parts[0] ?? '';
   return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }
+
+/**
+ * Whether text laid out as these lines was broken inside a word ('Expense' / 's'), which Android
+ * does when one word is wider than the line. A break at a space, a hyphen, a dash or a slash is fine.
+ */
+export function breaksInsideWord(lines: readonly string[]): boolean {
+  const breakable = /[\s\-–—/]/;
+  for (let i = 0; i < lines.length - 1; i++) {
+    const before = lines[i].slice(-1);
+    const after = lines[i + 1].slice(0, 1);
+    if (before && after && !breakable.test(before) && !breakable.test(after)) return true;
+  }
+  return false;
+}

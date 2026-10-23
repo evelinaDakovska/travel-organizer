@@ -270,7 +270,10 @@ Full list with per-dependency rationale in `docs/technical-reference.md` §8.
 - **Development targets the emulator by default** (`Pixel_10_Pro`, 1280×2856). The owner's primary
   phone is never connected, installed on or tested with without explicit permission. A separate
   **secondary** beta phone may be used only in a testing session the owner has explicitly approved,
-  with synthetic data only (`docs/MASTER_ROADMAP.md` §3.1) — see also §9.
+  with synthetic data only (`docs/MASTER_ROADMAP.md` §3.1) — see also §9. Phones come last, after
+  review and emulator testing: the primary phone (real trip) gets **only risk-free changes until
+  the trip has passed**, and the risky ones after it, never before; the secondary phone (the
+  owner's husband's, no real data) tests **all changes** (owner, 2026-10-23).
 - Offline access to stored documents is a **core requirement**, not a nice-to-have.
 - **One exception to "no backend"**: the in-app feedback form (0.7.x) posts to a small Cloudflare
   Worker (`server/feedback-worker/`) that emails the owner. It is **off** behind

@@ -1,4 +1,4 @@
-# Next session — handoff (written 2026-10-23, after 3E's review passed)
+# Next session — handoff (written 2026-10-23, after Phase 3 was closed)
 
 Read `CLAUDE.md` first, then this file. It says where the work stands, what is waiting for the owner,
 and how to pick up the next task. The detailed history is in `docs/session-handoff.md` §11 and
@@ -8,15 +8,15 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
 
 | | |
 |---|---|
-| **Branch with the work** | `phase-3d1`, head `931d50a` (pushed to the personal GitHub remote) |
+| **Branch with the work** | `phase-3d1`, the 0.16.3 commit "Close Phase 3" (pushed to the personal GitHub remote) |
 | **`main`** | `46d256a` — 0.13.0, schema 6, backup format 7. **What the owner's phone runs.** |
-| **`phase-3d1` app** | **0.16.2**, versionCode 25 |
+| **`phase-3d1` app** | **0.16.3**, versionCode 26 (a header fix; no schema or format change) |
 | **Database schema** | 11 (migrations 007–011 exist only on `phase-3d1`) |
 | **Backup / trip archive format** | 12 / row format 12 |
-| **Tests** | 1624 Node tests in 81 suites, `npx tsc --noEmit` clean |
-| **Phase 3 (3B → 3E)** | All built. **3E and its three correction rounds passed independent review (owner, 2026-10-23).** |
+| **Tests** | 1626 Node tests in 81 suites, `npx tsc --noEmit` clean |
+| **Phase 3 (3B → 3E)** | **Closed (2026-10-23).** Everything through 0.16.2 passed the owner's review, and the exit checks are in `MASTER_ROADMAP.md` §6.4, §7.5, §8.3 and §9.3. One item is open: the signed release rehearsal 0.13.0 → 0.16.x. |
 | **Phone** | Untouched. Holds a real trip on 0.13.0. |
-| **Release APK** | None built for 0.16.1 or 0.16.2. The newest release APK is 0.16.0, at `%USERPROFILE%\.travel-organizer\`, and it predates the corrections. |
+| **Release APK** | None built for 0.16.1, 0.16.2 or 0.16.3. The newest release APK is 0.16.0, at `%USERPROFILE%\.travel-organizer\`, and it predates the corrections. |
 
 ### What 0.16.x added after 0.16.0 (all reviewed)
 
@@ -32,6 +32,15 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
     `afterMoneyWrite`). **A new write path that changes a cost's money must call it.**
 
 ## 2. The rules that still bind (owner, verbatim where quoted)
+
+- **Physical testing comes last, and is split (owner, 2026-10-23).** Phones only after the work is
+  done, independently reviewed and tested on emulators. Then:
+  - **the owner's primary phone** (real trip, real data) gets **only risk-free changes until the trip
+    has passed** ("we always defend the real data"). The risky changes go onto it **after the trip,
+    not before**;
+  - **the husband's phone** (the secondary phone, no real data) tests **all changes**.
+
+  Each install still needs the owner's go-ahead (master roadmap §3.1).
 
 - "I have real data … those changes should be separated from main." **Do not merge `phase-3d1`
   into `main`** until the owner says so; the plan is after the owner's trip.
@@ -56,17 +65,19 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
 
 In the likely order. Ask which one, rather than choosing.
 
-1. **Bring 0.16.2 to the phone, after the trip.** Every step needs the owner's go-ahead.
-   1. Build a **signed release** 0.16.2 (needs approval).
-   2. Rehearse on an emulator: in-place release upgrade **0.13.0 → 0.16.2** over synthetic data
+1. **Bring 0.16.x to the phones, after the trip.** Every step needs the owner's go-ahead.
+   0.16.x carries migrations 007–011, so it is **not** a risk-free change. It goes to **the husband's
+   phone first**. The primary phone gets it **only after the trip has passed**.
+   1. Build a **signed release** 0.16.x (needs approval). *Note:* this session's safety classifier
+      blocked switching `buildTypes.release` to the debug key (the §4 recipe). Ask the owner before
+      relying on that recipe again; a plain `assembleDebug` dev build works for UI checks.
+   2. Rehearse on an emulator: in-place release upgrade **0.13.0 → 0.16.x** over synthetic data
       (migrations 007–011 in one start-up), with database snapshots compared before and after. This
-      is the master roadmap §19 checklist item that is still open for 0.16.1 and 0.16.2.
-   3. The owner exports a backup on the phone before anything changes.
-   4. Merge `phase-3d1` into `main`.
-   5. Install on the phone, only when the owner explicitly allows it.
-2. **Close Phase 3.** Check `docs/status.md` §P for anything still marked as awaiting review: 3B
-   and 3C were awaiting it as of 2026-10-21. Then tick the Phase 3 exit criteria (master roadmap
-   §9.3).
+      is the master roadmap §19 checklist item still open for 0.16.1–0.16.3.
+   3. Install on the husband's phone (synthetic data) and test everything there.
+   4. For the primary phone, **after the trip**: the owner exports a backup first, then merge
+      `phase-3d1` into `main` and install only when the owner explicitly allows it.
+2. ~~Close Phase 3~~ — **done 2026-10-23** (0.16.3).
 3. **Phase 4 — multi-currency integrity and conversion** (master roadmap §10). Not started. It needs
    its own plan, a decision on where exchange rates come from, a migration review, and the owner's
    approval. It reverses the earlier "never convert" rule (D25 → D32), so the 3E balances (one per
@@ -74,7 +85,10 @@ In the likely order. Ask which one, rather than choosing.
 4. **B1 — the feedback worker** deployment and security check, before any friends APK (master
    roadmap §16.2). Off behind `FEATURE_FEEDBACK_ENABLED`.
 5. **Small known items**, not scheduled:
-   - At 360 dp and font 2.0, the tab header breaks *Expenses* as *Expense / s* (it predates 3E).
+   - ~~*Expense / s* at 360 dp and font 2.0~~ — fixed in 0.16.3: when a title would break inside a
+     word, `ScreenHeader` moves the actions to their own row above it (`breaksInsideWord`).
+   - Seen in that check, not changed: at 360 dp / font 2.0 the trip line and dates beside the
+     header actions are cut short (*Lapland, F…*, *20–24 Nov …*) on Timeline, Places and Notes & lists.
    - Phone-QA leftovers in `docs/status.md` *Final phone QA*.
    - Accepted limits of 3E: plan §14.3 item 5 as superseded by §15, and §15.7 items 3 and 5.
 
@@ -84,7 +98,8 @@ The emulator helpers (`dev.sh`, `pull.sh`, `ui.js`, `dbdiff.js`, `make-trips.ts`
 were in a session scratchpad and are probably gone. The essentials:
 
 - **AVD:** `TO_2B_Test`, at `%LOCALAPPDATA%\Android\Sdk\emulator\emulator.exe -avd TO_2B_Test
-  -no-snapshot-save`. It holds debug-signed 0.16.2 with synthetic trips (*3E Family*, *3E Hotel
+  -no-snapshot-save`. Since 2026-10-23 it holds the **debug variant** of 0.16.3 (`assembleDebug`, needs Metro: `npx expo
+  start --dev-client --offline` plus `adb reverse tcp:8081 tcp:8081`), over the same synthetic trips (*3E Family*, *3E Hotel
   deposit*, *3E Review holds*, …). Check `adb devices` first: only `emulator-5554` may be listed.
 - **Debug-signed test build:** in `android/app/build.gradle` (gitignored), in `buildTypes.release`:
   1. Replace the `signingConfig …` line with `signingConfig signingConfigs.debug // E2E-INJECT`.
@@ -110,6 +125,7 @@ were in a session scratchpad and are probably gone. The essentials:
 - **Typed routes:** a new route file needs `.expo/types/router.d.ts` regenerated. Start
   `npx expo start --offline` briefly, then stop it.
 - **Bash heredocs containing backticks fail** in this environment. Write scripts with the Write tool.
+- 0.16.3 header check: `%USERPROFILE%\Pictures\TravelOrganizer-0.16.3-header-e2e\E2E-LOG.md`.
 - Evidence from the last rounds: `%USERPROFILE%\Pictures\TravelOrganizer-0.16.1-review-e2e\` and
   `…-0.16.2-holds-e2e\` (`E2E-LOG.md` and screenshots).
 
