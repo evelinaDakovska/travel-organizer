@@ -111,3 +111,49 @@ a browser works without the share sheet. Short links cannot be read there, and t
 5. **Emulator:** share from Google Maps (a warm dev client; a cold start from a share needs a release
    build, finding 8), look up, preview, save; duplicate warning; airplane mode; a non-Maps link;
    pasting a link into *Coordinates*.
+
+## 5. As built (0.20.0, 2026-10-23)
+
+Commits `a7d3b85` (plan) and `18d27f1` (code), then a docs commit. No migration and no format change.
+
+**What was built.**
+- `src/domain/mapsLink.ts`:
+  - `isGoogleMapsLink`, `isShortMapsLink`, `parseMapsLink`, `acceptedRedirect`, `hasPlaceFacts`;
+  - `findPlaceDuplicate`, which uses `metresBetween`, now exported from `activityDuplicates.ts`;
+  - coordinates from links are rounded to 7 places, because Google writes `66.50394779999999`;
+  - a dropped pin named in degrees, minutes and seconds is read too.
+- `src/features/share/lookUpMapsLink.ts`: `fetch(HEAD)`, `credentials: 'omit'`, 8 s abort, and
+  `response.url` judged by `acceptedRedirect`. The result is `offline` or `unreadable` on failure.
+- `app/share.tsx`, when the shared link is a Google Maps link and the target is *New place*:
+  - the lookup button and its sentence;
+  - Address and Coordinates, editable;
+  - the duplicate notice.
+
+  A lookup fills only empty fields. `saveShare` passes `locationName`, `address`, `latitude` and
+  `longitude` to the item schema.
+- `CoordinatesInput` replaces a typed or pasted Maps link that carries coordinates with its pair.
+
+**Differences from §3.**
+- P7-4 checks the title and the distance, not "the same link". The share screen has the trip's items
+  but not their links, and the title check already catches the same share twice.
+- P7-6: a short link typed into *Coordinates* shows the field's usual error. There is no separate
+  hint.
+
+**Verification.**
+- Node: 1761 tests in 90 suites, typecheck clean. `mapsLink.test.ts` has 18 tests, including the two
+  real redirects.
+- Emulator: `%USERPROFILE%\Pictures\TravelOrganizer-0.20.0-P7-e2e\E2E-LOG.md`:
+  - Arktikum shared from Google Maps, looked up on the device (address, no coordinates) and saved;
+  - a place with coordinates;
+  - the duplicate warning;
+  - airplane mode;
+  - a link typed into *Coordinates*.
+
+**Limitations.**
+- Some redirects carry no coordinates (Arktikum's did not). Getting them would mean reading Google's
+  page or a paid API, which is excluded. The person can long-press in Maps and paste.
+- **The first network request the app makes besides the feedback form.** It is a single request, on a
+  tap, to Google only. It is listed in CLAUDE.md §7.
+- The lookup is only on the share screen, not later from the item.
+- A cold start from a share needs a release build (finding 8), which was not built (no release
+  approval). The warm path was tested.

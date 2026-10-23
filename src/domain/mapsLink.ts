@@ -84,10 +84,15 @@ function clean(text: string | null | undefined): string | null {
   return value ? value.slice(0, MAX_TEXT) : null;
 }
 
+/** Seven places, about a centimetre: Google writes 66.50394779999999, which is float noise. */
+const round7 = (value: number) => Math.round(value * 1e7) / 1e7;
+
 function coordinates(latitude: number, longitude: number): Pick<MapsPlace, 'latitude' | 'longitude'> | null {
   // 0,0 is what `geo:0,0?q=…` uses for "no position", not a place in the Gulf of Guinea.
   if (latitude === 0 && longitude === 0) return null;
-  return validateCoordinates(latitude, longitude) ? { latitude, longitude } : null;
+  return validateCoordinates(latitude, longitude)
+    ? { latitude: round7(latitude), longitude: round7(longitude) }
+    : null;
 }
 
 const DMS = /^\s*(\d{1,3})°\s*(\d{1,2})'\s*(\d{1,2}(?:\.\d+)?)"\s*([NS])[\s,]+(\d{1,3})°\s*(\d{1,2})'\s*(\d{1,2}(?:\.\d+)?)"\s*([EW])\s*$/i;

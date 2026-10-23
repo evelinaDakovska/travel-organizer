@@ -88,6 +88,17 @@
 
 ---
 
+### Built in 0.20.0 (roadmap Phase 7, Google Maps share links) — on the branch `phase-3d1`, verified on emulators, not on a phone
+
+- **Share a place from Google Maps** → *New place*. The app shows the name and, with one tap on *Look up
+  address and coordinates*, the address and, when Google's link has them, the coordinates.
+- Every field can be changed before saving. The Maps link is kept on the place.
+- **Already saved?** It warns when the trip has a place of the same name, or one within 100 m.
+- **Offline,** it says so and saves the name and link.
+- **A Google Maps link** pasted into a plan's *Coordinates* fills in the numbers.
+- **The lookup sends one request to Google**, only when tapped. There is no Google sign-in and no
+  paid API.
+
 ### Built in 0.19.0 (roadmap Phase 6, trips without dates) — on the branch `phase-3d1`, verified on emulators, not on a phone
 
 - **A trip without dates:** *Dates → Not decided yet* in the trip form. It has no placeholder date and

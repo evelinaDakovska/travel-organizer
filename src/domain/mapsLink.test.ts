@@ -58,7 +58,7 @@ describe('parseMapsLink', () => {
     expect(parseMapsLink(WITH_PIN)).toEqual({
       name: 'Кладбище финка',
       address: '96200 Rovaniemi, Finland',
-      latitude: 66.50394779999999,
+      latitude: 66.5039478,
       longitude: 25.7293906,
     });
   });
@@ -141,12 +141,12 @@ describe('parseMapsLink', () => {
 describe('acceptedRedirect — where a short-link lookup may end', () => {
   it('reads a Google Maps page it was sent to', () => {
     expect(acceptedRedirect(ARKTIKUM)).toMatchObject({ name: 'Arktikum' });
-    expect(acceptedRedirect(WITH_PIN)).toMatchObject({ latitude: 66.50394779999999 });
+    expect(acceptedRedirect(WITH_PIN)).toMatchObject({ latitude: 66.5039478 });
   });
 
   it("unwraps Google's cookie notice", () => {
     const consent = `https://consent.google.com/ml?continue=${encodeURIComponent(WITH_PIN)}&gl=FI&hl=en`;
-    expect(acceptedRedirect(consent)).toMatchObject({ name: 'Кладбище финка', latitude: 66.50394779999999 });
+    expect(acceptedRedirect(consent)).toMatchObject({ name: 'Кладбище финка', latitude: 66.5039478 });
   });
 
   it('trusts nothing else', () => {

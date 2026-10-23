@@ -260,6 +260,14 @@ anything else: *Saved 2 of 3 files. Not saved: boarding-pass-3.pdf.* To add the 
 share it again and choose **An item** → the item it names — sharing to *New item* again would make
 a second item. If none could be read, or saving fails, nothing is saved at all.
 
+**From Google Maps:** open a place → **Share** → **Travel Organizer** → **New place**.
+- **Look up address and coordinates** asks Google where the short link points. Nothing else is sent.
+  It fills in the address, and the coordinates when Google gives them.
+- Change anything before **Save**. The Maps link stays on the place.
+- If the trip already has a place with that name, or one within 100 m, you are told first.
+- Offline, save it anyway and add the rest later. A Google Maps link pasted into **Coordinates** also
+  fills in the numbers.
+
 **Gmail** cannot share a whole email. To keep a booking email:
 open it → **⋮** → **Print** → **Save as PDF** → share that PDF to the app.
 

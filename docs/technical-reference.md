@@ -2057,3 +2057,36 @@ Plan and decisions: `docs/phase6-plan.md` (P6-1…P6-13); rationale D48.
 
 **Changing dates** writes only `trips.start_date`, `end_date` and `updated_at` (`writeTrip`). Items keep
 their own dates (CLAUDE.md §5.7).
+
+---
+
+## 27. Google Maps share links (Phase 7, 0.20.0)
+
+Plan and decisions: `docs/phase7-plan.md` (P7-1…P7-8); rationale D49.
+
+**What Google Maps sends (checked 2026-10-23):** `text` and `webUrl` hold a `https://maps.app.goo.gl/…`
+short link, and `meta.title` holds the place name. The short link's 302 goes to
+`google.com/maps/place/<name>,+<address>/data=…`, which holds `!3d<lat>!4d<lng>` only sometimes.
+
+**`mapsLink.ts` (pure).**
+
+| Function | |
+|---|---|
+| `isShortMapsLink` | https `maps.app.goo.gl/<id>` or `goo.gl/maps/<id>`; no userinfo or port |
+| `isGoogleMapsLink` | short, long (`google.<tld>/maps…`, `maps.google.<tld>`), consent-wrapped, or `geo:` |
+| `parseMapsLink` | name and address from `/place/<…>` (split at the first comma), the pin from `!3d!4d`, or `lat,lng` from `query`/`q`/`daddr`/`ll`, `/search/<…>`, `geo:` and DMS. **Never the `@` viewport**. 0,0 is no position. Values are cleaned and capped at 240 characters, coordinates rounded to 7 places |
+| `acceptedRedirect` | an https Google Maps URL, or `consent.google.<tld>?continue=` one, else null |
+| `findPlaceDuplicate` | the same `normaliseTitle`, or within `SAME_PLACE_METRES` (100 m) |
+
+**`lookUpMapsLink` (network).** `fetch(shortLink, { method: 'HEAD', redirect: 'follow',
+credentials: 'omit', signal })` with an 8 s abort. Only `response.url` is read, through
+`acceptedRedirect`, so a body is never read. It returns `{ ok: true, place }` or
+`{ ok: false, reason: 'offline' | 'unreadable' }`.
+
+**Share screen.** With a Maps link and *New place*, it shows the lookup (short links only), Address,
+Coordinates (`CoordinatesInput`) and the duplicate notice. A lookup fills only empty fields.
+`ShareTarget['new-item'].place` carries `locationName`, `address`, `latitude` and `longitude` into
+`tripItemInputSchema`.
+
+**`CoordinatesInput`** turns text starting with `http(s):` or `geo:` that `parseMapsLink` reads
+coordinates from into the pair.

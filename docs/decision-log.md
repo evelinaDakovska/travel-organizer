@@ -1178,3 +1178,23 @@ rebuild.
 
 **Risk.** A table rebuild is not a risk-free change. Under the owner's split (2026-10-23), it goes to
 the husband's phone first and to the primary phone only after the trip.
+
+## D49 — Phase 7: read what a Google Maps link says, and one lookup on a tap (0.20.0)
+
+**Decision.** A shared Google Maps link becomes a saved place with what the URL itself states: name,
+address and, when present, the place's own coordinates. A short link is opened by one `HEAD` request
+on the person's tap, and only its redirect address is read. The link is always kept.
+
+**Why.**
+- **What Maps sends was checked, not assumed.** The share carries only a short link and the name.
+  The redirect holds the address, and coordinates only sometimes.
+- **No scraping, no Places API, no sign-in** (roadmap §13). Reading Google's page for coordinates
+  would be brittle and is excluded. A key-based API would bring cost, a key in the app and an account.
+- **The viewport is not the place.** `@lat,lng` is where the map was centred. Taking it would put pins
+  in the wrong spot with confidence.
+- **A tap, not automatic.** It is the app's first request to a third party outside the feedback form,
+  so the person starts it and the screen says what it sends. Making it automatic is a later choice for
+  the owner.
+- **A strict allowlist** for both ends of the request, because the link comes from another app and
+  is untrusted.
+- **Duplicates warn, never block**, as in 2C.

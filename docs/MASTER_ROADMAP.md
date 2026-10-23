@@ -367,7 +367,10 @@ Allow wishlist/future trips without committed start/end dates, while preserving 
 
 **Gate:** Schema/API impact assessment and comprehensive dated-trip regression tests.
 
-## 13. Phase 7 — Import From Google Maps Share Links [PLANNED]
+## 13. Phase 7 — Import From Google Maps Share Links [BUILT — v0.20.0 on `phase-3d1`; AWAITING INDEPENDENT REVIEW]
+
+As built: `docs/phase7-plan.md` (decisions P7-1…P7-8 for review), D49, technical reference §27. No
+migration. The scope below is kept as written.
 
 ### Goal
 

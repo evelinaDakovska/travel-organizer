@@ -306,7 +306,7 @@ function ShareForm({ content }: { content: SharedContent }) {
               <Input
                 value={place.address}
                 onChangeText={(address) => setPlace((current) => ({ ...current, address }))}
-                placeholder="Pohjoisranta 4, Rovaniemi"
+                placeholder="Street, town"
               />
             </Field>
             <Field

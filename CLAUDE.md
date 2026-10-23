@@ -283,6 +283,9 @@ Full list with per-dependency rationale in `docs/technical-reference.md` §8.
   the trip has passed**, and the risky ones after it, never before; the secondary phone (the
   owner's husband's, no real data) tests **all changes** (owner, 2026-10-23).
 - Offline access to stored documents is a **core requirement**, not a nice-to-have.
+- **Network requests**: the app talks to no backend. Since Phase 7 (0.20.0) one tap, *Look up
+  address and coordinates* on a shared Google Maps short link, sends a single `HEAD` request to
+  Google, reading only where the link redirects (no page, no cookies; D49).
 - **One exception to "no backend"**: the in-app feedback form (0.7.x) posts to a small Cloudflare
   Worker (`server/feedback-worker/`) that emails the owner. It is **off** behind
   `FEATURE_FEEDBACK_ENABLED` (D31) and carries no trip data. It is switched on, and the worker
@@ -295,8 +298,8 @@ means "never building."** Ideas move between statuses; none is removed to make d
 
 | Status | Meaning | Items |
 |---|---|---|
-| **Implemented** | In the app | Importing AI-written activities from JSON (2C) and *Plan with AI* (2D) — the app reads and writes files, it calls no AI service; 3C–3E; currency conversion with typed-in rates (4), the day map — an offline drawing plus the Google Maps hand-off (5) — and trips without dates (6), all on `phase-3d1` |
-| **Approved/planned** | On the roadmap; **only the current phase is authorised** | Google Maps place import (7), an `.ics` export (8); the feedback deployment before the friends beta (*B1*) |
+| **Implemented** | In the app | Importing AI-written activities from JSON (2C) and *Plan with AI* (2D) — the app reads and writes files, it calls no AI service; 3C–3E; currency conversion with typed-in rates (4), the day map — an offline drawing plus the Google Maps hand-off (5) — trips without dates (6) and Google Maps share links read into a saved place (7), all on `phase-3d1` |
+| **Approved/planned** | On the roadmap; **only the current phase is authorised** | An `.ics` export (8); the feedback deployment before the friends beta (*B1*) |
 | **Deferred** | Possibly wanted later; not current scope | iOS · shopping-list estimated prices · full itinerary templates · monetisation |
 | **Discovery** | Needs research and a separate owner decision | AI integrations in the app (an AI API, in-app itinerary generation) · Gmail integration · automatic booking parsing / email and document extraction · cloud backend, accounts, sync and collaboration · weather and travel monitoring · a passport vault · peer-to-peer sharing |
 | **Explicitly excluded** | Not part of the product unless the owner reverses it | Flight/hotel search · booking APIs (the app is not a search engine or booking service, §1) · Google Wallet API |

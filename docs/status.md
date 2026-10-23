@@ -668,7 +668,15 @@ only when the owner asks.
 
   **0.19.0 on `phase-3d1`**: 1743 Node tests. Emulator E2E with migration 014 on the device: 23/23
   tables identical. On no phone. Awaiting independent review ([`phase6-plan.md`](phase6-plan.md), D48) | ✅ |
-| **P7** | Google Maps place import | ⬜ |
+| **P7** | Google Maps place import. A shared Maps link becomes a saved place, with what the URL states: the name, the address, and the place's own coordinates when present (never the viewport).
+  - A short link is opened by one `HEAD` request on a tap, reading only where it redirects.
+  - The fields are editable before saving.
+  - A duplicate (same name or within 100 m) gives a warning, not a block.
+  - Offline and unreadable links are handled.
+  - A Maps link pasted into *Coordinates* becomes the pair.
+
+  No migration. **0.20.0 on `phase-3d1`**: 1761 Node tests. Emulator E2E sharing from Google Maps;
+  on no phone. Awaiting independent review ([`phase7-plan.md`](phase7-plan.md), D49) | ✅ |
 | **P8** | Google Calendar export (.ics) | ⬜ |
 | **B1** | **Pre-beta: feedback deployment and security verification** (owner, 2026-10-20; `MASTER_ROADMAP.md` §16.2). Before the first friends APK, not in 3C: secure HTTPS endpoint, server-side secrets only, input validation and rate limiting, abuse protection and cost limits, no trip data sent automatically, draft cleared only after confirmed server acceptance, a real end-to-end delivery test with the owner's approval. The form stays off until then. Nothing deployed and no test email sent — waits for approval | ⬜ |
 
