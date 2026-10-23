@@ -187,6 +187,10 @@ format 9). Migration 009 (3E, 0.16.0) adds `settlements` (backup format 10); mig
 review P1) adds `unsplit_confirmations`, one per cost, ended by any write to that cost's split
 (triggers) and by any financial edit (`endChangedConfirmations`, called by every money write — a new
 one must call it too), so a stored one always matches the cost's fingerprint (backup format 11).
+Migration 011 (0.16.2) adds `settlement_reviews`: a shared cost leaving a currency with settlements
+is refused until the person continues (`SettlementReviewNeeded`), then recorded as an open review that
+holds that currency's suggestions until *Settlements still stand* — every money write goes through
+`moneyWrites.afterMoneyWrite` (backup format 12).
 Backup format 7 (0.13.0: same tables as 6; price lines in
 `details` may carry who they are for, group prices and extras). No per-kind tables.
 Kind-specific extras live in a Zod-validated `details` JSON column.

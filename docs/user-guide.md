@@ -720,5 +720,12 @@ changes.
   settlements stay exactly as they are. Kept costs are folded under **Kept outside on purpose**, with
   **Review again**. If the cost's price, payments or split change later, it comes back to review —
   for good, even if you change it back; renaming it or changing its notes does not.
+- **Settlements need review (0.16.2).** Deleting a shared cost, or moving it to another currency,
+  after a settlement in that currency first asks: *EUR already has recorded settlements…* —
+  **Cancel** changes nothing. **Continue** saves the change, and that currency then reads *Balances
+  so far — settlements need review* and suggests nothing: a settlement may have paid for what is
+  gone. **Review settlements** shows what changed and every settlement in that currency; open one to
+  correct or delete it. When they are right, **Settlements still stand** — no settlement changes, and
+  suggestions come back unless something else still holds them. A later change asks again.
 - **Share who owes whom** sends the suggested transfers as text; a currency that is not final is
   one line without numbers. Names and balances never go into the PDF.

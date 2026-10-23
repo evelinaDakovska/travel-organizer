@@ -1760,7 +1760,7 @@ cost, a cost not listed as not split (e.g. a cancelled booking waiting for its r
 deletes it. Neither writes anything else. `BALANCE_TABLES` includes `unsplit_confirmations`.
 
 **Ended by a financial edit (plan §14.4).** `repositories/confirmations.endChangedConfirmations(db,
-tripId)` deletes each of the trip's confirmations whose cost is gone or no longer matches its
+tripId)` (since 0.16.2 part of `moneyWrites.afterMoneyWrite`, §23.2) deletes each of the trip's confirmations whose cost is gone or no longer matches its
 fingerprint. It reads the rows itself (the other repositories import it). Called last, inside the
 transaction, by `updateTripItem`, `setTripItemStatus`, `createBookingPayment`, `updateBookingPayment`,
 `deleteBookingPayment`, `unlinkExpense`, `createExpense`, `updateExpense`, `deleteExpense` (the last three
@@ -1775,3 +1775,73 @@ for a missing plan or expense, of another trip, or two for one cost.
 **Screens.** *Settle up*: *To review* (each cost with *Split it* → `/split/edit`, and *Keep outside* →
 a dialog, then `keepOutside` with the fingerprint of the cost as shown), *Kept outside on purpose*
 (collapsed, *Review again*), *Not split* for the rest. The person's balance screen explains `review`.
+
+### 23.2 Settlement review holds (0.16.2, migration 011)
+
+Plan §15, D44.
+
+**Schema (011).** `settlement_reviews (id, trip_id → trips CASCADE, currency, reason ∈ {deleted,
+moved, left}, cost_kind ∈ {booking, expense}, cost_title, cost_amount INTEGER, to_currency,
+created_at, acknowledged_at)`.
+- `CHECK ((reason = 'moved') = (to_currency IS NOT NULL))`; index on `(trip_id, currency)`.
+- No reference to a cost or a settlement. Open while `acknowledged_at IS NULL`. Nothing is written
+  by the migration and no existing table is altered.
+
+**Money writes (`repositories/moneyWrites.ts`, formerly `confirmations.ts`).**
+- **Before:** `moneyBefore(db, tripId)` reads the full `BalanceInput` (null when the trip has no
+  settlement), before the write, inside the transaction.
+- **After:** `afterMoneyWrite(db, tripId, before, options)` runs last. It reads the trip again, ends
+  confirmations that no longer match (§23.1), then `costsLeavingSettledCurrencies(before, after,
+  fate)`. If that is not empty:
+  - without `options.acceptSettlementReview`, it throws `SettlementReviewNeeded` (a
+    `MoneyRuleError` with `currencies` and `left`), so the transaction rolls back;
+  - with it, it inserts one open row per cost.
+- **Callers, all with an optional trailing `options`:** `updateTripItem` (after `participants`),
+  `setTripItemStatus`, `deleteTripItem`, `deleteBookingPayment`, `unlinkExpense`, `updateExpense`,
+  `deleteExpense`. `createBookingPayment`, `updateBookingPayment` and `createExpense` call it without
+  options (they cannot take a cost out).
+- `balanceInput` now lives here too, reading the rows directly; `settlements.ts` re-exports it.
+
+**Trigger rule.** For each currency with a settlement in `before`: every cost in its `complete`,
+`waiting` or `toReview` that is not in the same currency's `complete`, `waiting` or `notSplit` after
+the write. Reason, by `fate`:
+- `deleted`: the row is gone.
+- `moved`: now a cost in another currency; that currency is stored as `to_currency`.
+- `left`: anything else.
+
+An expense now linked to a booking (`fate = linked`) records nothing.
+
+**Acknowledging.** `settlementsStillStand(db, tripId, currency, seenIds)`, in one transaction:
+- re-reads the open rows of that currency;
+- refuses if there are none, or if they are not exactly `seenIds`;
+- otherwise stamps `acknowledged_at` on them.
+
+**Balances.** `BalanceInput.settlementReviews` (open rows); per currency `settlementReviews`, filled
+only when the currency has settlements.
+- State `review` when there are complete costs, nothing waiting, and `toReview` or
+  `settlementReviews`.
+- `heldBecause`: `'settlementReview'` before `'review'`.
+- Words:
+  - `balancesHeading` adds *settlements need review* (with ` · ` to the other parts);
+  - `statusText` pauses with *shared costs in EUR changed after settlements were recorded…*;
+  - `settleUpText` writes *EUR: not final — settlements need review*;
+  - `settlementReviewText` gives one change (*Taxi · EUR 30.00 — deleted / moved to NOK / no longer
+    counted*);
+  - `settlementReviewWarning` is the warning before the write.
+
+**Formats.** Backup format 12 and archive rowFormat 12 carry `settlementReviews`; 11 and older read
+as none.
+- Restore writes the rows as they are.
+- Archive import maps `id` and `trip_id` and keeps everything else, `acknowledged_at` included.
+- `checkTripArchive` refuses duplicates, another trip's rows, and a `to_currency` that does not match
+  `moved`.
+- `verifyTripImport` counts them.
+
+**Screens.**
+- `features/settle/settlementReviewPrompt.withSettlementReview(write)` tries `write({})`. On
+  `SettlementReviewNeeded` it shows *Cancel / Continue*; *Continue* runs
+  `write({ acceptSettlementReview: true })`.
+- *Settle up*: *Settlements need review* (explanation, the changes, *Review settlements*).
+- `/trip/[tripId]/settlement-review?currency=`: the changes, the currency's settlements (each opens),
+  and *Settlements still stand* (asks, then acknowledges the ids on screen).
+- The balance screen explains the hold.

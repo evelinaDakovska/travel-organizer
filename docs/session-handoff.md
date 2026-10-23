@@ -385,7 +385,23 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ## 11. Where the last session stopped (2026-10-19) — read this first
 
-### 11.0000000000000000 Latest (2026-10-23, later) — review follow-up; waiting for the owner
+### 11.00000000000000000 Latest (2026-10-23, evening) — settlement review holds built as 0.16.2; waiting for review
+
+- The owner chose option B of plan §14.4: hold a currency's suggestions when a shared cost leaves it
+  after settlements, until the settlements are reviewed. Built as plan §15, D44.
+- On `phase-3d1`:
+  - `a7bea61`: the §15 design, written first;
+  - `a879643`: migration 011, backup/archive format 12, 0.16.2 / versionCode 25;
+  - then the docs and an opt-in `Button` `wrap`.
+- **Tests:** 1624 Node tests, typecheck clean. Emulator `TO_2B_Test`, debug-signed, synthetic: 10 → 11
+  with 20/20 tables identical, then the whole flow (log in
+  `%USERPROFILE%\Pictures\TravelOrganizer-0.16.2-holds-e2e`).
+- **No release APK for 0.16.2** (not approved). `main` is untouched at 0.13.0; on no phone.
+- **New tooling:** `scratchpad/make-holds.ts` builds the synthetic *3E Review holds* archive, and
+  `holds.sh` has `trip`, `expense`, `settle`. At font 2.0 Home is long: search for the trip downward,
+  in smaller swipes.
+
+### 11.0000000000000000 (2026-10-23, later) — review follow-up; waiting for the owner
 
 - The independent review accepted P2 and the per-cost confirmation. It asked that a financial edit
   end a confirmation for good, and that settled costs which are deleted or moved be analysed only.

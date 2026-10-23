@@ -12,6 +12,8 @@ type Props = {
   busy?: boolean;
   /** A shorter button for rows of several actions. Still a 44 dp target. */
   compact?: boolean;
+  /** A long label wraps instead of being cut at a large font. One line otherwise. */
+  wrap?: boolean;
 };
 
 function look(c: Colors, variant: Variant) {
@@ -34,6 +36,7 @@ export function Button({
   disabled = false,
   busy = false,
   compact = false,
+  wrap = false,
 }: Props) {
   const c = useColors();
   const colors = look(c, variant);
@@ -59,7 +62,9 @@ export function Button({
       {busy ? (
         <ActivityIndicator color={colors.text} />
       ) : (
-        <Text style={[compact ? type.label : type.bodyStrong, { color: colors.text }]} numberOfLines={1}>
+        <Text
+          style={[compact ? type.label : type.bodyStrong, { color: colors.text }, wrap && styles.wrapped]}
+          numberOfLines={wrap ? undefined : 1}>
           {label}
         </Text>
       )}
@@ -77,4 +82,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   compact: { minHeight: 44, paddingHorizontal: spacing.md },
+  wrapped: { textAlign: 'center', paddingVertical: spacing.sm },
 });

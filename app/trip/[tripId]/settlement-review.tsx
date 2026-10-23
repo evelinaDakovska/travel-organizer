@@ -124,7 +124,7 @@ export default function SettlementReview() {
               </Rows>
             </View>
 
-            <Button label="Settlements still stand" onPress={stillStand} />
+            <Button label="Settlements still stand" onPress={stillStand} wrap />
           </>
         )}
       </ScrollView>

@@ -1000,3 +1000,48 @@ any confirmation its cost no longer matches — so a stored confirmation always 
 fingerprint stays the single definition of *financial*. Rejected: SQL triggers per money table (a
 new migration, and the fingerprint restated in SQL — two definitions that could drift); deletes
 written out in each repository (the same rule copied nine times).
+
+## D44 — Settlement review holds when a shared cost leaves a settled currency (0.16.2, migration 011)
+
+Plan and as-built record: `docs/phase3e-plan.md` §15. The owner chose option B of §14.4 on
+2026-10-23, after the follow-up review.
+
+**The problem.** A settlement is money that changed hands, never linked to a cost (D42). Deleting a
+shared cost, or moving it to another currency, after a settlement leaves the settlement counting
+against what is left. The app may then suggest the opposite transfer (*Ana pays Ben 5* after a
+deleted taxi), or ask for the same money twice across two currencies. The app cannot tell a mistaken
+deletion from a correction.
+
+**The decision: ask first, then hold until reviewed.**
+- The write that would take a shared cost out of a currency with settlements is refused until the
+  person is told and continues.
+- Continued, the currency is held, with no suggestions, until someone says the settlements still
+  stand. They are reviewed together, per currency, never one by one. The app cannot know which
+  settlement paid for what, so asking per settlement would invite a guess.
+- Settlements are never changed. Correcting one is done on the settlement itself.
+
+**Why the warning is a repository refusal.** One rule, in the place every write already passes
+through (§14.4's `afterMoneyWrite`), compares the balances before and after inside the write's
+transaction. The screens do not predict anything. A screen that forgets to ask shows the refusal and
+saves nothing, rather than holding silently or not at all.
+
+**Why waiting and to-review costs count, not only complete ones.**
+- §12.1 allows a settlement before a cost is complete.
+- The existing refusals mean most removable shared costs are *waiting*: a booking with payments
+  cannot be deleted or change currency.
+- A cost could otherwise be emptied or unsplit first and deleted afterwards. That is two steps, and
+  the same risk.
+
+A cost kept outside on purpose does not count: the person already said it is outside.
+
+**An event per change, not a flag.** Each change is its own row, acknowledged together by exactly
+the ids the review screen showed, inside a transaction. A later change is a new open row, so an
+earlier acknowledgement never covers it; and a stale screen is refused. Rows name the cost as text
+(title, amount), never by reference, so a deleted cost does not have to exist. Acknowledged rows stay
+as the record.
+
+**Rejected:**
+- Warning only (option A): nothing would remain once the warning was dismissed.
+- A derived over-settlement check (option C): wrong in ordinary use, and it misses partial cases.
+- Holding the destination currency of a move: nothing left it.
+- Deleting or reversing settlements: money history is never changed by itself.

@@ -88,6 +88,15 @@
 
 ---
 
+### Built in 0.16.2 (settlement review holds, 3E correction) — on the branch `phase-3d1`, verified on emulators, not on a phone
+
+Not on any phone until after the owner's trip; it brings migration 011 (and 007–010 with it).
+
+- **Settlements need review:** deleting a shared cost or moving it to another currency after a
+  settlement there asks first; continued, that currency suggests nothing until *Settlements still
+  stand*. Settlements are never changed.
+- **Backup format 12**: 0.16.1 refuses 0.16.2's files; 0.16.2 reads all older ones.
+
 ### Built in 0.16.1 (review corrections to 3E) — on the branch `phase-3d1`, verified on emulators, not on a phone
 
 Not on any phone until after the owner's trip; it brings migration 010 (and 007–009 with it).

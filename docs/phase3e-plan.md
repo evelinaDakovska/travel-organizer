@@ -905,3 +905,55 @@ CREATE INDEX idx_settlement_reviews_trip ON settlement_reviews(trip_id, currency
 
 Schema 11, backup format 12, archive rowFormat 12, app **0.16.2**, versionCode 25. Migrations
 001–010 are untouched.
+
+### 15.7 As built (0.16.2, on `phase-3d1`, 2026-10-23)
+
+Commits: `a7bea61` (this design), `a879643` (implementation, migration 011, formats 12, 0.16.2),
+then the docs and the button fix.
+
+Built as §15.1–15.6 say. Details settled during the build, for review:
+
+1. **Only the warning is in the repository; asking is in the screens.** Without
+   `acceptSettlementReview`, the write throws and rolls back. *Continue* runs it again, and it is
+   checked again in that second transaction.
+2. **Every money write is guarded, not only the seven with the option.** `createBookingPayment`,
+   `updateBookingPayment` and `createExpense` call `afterMoneyWrite` without options. They cannot
+   take a cost out of a currency today; if a future rule made them, they would refuse rather than
+   hold silently.
+3. **A currency is held while it has settlements.** If all of a currency's settlements are deleted,
+   its open rows stay but hold nothing; a new settlement brings them back (tested).
+4. **The unsplit-review interplay.** Removing a split puts the cost in *To review* (§14.2). Deleting
+   it then is a change of its own, and asks. A cost kept outside on purpose asks nothing when
+   deleted. A booking that goes back to review because its payment was removed (its confirmation
+   ends, §14.4) asks when it is deleted (the existing test 18 now continues explicitly).
+5. **Adjacent cases, not held (as §15.1):**
+   - an amount or payer change that keeps the cost complete in the same currency;
+   - a re-split, or a change to *Covered by*;
+   - a cost that becomes waiting or unsplit (already held by *so far* or *To review* while it stays
+     there).
+
+   They are read as the new truth, as before.
+6. **A screen fix found on the emulator:** at 360 dp and font 2.0, *Settlements still stand* was cut
+   off. `Button` gained an opt-in `wrap`; nothing else changes.
+7. **Known, not changed:** at 360 dp and font 2.0, the tab header breaks *Expenses* as *Expense / s*.
+   This was there before 3E.
+
+**Verification.**
+- **Node:** 1624 tests in 81 suites; typecheck clean.
+  - Migration 10 → 11 and 6 → 11 over phone-shaped synthetic data; a failed batch stays at 10;
+    the migration is idempotent; constraints checked.
+  - The brief's 25 points through the repositories (`settlementReviews.test.ts`).
+  - Backup and archive round trips, including new ids and refused imports (`tripImport.test.ts`).
+  - Mutation checks: no warning, an empty trigger rule, waiting costs not counted, the stale check
+    off, a hold not pausing, the archive's trip id, and the backup table each fail tests when
+    disabled.
+- **Emulator** (`TO_2B_Test`, debug-signed, synthetic):
+  - 10 → 11 with 20/20 tables identical.
+  - Delete: the warning appears, Cancel leaves 21/21 tables identical, and Continue writes only the
+    delete and one review.
+  - Moving a cost to another currency holds EUR only.
+  - *Review settlements* → *Settlements still stand* writes only the reviews; the suggestion resumes.
+  - A new change after that holds again.
+  - Checked at 360 dp, font 2.0 and in dark mode.
+  - Log: `%USERPROFILE%\Pictures\TravelOrganizer-0.16.2-holds-e2e\E2E-LOG.md`.
+- **No release APK was built; on no phone.**

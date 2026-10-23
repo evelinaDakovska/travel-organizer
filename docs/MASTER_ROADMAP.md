@@ -97,7 +97,7 @@ The following milestones are **reported complete by Claude**, not independently 
 Completed (reported): Foundations → Phase 1 → Phase 2A → 2B-0 → 2B → 2C → 2D → 3A → 3B → 3C → 3D-1
 (0.14.0, migration 007, on the branch `phase-3d1`; `docs/phase3d1-plan.md`) → 3D-2 (0.15.0,
 migration 008, same branch; `docs/phase3d2-plan.md`) → 3E (0.16.0, migration 009, same branch;
-`docs/phase3e-plan.md`; review corrections 0.16.1, migration 010); no phone install until after the owner's trip
+`docs/phase3e-plan.md`; review corrections 0.16.1, migration 010, and 0.16.2, migration 011); no phone install until after the owner's trip
                                                               ↓
 Next:                          review of 3E; Phase 4 only when asked
                                    ↓                 ↓                 ↓                     ↓
