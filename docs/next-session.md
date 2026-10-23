@@ -10,15 +10,15 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
 |---|---|
 | **Branch with the work** | `phase-3d1`, the 0.16.3 commit "Close Phase 3" (pushed to the personal GitHub remote) |
 | **`main`** | `46d256a` — 0.13.0, schema 6, backup format 7. **What the owner's phone runs.** |
-| **`phase-3d1` app** | **0.18.0**, versionCode 29 (Phase 5, the day map; 0.17.1 was Phase 4 with its review corrections) |
+| **`phase-3d1` app** | **0.18.1**, versionCode 30 (Phase 5 with its review corrections) |
 | **Database schema** | 13 (migrations 007–013 exist only on `phase-3d1`) |
 | **Backup / trip archive format** | 14 / row format 14 |
-| **Tests** | 1706 Node tests in 87 suites, `npx tsc --noEmit` clean |
+| **Tests** | 1714 Node tests in 87 suites, `npx tsc --noEmit` clean |
 | **Phase 3 (3B → 3E)** | **Closed (2026-10-23).** Everything through 0.16.2 passed the owner's review, and the exit checks are in `MASTER_ROADMAP.md` §6.4, §7.5, §8.3 and §9.3. One item is open: the signed release rehearsal 0.13.0 → 0.16.x. |
 | **Phone** | Untouched. Holds a real trip on 0.13.0. |
 | **Phase 4** | **Built as 0.17.0** (`docs/phase4-plan.md`, D45), verified on emulators, **awaiting independent review**. Its product decisions P4-1…P4-8 were taken without stopping, at the owner's request; they are listed in the plan's §11 for review. |
 | **Phase 5** | **Built as 0.18.0** (`docs/phase5-plan.md`, D47): an offline drawing of each day's stops and a Google Maps hand-off, plus a coordinates field. No migration. Awaiting independent review; decisions P5-1…P5-6 in the plan's §9. |
-| **Release APK** | None built for 0.16.1–0.18.0. The newest release APK is 0.16.0, at `%USERPROFILE%\.travel-organizer\`, and it predates the corrections. |
+| **Release APK** | None built for 0.16.1–0.18.1. The newest release APK is 0.16.0, at `%USERPROFILE%\.travel-organizer\`, and it predates the corrections. |
 
 ### What 0.16.x added after 0.16.0 (all reviewed)
 
@@ -67,8 +67,8 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
 
 In the likely order. Ask which one, rather than choosing.
 
-0. **The owner's review of the Phase 4 corrections (0.17.1, since `87bb7df`) and of Phase 5 (0.18.0,
-   since `b449846`)**, with the decisions in `docs/phase5-plan.md` §9. Phase 6 starts only when the
+0. **The owner's review of the Phase 5 review corrections (0.18.1, since `1226b05`; plan §11)**, after the
+   reviews of the Phase 4 corrections (0.17.1) and of Phase 5 (0.18.0), with the decisions in `docs/phase5-plan.md` §9. Phase 6 starts only when the
    owner asks.
 1. **Bring 0.18.x to the phones, after the trip.** Every step needs the owner's go-ahead.
    0.18.x carries migrations 007–013, so it is **not** a risk-free change. It goes to **the husband's
@@ -129,6 +129,8 @@ were in a session scratchpad and are probably gone. The essentials:
 - **Typed routes:** a new route file needs `.expo/types/router.d.ts` regenerated. Start
   `npx expo start --offline` briefly, then stop it.
 - **Bash heredocs containing backticks fail** in this environment. Write scripts with the Write tool.
+- Phase 5 corrections: `%USERPROFILE%\Pictures\TravelOrganizer-0.18.1-P5-review-e2e\E2E-LOG.md`. The emulator now
+  holds a synthetic *Breakfast at the cafe* on E2E Lapland, Tue 24 Nov 09:00.
 - Phase 5: `%USERPROFILE%\Pictures\TravelOrganizer-0.18.0-P5-e2e\E2E-LOG.md`. Deep links do not route in the
   dev client; use the Timeline's *Map* or Overview › More.
 - Phase 4: `%USERPROFILE%\Pictures\TravelOrganizer-0.17.0-P4-e2e\E2E-LOG.md`. To rehearse a migration

@@ -1964,16 +1964,19 @@ Plan: `docs/phase5-plan.md`; why: D47. No schema or format change.
 **The stops (`domain/dayRoute.ts`, pure).** `dayRoute(items, day)` reads the timeline entries of
 `day` (local), without tasks:
 - **Timed entries in order.** A transport entry gives a `departure` (its `from`) unless it is the
-  `end` entry, and an `arrival` (its `to`, at the end time) unless it is the `start` entry. A stay
+  `end` entry, and an `arrival` (its `to`, at the end time) unless it is the `start` entry. Since
+  0.18.1 (review P1), neither end takes the item's coordinates: `resolveItemEndpoint` locates a
+  journey's ends by name, because a transport's coordinates belong to neither end. A stay
   gives `check-in` or `check-out`; anything else gives `visit` at its place.
 - **Date-only entries:**
   - stays are skipped here and become bases;
   - others go to `someTime`.
 - **No place:** entries with none go to `noPlace`.
-- **Start base:** last night's stay (`findStayForDay(day − 1)`), unless its check-out is a timed
-  entry today. Its role is `check-out` when it ends today, otherwise `wake`.
-- **End base:** tonight's stay (`findStayForDay(day)`), unless its check-in is a timed entry today.
-  Its role is `check-in` when it starts today, otherwise `sleep`.
+- **Start base:** last night's stay (`findStayForDay(day − 1)`), always (0.18.1, review P3).
+  Its role is `check-out` when it ends today with only a date, otherwise `wake`. A timed check-out
+  stays in the order too.
+- **End base:** tonight's stay (`findStayForDay(day)`), always. Its role is `check-in` when it starts
+  today with only a date, otherwise `sleep`.
 - **Merging:** consecutive `areEndpointsEqual` places merge into one `RouteStop` with several
   `plans`.
 - **Coordinates:** kept only as a valid pair.
@@ -1985,7 +1988,8 @@ Plan: `docs/phase5-plan.md`; why: D47. No schema or format change.
   - a single place sits in the middle;
   - a span over 180° is unwrapped;
   - points merge by equal coordinates and carry every stop number;
-  - `path` joins them in order.
+  - `segments` are runs of consecutive drawn stops. A stop without coordinates ends a run, so no line
+    crosses an unknown place (0.18.1, review P2).
 - `features/map/DaySchematic.tsx` draws it with `react-native-svg`: dashed straight lines, numbered
   pins, *1 · 3* for a revisited place, the caption *North is up. Straight lines show the order, not
   the way*, and an accessibility summary.

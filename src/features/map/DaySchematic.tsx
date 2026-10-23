@@ -20,9 +20,18 @@ const PIN = 14;
 export function DaySchematic({ stops }: Props) {
   const c = useColors();
   const [width, setWidth] = useState(0);
-  const layout = width > 0 ? schematicLayout(stops, width, HEIGHT, PADDING) : { points: [], path: [] };
+  const layout = width > 0 ? schematicLayout(stops, width, HEIGHT, PADDING) : { points: [], segments: [] };
   const placed = stops.filter((stop) => stop.coordinates !== null);
-  const summary = `Drawing of ${placed.length} of ${stops.length} stops: ${placed.map((stop) => stop.label).join(', ')}.`;
+  // A stop without coordinates between two drawn ones breaks the line (review P2).
+  const gaps = stops.some(
+    (stop, i) =>
+      stop.coordinates === null &&
+      stops.slice(0, i).some((s) => s.coordinates) &&
+      stops.slice(i + 1).some((s) => s.coordinates),
+  );
+  const summary = `Drawing of ${placed.length} of ${stops.length} stops: ${placed.map((stop) => stop.label).join(', ')}.${
+    gaps ? ' The line breaks where a stop between has no coordinates.' : ''
+  }`;
 
   return (
     <View style={styles.block}>
@@ -36,16 +45,17 @@ export function DaySchematic({ stops }: Props) {
         {width > 0 ? (
           <Svg width={width} height={HEIGHT}>
             <Rect x={0} y={0} width={width} height={HEIGHT} fill="transparent" />
-            {layout.path.length > 1 ? (
+            {layout.segments.map((segment) => (
               <Polyline
-                points={layout.path.map((index) => `${layout.points[index].x},${layout.points[index].y}`).join(' ')}
+                key={segment.join('-')}
+                points={segment.map((index) => `${layout.points[index].x},${layout.points[index].y}`).join(' ')}
                 fill="none"
                 stroke={c.textMuted}
                 strokeWidth={2}
                 strokeDasharray="6 6"
                 strokeLinejoin="round"
               />
-            ) : null}
+            ))}
             {layout.points.map((point) => {
               const label = point.numbers.join(' · ');
               const pillWidth = Math.max(PIN * 2, label.length * 7 + 14);
@@ -84,6 +94,7 @@ export function DaySchematic({ stops }: Props) {
       {/* Under the drawing, never over a pin, and read with it. */}
       <Text style={[type.caption, { color: c.textMuted }]}>
         North is up. Straight lines show the order, not the way: no streets, no distances.
+        {gaps ? ' A gap in the line: a stop between has no coordinates.' : ''}
       </Text>
     </View>
   );

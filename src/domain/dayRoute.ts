@@ -127,37 +127,31 @@ export function dayRoute(items: readonly TripItem[], day: string): DayRoute {
     else markNoPlace(item, entry.time);
   }
 
-  // Where you wake up: last night's stay, unless you check out of it at a time today.
-  const lastNight = findStayForDay(stays, addCalendarDays(day, -1));
-  const timedCheckOut = (stay: TripItem) =>
-    entries.some((entry) => entry.item.id === stay.id && entry.role === 'end' && !datedStayEntries.has(entry.key));
-  const wake: Candidate[] = [];
-  if (lastNight && !timedCheckOut(lastNight)) {
-    const place = stayPlace(lastNight);
-    const checksOut = lastNight.end !== null && dayKey(lastNight.end) === day;
-    if (place) {
-      wake.push({
-        place,
-        plan: { itemId: lastNight.id, title: lastNight.title, time: null, role: checksOut ? 'check-out' : 'wake', idea: false },
-      });
-    } else markNoPlace(lastNight, null);
-  }
-
-  // Where you sleep: tonight's stay, unless its check-in is already a timed stop of today.
-  const tonight = findStayForDay(stays, day);
-  const timedCheckIn = (stay: TripItem) =>
-    entries.some((entry) => entry.item.id === stay.id && entry.role !== 'end' && !datedStayEntries.has(entry.key));
-  const sleep: Candidate[] = [];
-  if (tonight && !timedCheckIn(tonight)) {
-    const place = stayPlace(tonight);
-    const checksIn = tonight.start !== null && dayKey(tonight.start) === day;
-    if (place) {
-      sleep.push({
-        place,
-        plan: { itemId: tonight.id, title: tonight.title, time: null, role: checksIn ? 'check-in' : 'sleep', idea: false },
-      });
-    } else markNoPlace(tonight, null);
-  }
+  // The day starts where you woke up and ends where you sleep (review P3). A timed check-out or
+  // check-in keeps its place in the order as well: waking at the hotel, a 09:00 visit and an 11:00
+  // check-out is three stops, the hotel twice; when the base and its timed entry are next to each
+  // other, the merge below makes them one stop. A base checked out of or into with only a date is
+  // named by that, since its time is unknown.
+  const timedEntry = (stay: TripItem, end: boolean) =>
+    entries.some(
+      (entry) => entry.item.id === stay.id && (entry.role === 'end') === end && !datedStayEntries.has(entry.key),
+    );
+  const base = (stay: TripItem | null, edge: 'wake' | 'sleep'): Candidate[] => {
+    if (!stay) return [];
+    const place = stayPlace(stay);
+    if (!place) {
+      markNoPlace(stay, null);
+      return [];
+    }
+    const changesToday =
+      edge === 'wake'
+        ? stay.end !== null && dayKey(stay.end) === day && !timedEntry(stay, true)
+        : stay.start !== null && dayKey(stay.start) === day && !timedEntry(stay, false);
+    const role: StopRole = changesToday ? (edge === 'wake' ? 'check-out' : 'check-in') : edge;
+    return [{ place, plan: { itemId: stay.id, title: stay.title, time: null, role, idea: false } }];
+  };
+  const wake = base(findStayForDay(stays, addCalendarDays(day, -1)), 'wake');
+  const sleep = base(findStayForDay(stays, day), 'sleep');
 
   // Equal places in a row are one stop, naming every plan there.
   const stops: RouteStop[] = [];
@@ -199,8 +193,12 @@ export type SchematicPoint = {
 
 export type SchematicLayout = {
   points: SchematicPoint[];
-  /** The order the dashed lines join, as indexes into `points`. */
-  path: number[];
+  /**
+   * The dashed lines, each a run of indexes into `points` in stop order. A stop without coordinates
+   * ends a run: the stops either side of it are not joined, because they were not consecutive
+   * (review P2). A run of one point draws nothing.
+   */
+  segments: number[][];
 };
 
 /**
@@ -213,7 +211,7 @@ export function schematicLayout(stops: readonly RouteStop[], width: number, heig
   const placed = stops
     .map((stop, index) => ({ stop, number: index + 1 }))
     .filter((entry) => entry.stop.coordinates !== null);
-  if (placed.length === 0) return { points: [], path: [] };
+  if (placed.length === 0) return { points: [], segments: [] };
 
   const lngs = placed.map(({ stop }) => stop.coordinates!.longitude);
   const unwrap = Math.max(...lngs) - Math.min(...lngs) > 180;
@@ -221,10 +219,17 @@ export function schematicLayout(stops: readonly RouteStop[], width: number, heig
 
   const points: SchematicPoint[] = [];
   const keyToPoint = new Map<string, number>();
-  const path: number[] = [];
+  const segments: number[][] = [];
+  let run: number[] = [];
   const raw: { lat: number; lng: number }[] = [];
-  for (const { stop, number } of placed) {
-    const { latitude, longitude } = stop.coordinates!;
+  stops.forEach((stop, i) => {
+    if (stop.coordinates === null) {
+      if (run.length > 1) segments.push(run);
+      run = [];
+      return;
+    }
+    const number = i + 1;
+    const { latitude, longitude } = stop.coordinates;
     const key = `${latitude},${longitude}`;
     let index = keyToPoint.get(key);
     if (index === undefined) {
@@ -234,8 +239,9 @@ export function schematicLayout(stops: readonly RouteStop[], width: number, heig
       raw.push({ lat: latitude, lng: lngOf(longitude) });
     }
     points[index].numbers.push(number);
-    if (path[path.length - 1] !== index) path.push(index);
-  }
+    if (run[run.length - 1] !== index) run.push(index);
+  });
+  if (run.length > 1) segments.push(run);
 
   const meanLat = raw.reduce((sum, p) => sum + p.lat, 0) / raw.length;
   const k = Math.cos((meanLat * Math.PI) / 180);
@@ -253,7 +259,7 @@ export function schematicLayout(stops: readonly RouteStop[], width: number, heig
     points[i].x = offsetX + (xs[i] - minX) * scale;
     points[i].y = offsetY + (maxY - ys[i]) * scale;
   });
-  return { points, path };
+  return { points, segments };
 }
 
 // ─── The hand-off ───────────────────────────────────────────────────────────────────────────────

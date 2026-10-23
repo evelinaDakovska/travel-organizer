@@ -173,11 +173,14 @@ export function resolveItemEndpoint(
     if (targetEnd === 'from') {
       const from = details?.from?.trim();
       if (from) {
+        // A journey's coordinates are not tied to either end — the form and the activities format
+        // give a transport one generic place — so neither end takes them: an endpoint without a pin
+        // is better than a pin at the wrong end (Phase 5 review P1). Located by its name instead.
         return {
           title: from,
           address: item.address ?? null,
-          latitude: item.latitude ?? null,
-          longitude: item.longitude ?? null,
+          latitude: null,
+          longitude: null,
         };
       }
     } else {

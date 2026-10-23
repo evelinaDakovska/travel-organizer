@@ -653,7 +653,12 @@ only when the owner asks.
 
   Emulator: 12 → 13 on the device. Awaiting independent review ([`phase4-plan.md`](phase4-plan.md)
   §13, D45, D46) | ✅ |
-| **P5** | The day map — each day's stops in order: where you wake and sleep, journeys as a departure and an arrival, equal places merged; date-only and place-less plans listed apart. An offline drawing of the stops with coordinates (numbered, straight dashed lines, *not the way*), and the day handed to Google Maps in parts of up to five stops (Any / Driving / Walking). A *Coordinates* field on plans. No migration, no format change. **0.18.0 on `phase-3d1`**, Node tests, emulator E2E incl. the Google Maps app receiving the stops; on no phone; awaiting independent review ([`phase5-plan.md`](phase5-plan.md), D47) | ✅ |
+| **P5** | The day map — each day's stops in order: where you wake and sleep, journeys as a departure and an arrival, equal places merged; date-only and place-less plans listed apart. An offline drawing of the stops with coordinates (numbered, straight dashed lines, *not the way*), and the day handed to Google Maps in parts of up to five stops (Any / Driving / Walking). A *Coordinates* field on plans. No migration, no format change. **0.18.0 on `phase-3d1`**, Node tests, emulator E2E incl. the Google Maps app receiving the stops; on no phone. **Review corrections, 0.18.1:**
+  - a journey's coordinates are put on neither end;
+  - no line crosses a stop without coordinates;
+  - the day opens where you woke up even around a timed check-out.
+
+  Awaiting independent review ([`phase5-plan.md`](phase5-plan.md) §11, D47) | ✅ |
 | **P6** | Trips without fixed dates | ⬜ |
 | **P7** | Google Maps place import | ⬜ |
 | **P8** | Google Calendar export (.ics) | ⬜ |

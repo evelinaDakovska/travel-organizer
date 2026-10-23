@@ -1144,3 +1144,11 @@ app. Parts of five never lose a stop silently, wherever the link opens.
 - online geocoding (a service);
 - an all-days drawing;
 - distances computed in the app (straight lines are not travel).
+
+**Review corrections (0.18.1).**
+- **A journey's coordinates belong to neither end.** The model gives a transport one generic place,
+  so the departure no longer borrows it. Directions name the end instead, and the map leaves the end
+  unplaced.
+- **No line across an unknown place:** a line implies the stops it joins were consecutive.
+- **The day opens where you woke up and closes where you sleep,** even around a timed check-out or
+  check-in. Adjacent duplicates merge, and a real return trip to check out shows twice.

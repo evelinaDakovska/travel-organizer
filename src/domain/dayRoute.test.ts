@@ -80,18 +80,40 @@ describe('dayRoute', () => {
     expect(route.noPlace).toEqual([{ itemId: 'nowhere', title: 'Call home', time: '20:00' }]);
   });
 
-  it('arrival day: no start base; a flight gives its departure and arrival; the timed check-in is in order', () => {
+  it('arrival day: no start base; a flight gives its departure and arrival; the timed check-in, then the night there, as one stop', () => {
     const route = dayRoute([hotel, flight], '2026-11-20');
     expect(shape(route.stops)).toEqual([
       ['Helsinki HEL', ['departure:Flight to Rovaniemi@10:30']],
       ['Rovaniemi RVN', ['arrival:Flight to Rovaniemi@11:45']],
-      ['Arctic Snow Hotel', ['check-in:Arctic Snow Hotel@15:00']],
+      ['Arctic Snow Hotel', ['check-in:Arctic Snow Hotel@15:00', 'sleep:Arctic Snow Hotel']],
     ]);
   });
 
-  it('check-out day: the timed check-out is in order, and no night follows', () => {
+  it('check-out day: waking there and the timed check-out are one stop, and no night follows', () => {
     const route = dayRoute([hotel, husky], '2026-11-23');
-    expect(shape(route.stops)).toEqual([['Arctic Snow Hotel', ['check-out:Arctic Snow Hotel@11:00']]]);
+    expect(shape(route.stops)).toEqual([['Arctic Snow Hotel', ['wake:Arctic Snow Hotel', 'check-out:Arctic Snow Hotel@11:00']]]);
+  });
+
+  it('wakes at the hotel before a 09:00 visit and an 11:00 check-out: the day does not start at the visit (review P3)', () => {
+    const cafe = item({ title: 'Breakfast', kind: 'food', locationName: 'Cafe Kauppayhtiö', start: at('2026-11-23T09:00') });
+    const route = dayRoute([hotel, cafe], '2026-11-23');
+    expect(shape(route.stops)).toEqual([
+      ['Arctic Snow Hotel', ['wake:Arctic Snow Hotel']],
+      ['Cafe Kauppayhtiö', ['visit:Breakfast@09:00']],
+      ['Arctic Snow Hotel', ['check-out:Arctic Snow Hotel@11:00']],
+    ]);
+    // Times are only what was written: the wake-up base has none, and nothing between is invented.
+    expect(route.stops[0].plans[0].time).toBeNull();
+  });
+
+  it('ends the night at the hotel after a dinner that follows the check-in (the evening mirror of P3)', () => {
+    const dinner = item({ title: 'Dinner', kind: 'food', locationName: 'Nili', start: at('2026-11-20T19:00') });
+    const route = dayRoute([hotel, dinner], '2026-11-20');
+    expect(shape(route.stops)).toEqual([
+      ['Arctic Snow Hotel', ['check-in:Arctic Snow Hotel@15:00']],
+      ['Nili', ['visit:Dinner@19:00']],
+      ['Arctic Snow Hotel', ['sleep:Arctic Snow Hotel']],
+    ]);
   });
 
   it('date-only stays are bases at the edges, check-out and check-in on the same day', () => {
@@ -116,6 +138,43 @@ describe('dayRoute', () => {
     });
     expect(shape(dayRoute([train], '2026-11-19').stops)).toEqual([['Helsinki', ['departure:Santa Claus Express@19:00']]]);
     expect(shape(dayRoute([train], '2026-11-20').stops)).toEqual([['Rovaniemi', ['arrival:Santa Claus Express@08:00']]]);
+  });
+
+  describe('journeys are placed by their ends only (review P1)', () => {
+    const withCoordinates = item({
+      title: 'Flight with a saved pin',
+      kind: 'transport',
+      subkind: 'flight',
+      details: { from: 'Sofia SOF', to: 'Helsinki HEL' },
+      locationName: 'Somewhere',
+      latitude: 60.3172,
+      longitude: 24.9633,
+      start: at('2026-11-20T06:10'),
+      end: at('2026-11-20T09:05'),
+    });
+
+    it('a flight within the day: both ends are stops, neither takes the saved coordinates', () => {
+      const stops = dayRoute([withCoordinates], '2026-11-20').stops;
+      expect(stops.map((stop) => [stop.label, stop.coordinates, stop.place.latitude ?? null])).toEqual([
+        ['Sofia SOF', null, null],
+        ['Helsinki HEL', null, null],
+      ]);
+      // Nothing to draw: an unplaced end, never a pin at the wrong end.
+      expect(schematicLayout(stops, 300, 200, 20).points).toEqual([]);
+    });
+
+    it('an overnight train with coordinates: unplaced on both days', () => {
+      const train = { ...withCoordinates, id: 'night-train', details: { from: 'Helsinki', to: 'Rovaniemi' }, end: at('2026-11-21T08:00') };
+      expect(dayRoute([train], '2026-11-20').stops.map((stop) => [stop.label, stop.coordinates])).toEqual([['Helsinki', null]]);
+      expect(dayRoute([train], '2026-11-21').stops.map((stop) => [stop.label, stop.coordinates])).toEqual([['Rovaniemi', null]]);
+    });
+
+    it('the Google Maps link names the ends, not the saved coordinates', () => {
+      const [link] = dayRouteLinks(dayRoute([withCoordinates], '2026-11-20').stops);
+      const url = new URL(link.url!);
+      expect(url.searchParams.get('origin')).toBe('Sofia SOF');
+      expect(url.searchParams.get('destination')).toBe('Helsinki HEL');
+    });
   });
 
   it('a day in one hotel only: wake and sleep there, two stops at one place', () => {
@@ -171,7 +230,25 @@ describe('schematicLayout', () => {
       expect(p.y).toBeGreaterThanOrEqual(20 - 1e-9);
       expect(p.y).toBeLessThanOrEqual(180 + 1e-9);
     }
-    expect(layout.path).toEqual([0, 1, 2]);
+    // Stop 2 has no coordinates, so 1 and 3 are not joined; 3 and 4 are consecutive and are.
+    expect(layout.segments).toEqual([[1, 2]]);
+  });
+
+  it('never joins two drawn stops across one without coordinates (review P2)', () => {
+    const layout = schematicLayout([stop('Hotel', 66.6, 26), stop('Restaurant', null, null), stop('Museum', 66.5, 25.7)], 300, 300, 20);
+    expect(layout.points.map((p) => p.numbers)).toEqual([[1], [3]]);
+    expect(layout.segments).toEqual([]);
+  });
+
+  it('breaks the line at the gap and keeps the runs either side', () => {
+    const layout = schematicLayout(
+      [stop('A', 60, 25), stop('B', 60.1, 25), stop('Unknown', null, null), stop('C', 60.2, 25), stop('D', 60.3, 25)],
+      300,
+      300,
+      20,
+    );
+    expect(layout.points.map((p) => p.numbers)).toEqual([[1], [2], [4], [5]]);
+    expect(layout.segments).toEqual([[0, 1], [2, 3]]);
   });
 
   it('keeps proportions: a degree of longitude is shorter in the north', () => {
@@ -185,12 +262,12 @@ describe('schematicLayout', () => {
   it('a place visited again is one point with both numbers; the path returns to it', () => {
     const layout = schematicLayout([stop('Hotel', 66.6, 26), stop('Safari', 66.5, 25.9), stop('Hotel', 66.6, 26)], 300, 300, 20);
     expect(layout.points.map((p) => p.numbers)).toEqual([[1, 3], [2]]);
-    expect(layout.path).toEqual([0, 1, 0]);
+    expect(layout.segments).toEqual([[0, 1, 0]]);
   });
 
   it('one place sits in the middle; none gives nothing', () => {
     expect(schematicLayout([stop('A', 10, 10)], 300, 200, 20).points).toEqual([{ numbers: [1], x: 150, y: 100 }]);
-    expect(schematicLayout([stop('A', null, null)], 300, 200, 20)).toEqual({ points: [], path: [] });
+    expect(schematicLayout([stop('A', null, null)], 300, 200, 20)).toEqual({ points: [], segments: [] });
   });
 
   it('unwraps a span across the 180th meridian', () => {

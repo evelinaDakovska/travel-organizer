@@ -208,3 +208,63 @@ details are in technical reference §25, and the reasons in D47.
 - **Not done:**
   - no release APK, on no phone;
   - the deep link to the day map was not exercised in the dev client.
+
+## 11. Review corrections (2026-10-23, 0.18.1)
+
+An independent review of `1226b05` approved the direction: the offline schematic and the Google Maps
+hand-off. It asked for three route-integrity cases. No migration and no format change.
+
+**P1 — a journey's coordinates belong to neither end.**
+- *What was found:*
+  - The item form gives every kind one generic *Where* (place, address, coordinates).
+  - The activities format gives a transport one `location`, plus the names `transport.from` and
+    `transport.to`.
+  - Nothing ties those coordinates to the departure or to the arrival.
+  - `resolveItemEndpoint` nevertheless gave the departure (`details.from`) the item's coordinates,
+    though never the arrival. No test asserted it.
+- *Change:* neither end takes the item's coordinates. An end is located by its name, with the item's
+  address unchanged.
+  - The A → B directions keep working: the link names the end instead of the pin.
+  - On the day map the ends are unplaced, never pinned at the wrong end.
+- The form's *Coordinates* hint for a journey says they are kept but not put on the map.
+- *Tests:*
+  - a flight within the day;
+  - an overnight train on both days;
+  - a flight with saved coordinates: no end placed, nothing drawn, and the Google link naming the
+    ends;
+  - every role and side of `resolveItemEndpoint`.
+
+**P2 — no line across an unknown place.** `schematicLayout` returns `segments`, runs of consecutive
+drawn stops, instead of one path.
+- A stop without coordinates ends a run, so its neighbours are never joined. Hotel (pin), Restaurant
+  (none), Museum (pin) gives pins 1 and 3 and no line.
+- Revisited places and consecutive known stops are unchanged.
+- The caption and the accessibility summary say *the line breaks where a stop between has no
+  coordinates*.
+
+**P3 — the day starts where you woke up.**
+- *Before:* a timed check-out suppressed the wake-up base, so wake at the hotel, a 09:00 visit and an
+  11:00 check-out started the day at the visit.
+- *Now:* last night's stay always opens the day and tonight's always closes it. A timed check-out or
+  check-in keeps its own place in the order.
+  - When the base and its timed entry are adjacent, the existing *equal places in a row* merge makes
+    them one stop (*Wake up here · 11:00 Check out*), so there is no duplicate.
+  - When something happens in between, the hotel appears twice, which is true: you went back to
+    check out.
+  - The evening is the mirror: a 15:00 check-in, then a 19:00 dinner, then *Night here* at the hotel.
+- No time is invented for a base.
+- A base checked out of or into with only a date is still named by that (*Check out*, *Check in*).
+
+**Verification.**
+- **Node:** 1714 tests in 87 suites, typecheck clean.
+- **Emulator:** a synthetic 09:00 breakfast with no coordinates on the hotel's check-out day:
+  - wake at the hotel, then the breakfast, then the check-out;
+  - the hotel pin *1 · 3* with no line;
+  - the gap caption.
+  - Log: `%USERPROFILE%\Pictures\TravelOrganizer-0.18.1-P5-review-e2e\E2E-LOG.md`.
+
+**Remaining limitations.**
+- A journey's *address* still travels with its departure name in the A → B query, as before
+  0.18.0. It is text Google Maps searches, never a pin, but it may be the address of either end.
+- There is still no way to give each end of a journey its own coordinates. That would need a model
+  change: per-end fields in `details`, or Phase 7's place import.

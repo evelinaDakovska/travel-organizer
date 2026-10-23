@@ -336,6 +336,31 @@ describe('resolveItemEndpoint', () => {
     expect(leavingDeparture?.title).toBe('Helsinki Central Station');
   });
 
+  it('never gives a journey end the item\'s coordinates: they belong to neither end (Phase 5 review P1)', () => {
+    const flight: TripItem = {
+      ...dummyItem,
+      id: 'flight-coords',
+      kind: 'transport',
+      subkind: 'flight',
+      title: 'Sofia to Munich',
+      details: { from: 'Sofia Airport', to: 'Munich Airport' },
+      latitude: 48.3538,
+      longitude: 11.7861,
+    };
+    for (const role of ['full', 'start', 'end'] as const) {
+      for (const side of ['origin', 'destination'] as const) {
+        const endpoint = resolveItemEndpoint(flight, side, role);
+        expect([role, side, endpoint?.latitude, endpoint?.longitude]).toEqual([role, side, null, null]);
+      }
+    }
+    // A-to-B directions still work, by name.
+    const url = buildGoogleMapsUrl({
+      origin: { type: 'current_location' },
+      destination: resolveItemEndpoint(flight, 'destination', 'full')!,
+    });
+    expect(new URL(url!).searchParams.get('destination')).toContain('Sofia Airport');
+  });
+
   it('resolves car rental pickup and return based on timeline entry role (D1)', () => {
     const carRental: TripItem = {
       ...dummyItem,

@@ -569,7 +569,11 @@ export function ItemForm({
           <Field
             label="Coordinates"
             error={errors.latitude?.message ?? errors.longitude?.message}
-            hint="Optional. In Google Maps, press and hold the place, then copy the numbers it shows. They put this plan on the day map.">
+            hint={
+              kind === 'transport'
+                ? 'Optional. Kept with the journey, but not put on the day map: they could be either end. The map uses From and To by name.'
+                : 'Optional. In Google Maps, press and hold the place, then copy the numbers it shows. They put this plan on the day map.'
+            }>
             <CoordinatesInput
               latitude={field.value}
               longitude={getValues('longitude')}
