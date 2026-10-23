@@ -7,7 +7,7 @@ import { MoneyRuleError } from '../domain/bookingPayments';
 import { tripItemInputSchema } from '../domain/tripItem';
 import { listHolds, moneyHolds, removeSplit, saveSplit, setTripCover } from './costShares';
 import { createExpense, deleteExpense, updateExpense } from './expenses';
-import { createBookingPayment, deleteBookingPayment, updateBookingPayment } from './payments';
+import { createBookingPayment, deleteBookingPayment, unlinkExpense, updateBookingPayment } from './payments';
 import {
   balanceInput,
   createSettlement,
@@ -494,6 +494,151 @@ describe('unsplit costs kept outside, through the database (§14.2, review P1)',
       expect(confirmations(raw)).toEqual([]);
       await removeSplit(db, { expenseId: t.taxi });
       expect((await eurOf(db)).toReview.map((c) => c.id)).toEqual([t.taxi]);
+    });
+  });
+
+  describe('a financial edit ends it for good, even when undone (review follow-up, §14.4)', () => {
+    type Hotel = Awaited<ReturnType<typeof withHotel>>;
+    const hotelAt = (priceAmount: number, extra: Record<string, unknown> = {}) =>
+      plan('Hotel', { priceAmount, priceCurrency: 'EUR', ...extra });
+    const linkedRow = (raw: Database.Database, hotel: string) =>
+      (raw.prepare(`SELECT id FROM expenses WHERE trip_item_id = ?`).get(hotel) as { id: string }).id;
+
+    // [what, the change, the change undone]: after both, the cost reads exactly as when it was kept.
+    const bookingCases: [string, (db: Db, t: Hotel) => Promise<unknown>, (db: Db, t: Hotel, raw: Database.Database) => Promise<unknown>][] = [
+      ['1: the price 200 → 210 → 200', (db, t) => updateTripItem(db, t.hotel, hotelAt(21000)), (db, t) => updateTripItem(db, t.hotel, hotelAt(20000))],
+      ['the status cancelled, then restored', (db, t) => setTripItemStatus(db, t.hotel, 'cancelled'), (db, t) => setTripItemStatus(db, t.hotel, 'confirmed')],
+      ['*Paid* switched on, then off', (db, t) => updateTripItem(db, t.hotel, hotelAt(20000, { isPaid: true })), (db, t) => updateTripItem(db, t.hotel, hotelAt(20000))],
+      ['3: a payment’s payer Ana → Ben → Ana', (db, t) => updateBookingPayment(db, t.paid, pay(20000, t.ben)), (db, t) => updateBookingPayment(db, t.paid, pay(20000, t.ana))],
+      ['a payment’s amount changed and changed back', (db, t) => updateBookingPayment(db, t.paid, pay(19000, t.ana)), (db, t) => updateBookingPayment(db, t.paid, pay(20000, t.ana))],
+      ['4: a payment deleted, and recorded again identically', (db, t) => deleteBookingPayment(db, t.paid), (db, t) => createBookingPayment(db, t.hotel, pay(20000, t.ana))],
+      ['a linked expense added, then deleted', (db, t) => createExpense(db, 'lapland', { ...spend(100, t.ben), tripItemId: t.hotel }), (db, t, raw) => deleteExpense(db, linkedRow(raw, t.hotel))],
+    ];
+    for (const [what, change, undo] of bookingCases) {
+      it(`booking — ${what}: back to review, no confirmation stored`, async () => {
+        const { raw, db } = setup();
+        const t = await withHotel(db);
+        await keep(db, 'booking', t.hotel);
+        await change(db, t);
+        expect(confirmations(raw)).toEqual([]);
+        await undo(db, t, raw);
+        expect(confirmations(raw)).toEqual([]);
+        const entry = await eurOf(db);
+        expect(entry.state).toBe('review');
+        expect(entry.toReview.map((c) => c.id)).toEqual([t.hotel]);
+        expect(entry.transfers).toEqual([]);
+        // It reads as it did when kept, so a fresh, deliberate *Keep outside* is still possible.
+        await keep(db, 'booking', t.hotel);
+        expect((await eurOf(db)).keptOutside.map((c) => c.id)).toEqual([t.hotel]);
+      });
+    }
+
+    // 5: the hotel's own payment stays; a linked expense from Ben is part of the cost when it is kept.
+    async function withLinked(db: Db) {
+      const t = await withHotel(db);
+      await updateTripItem(db, t.hotel, hotelAt(20500));
+      const linked = await createExpense(db, 'lapland', { ...spend(500, t.ben), tripItemId: t.hotel });
+      await keep(db, 'booking', t.hotel);
+      return { ...t, linked };
+    }
+    const linkedCases: [string, (db: Db, t: Awaited<ReturnType<typeof withLinked>>) => Promise<unknown>, (db: Db, t: Awaited<ReturnType<typeof withLinked>>) => Promise<unknown>][] = [
+      ['its amount', (db, t) => updateExpense(db, t.linked, { ...spend(600, t.ben), tripItemId: t.hotel }), (db, t) => updateExpense(db, t.linked, { ...spend(500, t.ben), tripItemId: t.hotel })],
+      ['its payer', (db, t) => updateExpense(db, t.linked, { ...spend(500, t.ana), tripItemId: t.hotel }), (db, t) => updateExpense(db, t.linked, { ...spend(500, t.ben), tripItemId: t.hotel })],
+      ['unlinked, then linked again', (db, t) => unlinkExpense(db, t.linked), (db, t) => updateExpense(db, t.linked, { ...spend(500, t.ben), tripItemId: t.hotel })],
+    ];
+    for (const [what, change, undo] of linkedCases) {
+      it(`5: a linked expense — ${what} changed and changed back: back to review`, async () => {
+        const { raw, db } = setup();
+        const t = await withLinked(db);
+        expect(confirmations(raw)).toEqual([{ trip_item_id: t.hotel, expense_id: null }]);
+        await change(db, t);
+        await undo(db, t);
+        expect(confirmations(raw)).toEqual([]);
+        expect((await eurOf(db)).toReview.map((c) => c.id)).toEqual([t.hotel]);
+      });
+    }
+
+    it('a standalone expense — amount, payer or currency changed and changed back: back to review each time', async () => {
+      const { raw, db } = setup();
+      const t = await settledTrip(db);
+      await removeSplit(db, { expenseId: t.taxi });
+      for (const changed of [spend(3100, t.ana), spend(3000, t.ben), spend(3000, null), { ...spend(3000, t.ana), currency: 'NOK' }]) {
+        await keep(db, 'expense', t.taxi);
+        await updateExpense(db, t.taxi, changed);
+        await updateExpense(db, t.taxi, spend(3000, t.ana));
+        expect(confirmations(raw)).toEqual([]);
+        expect((await eurOf(db)).toReview.map((c) => c.id)).toEqual([t.taxi]);
+      }
+    });
+
+    it('2: renamed, notes, dates, category changed: the confirmation row is not touched', async () => {
+      const { raw, db } = setup();
+      const t = await withHotel(db);
+      await removeSplit(db, { expenseId: t.taxi });
+      await keep(db, 'booking', t.hotel);
+      await keep(db, 'expense', t.taxi);
+      const kept = raw.prepare(`SELECT * FROM unsplit_confirmations ORDER BY rowid`).all();
+      await updateTripItem(db, t.hotel, hotelAt(20000, { title: 'Hotel Aurora', notes: 'Late check-in', start: { local: '2026-11-21' } }));
+      await updateExpense(db, t.taxi, { ...spend(3000, t.ana), label: 'Airport taxi', notes: 'card', spentOn: '2026-11-23', category: 'food' });
+      expect(raw.prepare(`SELECT * FROM unsplit_confirmations ORDER BY rowid`).all()).toEqual(kept);
+      expect((await eurOf(db)).keptOutside.map((c) => c.id).sort()).toEqual([t.hotel, t.taxi].sort());
+    });
+
+    it('6: a split added, changed and removed: the confirmation is gone at the first, and stays gone', async () => {
+      const { raw, db } = setup();
+      const t = await withHotel(db);
+      await keep(db, 'booking', t.hotel);
+      await saveSplit(db, { itemId: t.hotel }, equal(t.ana, t.ben));
+      expect(confirmations(raw)).toEqual([]);
+      await saveSplit(db, { itemId: t.hotel }, equal(t.ana, t.ben, t.mia));
+      await removeSplit(db, { itemId: t.hotel });
+      expect(confirmations(raw)).toEqual([]);
+      expect((await eurOf(db)).toReview.map((c) => c.id)).toEqual([t.hotel]);
+    });
+
+    it('7: a screen that saw the cost before a change is refused, nothing written', async () => {
+      const { raw, db } = setup();
+      const t = await withHotel(db);
+      const seenThen = await seen(db, t.hotel);
+      await updateTripItem(db, t.hotel, hotelAt(21000));
+      const before = snapshot(raw);
+      await expect(keepOutside(db, 'lapland', { kind: 'booking', id: t.hotel }, seenThen)).rejects.toThrow(
+        'This cost changed while you were looking at it',
+      );
+      expect(snapshot(raw)).toEqual(before);
+    });
+
+    it('9: a refused financial edit leaves the confirmation exactly as it was', async () => {
+      const { raw, db } = setup();
+      const t = await withHotel(db);
+      await removeSplit(db, { expenseId: t.taxi });
+      await keep(db, 'booking', t.hotel);
+      await keep(db, 'expense', t.taxi);
+      const before = snapshot(raw);
+      const refused: (() => Promise<unknown>)[] = [
+        () => updateBookingPayment(db, t.paid, pay(0, t.ana)),
+        () => updateBookingPayment(db, t.paid, pay(20000, 'nobody')),
+        () => createBookingPayment(db, t.hotel, pay(150.5, t.ana)),
+        () => updateTripItem(db, t.hotel, hotelAt(20000, { priceCurrency: 'NOK' })),
+        () => updateExpense(db, t.taxi, spend(10.5, t.ana)),
+        () => updateExpense(db, t.taxi, { ...spend(3000, t.ana), currency: 'eur' }),
+        () => createExpense(db, 'lapland', { ...spend(100, 'nobody'), tripItemId: t.hotel }),
+      ];
+      for (const attempt of refused) {
+        await expect(attempt()).rejects.toThrow();
+        expect(snapshot(raw)).toEqual(before);
+      }
+    });
+
+    it('a write to another cost, or to another trip, leaves the confirmation alone', async () => {
+      const { raw, db } = setup();
+      const t = await withHotel(db);
+      await keep(db, 'booking', t.hotel);
+      const kept = raw.prepare(`SELECT * FROM unsplit_confirmations`).all();
+      await updateExpense(db, t.museum, { ...spend(2200, t.ana), label: 'Museum' });
+      const elsewhere = await createTripTraveller(db, 'milan', 'Eli', 'adult');
+      await createExpense(db, 'milan', spend(900, elsewhere));
+      expect(raw.prepare(`SELECT * FROM unsplit_confirmations`).all()).toEqual(kept);
     });
   });
 

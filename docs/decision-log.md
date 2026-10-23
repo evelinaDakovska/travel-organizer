@@ -991,3 +991,12 @@ showing an older version of the cost cannot confirm the newer one.
 **Its own table, not a field.** A confirmation is not a split, a share or a payment, and must never
 look like one; one row per cost, deleted with the cost, carried by backups and trip archives (format
 11), remapped with the cost on import.
+
+**Amended after the follow-up review (2026-10-23, plan §14.4): a financial edit ends it for good.**
+Matching the fingerprint alone let a cost changed and changed back find its old confirmation valid
+again; the owner's rule is that a financial edit needs a fresh one. Each write that can change a
+cost's money now calls one helper, `endChangedConfirmations`, inside its transaction, which deletes
+any confirmation its cost no longer matches — so a stored confirmation always matches. The
+fingerprint stays the single definition of *financial*. Rejected: SQL triggers per money table (a
+new migration, and the fingerprint restated in SQL — two definitions that could drift); deletes
+written out in each repository (the same rule copied nine times).

@@ -385,7 +385,20 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ## 11. Where the last session stopped (2026-10-19) — read this first
 
-### 11.000000000000000 Latest (2026-10-23) — review corrections built as 0.16.1; waiting for review
+### 11.0000000000000000 Latest (2026-10-23, later) — review follow-up; waiting for the owner
+
+- The independent review accepted P2 and the per-cost confirmation. It asked that a financial edit
+  end a confirmation for good, and that settled costs which are deleted or moved be analysed only.
+- **Built** (plan §14.4, D43 amended): `endChangedConfirmations` in
+  `src/repositories/confirmations.ts`, called last inside every money write's transaction. No
+  migration; schema 10, formats 11 and 0.16.1 / 24 are unchanged. 1595 Node tests, typecheck clean;
+  12 of the new tests fail with the helper disabled. Not run on an emulator (Node tests over the real
+  migrations only).
+- **Waiting for the owner:** plan §14.4 part 2, options A (warn at the change, recommended), B (hold
+  until reviewed, migration 011) and C (derived, not recommended). Nothing of it is built.
+- No release APK; `main` untouched; on no phone.
+
+### 11.000000000000000 (2026-10-23) — review corrections built as 0.16.1; waiting for review
 
 - An independent review of 3D-1 → 3E raised P2 (settlement input not validated in the repository)
   and P1 (a settlement for a cost whose split is removed can produce an unwanted suggestion). The

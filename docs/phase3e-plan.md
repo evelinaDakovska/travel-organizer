@@ -632,7 +632,7 @@ Built as §14.2 says. Details settled during the build, for review:
    the emulator).
 3. **The share text** gives a held currency one line without numbers, *EUR: not final — 1 unsplit
    cost to review*, like *so far*.
-4. **A stale confirmation stays stored** until it is replaced, reviewed again, or its cost is deleted.
+4. *(Superseded by §14.4: a financial edit now deletes the confirmation.)* **A stale confirmation stays stored** until it is replaced, reviewed again, or its cost is deleted.
    It confirms nothing while the cost differs. **If the cost is changed back to exactly what was
    confirmed** (a price edited and then restored, with no split in between), the confirmation applies
    again — the cost is again the one that was reviewed. Any split in between ends it for good
@@ -655,3 +655,108 @@ identical; the P1 scenario reproduced and held; Split it / Keep outside / Cancel
 saved and removed again → review; price edit → review; rename → still kept; 360 dp, font 2.0, dark.
 Log: `%USERPROFILE%\Pictures\TravelOrganizer-0.16.1-review-e2e\E2E-LOG.md`. **No release APK was
 built; on no phone.**
+
+### 14.4 Review follow-up (2026-10-23): a financial edit ends a confirmation for good; settled costs removed
+
+The independent review accepted §14.1–14.3 and asked for two things.
+
+**1. Fixed — a financial edit ends a confirmation for good (§14.3 item 4 superseded).** The owner's
+rule is that a financial edit needs a fresh confirmation, so a cost changed and changed back must not
+find its old one valid again.
+
+- **Mechanism: one repository helper, no migration.** `endChangedConfirmations(db, tripId)`
+  (`src/repositories/confirmations.ts`) deletes every confirmation on the trip whose cost no longer
+  reads as its fingerprint, or is gone. Each write that can change a cost's money calls it inside its
+  own transaction, after writing: `updateTripItem`, `setTripItemStatus`, `createBookingPayment`,
+  `updateBookingPayment`, `deleteBookingPayment`, `unlinkExpense`, `createExpense`, `updateExpense`,
+  `deleteExpense`. `deleteBookingPayment`, `unlinkExpense` and `deleteExpense` now run in a
+  transaction for it. The rule now holds as a fact: **a stored confirmation always matches its cost**.
+  An edit undone later finds nothing to revive.
+- **What counts as financial is still the fingerprint**, so the definition lives in one place:
+  amount, currency, status, *Paid*, cancelled or spent, each payment or linked expense with its payer
+  and amount, and the split. A title, notes, dates or a category leave the fingerprint, and the row,
+  untouched.
+- **Splits are unchanged:** migration 010's triggers still end a confirmation on any write to the
+  cost's split.
+- **A refused write rolls back** with the deletion (the helper runs last, inside the same
+  transaction).
+- **The check when reading stays** (`isKeptOutside` compares fingerprints), as a second line.
+- **`keepOutside` still refuses a stale screen.** If a cost is changed and changed back while a
+  screen shows the original, that screen's *Keep outside* is accepted: it shows exactly what is saved,
+  and it writes a new, deliberate confirmation. Nothing revives by itself.
+- **Why not SQL triggers.** Triggers would need migration 011 (the owner asked not to add one without
+  approval). They would also have to restate the fingerprint in SQL, including the parts of `details`
+  that decide *cancelled / refund expected*, so two definitions of "financial" could drift apart.
+  The helper reuses `costFingerprint` and costs no schema change.
+- **Not called, and why:** `createTripItem(s)` and `scheduleTripItem` (a new cost or a saved place has
+  no confirmation); `deleteTripItem` (the confirmation cascades; a booking with money records cannot
+  be deleted); traveller writes (a payer cannot leave a trip or be deleted); restore and trip import
+  (they write confirmations that match, after the costs).
+- **Formats unchanged:** schema 10, backup format 11, archive rowFormat 11, app 0.16.1 / 24 (0.16.1
+  has never left the emulator). A format-11 file made before this fix could carry a confirmation that
+  no longer matches. It confirms nothing, and the first financial write to that trip deletes it. No
+  such file exists outside the emulator.
+- **Tests** (`settlements.test.ts`, `tripImport.test.ts`) cover the reviewer's cases 1–9, for
+  bookings and for linked and standalone expenses, and the evidence they produce is the stored rows,
+  not just the balances:
+  - Price 200 → 210 → 200; cancelled → restored; *Paid* on → off; payment payer and amount changed
+    back; a payment deleted and recorded again identically; a linked expense added then deleted.
+  - Linked expense amount, payer, unlinked then relinked; standalone amount, payer, currency.
+  - A rename, notes, dates and category leave the row byte-identical.
+  - A split added, changed, removed.
+  - A stale screen is refused with nothing written.
+  - Backup restore and archive import, then an edit undone.
+  - Seven refused edits leave every table identical.
+  - Writes to another cost or trip leave the row alone.
+
+  With the helper disabled, 12 of them fail.
+
+**2. Analysed, not built — a settled cost deleted or moved to another currency (§14.3 item 5).**
+Waiting for the owner's decision.
+
+*Reproduction* (`src/domain/balances.test.ts`, *known limitations*): Ana paid a taxi (30) and a museum
+(20), both split equally with Ben, so Ben owes 25. Ben pays Ana 15, for the taxi. Final: *Ben pays Ana
+10*.
+
+- **The taxi deleted.** EUR now holds the museum and the settlement. Ana paid 20, bears 10 and
+  received 15 (net −5); Ben bears 10 and sent 15 (net +5). The suggestion becomes **Ana pays Ben
+  5.00**. That is right if the taxi never happened, and wrong if it was deleted by mistake (Ben still
+  owes 10). The app cannot tell which.
+- **The taxi moved to NOK** (same split). EUR reads as above, *Ana pays Ben EUR 5.00*. NOK gets a new
+  debt, *Ben pays Ana NOK 15.00*. If the 15 Ben sent was for the taxi, he is asked to pay for it again,
+  in the other currency, while getting EUR 5 back.
+
+Nothing is waiting or unsplit in either case, so neither the *so far* rule nor §14.2 holds anything
+back. The settlement is a historical fact and stays as it is.
+
+*Options, smallest first:*
+
+- **A — Warn at the moment of change (recommended; no persistence, no migration).** When a write
+  would take a complete cost out of a currency that has settlements, the confirmation before it says
+  so before anything is saved. That covers deleting a split expense or booking, and changing a split
+  cost's currency. For example: *"EUR has settlements (Ben → Ana EUR 15.00, 24 Nov). They stay as
+  they are. If one was for this cost, check who owes whom afterwards."* The facts are already
+  readable: the cost is complete, and `listTripSettlements` has the currency. Nothing is written
+  besides the change itself; Cancel changes nothing.
+  - Intentional deletion: one extra tap, then the balances read the new truth.
+  - Currency change: warned on save, for the currency the cost leaves.
+  - An unrelated new expense: no warning; adding money removes nothing.
+  - Limits: nothing remains afterwards, so a change confirmed and then forgotten is not flagged
+    later, and a restore or an import does not warn (they change no costs).
+- **B — Hold until reviewed (stricter; needs migration 011 and format 12).** When a complete cost
+  leaves a currency with settlements, record a marker for that trip and currency (what left, and
+  when). While a marker exists, that currency holds its suggestions like `review`: *"A cost was
+  removed after settlements — check them"*. One tap, *Settlements still stand*, deletes the marker.
+  Settlements are never touched.
+  - Intentional deletion: held until one acknowledgement.
+  - Currency change: marks the currency it left; the new currency reads the cost normally.
+  - An unrelated new expense: no marker.
+  - Cost: a new table, a format change, a write in the delete and currency-change paths (through a
+    helper like the one above), and a screen row. It is the same scale as P1.
+- **C — Considered, not recommended: derive a warning from the numbers.** Flag a currency when a
+  suggested transfer runs opposite to a recorded settlement. This needs no persistence, but:
+  - It is wrong in ordinary use: Ben settles, then pays a 40 dinner split with Ana, and *Ana pays
+    Ben* is correct but flagged.
+  - It misses partial cases: a deleted cost smaller than the debt that remains flips nothing.
+
+No option links a settlement to a cost, changes or reverses one, or deletes anything.

@@ -94,8 +94,8 @@ Not on any phone until after the owner's trip; it brings migration 010 (and 007â
 
 - **Costs to review:** in a currency with settlements, an unsplit cost pauses suggested transfers until
   it is split or kept outside on purpose (*Keep outside*, asked once; *Review again* undoes it). A
-  financial change to the cost brings it back to review; a rename does not. Settlements are never
-  changed.
+  financial change to the cost brings it back to review, even if it is changed back; a rename does
+  not. Settlements are never changed.
 - **Checks at the database boundary:** a settlement or an expense is validated again when saved,
   whatever the screen sent.
 - **Backup format 11**: 0.16.0 refuses 0.16.1's files; 0.16.1 reads all older ones.

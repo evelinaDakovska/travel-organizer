@@ -41,6 +41,7 @@ import {
   type TripItemRow,
   type TripItemStatus,
 } from '../domain/tripItem';
+import { endChangedConfirmations } from './confirmations';
 import { writeItemParticipants } from './travellers';
 
 /** Payments and linked expenses change an item's `recordedPaid` (3D-1), so they are watched too. */
@@ -188,6 +189,8 @@ export async function updateTripItem(
       ...tripItemBindings(input, defaultTz),
     });
     if (participants) await writeItemParticipants(db, id, participants);
+    const saved = await getTripItem(db, id);
+    if (saved) await endChangedConfirmations(db, saved.tripId);
   });
 }
 
@@ -221,6 +224,7 @@ export async function setTripItemStatus(
       $status: status,
       $now: new Date().toISOString(),
     });
+    if (saved) await endChangedConfirmations(db, saved.tripId);
   });
 }
 

@@ -17,6 +17,7 @@ import {
   type TripImportPlan,
 } from '../domain/tripArchive';
 import { applyImport, readTables } from './backup';
+import { updateBookingPayment } from './payments';
 import { balanceInput, keepOutside } from './settlements';
 import { applyTripImport, importHistory, verifyTripImport } from './tripImport';
 
@@ -377,6 +378,40 @@ describe('unsplit costs kept outside, through a trip archive (review P1)', () =>
       { trip_id: 'lap', trip_item_id: 'leg1' },
       { trip_id: plan.tripId, trip_item_id: titled('leg1') },
     ]);
+  });
+
+  it('8: restored from a backup or copied by an archive, it still ends for good on an edit undone', async () => {
+    const { db } = await setup();
+    const leg1 = (await balanceInput(db, 'lap')).costs.find((cost) => cost.id === 'leg1')!;
+    await keepOutside(db, 'lap', { kind: 'booking', id: 'leg1' }, costFingerprint(leg1));
+    const eur = async (target: typeof db, tripId: string) =>
+      tripBalances(await balanceInput(target, tripId)).find((entry) => entry.currency === 'EUR')!;
+    const undone = { amount: 5000, payerId: null, paidOn: null, note: undefined };
+
+    // A full backup, restored into an empty phone.
+    const restoredRaw = new Database(':memory:');
+    restoredRaw.pragma('foreign_keys = ON');
+    for (const m of MIGRATIONS) restoredRaw.exec(m.sql);
+    const restored = asyncDatabase(restoredRaw);
+    const document = buildExportDocument(await readTables(db), { exportedAt: now });
+    await applyImport(restored, planImport(document, [], 'merge', Object.keys(FILES)));
+    expect((await eur(restored, 'lap')).keptOutside.map((cost) => cost.id)).toEqual(['leg1']);
+    await updateBookingPayment(restored, 'bp2', { ...undone, amount: 6000 });
+    await updateBookingPayment(restored, 'bp2', undone);
+    expect(restoredRaw.prepare(`SELECT COUNT(*) AS n FROM unsplit_confirmations`).get()).toEqual({ n: 0 });
+    expect((await eur(restored, 'lap')).toReview.map((cost) => cost.id)).toEqual(['leg1', 'leg2']);
+
+    // A trip archive, imported under new ids: the copy's own payment, changed and changed back.
+    const { archive } = await archiveFrom(db);
+    const plan = await importInto(db, archive);
+    const copyOfLeg1 = plan.tables.tripItems.find((row) => row.title === leg1.title)!.id;
+    const copyOfBp2 = plan.tables.bookingPayments.find((row) => row.trip_item_id === copyOfLeg1 && row.payer_id === null)!.id;
+    expect((await eur(db, plan.tripId)).keptOutside.map((cost) => cost.id)).toEqual([copyOfLeg1]);
+    await updateBookingPayment(db, copyOfBp2, { ...undone, amount: 6000 });
+    await updateBookingPayment(db, copyOfBp2, undone);
+    expect((await eur(db, plan.tripId)).keptOutside).toEqual([]);
+    // The original trip's confirmation is another trip's: untouched.
+    expect((await eur(db, 'lap')).keptOutside.map((cost) => cost.id)).toEqual(['leg1']);
   });
 
   it('refuses an archive whose confirmation names no cost of the trip, or one cost twice', async () => {

@@ -1759,6 +1759,14 @@ cost, a cost not listed as not split (e.g. a cancelled booking waiting for its r
 `costFingerprint(now) !== seen`; then replaces the cost's confirmation. `reviewAgain(db, {kind, id})`
 deletes it. Neither writes anything else. `BALANCE_TABLES` includes `unsplit_confirmations`.
 
+**Ended by a financial edit (plan §14.4).** `repositories/confirmations.endChangedConfirmations(db,
+tripId)` deletes each of the trip's confirmations whose cost is gone or no longer matches its
+fingerprint. It reads the rows itself (the other repositories import it). Called last, inside the
+transaction, by `updateTripItem`, `setTripItemStatus`, `createBookingPayment`, `updateBookingPayment`,
+`deleteBookingPayment`, `unlinkExpense`, `createExpense`, `updateExpense`, `deleteExpense` (the last three
+of those that were bare statements now run in a transaction). Invariant: a stored confirmation
+matches its cost. A new write path that changes a cost's money must call it.
+
 **Formats.** Backup format 11 and archive rowFormat 11 carry `unsplitConfirmations` (≤ 10 read as
 none). Restore and archive import insert them after `cost_shares` (the triggers). Archive import maps
 the cost id and remaps the fingerprint; `checkTripArchive` refuses a confirmation with no single cost,

@@ -20,6 +20,7 @@ import {
   type ExpenseInput,
   type ExpenseRow,
 } from '../domain/spending';
+import { endChangedConfirmations } from './confirmations';
 import { bookingForRecord, checkPayer } from './payments';
 import { createResource } from './resources';
 
@@ -115,6 +116,7 @@ export async function createExpense(
     for (const receipt of receipts) {
       await createResource(db, { scope: 'expense', id }, receipt);
     }
+    await endChangedConfirmations(db, tripId);
   });
   return id;
 }
@@ -133,10 +135,15 @@ export async function updateExpense(
       await checkSplit(db, saved, input);
     }
     await db.runAsync(UPDATE_EXPENSE, { $id: id, ...bindings(input) });
+    if (saved) await endChangedConfirmations(db, saved.tripId);
   });
 }
 
 /** Receipt rows and its split cascade. Their files are reclaimed by the start-up sweep, not here. */
 export async function deleteExpense(db: SQLiteDatabase, id: string): Promise<void> {
-  await db.runAsync(DELETE_EXPENSE, { $id: id });
+  await db.withTransactionAsync(async () => {
+    const saved = await getExpense(db, id);
+    await db.runAsync(DELETE_EXPENSE, { $id: id });
+    if (saved) await endChangedConfirmations(db, saved.tripId);
+  });
 }

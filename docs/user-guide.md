@@ -718,7 +718,7 @@ changes.
   paid for it back when it was split. **Split it** opens the split (nothing changes until you save);
   **Keep outside** asks once and then leaves that cost out of who owes whom on purpose — your
   settlements stay exactly as they are. Kept costs are folded under **Kept outside on purpose**, with
-  **Review again**. If the cost's price, payments or split change later, it comes back to review;
-  renaming it or changing its notes does not.
+  **Review again**. If the cost's price, payments or split change later, it comes back to review —
+  for good, even if you change it back; renaming it or changing its notes does not.
 - **Share who owes whom** sends the suggested transfers as text; a currency that is not final is
   one line without numbers. Names and balances never go into the PDF.

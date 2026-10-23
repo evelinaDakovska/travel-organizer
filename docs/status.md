@@ -42,7 +42,9 @@ Verified against the repo on 2026-10-20, on Windows: **1153 tests passing across
   [`phase3e-plan.md`](phase3e-plan.md), D42), verified on emulators including the phone's 0.13.0 → 0.16.0
   path; on no phone. **Review corrections built as 0.16.1** (P2: repository validation; P1: per-cost
   confirmation of unsplit costs, the owner's decision — migration 010, backup format 11; plan §14, D43),
-  verified on emulators; on no phone, waiting for the owner's independent review.
+  verified on emulators; on no phone. **Review follow-up:** a financial edit ends a confirmation for
+  good, even when undone (no migration; plan §14.4); settled costs deleted or moved to another currency
+  analysed with options A–C, waiting for the owner's decision and the independent review.
 
 ---
 

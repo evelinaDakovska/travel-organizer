@@ -7,6 +7,7 @@ import {
   DELETE_BOOKING_PAYMENT,
   INSERT_BOOKING_PAYMENT,
   SELECT_BOOKING_PAYMENT,
+  SELECT_EXPENSE,
   SELECT_ITEM_PAYMENTS,
   SELECT_LAST_PAYER,
   SELECT_LINKED_EXPENSES,
@@ -25,6 +26,7 @@ import {
   type MoneyRecords,
 } from '../domain/bookingPayments';
 import { parseExpenseRow, type Expense, type ExpenseRow } from '../domain/spending';
+import { endChangedConfirmations } from './confirmations';
 import { getTripItem } from './tripItems';
 
 /**
@@ -144,6 +146,7 @@ export async function createBookingPayment(
       $currency: booking.priceCurrency!,
       ...bindings(valid),
     });
+    await endChangedConfirmations(db, booking.tripId);
   });
   return id;
 }
@@ -164,15 +167,24 @@ export async function updateBookingPayment(
     await bookingForRecord(db, payment.tripItemId, payment.tripId, payment.currency);
     await checkPayer(db, payment.tripId, valid.payerId, payment.payerId);
     await db.runAsync(UPDATE_BOOKING_PAYMENT, { $id: id, ...bindings(valid) });
+    await endChangedConfirmations(db, payment.tripId);
   });
 }
 
 /** The person's own record, removed only when they say so. Never turned into an expense. */
 export async function deleteBookingPayment(db: SQLiteDatabase, id: string): Promise<void> {
-  await db.runAsync(DELETE_BOOKING_PAYMENT, { $id: id });
+  await db.withTransactionAsync(async () => {
+    const payment = await getBookingPayment(db, id);
+    await db.runAsync(DELETE_BOOKING_PAYMENT, { $id: id });
+    if (payment) await endChangedConfirmations(db, payment.tripId);
+  });
 }
 
 /** Makes a linked expense standalone spending again (L-2): explicit, never automatic. */
 export async function unlinkExpense(db: SQLiteDatabase, expenseId: string): Promise<void> {
-  await db.runAsync(UNLINK_EXPENSE, { $id: expenseId, $now: new Date().toISOString() });
+  await db.withTransactionAsync(async () => {
+    const row = await db.getFirstAsync<ExpenseRow>(SELECT_EXPENSE, { $id: expenseId });
+    await db.runAsync(UNLINK_EXPENSE, { $id: expenseId, $now: new Date().toISOString() });
+    if (row) await endChangedConfirmations(db, row.trip_id);
+  });
 }
