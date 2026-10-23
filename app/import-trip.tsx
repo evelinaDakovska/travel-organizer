@@ -4,7 +4,7 @@ import { randomUUID } from 'expo-crypto';
 import { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { formatDateRange, listPhrase } from '../src/domain/format';
+import { formatTripDates, listPhrase } from '../src/domain/format';
 import { CLASSIFICATION_LABELS, travellerLabel, type Traveller } from '../src/domain/traveller';
 import {
   damagedLabels,
@@ -304,7 +304,7 @@ function Preview({
       <View style={styles.section}>
         <Text style={[type.section, { color: c.text }]}>{manifest.trip.name}</Text>
         <Text style={[type.caption, { color: c.textMuted }]}>
-          {[manifest.trip.destination, formatDateRange(manifest.trip.startDate, manifest.trip.endDate)]
+          {[manifest.trip.destination, formatTripDates(manifest.trip)]
             .filter(Boolean)
             .join(' · ')}
         </Text>

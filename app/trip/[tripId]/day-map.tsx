@@ -4,7 +4,7 @@ import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'r
 
 import { dayRoute, dayRouteLinks, routeDays, stopRoleText, type RouteMode, type RouteStop } from '../../../src/domain/dayRoute';
 import { tripDates } from '../../../src/domain/dayRail';
-import { formatDayHeading } from '../../../src/domain/format';
+import { DATES_NOT_SET, formatDayHeading } from '../../../src/domain/format';
 import { buildTimeline } from '../../../src/domain/timeline';
 import { deviceToday } from '../../../src/domain/trip';
 import { DaySchematic } from '../../../src/features/map/DaySchematic';
@@ -63,8 +63,21 @@ export default function DayMap() {
   const candidates = [...new Set([...tripDates(trip), ...buildTimeline(items).map((d) => d.day)])].sort();
   const days = routeDays(items, candidates);
   const today = deviceToday();
-  const fallback = days.find((d) => d >= today) ?? days[0] ?? trip.startDate;
+  const fallback: string | null = days.find((d) => d >= today) ?? days[0] ?? trip.startDate;
   const day = chosen ?? (wanted && days.includes(wanted) ? wanted : fallback);
+  if (day === null) {
+    // No trip dates and no dated plan (Phase 6): no day to draw, and none is invented.
+    return (
+      <Screen>
+        <ScreenHeader context={trip.name} title="Day map" subtitle={DATES_NOT_SET} />
+        <ScrollView contentContainerStyle={styles.content}>
+          <Notice title="No day to map yet" tone="info" icon="dayMap">
+            This trip has no dates and no dated plans. Once a plan has a date, its day can be mapped.
+          </Notice>
+        </ScrollView>
+      </Screen>
+    );
+  }
   const index = days.indexOf(day);
   const route = dayRoute(items, day);
   const placed = route.stops.filter((stop) => stop.coordinates !== null);

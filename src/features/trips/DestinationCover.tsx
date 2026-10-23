@@ -1,10 +1,11 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatDateRange, formatDuration } from '../../domain/format';
-import { tripDurationDays, tripPhase, tripPhaseLabel, type Trip } from '../../domain/trip';
+import { tripDurationDays, tripPhase, tripPhaseLabel, type Trip, type TripDates } from '../../domain/trip';
 import { opacity, radius, spacing, type, useColors } from '../../ui/tokens';
 
-type Props = { trip: Trip; route: string | null; now: Date; onPress: () => void };
+/** Only ever a dated trip: one without dates is never the cover (P6-4). */
+type Props = { trip: Trip & TripDates; route: string | null; now: Date; onPress: () => void };
 
 /**
  * The trip that is next or under way, as a cover (B6): where, when, how far off and the way there.

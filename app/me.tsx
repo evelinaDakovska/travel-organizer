@@ -3,7 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { formatDateRange, listPhrase } from '../src/domain/format';
+import { formatTripDates, listPhrase } from '../src/domain/format';
 import {
   CLASSIFICATION_LABELS,
   TRAVELLER_CLASSIFICATIONS,
@@ -229,9 +229,10 @@ function AddMeToTrips({ me }: { me: Traveller }) {
   const trips = useMemo(() => query.data ?? [], [query.data]);
   const today = deviceToday();
   const [picked, setPicked] = useState<Set<string> | null>(null);
-  // Until the person ticks anything: the trips not over yet.
+  // Until the person ticks anything: the trips not over yet, those without dates included (P6-12).
   const selected =
-    picked ?? new Set(trips.filter((trip) => trip.endDate >= today).map((trip) => trip.id));
+    picked ??
+    new Set(trips.filter((trip) => trip.endDate === null || trip.endDate >= today).map((trip) => trip.id));
 
   const toggle = (trip: TripWithoutTraveller) => {
     const next = new Set(selected);
@@ -281,7 +282,7 @@ function AddMeToTrips({ me }: { me: Traveller }) {
             <ListRow
               key={trip.id}
               title={trip.name}
-              subtitle={formatDateRange(trip.startDate, trip.endDate)}
+              subtitle={formatTripDates(trip)}
               // The box is the control: a row that opened something would show an arrow.
               leading={
                 <CheckBox

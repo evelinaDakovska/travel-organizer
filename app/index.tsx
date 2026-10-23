@@ -3,9 +3,9 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { FEATURE_FEEDBACK_ENABLED } from '../src/config/features';
-import { formatDateRange, formatDuration } from '../src/domain/format';
+import { DATES_NOT_SET, formatDateRange, formatDuration } from '../src/domain/format';
 import { singleActiveTrip } from '../src/domain/itinerary';
-import { groupTrips, outboundRoute, tripDurationDays, type Trip } from '../src/domain/trip';
+import { groupTrips, isDated, outboundRoute, tripDurationDays, type Trip } from '../src/domain/trip';
 import { DestinationCover } from '../src/features/trips/DestinationCover';
 import { queryView } from '../src/hooks/queryView';
 import { useLiveQuery } from '../src/hooks/useLiveQuery';
@@ -64,9 +64,11 @@ export default function Home() {
     <ListRow
       key={trip.id}
       title={trip.name}
-      subtitle={`${formatDateRange(trip.startDate, trip.endDate)} · ${formatDuration(
-        tripDurationDays(trip),
-      )}`}
+      subtitle={
+        isDated(trip)
+          ? `${formatDateRange(trip.startDate, trip.endDate)} · ${formatDuration(tripDurationDays(trip))}`
+          : DATES_NOT_SET
+      }
       detail={trip.destination}
       onPress={() => open(trip)}
     />
@@ -122,6 +124,14 @@ export default function Home() {
               <SectionLabel>Upcoming</SectionLabel>
               <DestinationCover trip={cover} route={route} now={now} onPress={() => open(cover)} />
               {laterTrips.length > 0 ? <Rows>{laterTrips.map(tripRow)}</Rows> : null}
+            </View>
+          ) : null}
+
+          {/* Neither upcoming nor past (P6-4): wishlist trips, the most recently changed first. */}
+          {grouped.undated.length > 0 ? (
+            <View style={styles.section}>
+              <SectionLabel>{DATES_NOT_SET}</SectionLabel>
+              <Rows>{grouped.undated.map(tripRow)}</Rows>
             </View>
           ) : null}
 

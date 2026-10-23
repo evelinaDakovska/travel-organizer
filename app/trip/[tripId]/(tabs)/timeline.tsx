@@ -18,7 +18,7 @@ import { undatedConfirmed } from '../../../../src/domain/itinerary';
 import { groupResourcesByItem } from '../../../../src/domain/resource';
 import { buildTimeline } from '../../../../src/domain/timeline';
 import { dayKey } from '../../../../src/domain/time';
-import { deviceToday } from '../../../../src/domain/trip';
+import { deviceToday, isDated } from '../../../../src/domain/trip';
 import {
   findStayForDay,
   findTimelineConnectors,
@@ -120,7 +120,7 @@ export default function TimelineScreen() {
   const selectedKey = resolveStopKey(stops, chosen, defaultStopKey(trip, today));
   const selected = stops.find((stop) => stopKey(stop) === selectedKey)!;
   const shownDays = daysForStop(selected, days, trip);
-  const duringTrip = trip.startDate <= today && today <= trip.endDate;
+  const duringTrip = isDated(trip) && trip.startDate <= today && today <= trip.endDate;
   const dayNumber = new Map(
     stops.flatMap((stop) => (stop.kind === 'day' ? [[stop.date, stop.number] as const] : [])),
   );
@@ -160,7 +160,7 @@ export default function TimelineScreen() {
         selected={selectedKey}
         onSelect={setChosen}
         pickRange={
-          tripDates(trip).length > RAIL_CALENDAR_AFTER_DAYS
+          isDated(trip) && tripDates(trip).length > RAIL_CALENDAR_AFTER_DAYS
             ? { first: trip.startDate, last: trip.endDate }
             : undefined
         }

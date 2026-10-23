@@ -131,8 +131,10 @@ function Chooser({ trip, tasks, notes, lists }: ChooserProps) {
         <Input value={name} onChangeText={setName} invalid={!!error} placeholder="City break" />
       </Field>
       <Text style={[type.caption, { color: c.textMuted }]}>
-        Bookings, prices, booking references, files and who is going are never part of a template.
-        Tasks keep their day counted from the trip’s first day; ticks are cleared.
+        Bookings, prices, booking references, files and who is going are never part of a template.{' '}
+        {trip.startDate === null
+          ? 'This trip has no dates yet, so its tasks are saved without one; ticks are cleared.'
+          : 'Tasks keep their day counted from the trip’s first day; ticks are cleared.'}
       </Text>
 
       {nothing ? (

@@ -96,6 +96,12 @@ export default function UseTemplateScreen() {
             <Text style={[type.body, { color: c.textMuted }]}>
               Adds {templateSummary(content).toLowerCase()} to {trip.name}.
             </Text>
+            {trip.startDate === null && content.tasks.some((task) => task.offsetDays !== null) ? (
+              // Nothing to count the days from (P6-9): the tasks come in undated, never on a guess.
+              <Text style={[type.body, { color: c.textMuted }]}>
+                This trip has no dates yet, so its tasks are added without one.
+              </Text>
+            ) : null}
             {content.tasks.length > 0 ? (
               <Rows>
                 {content.tasks.map((task, index) => {

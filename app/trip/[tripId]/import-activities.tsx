@@ -13,7 +13,7 @@ import {
   type ImportPreview,
 } from '../../../src/domain/activityImport';
 import { AI_INSTRUCTIONS } from '../../../src/domain/activityTemplate';
-import { countOf, formatDateRange } from '../../../src/domain/format';
+import { countOf, formatTripDates } from '../../../src/domain/format';
 import type { TripItem } from '../../../src/domain/tripItem';
 import { ActivityPreviewRow } from '../../../src/features/activities/ActivityPreviewRow';
 import { pickActivityFile, shareActivitySchema } from '../../../src/files/activityFiles';
@@ -166,7 +166,7 @@ export default function ImportActivitiesScreen() {
       <ScreenHeader
         title="Import activities"
         context={trip.name}
-        subtitle={formatDateRange(trip.startDate, trip.endDate)}
+        subtitle={formatTripDates(trip)}
       />
       <FormScroll footer={footer} contentStyle={styles.content}>
         {step.kind === 'start' ? (

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { formatDateRange } from '../../domain/format';
+import { formatTripDates } from '../../domain/format';
 import { tripContextLine, type Trip } from '../../domain/trip';
 import { ScreenHeader } from '../../ui/components/ScreenHeader';
 
@@ -20,7 +20,7 @@ export function TripTabHeader({ title, trip, action }: Props) {
     <ScreenHeader
       context={trip ? tripContextLine(trip) : undefined}
       title={title}
-      subtitle={trip ? formatDateRange(trip.startDate, trip.endDate) : undefined}
+      subtitle={trip ? formatTripDates(trip) : undefined}
       action={action}
     />
   );

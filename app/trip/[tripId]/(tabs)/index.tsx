@@ -5,7 +5,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { getTripMoreActions } from '../../../../src/config/features';
 import { paymentStatuses, type PaymentStatus } from '../../../../src/domain/bookingCosts';
-import { formatDateRange, formatMoney, formatShortDate } from '../../../../src/domain/format';
+import { formatMoney, formatShortDate, formatTripDates } from '../../../../src/domain/format';
 import {
   doneTasks,
   entryRoleLabel,
@@ -227,9 +227,9 @@ export default function OverviewScreen() {
         subtitle={
           during
             ? `${trip.name} · ${tripPhaseLabel(phase)}`
-            : isPast
-              ? `${formatDateRange(trip.startDate, trip.endDate)} · Ended`
-              : `${formatDateRange(trip.startDate, trip.endDate)} · ${tripPhaseLabel(phase)}`
+            : phase.phase === 'undated'
+              ? tripPhaseLabel(phase)
+              : `${formatTripDates(trip)} · ${tripPhaseLabel(phase)}`
         }
         action={
           <View style={styles.headerActions}>
@@ -267,7 +267,7 @@ export default function OverviewScreen() {
               eyebrow="Trip ended"
               title={trip.name}
               lines={[
-                formatDateRange(trip.startDate, trip.endDate),
+                formatTripDates(trip),
                 `${summary.placesCount} confirmed ${summary.placesCount === 1 ? 'item' : 'items'}`,
                 spendingText ? `Total spent: ${spendingText}` : 'No recorded expenses',
               ]}
