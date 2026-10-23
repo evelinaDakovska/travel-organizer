@@ -760,3 +760,148 @@ back. The settlement is a historical fact and stays as it is.
   - It misses partial cases: a deleted cost smaller than the debt that remains flips nothing.
 
 No option links a settlement to a cost, changes or reverses one, or deletes anything.
+
+## 15. Settlement review holds (owner's decision, 2026-10-23: option B of §14.4) — design
+
+A targeted correction to 3E, not a new phase. The owner's brief: when a shared cost leaves a
+currency that already has settlements, warn before saving. If the person continues, persist a review
+hold for that trip and currency. The hold pauses suggested transfers there until someone says the
+settlements still stand. Settlements are never changed, reversed, deleted or linked to a cost.
+
+### 15.1 The trigger rule
+
+Checked by every repository write that can change a cost's money. These are the same nine as
+`endChangedConfirmations` (§14.4) plus `deleteTripItem`. The check runs inside the write's
+transaction, comparing the trip's balances read just before the write with those read just after it.
+
+> For each currency **C that had at least one settlement before the write**: every cost that, before
+> the write, was in C's shared balances, and after the write is not in C at all, records one review
+> event for C.
+>
+> - **In C's shared balances** means complete, waiting, or an unsplit cost to review.
+> - **Not in C at all** means neither complete, waiting nor not split.
+
+- **Waiting costs count too, not only complete ones.** §12.1 allows a settlement while a cost is
+  still incomplete. Also, the existing refusals make most removals pass through *waiting*:
+  - A booking with payments cannot be deleted or change currency, so a split booking that can is one
+    with nothing recorded, which is *waiting* (to pay).
+  - A cost made incomplete first and deleted afterwards would otherwise escape.
+- **Unsplit costs to review count too.** Removing a split puts the cost there (§14.2). Deleting it
+  afterwards would otherwise escape in two steps, which is exactly the original limitation.
+- **What records nothing:**
+  - A cost kept outside on purpose; the person already said it is not part of the balances.
+  - Any cost in a currency without settlements.
+  - A cost that only becomes waiting or unsplit. It is still in C, and the existing rules already
+    hold C or ask for review.
+  - An amount, payer or split change that leaves the cost in C. The balances read it as the new truth,
+    as before; this is reported as an adjacent case, not held.
+  - A new expense or booking, which only enters a currency.
+  - An expense that becomes linked to a booking. It is then a payment on that booking, in the same
+    money. A split expense cannot be linked anyway.
+  - Restore and trip import, which change no cost.
+- **Reason, by what happened to the cost:**
+  - `deleted`: the booking or expense row is gone.
+  - `moved`: it is now a cost in another currency; the destination is stored as `to_currency`.
+  - `left`: it still exists in C but no longer counts. Examples are a split booking with nothing paid
+    that is cancelled (not spent, nothing recorded), a refunded cancellation whose last payment or
+    linked expense is removed, or a booking turned back into a saved place where that is allowed.
+- **Only the currency the cost left** is held. The destination of a move gets an event only if a cost
+  independently leaves it.
+- **Refusal rules are unchanged.** Nothing is loosened to reach a trigger.
+
+### 15.2 Warn first: the write refuses until told to continue
+
+Each of these writes takes an optional `{ acceptSettlementReview: true }`.
+
+1. **Without it**, a write that would record an event throws `SettlementReviewNeeded`, a
+   `MoneyRuleError` naming the currencies. The transaction rolls back, so nothing is saved.
+2. **The screen catches it** and shows *"EUR already has recorded settlements. Removing or moving this
+   shared cost may change who owes whom. Existing settlements will stay unchanged."* with **Cancel**
+   and **Continue**.
+3. **Cancel** leaves the first attempt rolled back.
+4. **Continue** repeats the write with the option. It is re-checked, so a write that no longer leaves
+   the currency simply saves.
+
+The rule lives in the repository and cannot be skipped by a screen that forgets to warn: such a
+screen shows the refusal and saves nothing. No second copy of the "would this leave?" logic exists
+for the screens.
+
+### 15.3 Persistence: migration 011, an event per change
+
+```sql
+CREATE TABLE settlement_reviews (
+  id              TEXT PRIMARY KEY,
+  trip_id         TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+  currency        TEXT NOT NULL,                 -- the currency held
+  reason          TEXT NOT NULL CHECK (reason IN ('deleted', 'moved', 'left')),
+  cost_kind       TEXT NOT NULL CHECK (cost_kind IN ('booking', 'expense')),
+  cost_title      TEXT NOT NULL,                 -- as it was, for the explanation
+  cost_amount     INTEGER NOT NULL,              -- minor units, in `currency`
+  to_currency     TEXT,                          -- only for 'moved'
+  created_at      TEXT NOT NULL,
+  acknowledged_at TEXT,                          -- NULL = open
+  CHECK ((reason = 'moved') = (to_currency IS NOT NULL))
+);
+CREATE INDEX idx_settlement_reviews_trip ON settlement_reviews(trip_id, currency);
+```
+
+- **No reference to the cost.** A deleted cost must not have to exist. Its title and amount are kept
+  as text and a number, for the explanation only. A review is never linked to a settlement either.
+- **A currency is held while it has an open event and at least one settlement.** If every settlement
+  in it is deleted, nothing is left to review. A settlement recorded there later brings the open
+  events back, conservatively.
+- **The invariants:**
+  - A new triggering change inserts a new open row. An earlier acknowledgement never covers it,
+    because acknowledged rows stay acknowledged and new rows start open.
+  - Several changes before a review are several rows; acknowledging covers exactly the ones the
+    screen showed.
+  - **A stale screen cannot acknowledge.** `settlementsStillStand(db, tripId, currency, seenIds)`
+    re-reads the open events inside its transaction. It refuses unless they are exactly `seenIds`, in
+    which case it stamps `acknowledged_at` on them. It writes nothing else.
+- **History is kept:** acknowledged rows stay, so a backup shows what was reviewed and when. Deleting
+  the trip deletes them (CASCADE).
+- **Formats:** backup format 12 and archive rowFormat 12 carry `settlementReviews`; formats 11 and
+  older read as none, and 0.16.1 refuses 12.
+  - Restore keeps rows as they are, so an open hold stays open.
+  - Archive import gives each row a new id and the new trip's id, and keeps `acknowledged_at`.
+  - `checkTripArchive` refuses duplicate ids, rows of another trip, an unknown reason, and a `moved`
+    without a destination (or a destination without `moved`).
+
+### 15.4 Balances and words
+
+- **Input:** `BalanceInput.settlementReviews` holds the open events; each currency gets
+  `settlementReviews`, its open events, and only while it has settlements.
+- **State `review`** now means: complete costs, nothing waiting, and unsplit costs to review **or**
+  open settlement reviews. No transfers. `heldBecause` becomes `'settlementReview'` when there are
+  open settlement reviews, otherwise `'review'`.
+- **Precedence:** waiting > settlement review > unsplit review > settlements only > nothing > a child
+  below zero. Each list is always shown in full, whatever the state, so no condition hides another.
+  Acknowledging one clears only that one.
+- **Headings:** *Balances so far · EUR — settlements need review* (also *· N unsplit costs to review*
+  when both apply). *so far* and *settlements only* add *· settlements need review*.
+- **Never final while held:** no *owes*, and no *All settled up*.
+- **Share text:** *EUR: not final — settlements need review*.
+- **Unchanged:** spending totals, nets, payments, shares and settlements. A hold is read beside them,
+  never into them.
+
+### 15.5 Screens
+
+- **Settle up** gets a *Settlements need review* block per held currency:
+  - why it is held;
+  - each change (*"Taxi · EUR 30.00 — deleted, 23 Oct"*, *"— moved to NOK"*, *"— no longer counted"*);
+  - **Review settlements**.
+- **A new screen** (`/trip/[tripId]/settlement-review?currency=`) shows:
+  - the explanation;
+  - the changes;
+  - every settlement in that currency, with people, amount and date, each opening its record;
+  - **Settlements still stand**, which asks once and then acknowledges exactly the events shown. A
+    stale screen is refused with *"Something changed in EUR since you opened this review…"*.
+- **The balance screen** names the hold.
+- **Warned before saving:** expense delete and edit, unlink, booking edit, cancel and delete, and
+  payment delete. They share one helper, `withSettlementReview`, which tries the write, asks on
+  `SettlementReviewNeeded`, and repeats it with the option on *Continue*.
+
+### 15.6 Versions
+
+Schema 11, backup format 12, archive rowFormat 12, app **0.16.2**, versionCode 25. Migrations
+001–010 are untouched.
