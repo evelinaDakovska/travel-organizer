@@ -183,7 +183,10 @@ Plus `trips`, `trip_notes`, `resources`, `settings`, since migration 002 `expens
 action, so a booking with money records cannot be deleted alone (backup format 8). Migration 008
 (3D-2, 0.15.0, same branch) adds `cost_shares` and `trip_cover`, both keyed to
 `trip_travellers(trip_id, traveller_id)` so nobody off the trip can hold or cover a share (backup
-format 9). Backup format 7 (0.13.0: same tables as 6; price lines in
+format 9). Migration 009 (3E, 0.16.0) adds `settlements` (backup format 10); migration 010 (0.16.1,
+review P1) adds `unsplit_confirmations`, one per cost, ended by any write to that cost's split
+(triggers) and valid only while the cost's financial fingerprint matches (backup format 11).
+Backup format 7 (0.13.0: same tables as 6; price lines in
 `details` may carry who they are for, group prices and extras). No per-kind tables.
 Kind-specific extras live in a Zod-validated `details` JSON column.
 

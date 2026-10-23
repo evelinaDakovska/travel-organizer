@@ -616,3 +616,42 @@ a correction to 3E, not a new phase. Migrations 001–009 untouched. No release 
 **Split it** (the existing split editor; nothing changes until saved) and **Keep outside** (a
 confirmation dialog that says what it means, then saves). Confirmed costs stay listed as *Kept
 outside* with **Review again**, which deletes the confirmation.
+
+### 14.3 As built (0.16.1, on `phase-3d1`, 2026-10-23)
+
+Commits: `c14e297` (P2), `63b376f` (this design), `b31afe3` (P1, migration 010, formats 11, 0.16.1).
+
+Built as §14.2 says. Details settled during the build, for review:
+
+1. **A booking's status is part of the fingerprint.** `BalanceCost` gained `status` (null for an
+   expense) so that cancelling a booking as non-refundable — which leaves it spent, at the same
+   amount — still invalidates a confirmation, as the owner listed *booking status*.
+2. **Precedence:** `waiting` (*so far*) > `review` > *settlements only* > *nothing* > a child below
+   zero. A currency both incomplete and with costs to review reads *so far*, and still lists the costs
+   to review. Kept outside, a child below zero still holds every suggestion (E unchanged; checked on
+   the emulator).
+3. **The share text** gives a held currency one line without numbers, *EUR: not final — 1 unsplit
+   cost to review*, like *so far*.
+4. **A stale confirmation stays stored** until it is replaced, reviewed again, or its cost is deleted.
+   It confirms nothing while the cost differs. **If the cost is changed back to exactly what was
+   confirmed** (a price edited and then restored, with no split in between), the confirmation applies
+   again — the cost is again the one that was reviewed. Any split in between ends it for good
+   (trigger). If the owner wants *any* edit to end a confirmation permanently, the smallest change is
+   to delete a non-matching confirmation in each financial write; that is the scattering the owner
+   asked to avoid, so it is raised rather than done.
+5. **Known limitations, outside the owner's rule** (pinned by tests): deleting a split, settled
+   expense, or moving an equally split expense to another currency, leaves no unsplit cost to review,
+   so a settlement made for it can still produce a suggestion in a currency with other complete
+   costs. Explicit re-splits (to one person) and *Covered by* changes are read as the new truth.
+6. **P2's class in expenses** (`c14e297`): `createExpense` / `updateExpense` validate with
+   `expenseInputSchema`; the settlement date is now a real calendar date.
+
+**Verification.** 1578 Node tests in 79 suites, typecheck clean. Migration 9 → 10 and 6 → 10 over
+phone-shaped synthetic data, a failed batch stays at 9, idempotent; the owner's 20 regression points
+for bookings and expenses through the domain and the database; backup and archive round trips with
+remapped ids; mutation checks (the stale check, the triggers, the fingerprint remap each fail their
+test when disabled). Emulator (`TO_2B_Test`, debug-signed, synthetic): 9 → 10 with 19/19 tables
+identical; the P1 scenario reproduced and held; Split it / Keep outside / Cancel / Review again; split
+saved and removed again → review; price edit → review; rename → still kept; 360 dp, font 2.0, dark.
+Log: `%USERPROFILE%\Pictures\TravelOrganizer-0.16.1-review-e2e\E2E-LOG.md`. **No release APK was
+built; on no phone.**

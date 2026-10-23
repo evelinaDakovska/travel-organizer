@@ -692,7 +692,7 @@ changes.
   records** lists each one; change them, then remove the person.
 - Deleting a booking, an expense or a trip tells you which splits go with it.
 
-## Who owes whom (0.16.0, not yet on your phone)
+## Who owes whom (0.16.0–0.16.1, not yet on your phone)
 
 - On a trip with two or more people, **Expenses → Settle up** shows, for each currency, what each
   person paid, their share (their own, and a child's they cover), what they settled, and where they
@@ -713,5 +713,12 @@ changes.
   one from the list to change or delete it. Someone with a settlement cannot be removed from the
   trip; deleting the whole trip, or replacing it from a backup, deletes its settlements, and the
   confirmation says so.
+- **Costs to review (0.16.1).** Once a currency has a settlement, a cost in it that nobody split is
+  listed under **To review**, and that currency suggests nothing until you decide: maybe a settlement
+  paid for it back when it was split. **Split it** opens the split (nothing changes until you save);
+  **Keep outside** asks once and then leaves that cost out of who owes whom on purpose — your
+  settlements stay exactly as they are. Kept costs are folded under **Kept outside on purpose**, with
+  **Review again**. If the cost's price, payments or split change later, it comes back to review;
+  renaming it or changing its notes does not.
 - **Share who owes whom** sends the suggested transfers as text; a currency that is not final is
   one line without numbers. Names and balances never go into the PDF.

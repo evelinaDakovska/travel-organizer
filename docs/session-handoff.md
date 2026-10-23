@@ -385,7 +385,25 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ## 11. Where the last session stopped (2026-10-19) — read this first
 
-### 11.00000000000000 Latest (2026-10-22, evening) — 3E built as 0.16.0; waiting for review
+### 11.000000000000000 Latest (2026-10-23) — review corrections built as 0.16.1; waiting for review
+
+- An independent review of 3D-1 → 3E raised P2 (settlement input not validated in the repository)
+  and P1 (a settlement for a cost whose split is removed can produce an unwanted suggestion). The
+  owner then decided P1: per-cost confirmation of unsplit costs (plan §14, D43), migration 010
+  authorised.
+- On `phase-3d1`: `c14e297` (P2 for settlements, and the same gap in expenses), `63b376f` (plan §14
+  design), `b31afe3` (migration 010, backup/archive format 11, 0.16.1 / versionCode 24), then the docs.
+- 1578 Node tests, typecheck clean. Emulator `TO_2B_Test`, debug-signed 0.16.1, synthetic only: 9 →
+  10 with 19/19 tables identical; the P1 scenario held; keep / cancel / review again / re-split / price
+  edit / rename; 360 dp · font 2.0 · dark. Log `%USERPROFILE%\Pictures\TravelOrganizer-0.16.1-review-e2e`.
+- **No release APK for 0.16.1** (not approved); the 0.16.0 APK in `%USERPROFILE%\.travel-organizer\`
+  predates these corrections. `main` untouched at 0.13.0; on no phone.
+- Open for the owner: plan §14.3 items 4 (a confirmation applies again if the cost is restored exactly)
+  and 5 (deleting a settled cost, or moving it to another currency, is outside the rule).
+- Tooling note: `scratchpad/go.sh` (`go "<trip>"` opens Settle up from a cold start) joins `dev.sh`,
+  `pull.sh`, `ui.js` (rewritten: lists text nodes, `--find`), `dbdiff.js`.
+
+### 11.00000000000000 (2026-10-22, evening) — 3E built as 0.16.0; waiting for review
 
 - The owner approved the 3E plan (`docs/phase3e-plan.md`, revisions 1–3: answers §11.1, §12.1 option
   a), reported the independent review of `a44dd6d` passed, and authorised migration 009 and 3E.

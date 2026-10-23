@@ -1728,3 +1728,42 @@ more), *Share* in its header (`settleUpText` via `Share.share`), `app/trip/[trip
 person, one currency), `app/settlement/new` and `app/settlement/[settlementId]`
 (`features/settle/SettlementForm`, with the live preview and the warnings). Nothing else reads
 `settlements`: the trip total, Bookings, Spending, booking screens and the PDF are unchanged.
+
+
+### 23.1 Unsplit costs kept outside (review P1, 0.16.1, migration 010)
+
+Plan §14, D43.
+
+**Schema (010).** `unsplit_confirmations (id, trip_id → trips CASCADE, trip_item_id → trip_items
+CASCADE NULL, expense_id → expenses CASCADE NULL, fingerprint, confirmed_at)`, exactly one of the two
+cost ids; partial unique indexes on each (one confirmation per cost); index on `trip_id`. Triggers
+`trg_cost_shares_{insert,update,delete}_unconfirms` delete the cost's confirmation whenever its split
+is written. No row written by the migration; no existing table altered.
+
+**Fingerprint.** `costFingerprint(cost)`: canonical JSON of `v`, kind, currency, amount, `counts`,
+`status` (bookings), `cancelled`, `isPaid`, the records as sorted `[payment|expense, payerId, amount]`
+and the shares as sorted `[travellerId, amount, coveredBy, sortOrder]`. No record ids, no title, notes,
+dates or category. `remapFingerprint(fp, travellerId)` renames the travellers for an archive import;
+anything that does not parse comes back unchanged and matches nothing.
+
+**Balances.** `BalanceInput.confirmations`; `isKeptOutside(cost, confirmations)` — unsplit and the
+fingerprint equal. Per currency: `keptOutside` (unsplit, confirmed), `toReview` (unsplit, not
+confirmed, **only when the currency has settlements**). State `review` when it would be `final` but
+`toReview` is not empty; `heldBecause: 'review'`; no transfers. Words: *Balances so far · EUR — N
+unsplit costs to review*; *Suggested transfers are paused: …*; share text *EUR: not final — N unsplit
+costs to review*.
+
+**Writes.** `repositories/settlements.keepOutside(db, tripId, {kind, id}, seen)`: in one transaction
+re-reads `balanceInput`, refuses (`MoneyRuleError`) a missing cost or one of another trip, a split
+cost, a cost not listed as not split (e.g. a cancelled booking waiting for its refund), or
+`costFingerprint(now) !== seen`; then replaces the cost's confirmation. `reviewAgain(db, {kind, id})`
+deletes it. Neither writes anything else. `BALANCE_TABLES` includes `unsplit_confirmations`.
+
+**Formats.** Backup format 11 and archive rowFormat 11 carry `unsplitConfirmations` (≤ 10 read as
+none). Restore and archive import insert them after `cost_shares` (the triggers). Archive import maps
+the cost id and remaps the fingerprint; `checkTripArchive` refuses a confirmation with no single cost,
+for a missing plan or expense, of another trip, or two for one cost.
+
+**Screens.** *Settle up*: *To review* (each cost with *Split it* → `/split/edit`, and *Keep outside* →
+a dialog, then `keepOutside` with the fingerprint of the cost as shown), *Kept outside on purpose*
+(collapsed, *Review again*), *Not split* for the rest. The person's balance screen explains `review`.

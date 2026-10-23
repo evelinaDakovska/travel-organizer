@@ -88,6 +88,18 @@
 
 ---
 
+### Built in 0.16.1 (review corrections to 3E) — on the branch `phase-3d1`, verified on emulators, not on a phone
+
+Not on any phone until after the owner's trip; it brings migration 010 (and 007–009 with it).
+
+- **Costs to review:** in a currency with settlements, an unsplit cost pauses suggested transfers until
+  it is split or kept outside on purpose (*Keep outside*, asked once; *Review again* undoes it). A
+  financial change to the cost brings it back to review; a rename does not. Settlements are never
+  changed.
+- **Checks at the database boundary:** a settlement or an expense is validated again when saved,
+  whatever the screen sent.
+- **Backup format 11**: 0.16.0 refuses 0.16.1's files; 0.16.1 reads all older ones.
+
 ### Built in 0.16.0 (roadmap 3E) — on the branch `phase-3d1`, verified on emulators, not on a phone
 
 Not on any phone until after the owner's trip; it brings migration 009 (and 007 and 008 with it).

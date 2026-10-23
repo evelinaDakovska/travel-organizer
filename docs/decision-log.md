@@ -964,3 +964,30 @@ anywhere — a price, a split, a cover — is reflected at once and no stored ba
 **Built on `phase-3d1`** (owner, 2026-10-22): a migration is a risk to the phone's real data by
 definition, so 3E waits with 3D-1 and 3D-2 for the trip; the phone's install runs 007, 008 and 009 in
 one start-up, and that path was rehearsed on an emulator.
+
+## D43 — Unsplit costs reviewed per cost where settlements exist (0.16.1, migration 010)
+
+Plan and as-built record: `docs/phase3e-plan.md` §14. Raised by the independent review of 3D-1 → 3E
+(P1); decided by the owner, 2026-10-23.
+
+**The problem.** A settlement is a fact between two people, never linked to a cost (D42). When the
+cost it paid for leaves the balances — its split removed — the settlement still counts, and with other
+complete costs in the currency the app can suggest a transfer nobody owes. The app cannot tell a split
+removed by mistake from a cost meant to stay unsplit.
+
+**The decision: ask, per cost, once.** In a currency with settlements, an unsplit cost holds
+suggestions back until someone splits it or confirms *keep it outside*. Without settlements nothing
+changes: unsplit costs still never block (D42). Rejected: blocking on every unsplit cost (a family that
+never splits would never see a suggestion); linking settlements to costs (a settlement often squares
+several costs at once); deleting or moving settlements (money history is never changed by itself).
+
+**A confirmation is about the cost as it was reviewed.** It stores the cost's financial fingerprint and
+applies only while the cost still reads the same, so every financial edit is caught in one place — no
+invalidation calls spread through the repositories. A split is the exception that must end it for
+good (split → settle → unsplit is the very scenario), so the database deletes the confirmation on any
+write to the cost's split, by trigger. It is checked again inside the write transaction: a screen
+showing an older version of the cost cannot confirm the newer one.
+
+**Its own table, not a field.** A confirmation is not a split, a share or a payment, and must never
+look like one; one row per cost, deleted with the cost, carried by backups and trip archives (format
+11), remapped with the cost on import.
