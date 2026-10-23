@@ -230,8 +230,8 @@ export function tripItemInputSchema(defaultTz: string) {
       end: momentInputSchema.optional(),
       locationName: z.string().trim().max(120).optional(),
       address: z.string().trim().max(240).optional(),
-      latitude: z.number().min(-90).max(90).optional(),
-      longitude: z.number().min(-180).max(180).optional(),
+      latitude: z.number({ error: 'Enter coordinates like 66.5115, 25.7311' }).min(-90).max(90).optional(),
+      longitude: z.number({ error: 'Enter coordinates like 66.5115, 25.7311' }).min(-180).max(180).optional(),
       confirmationCode: z.string().trim().max(60).optional(),
       notes: z.string().trim().optional(),
       details: z.record(z.string(), z.unknown()).optional(),
@@ -258,6 +258,11 @@ export function tripItemInputSchema(defaultTz: string) {
     .refine((v) => !(v.start && v.end) || instantOf(v.end, defaultTz) >= instantOf(v.start, defaultTz), {
       message: 'It cannot end before it starts',
       path: ['end'],
+    })
+    // A place is both numbers or neither (Phase 5): half a coordinate is no place at all.
+    .refine((v) => (v.latitude === undefined) === (v.longitude === undefined), {
+      message: 'Enter both numbers, like 66.5115, 25.7311',
+      path: ['latitude'],
     })
     .refine((v) => v.priceAmount === undefined || v.priceCurrency !== undefined, {
       message: 'Pick a currency',

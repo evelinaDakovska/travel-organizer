@@ -386,3 +386,24 @@ export function computeDirectionsRequestKey(
     : 'current_location';
   return `${destKey}<-${origKey}`;
 }
+
+const COORDINATES_TEXT = /^\s*\(?\s*(-?\d{1,3}(?:\.\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*\)?\s*$/;
+
+/**
+ * Coordinates as Google Maps copies them on a long press — '66.5115, 25.7311' — or with a space or
+ * semicolon between. Empty text is undefined (none given); anything else that is not a valid pair
+ * in range is null. A comma is never a decimal separator here: it separates the two numbers.
+ */
+export function parseCoordinates(text: string): { latitude: number; longitude: number } | null | undefined {
+  if (text.trim() === '') return undefined;
+  const match = COORDINATES_TEXT.exec(text);
+  if (!match) return null;
+  const latitude = Number(match[1]);
+  const longitude = Number(match[2]);
+  return validateCoordinates(latitude, longitude) ? { latitude, longitude } : null;
+}
+
+/** '66.5115, 25.7311': how the form shows a saved pair, and what `parseCoordinates` reads back. */
+export function coordinatesText(latitude: number | null | undefined, longitude: number | null | undefined): string {
+  return validateCoordinates(latitude, longitude) ? `${latitude}, ${longitude}` : '';
+}

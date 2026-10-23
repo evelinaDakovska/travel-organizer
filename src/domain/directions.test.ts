@@ -1,4 +1,6 @@
 import {
+  coordinatesText,
+  parseCoordinates,
   areEndpointsEqual,
   buildGoogleMapsUrl,
   computeDirectionsRequestKey,
@@ -1040,3 +1042,24 @@ describe('DirectionsSheet stable requestKey generation', () => {
   });
 });
 
+describe('parseCoordinates', () => {
+  it('reads what Google Maps copies, and a space or semicolon between', () => {
+    expect(parseCoordinates('66.5115, 25.7311')).toEqual({ latitude: 66.5115, longitude: 25.7311 });
+    expect(parseCoordinates(' -33.8568 151.2153 ')).toEqual({ latitude: -33.8568, longitude: 151.2153 });
+    expect(parseCoordinates('(41.9028;12.4964)')).toEqual({ latitude: 41.9028, longitude: 12.4964 });
+    expect(parseCoordinates('0, 0')).toEqual({ latitude: 0, longitude: 0 });
+  });
+
+  it('is undefined when empty, null when not a pair in range', () => {
+    expect(parseCoordinates('  ')).toBeUndefined();
+    for (const bad of ['66.5', '91, 0', '0, 181', '66,5, 25,7', 'Rovaniemi', '66.5, 25.7, 3', '1e2, 3']) {
+      expect([bad, parseCoordinates(bad)]).toEqual([bad, null]);
+    }
+  });
+
+  it('round-trips through coordinatesText', () => {
+    expect(coordinatesText(66.5115, 25.7311)).toBe('66.5115, 25.7311');
+    expect(parseCoordinates(coordinatesText(-0.5, 0))).toEqual({ latitude: -0.5, longitude: 0 });
+    expect(coordinatesText(null, 25)).toBe('');
+  });
+});

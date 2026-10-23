@@ -46,6 +46,7 @@ import { useMe } from '../travellers/useMe';
 import { followPlace, lastKnownPlace } from '../../domain/zoneHints';
 import { Button } from '../../ui/components/Button';
 import { ChoiceField } from '../../ui/components/ChoiceField';
+import { CoordinatesInput } from '../../ui/components/CoordinatesInput';
 import { Disclosure } from '../../ui/components/Disclosure';
 import { Field, Input } from '../../ui/components/Field';
 import { FormScroll } from '../../ui/components/FormScroll';
@@ -555,6 +556,29 @@ export function ItemForm({
               onChangeText={field.onChange}
               onBlur={field.onBlur}
               placeholder="Via Roma 1, Milano"
+            />
+          </Field>
+        )}
+      />
+
+      {/* Coordinates (Phase 5): what puts a plan on the day map. Optional, pasted from Google Maps. */}
+      <Controller
+        control={control}
+        name="latitude"
+        render={({ field }) => (
+          <Field
+            label="Coordinates"
+            error={errors.latitude?.message ?? errors.longitude?.message}
+            hint="Optional. In Google Maps, press and hold the place, then copy the numbers it shows. They put this plan on the day map.">
+            <CoordinatesInput
+              latitude={field.value}
+              longitude={getValues('longitude')}
+              onChange={(latitude, longitude) => {
+                field.onChange(latitude);
+                setValue('longitude', longitude, { shouldDirty: true });
+              }}
+              onBlur={field.onBlur}
+              invalid={!!errors.latitude || !!errors.longitude}
             />
           </Field>
         )}

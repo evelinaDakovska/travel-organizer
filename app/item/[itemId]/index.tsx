@@ -25,11 +25,13 @@ import {
 import { namesLine } from '../../../src/domain/traveller';
 import { zoneMismatches } from '../../../src/domain/zoneHints';
 import {
+  coordinatesText,
   findStayForDay,
   findTripSavedPlaces,
   findTripStays,
   resolveItemDirectionsDay,
   resolveItemEndpoint,
+  validateCoordinates,
   type DirectionEndpoint,
 } from '../../../src/domain/directions';
 import { DirectionsSheet } from '../../../src/features/directions/DirectionsSheet';
@@ -290,6 +292,9 @@ export default function ItemDetail() {
               detail={item.locationName ? item.address : null}
               selectable
             />
+          ) : null}
+          {validateCoordinates(item.latitude, item.longitude) ? (
+            <Fact label="Coordinates" value={coordinatesText(item.latitude, item.longitude)} selectable />
           ) : null}
           {details?.number ? <Fact label="Number" value={details.number} selectable /> : null}
           {details?.seat ? <Fact label="Seat" value={details.seat} /> : null}

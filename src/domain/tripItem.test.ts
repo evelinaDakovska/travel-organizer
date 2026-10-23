@@ -189,8 +189,15 @@ describe('tripItemInputSchema', () => {
   });
 
   it('rejects coordinates outside the world', () => {
-    expect(errorPaths(parse({ ...valid, latitude: 91 }))).toEqual(['latitude']);
-    expect(errorPaths(parse({ ...valid, longitude: -181 }))).toEqual(['longitude']);
+    expect(errorPaths(parse({ ...valid, latitude: 91, longitude: 0 }))).toEqual(['latitude']);
+    expect(errorPaths(parse({ ...valid, latitude: 0, longitude: -181 }))).toEqual(['longitude']);
+  });
+
+  it('takes coordinates as a pair or not at all (Phase 5)', () => {
+    expect(errorPaths(parse({ ...valid, latitude: 66.5 }))).toEqual(['latitude']);
+    expect(errorPaths(parse({ ...valid, longitude: 25.7 }))).toEqual(['latitude']);
+    expect(errorPaths(parse({ ...valid, latitude: 0, longitude: 0 }))).toEqual([]);
+    expect(errorPaths(parse({ ...valid, latitude: Number.NaN, longitude: Number.NaN }))).toContain('latitude');
   });
 });
 
