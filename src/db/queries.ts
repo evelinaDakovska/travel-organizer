@@ -406,6 +406,16 @@ SELECT p.* FROM item_participants ip
  ORDER BY tt.sort_order, p.name
 `;
 
+/** Every plan's people by name, in the trip's order: who goes, for a calendar export (Phase 8). */
+export const SELECT_TRIP_PARTICIPANT_NAMES = `
+SELECT ip.item_id, p.name FROM item_participants ip
+  JOIN travellers p ON p.id = ip.traveller_id
+  JOIN trip_items i ON i.id = ip.item_id
+  LEFT JOIN trip_travellers tt ON tt.trip_id = i.trip_id AND tt.traveller_id = p.id
+ WHERE i.trip_id = $tripId
+ ORDER BY ip.item_id, tt.sort_order, p.name
+`;
+
 export const DELETE_ITEM_PARTICIPANTS = `DELETE FROM item_participants WHERE item_id = $itemId`;
 
 export const INSERT_ITEM_PARTICIPANT = `

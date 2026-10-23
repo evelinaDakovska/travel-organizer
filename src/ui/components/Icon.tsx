@@ -5,6 +5,7 @@ import {
   Bus,
   CalendarCheck,
   CalendarDays,
+  CalendarPlus,
   Car,
   CarTaxiFront,
   Check,
@@ -130,6 +131,7 @@ const ICONS = {
   directions: Route,
   // The day map (Phase 5).
   dayMap: MapIcon,
+  addToCalendar: CalendarPlus,
   // The activities file (2C): in from an AI assistant, out to share.
   importActivities: FileInput,
   exportActivities: FileOutput,

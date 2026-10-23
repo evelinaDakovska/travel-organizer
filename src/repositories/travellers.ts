@@ -21,6 +21,7 @@ import {
   SELECT_TRAVELLERS,
   SELECT_TRIP_TRAVELLERS,
   SELECT_TRIPS_WITHOUT_TRAVELLER,
+  SELECT_TRIP_PARTICIPANT_NAMES,
   UPDATE_TRAVELLER_CLASSIFICATION,
   UPDATE_TRIP_TRAVELLER_CLASSIFICATION,
 } from '../db/queries';
@@ -287,6 +288,19 @@ export async function listItemParticipants(
 ): Promise<Traveller[]> {
   const rows = await db.getAllAsync<TravellerRow>(SELECT_ITEM_PARTICIPANTS, { $itemId: itemId });
   return rows.map(parseTravellerRow);
+}
+
+/** Who goes to each of a trip's plans, by name (Phase 8's calendar export, off by default). */
+export async function listTripParticipantNames(
+  db: SQLiteDatabase,
+  tripId: string,
+): Promise<Map<string, string[]>> {
+  const rows = await db.getAllAsync<{ item_id: string; name: string }>(SELECT_TRIP_PARTICIPANT_NAMES, {
+    $tripId: tripId,
+  });
+  const byItem = new Map<string, string[]>();
+  for (const row of rows) byItem.set(row.item_id, [...(byItem.get(row.item_id) ?? []), row.name]);
+  return byItem;
 }
 
 /**

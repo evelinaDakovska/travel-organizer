@@ -35,12 +35,22 @@ export async function pickActivityFile(): Promise<PickedActivityFile | null> {
   }
 }
 
-async function shareText(name: string, text: string, dialogTitle: string): Promise<void> {
+async function shareText(
+  name: string,
+  text: string,
+  dialogTitle: string,
+  mimeType = 'application/json',
+): Promise<void> {
   const file = new File(Paths.cache, name);
   if (file.exists) file.delete();
   file.create();
   file.write(text);
-  await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle });
+  await Sharing.shareAsync(file.uri, { mimeType, dialogTitle });
+}
+
+/** The calendar file (Phase 8): text/calendar, so calendar apps offer to open it. */
+export async function shareCalendarFile(name: string, text: string): Promise<void> {
+  await shareText(name, text, 'Add to calendar', 'text/calendar');
 }
 
 export async function shareActivityFile(name: string, document: unknown): Promise<void> {

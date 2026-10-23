@@ -15,6 +15,7 @@ export type TripMoreAction = {
     | 'edit'
     | 'itinerary-pdf'
     | 'day-map'
+    | 'export-calendar'
     | 'export-trip'
     | 'import-activities'
     | 'export-activities'
@@ -45,6 +46,12 @@ export function getTripMoreActions(
       subtitle: "Each day's places in order, and the day in Google Maps",
       icon: 'dayMap',
       path: 'day-map',
+    },
+    {
+      title: 'Add to calendar',
+      subtitle: 'Chosen plans as a calendar file — a copy, not kept in sync',
+      icon: 'addToCalendar',
+      path: 'export-calendar',
     },
     {
       title: 'Export trip',
