@@ -19,10 +19,18 @@ type Props = {
 export function ScreenHeader({ context, title, subtitle, action, leading = 'back' }: Props) {
   const c = useColors();
   const router = useRouter();
-  // On a narrow phone at a large font, the actions can leave the title less room than one word
-  // ('Expense' / 's'). Then the actions take a row of their own above it, for this title.
+  // On a narrow phone at a large font, the actions can leave the titles too little room: a word
+  // broken in two ('Expense' / 's'), the trip cut short ('Lapland, F…'), the dates cut short. Beside
+  // the actions the lines are laid out unlimited and checked; when one does not fit, the actions
+  // take a row of their own above the titles, for these texts.
+  const texts = [context, title, subtitle].join('\n');
   const [stackedFor, setStackedFor] = useState<string | null>(null);
-  const stacked = !!action && stackedFor === title;
+  const stacked = !!action && stackedFor === texts;
+  // Beside the actions, nothing is cut: a line that does not fit stacks the header instead.
+  const measuring = !!action && !stacked;
+  const fits = (fit: boolean) => {
+    if (measuring && !fit) setStackedFor(texts);
+  };
 
   const back = leading ? (
     <Pressable
@@ -39,7 +47,13 @@ export function ScreenHeader({ context, title, subtitle, action, leading = 'back
     <View style={[styles.titles, stacked && styles.stackedTitles]}>
       {/* Ink, not muted: which trip is open must read at a glance, yet stay below the title. */}
       {context ? (
-        <Text style={[type.bodyStrong, { color: c.text }]} numberOfLines={2}>
+        <Text
+          style={[type.bodyStrong, { color: c.text }]}
+          numberOfLines={measuring ? undefined : 2}
+          onTextLayout={(e) => {
+            const lines = e.nativeEvent.lines.map((line) => line.text);
+            fits(lines.length <= 2 && !breaksInsideWord(lines));
+          }}>
           {context}
         </Text>
       ) : null}
@@ -48,15 +62,14 @@ export function ScreenHeader({ context, title, subtitle, action, leading = 'back
         style={[type.title, { color: c.text }]}
         numberOfLines={2}
         accessibilityRole="header"
-        onTextLayout={(e) => {
-          if (action && !stacked && breaksInsideWord(e.nativeEvent.lines.map((line) => line.text))) {
-            setStackedFor(title);
-          }
-        }}>
+        onTextLayout={(e) => fits(!breaksInsideWord(e.nativeEvent.lines.map((line) => line.text)))}>
         {title}
       </Text>
       {subtitle ? (
-        <Text style={[type.caption, { color: c.textMuted }]} numberOfLines={1}>
+        <Text
+          style={[type.caption, { color: c.textMuted }]}
+          numberOfLines={measuring ? undefined : 1}
+          onTextLayout={(e) => fits(e.nativeEvent.lines.length <= 1)}>
           {subtitle}
         </Text>
       ) : null}

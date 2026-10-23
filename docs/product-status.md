@@ -91,8 +91,9 @@
 ### Built in 0.16.3 (a header fix; Phase 3 closed) — on the branch `phase-3d1`, verified on emulators, not on a phone
 
 - **Tab headers at a large font:** on a narrow phone at a large font, a tab's title no longer breaks
-  inside a word (*Expense / s*, *Timeli / ne*). When it would, the header's buttons move to a row
-  of their own above the title. Nothing changes at normal sizes. No schema or format change.
+  inside a word (*Expense / s*), and the trip and dates above and below it are no longer cut short
+  (*Lapland, F…*, *20–24 Nov …*). When something would not fit, the header's buttons move to a row
+  of their own above the titles. Nothing changes at normal sizes. No schema or format change.
 - **Review:** everything from 0.7.4 to 0.16.2 has passed the owner's review (2026-10-23). It still
   waits for verification on the phone, after the owner's trip.
 

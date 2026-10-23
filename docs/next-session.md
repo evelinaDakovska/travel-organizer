@@ -87,8 +87,9 @@ In the likely order. Ask which one, rather than choosing.
 5. **Small known items**, not scheduled:
    - ~~*Expense / s* at 360 dp and font 2.0~~ — fixed in 0.16.3: when a title would break inside a
      word, `ScreenHeader` moves the actions to their own row above it (`breaksInsideWord`).
-   - Seen in that check, not changed: at 360 dp / font 2.0 the trip line and dates beside the
-     header actions are cut short (*Lapland, F…*, *20–24 Nov …*) on Timeline, Places and Notes & lists.
+   - ~~The trip line and dates cut short beside the header actions (*Lapland, F…*)~~ — fixed in
+     0.16.3 the same way: beside the actions they are laid out unlimited, and a trip line over two
+     lines or dates over one stack the header.
    - Phone-QA leftovers in `docs/status.md` *Final phone QA*.
    - Accepted limits of 3E: plan §14.3 item 5 as superseded by §15, and §15.7 items 3 and 5.
 
