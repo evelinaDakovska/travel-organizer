@@ -7,6 +7,7 @@ what is still open, and the conventions to follow.
 |---|---|
 | **`CLAUDE.md`** (this file) | Authoritative summary. Decisions, terminology, conventions |
 | `docs/product-status.md` | **Product status & feature matrix** — readiness per feature and where it was verified (phone, beta phone, emulator) |
+| `docs/next-session.md` | **The latest handoff**: where the work stands, the rules that bind, the next tasks waiting for the owner |
 | `docs/session-handoff.md` | **Starting fresh? Read after this file.** How the work goes: decisions in context, the machine, driving a device, what bit us |
 | `docs/status.md` | **Engineering status board** — what is done and how it was verified, task by task; open questions |
 | `docs/MASTER_ROADMAP.md` | **The long-term product roadmap** (owner's baseline, 2026-10-20): every phase's goals, requirements and exit gates, rules that must not drift, the beta/release track, the deferred/discovery backlog; §21 records the owner's answers to the cross-check (2026-10-20) |

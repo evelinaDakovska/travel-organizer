@@ -46,7 +46,8 @@ Verified against the repo on 2026-10-20, on Windows: **1153 tests passing across
   good, even when undone (no migration; plan §14.4). **Settlement review holds built as 0.16.2** (the
   owner chose option B: a shared cost leaving a currency with settlements asks first, then holds its
   suggestions until *Settlements still stand* — migration 011, backup format 12; plan §15, D44),
-  verified on emulators; on no phone, waiting for the owner's independent review.
+  verified on emulators; on no phone. **The owner's independent review passed (2026-10-23)** — next
+  steps in [`next-session.md`](next-session.md).
 
 ---
 

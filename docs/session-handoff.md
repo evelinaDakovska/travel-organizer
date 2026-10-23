@@ -385,7 +385,14 @@ Not before N5a is on the phone and the documentation is written (§11). Then:
 
 ## 11. Where the last session stopped (2026-10-19) — read this first
 
-### 11.00000000000000000 Latest (2026-10-23, evening) — settlement review holds built as 0.16.2; waiting for review
+### 11.000000000000000000 Latest (2026-10-23, night) — 3E review passed; handoff written
+
+- The owner's independent review of 0.16.2 passed ("all good"): 3E and its three correction rounds
+  are accepted. Nothing new was built.
+- **Next session: read [`next-session.md`](next-session.md)** — state, binding rules, the next tasks
+  (none started; each waits for the owner) and the emulator recipes.
+
+### 11.00000000000000000 (2026-10-23, evening) — settlement review holds built as 0.16.2; waiting for review
 
 - The owner chose option B of plan §14.4: hold a currency's suggestions when a shared cost leaves it
   after settlements, until the settlements are reviewed. Built as plan §15, D44.
