@@ -68,6 +68,7 @@ const TABLE_KEYS = [
   'tripCover',
   'settlements',
   'unsplitConfirmations',
+  'settlementReviews',
   'travellers',
   'tripTravellers',
   'itemParticipants',
@@ -95,6 +96,8 @@ const tablesSchema = z.object({
   settlements: z.array(ROW_SCHEMAS.settlements).default([]),
   // Absent before row format 11 (review P1): no unsplit cost kept outside.
   unsplitConfirmations: z.array(ROW_SCHEMAS.unsplitConfirmations).default([]),
+  // Absent before row format 12 (§15): nothing was held for review.
+  settlementReviews: z.array(ROW_SCHEMAS.settlementReviews).default([]),
   travellers: z.array(ROW_SCHEMAS.travellers),
   tripTravellers: z.array(ROW_SCHEMAS.tripTravellers),
   itemParticipants: z.array(ROW_SCHEMAS.itemParticipants),
@@ -245,6 +248,7 @@ export function buildTripArchive(
     tripCover: one.tripCover,
     settlements: one.settlements,
     unsplitConfirmations: one.unsplitConfirmations,
+    settlementReviews: one.settlementReviews,
     travellers: one.travellers,
     tripTravellers: one.tripTravellers,
     itemParticipants: one.itemParticipants,
@@ -496,6 +500,7 @@ export function checkTripArchive(
     unique(t.costShares, 'shares') ??
     unique(t.settlements, 'settlements') ??
     unique(t.unsplitConfirmations, 'unsplit cost confirmations') ??
+    unique(t.settlementReviews, 'settlement reviews') ??
     unique(t.travellers, 'travellers') ??
     unique(t.lists, 'lists') ??
     unique(t.listItems, 'list items');
@@ -520,6 +525,7 @@ export function checkTripArchive(
   if (!ownedByTrip(t.tripCover)) return 'who covers a child belongs to another trip';
   if (!ownedByTrip(t.settlements)) return 'a settlement belongs to another trip';
   if (!ownedByTrip(t.unsplitConfirmations)) return 'an unsplit cost kept outside belongs to another trip';
+  if (!ownedByTrip(t.settlementReviews)) return 'a settlement review belongs to another trip';
   if (!ownedByTrip(t.lists)) return 'a list belongs to another trip';
   if (!ownedByTrip(t.tripTravellers)) return 'a traveller is listed on another trip';
   if (!ownedByTrip(t.templateUses)) return 'a template record belongs to another trip';
@@ -597,6 +603,10 @@ export function checkTripArchive(
   }
   if (!pairs(t.unsplitConfirmations.map((row) => row.trip_item_id ?? row.expense_id!))) {
     return 'a cost is kept outside twice';
+  }
+  // A review names where a cost went only when it moved (§15.3).
+  for (const row of t.settlementReviews) {
+    if ((row.reason === 'moved') !== (row.to_currency !== null)) return 'a settlement review does not say where a cost moved';
   }
 
   if (!t.tripTravellers.every((row) => travellers.has(row.traveller_id))) {
@@ -756,6 +766,7 @@ export function planTripImport(
   const costShareIds = mapIds(t.costShares);
   const settlementIds = mapIds(t.settlements);
   const confirmationIds = mapIds(t.unsplitConfirmations);
+  const reviewIds = mapIds(t.settlementReviews);
   const resourceIds = mapIds(t.resources);
   const listIds = mapIds(t.lists);
   const listItemIds = mapIds(t.listItems);
@@ -911,6 +922,12 @@ export function planTripImport(
         trip_item_id: row.trip_item_id === null ? null : must(itemIds, row.trip_item_id, 'plan'),
         expense_id: row.expense_id === null ? null : must(expenseIds, row.expense_id, 'expense'),
         fingerprint: remapFingerprint(row.fingerprint, (id) => travellerIds.get(id) ?? id),
+      })),
+      // The trip and currency it holds, as they were: open stays open, acknowledged stays so.
+      settlementReviews: t.settlementReviews.map((row) => ({
+        ...row,
+        id: must(reviewIds, row.id, 'settlement review'),
+        trip_id: tripId,
       })),
       travellers: newTravellers,
       // Two archive travellers linked to one profile here become one member, one participant.

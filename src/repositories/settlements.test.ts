@@ -190,8 +190,9 @@ describe('what keeps someone on the trip, and what deletes a settlement (C)', ()
     await saveSplit(db, { expenseId: taxi }, equal(ana, ben));
     await createSettlement(db, 'lapland', settlement(ben, ana, 1500));
     const before = raw.prepare(`SELECT * FROM settlements`).all();
-    await deleteExpense(db, taxi);
-    await deleteTripItem(db, hotel);
+    // Both leave a currency with settlements, so each asks first (§15); continued, no settlement changes.
+    await deleteExpense(db, taxi, { acceptSettlementReview: true });
+    await deleteTripItem(db, hotel, { acceptSettlementReview: true });
     expect(raw.prepare(`SELECT * FROM settlements`).all()).toEqual(before);
   });
 
@@ -652,7 +653,8 @@ describe('unsplit costs kept outside, through the database (§14.2, review P1)',
     await deleteExpense(db, t.taxi);
     expect(confirmations(raw)).toEqual([{ trip_item_id: t.hotel, expense_id: null }]);
     await deleteBookingPayment(db, t.paid);
-    await deleteTripItem(db, t.hotel);
+    // Its payment gone, the hotel is no longer the cost that was kept outside: to review, so deleting it asks (§15).
+    await deleteTripItem(db, t.hotel, { acceptSettlementReview: true });
     expect(confirmations(raw)).toEqual([]);
     expect(raw.prepare(`SELECT * FROM settlements`).all()).toEqual(settlementsBefore);
   });

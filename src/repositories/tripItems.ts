@@ -41,7 +41,7 @@ import {
   type TripItemRow,
   type TripItemStatus,
 } from '../domain/tripItem';
-import { endChangedConfirmations } from './confirmations';
+import { afterMoneyWrite, moneyBefore, type MoneyWriteOptions } from './moneyWrites';
 import { writeItemParticipants } from './travellers';
 
 /** Payments and linked expenses change an item's `recordedPaid` (3D-1), so they are watched too. */
@@ -168,16 +168,20 @@ async function guardEdit(
 
 /**
  * Saves an edit. `participants` replaces who takes part, in the same transaction; left out, they
- * are not touched. An edit that would strand payments is refused (`MoneyRuleError`).
+ * are not touched. An edit that would strand payments is refused (`MoneyRuleError`), and one that
+ * takes a shared cost out of a currency with settlements needs `acceptSettlementReview` (§15).
  */
 export async function updateTripItem(
   db: SQLiteDatabase,
   id: string,
   input: TripItemInput,
   participants?: readonly string[],
+  options: MoneyWriteOptions = {},
 ): Promise<void> {
   const defaultTz = await itemDefaultTz(db, id);
   await db.withTransactionAsync(async () => {
+    const saved = await getTripItem(db, id);
+    const before = saved ? await moneyBefore(db, saved.tripId) : null;
     await guardEdit(db, id, {
       status: input.status,
       priceAmount: input.priceAmount ?? null,
@@ -189,8 +193,7 @@ export async function updateTripItem(
       ...tripItemBindings(input, defaultTz),
     });
     if (participants) await writeItemParticipants(db, id, participants);
-    const saved = await getTripItem(db, id);
-    if (saved) await endChangedConfirmations(db, saved.tripId);
+    if (saved) await afterMoneyWrite(db, saved.tripId, before, options);
   });
 }
 
@@ -199,12 +202,14 @@ export async function updateTripItem(
  * database's NO ACTION references whatever calls this. Never cascades money history away. A split
  * is part of the cost and goes with it (3D-2); the screen's confirmation names it.
  */
-export async function deleteTripItem(db: SQLiteDatabase, id: string): Promise<void> {
+export async function deleteTripItem(db: SQLiteDatabase, id: string, options: MoneyWriteOptions = {}): Promise<void> {
   await db.withTransactionAsync(async () => {
     const item = await getTripItem(db, id);
     const refusal = item ? deleteRefusal(item.title, await moneyRecords(db, id), item.status) : null;
     if (refusal) throw new MoneyRuleError(refusal);
+    const before = item ? await moneyBefore(db, item.tripId) : null;
     await db.runAsync(`DELETE FROM trip_items WHERE id = ?`, id);
+    if (item) await afterMoneyWrite(db, item.tripId, before, options);
   });
 }
 
@@ -213,9 +218,11 @@ export async function setTripItemStatus(
   db: SQLiteDatabase,
   id: string,
   status: TripItemStatus,
+  options: MoneyWriteOptions = {},
 ): Promise<void> {
   await db.withTransactionAsync(async () => {
     const saved = await getTripItem(db, id);
+    const before = saved ? await moneyBefore(db, saved.tripId) : null;
     if (saved) {
       await guardEdit(db, id, { status, priceAmount: saved.priceAmount, priceCurrency: saved.priceCurrency });
     }
@@ -224,7 +231,7 @@ export async function setTripItemStatus(
       $status: status,
       $now: new Date().toISOString(),
     });
-    if (saved) await endChangedConfirmations(db, saved.tripId);
+    if (saved) await afterMoneyWrite(db, saved.tripId, before, options);
   });
 }
 

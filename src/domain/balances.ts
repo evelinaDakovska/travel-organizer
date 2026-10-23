@@ -17,7 +17,7 @@ import { z } from 'zod';
 
 import { countsAsSpent, refundableOf } from './bookingCosts';
 import { coverOf, shareAmounts, splitEqually, type CostShare, type Member, type TripCover } from './costShares';
-import type { BookingPayment } from './bookingPayments';
+import { MoneyRuleError, type BookingPayment } from './bookingPayments';
 import { formatMoney } from './format';
 import { expenseTitle, type Expense } from './spending';
 import { isValidLocal } from './time';
@@ -251,6 +251,141 @@ export function isKeptOutside(cost: BalanceCost, confirmations: readonly Unsplit
   return confirmation !== undefined && confirmation.fingerprint === costFingerprint(cost);
 }
 
+// ─── Settlement review holds (§15) ───────────────────────────────────────────────────────────────
+
+/** How a cost left a currency that had settlements (§15.1). */
+export type SettlementReviewReason = 'deleted' | 'moved' | 'left';
+
+/**
+ * One change that took a shared cost out of a currency after settlements were recorded there. Open
+ * until someone says the settlements still stand. It names the cost only as it was — never linked to
+ * it, or to a settlement.
+ */
+export type SettlementReview = {
+  id: string;
+  tripId: string;
+  currency: string;
+  reason: SettlementReviewReason;
+  costKind: BalanceCost['kind'];
+  costTitle: string;
+  costAmount: number;
+  /** Where it went, for `moved` only. */
+  toCurrency: string | null;
+  createdAt: string;
+  acknowledgedAt: string | null;
+};
+
+export type SettlementReviewRow = {
+  id: string;
+  trip_id: string;
+  currency: string;
+  reason: string;
+  cost_kind: string;
+  cost_title: string;
+  cost_amount: number;
+  to_currency: string | null;
+  created_at: string;
+  acknowledged_at: string | null;
+};
+
+export function parseSettlementReviewRow(row: SettlementReviewRow): SettlementReview {
+  return {
+    id: row.id,
+    tripId: row.trip_id,
+    currency: row.currency,
+    reason: row.reason as SettlementReviewReason,
+    costKind: row.cost_kind as BalanceCost['kind'],
+    costTitle: row.cost_title,
+    costAmount: row.cost_amount,
+    toCurrency: row.to_currency,
+    createdAt: row.created_at,
+    acknowledgedAt: row.acknowledged_at,
+  };
+}
+
+/** What a write would record, before it has an id or a time. */
+export type LeftCost = Pick<SettlementReview, 'currency' | 'reason' | 'costKind' | 'costTitle' | 'costAmount' | 'toCurrency'>;
+
+/** What became of a cost's row after a write: gone, now a payment on a booking, or still there. */
+export type CostFate = 'deleted' | 'linked' | 'exists';
+
+/**
+ * The trigger rule (§15.1). For each currency that had a settlement before the write: every cost
+ * that was in its shared balances then — complete, waiting, or unsplit and to review — and is not
+ * in that currency at all now. A cost kept outside on purpose, one that only became waiting or
+ * unsplit, one that only changed its amount, and anything in a currency without settlements are
+ * not. Only the currency the cost left is named, never where it went.
+ */
+export function costsLeavingSettledCurrencies(
+  before: BalanceInput,
+  after: BalanceInput,
+  fate: (kind: BalanceCost['kind'], id: string) => CostFate,
+): LeftCost[] {
+  const afterEntries = tripBalances(after);
+  const same = (a: Pick<BalanceCost, 'kind' | 'id'>) => (b: Pick<BalanceCost, 'kind' | 'id'>) =>
+    a.kind === b.kind && a.id === b.id;
+  const left: LeftCost[] = [];
+  for (const entry of tripBalances(before)) {
+    if (entry.settlements.length === 0) continue;
+    const now = afterEntries.find((one) => one.currency === entry.currency);
+    const stillHere = now ? [...now.complete, ...now.waiting.map((w) => w.cost), ...now.notSplit] : [];
+    for (const cost of [...entry.complete, ...entry.waiting.map((w) => w.cost), ...entry.toReview]) {
+      if (stillHere.some(same(cost))) continue;
+      const what = fate(cost.kind, cost.id);
+      if (what === 'linked') continue;
+      const moved = after.costs.find(same(cost));
+      const reason: SettlementReviewReason =
+        what === 'deleted' ? 'deleted' : moved && moved.currency !== cost.currency ? 'moved' : 'left';
+      left.push({
+        currency: entry.currency,
+        reason,
+        costKind: cost.kind,
+        costTitle: cost.title,
+        costAmount: cost.amount,
+        toCurrency: reason === 'moved' ? moved!.currency : null,
+      });
+    }
+  }
+  return left;
+}
+
+/**
+ * A write that would take a shared cost out of a currency with settlements, refused until the
+ * person is told and continues (§15.2). Nothing was saved.
+ */
+export class SettlementReviewNeeded extends MoneyRuleError {
+  readonly currencies: string[];
+  constructor(readonly left: readonly LeftCost[]) {
+    const currencies = [...new Set(left.map((one) => one.currency))];
+    super(settlementReviewWarning(currencies));
+    this.name = 'SettlementReviewNeeded';
+    this.currencies = currencies;
+  }
+}
+
+/** The warning before such a write (§15.2). */
+export function settlementReviewWarning(currencies: readonly string[]): string {
+  const names = currencies.join(' and ');
+  return (
+    `${names} already ${currencies.length === 1 ? 'has' : 'have'} recorded settlements. Removing or moving this shared ` +
+    'cost may change who owes whom. Existing settlements will stay unchanged; suggested transfers in ' +
+    `${names} pause until you review them.`
+  );
+}
+
+/** One change in words, for Settle up and the review screen. */
+export function settlementReviewText(review: Pick<SettlementReview, 'reason' | 'costTitle' | 'costAmount' | 'currency' | 'toCurrency'>): string {
+  const what = `${review.costTitle} · ${formatMoney(review.costAmount, review.currency)}`;
+  switch (review.reason) {
+    case 'deleted':
+      return `${what} — deleted`;
+    case 'moved':
+      return `${what} — moved to ${review.toCurrency}`;
+    case 'left':
+      return `${what} — no longer counted`;
+  }
+}
+
 type CostItem = Pick<
   TripItem,
   'id' | 'kind' | 'title' | 'status' | 'priceAmount' | 'priceCurrency' | 'isPaid' | 'details'
@@ -442,11 +577,13 @@ export type CurrencyBalances = {
   /** Unsplit and confirmed as it stands: kept outside on purpose. */
   keptOutside: BalanceCost[];
   settlements: Settlement[];
+  /** Open reviews of this currency's settlements (§15): only while it has settlements. */
+  settlementReviews: SettlementReview[];
   /** Children whose net is below zero after later edits (E): flagged, never shown as owing. */
   childrenBelowZero: string[];
   /** Empty unless `heldBecause` is null. */
   transfers: Transfer[];
-  heldBecause: 'waiting' | 'review' | 'settlementsOnly' | 'child' | 'nothing' | null;
+  heldBecause: 'waiting' | 'settlementReview' | 'review' | 'settlementsOnly' | 'child' | 'nothing' | null;
 };
 
 export type BalanceInput = {
@@ -456,6 +593,8 @@ export type BalanceInput = {
   settlements: readonly Settlement[];
   /** Unsplit costs kept outside; none when left out. */
   confirmations?: readonly UnsplitConfirmation[];
+  /** Open settlement reviews (§15); none when left out. */
+  settlementReviews?: readonly SettlementReview[];
 };
 
 /** The trip's balances, one entry per currency, in order of first appearance among the costs. */
@@ -516,12 +655,15 @@ export function tripBalances(input: BalanceInput): CurrencyBalances[] {
     const confirmations = input.confirmations ?? [];
     const keptOutside = notSplit.filter((cost) => isKeptOutside(cost, confirmations));
     const toReview = settlements.length > 0 ? notSplit.filter((cost) => !keptOutside.includes(cost)) : [];
+    // Nothing to review without a settlement; one recorded later brings the open reviews back.
+    const settlementReviews =
+      settlements.length > 0 ? (input.settlementReviews ?? []).filter((review) => review.currency === currency) : [];
 
     const state: BalanceState =
       waiting.length > 0
         ? 'soFar'
         : complete.length > 0
-          ? toReview.length > 0
+          ? toReview.length > 0 || settlementReviews.length > 0
             ? 'review'
             : 'final'
           : settlements.length > 0
@@ -534,7 +676,9 @@ export function tripBalances(input: BalanceInput): CurrencyBalances[] {
       state === 'soFar'
         ? ('waiting' as const)
         : state === 'review'
-          ? ('review' as const)
+          ? settlementReviews.length > 0
+            ? ('settlementReview' as const)
+            : ('review' as const)
           : state === 'settlementsOnly'
             ? ('settlementsOnly' as const)
             : state === 'nothing'
@@ -553,6 +697,7 @@ export function tripBalances(input: BalanceInput): CurrencyBalances[] {
       toReview,
       keptOutside,
       settlements,
+      settlementReviews,
       childrenBelowZero,
       transfers: heldBecause === null ? settleUp(rows) : [],
       heldBecause,
@@ -769,18 +914,28 @@ export function netText(
 
 /** The heading over a currency's nets (§3, A, B). */
 export function balancesHeading(entry: CurrencyBalances): string {
+  // A held currency says so whatever else it says (§15.4).
+  const held = entry.settlementReviews.length > 0 ? ' · settlements need review' : '';
   switch (entry.state) {
     case 'final':
       return `Balances · ${entry.currency}`;
     case 'soFar':
-      return `Balances so far · ${entry.currency} — ${plural(entry.waiting.length, 'cost', 'costs')} not included yet`;
+      return `Balances so far · ${entry.currency} — ${plural(entry.waiting.length, 'cost', 'costs')} not included yet${held}`;
     case 'review':
-      return `Balances so far · ${entry.currency} — ${plural(entry.toReview.length, 'unsplit cost', 'unsplit costs')} to review`;
+      return `Balances so far · ${entry.currency} — ${reviewParts(entry).join(' · ')}`;
     case 'settlementsOnly':
-      return `Settlements only · ${entry.currency} — no costs in the balances`;
+      return `Settlements only · ${entry.currency} — no costs in the balances${held}`;
     case 'nothing':
       return entry.currency;
   }
+}
+
+/** What a currency in `review` waits for: its settlements, its unsplit costs, or both. */
+function reviewParts(entry: CurrencyBalances): string[] {
+  return [
+    entry.settlementReviews.length > 0 ? 'settlements need review' : null,
+    entry.toReview.length > 0 ? `${plural(entry.toReview.length, 'unsplit cost', 'unsplit costs')} to review` : null,
+  ].filter((part): part is string => part !== null);
 }
 
 /**
@@ -799,10 +954,18 @@ export function statusText(entry: CurrencyBalances): string | null {
       return allZero
         ? `Balances so far: all at zero · ${plural(entry.waiting.length, 'cost', 'costs')} not included yet.`
         : `Suggested transfers appear once ${entry.waiting.length === 1 ? 'this cost is' : `these ${entry.waiting.length} costs are`} complete.`;
-    case 'review':
+    case 'review': {
+      if (entry.settlementReviews.length === 0) {
+        return entry.toReview.length === 1
+          ? `Suggested transfers are paused: 1 cost is not split and ${entry.currency} has settlements. Split it, or keep it outside on purpose.`
+          : `Suggested transfers are paused: ${entry.toReview.length} costs are not split and ${entry.currency} has settlements. Split each, or keep it outside on purpose.`;
+      }
+      const held = `Suggested transfers are paused: shared costs in ${entry.currency} changed after settlements were recorded. Review the settlements and say whether they still stand.`;
+      if (entry.toReview.length === 0) return held;
       return entry.toReview.length === 1
-        ? `Suggested transfers are paused: 1 cost is not split and ${entry.currency} has settlements. Split it, or keep it outside on purpose.`
-        : `Suggested transfers are paused: ${entry.toReview.length} costs are not split and ${entry.currency} has settlements. Split each, or keep it outside on purpose.`;
+        ? `${held} Also, 1 cost is not split: split it, or keep it outside on purpose.`
+        : `${held} Also, ${entry.toReview.length} costs are not split: split each, or keep it outside on purpose.`;
+    }
     case 'final':
       if (entry.childrenBelowZero.length > 0) {
         return 'A child has received more than they paid. Check the settlements — nothing is suggested until then.';
@@ -875,11 +1038,12 @@ export function settleUpText(tripName: string, balances: readonly CurrencyBalanc
   const notes: string[] = [];
   for (const entry of balances) {
     if (entry.state === 'soFar') {
-      sections.push(`${entry.currency}: not final — ${plural(entry.waiting.length, 'cost', 'costs')} not complete`);
+      const held = entry.settlementReviews.length > 0 ? ' · settlements need review' : '';
+      sections.push(`${entry.currency}: not final — ${plural(entry.waiting.length, 'cost', 'costs')} not complete${held}`);
       continue;
     }
     if (entry.state === 'review') {
-      sections.push(`${entry.currency}: not final — ${plural(entry.toReview.length, 'unsplit cost', 'unsplit costs')} to review`);
+      sections.push(`${entry.currency}: not final — ${reviewParts(entry).join(' · ')}`);
       continue;
     }
     if (entry.transfers.length > 0) {

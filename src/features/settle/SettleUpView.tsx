@@ -6,6 +6,7 @@ import {
   costFingerprint,
   netText,
   recordedText,
+  settlementReviewText,
   statusText,
   waitTarget,
   waitText,
@@ -40,7 +41,7 @@ type Props = {
  * recorded on it and where to finish it. Suggested transfers appear only where nothing waits but
  * costs left unsplit (§12.1): a provisional figure is never worded or coloured as a debt. In a
  * currency with settlements, an unsplit cost is reviewed first: split it, or keep it outside on
- * purpose (§14.2).
+ * purpose (§14.2); and a shared cost that left it holds it until the settlements are reviewed (§15).
  */
 export function SettleUpView({ tripId, balances, members, onShare, onKeepOutside, onReviewAgain }: Props) {
   const c = useColors();
@@ -174,6 +175,37 @@ function CurrencySection({
           ]}>
           {status}
         </Text>
+      ) : null}
+
+      {entry.settlementReviews.length > 0 ? (
+        <View style={styles.block}>
+          <Text style={[type.label, { color: c.text }]}>Settlements need review</Text>
+          <Text style={[type.caption, { color: c.textMuted }]}>
+            {`Shared costs in ${entry.currency} changed after settlements were recorded. The settlements stay as they are; check that they still reflect what happened.`}
+          </Text>
+          <Rows>
+            {entry.settlementReviews.map((review) => (
+              <ListRow
+                key={review.id}
+                title={settlementReviewText(review)}
+                subtitle={formatShortDate(review.createdAt.slice(0, 10))}
+              />
+            ))}
+          </Rows>
+          <View style={styles.actions}>
+            <Button
+              label="Review settlements"
+              variant="secondary"
+              compact
+              onPress={() =>
+                router.push({
+                  pathname: '/trip/[tripId]/settlement-review',
+                  params: { tripId, currency: entry.currency },
+                })
+              }
+            />
+          </View>
+        </View>
       ) : null}
 
       {entry.transfers.length > 0 ? (

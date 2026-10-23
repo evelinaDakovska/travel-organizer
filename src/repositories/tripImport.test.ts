@@ -45,7 +45,7 @@ async function setup() {
 const TABLES = [
   'trips', 'trip_items', 'trip_notes', 'resources', 'expenses', 'payments', 'travellers',
   'trip_travellers', 'item_participants', 'lists', 'list_items', 'list_item_recipients',
-  'templates', 'template_uses', 'booking_payments', 'cost_shares', 'settlements', 'unsplit_confirmations',
+  'templates', 'template_uses', 'booking_payments', 'cost_shares', 'settlements', 'unsplit_confirmations', 'settlement_reviews',
 ];
 const dump = (raw: Database.Database) =>
   Object.fromEntries(TABLES.map((t) => [t, raw.prepare(`SELECT * FROM ${t} ORDER BY rowid`).all()]));
@@ -175,7 +175,7 @@ describe('importing a trip archive into a database', () => {
   it('carries payments and linked expenses with new ids, on the copied bookings and payers (3D-1)', async () => {
     const { raw, db } = await setup();
     const { archive } = await archiveFrom(db);
-    expect(archive.manifest.rowFormat).toBe(11);
+    expect(archive.manifest.rowFormat).toBe(12);
     // Evelina is linked to the profile here; Misho comes in as a new one.
     const plan = await importInto(db, archive, new Map([['ev', { kind: 'existing', id: 'ev' }]]));
     const one = (sql: string) => raw.prepare(sql).all(plan.tripId);
@@ -428,5 +428,63 @@ describe('unsplit costs kept outside, through a trip archive (review P1)', () =>
     expect(check([{ ...row, expense_id: 'e1' }])).toBe('a cost kept outside has no single cost');
     expect(check([row, { ...row, id: 'other' }])).toBe('a cost is kept outside twice');
     expect(check([{ ...row, trip_id: 'rome' }])).toBe('an unsplit cost kept outside belongs to another trip');
+  });
+});
+
+describe('settlement reviews, through a trip archive (§15.3)', () => {
+  const addReviews = (raw: Database.Database) => {
+    const insert = raw.prepare(
+      `INSERT INTO settlement_reviews (id, trip_id, currency, reason, cost_kind, cost_title, cost_amount, to_currency,
+                                       created_at, acknowledged_at)
+       VALUES (?, 'lap', 'EUR', ?, 'expense', ?, ?, ?, ?, ?)`,
+    );
+    insert.run('rv-old', 'deleted', 'Taxi', 3000, null, now, now);
+    insert.run('rv-open', 'moved', 'Ferry', 9000, 'NOK', now, null);
+  };
+
+  it('21: copied to the new trip under new ids, open still open, acknowledged still acknowledged', async () => {
+    const { raw, db } = await setup();
+    addReviews(raw);
+    const original = raw.prepare(`SELECT * FROM settlement_reviews ORDER BY rowid`).all();
+    const { archive } = await archiveFrom(db);
+    expect(archive.tables.settlementReviews).toHaveLength(2);
+    const plan = await importInto(db, archive);
+    expect(await verifyTripImport(db, plan)).toEqual({ ok: true });
+
+    const copied = raw
+      .prepare(`SELECT * FROM settlement_reviews WHERE trip_id = ? ORDER BY rowid`)
+      .all(plan.tripId) as Record<string, unknown>[];
+    expect(copied).toHaveLength(2);
+    expect(copied.map((row) => row.id)).not.toContain('rv-old');
+    expect(copied.map(({ id: _id, trip_id: _trip, ...rest }) => rest)).toEqual(
+      (original as Record<string, unknown>[]).map(({ id: _id, trip_id: _trip, ...rest }) => rest),
+    );
+    const eur = tripBalances(await balanceInput(db, plan.tripId)).find((entry) => entry.currency === 'EUR')!;
+    expect(eur.settlementReviews.map((review) => review.costTitle)).toEqual(['Ferry']);
+    // The original trip's reviews are untouched.
+    expect(raw.prepare(`SELECT * FROM settlement_reviews WHERE trip_id = 'lap' ORDER BY rowid`).all()).toEqual(original);
+  });
+
+  it('refuses an archive whose review belongs to another trip, repeats an id, or misstates a move', async () => {
+    const { raw, db } = await setup();
+    addReviews(raw);
+    const { archive } = await archiveFrom(db);
+    const [row] = archive.tables.settlementReviews;
+    const check = (rows: (typeof row)[]) => checkTripArchive(archive.manifest, { ...archive.tables, settlementReviews: rows });
+    expect(check([row])).toBeNull();
+    expect(check([row, row])).toMatch(/settlement reviews/);
+    expect(check([{ ...row, trip_id: 'rome' }])).toBe('a settlement review belongs to another trip');
+    expect(check([{ ...row, reason: 'moved', to_currency: null }])).toBe('a settlement review does not say where a cost moved');
+    expect(check([{ ...row, reason: 'deleted', to_currency: 'NOK' }])).toBe('a settlement review does not say where a cost moved');
+  });
+
+  it('a refused import writes no review: the trip and its reviews come in together or not at all', async () => {
+    const { raw, db } = await setup();
+    addReviews(raw);
+    const { archive } = await archiveFrom(db);
+    const before = dump(raw);
+    raw.exec(`CREATE TEMP TRIGGER fail_review BEFORE INSERT ON settlement_reviews BEGIN SELECT RAISE(ABORT, 'disk full'); END`);
+    await expect(importInto(db, archive)).rejects.toThrow('disk full');
+    expect(dump(raw)).toEqual(before);
   });
 });

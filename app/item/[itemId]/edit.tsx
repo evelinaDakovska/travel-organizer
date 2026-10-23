@@ -26,6 +26,7 @@ import { Screen } from '../../../src/ui/components/Screen';
 import { ScreenHeader } from '../../../src/ui/components/ScreenHeader';
 import { askForRemindersIfDue } from '../../../src/notifications/reminders';
 import { alertRefusal } from '../../../src/features/payments/refusal';
+import { withSettlementReview } from '../../../src/features/settle/settlementReviewPrompt';
 import { overpaidWarning } from '../../../src/domain/bookingPayments';
 import { confirmSplitMismatch } from '../../../src/features/split/confirmMismatch';
 
@@ -143,7 +144,10 @@ export default function EditItem() {
             return;
           }
           try {
-            await updateTripItem(db, item.id, input, participants);
+            // A shared cost leaving a currency with settlements: said first (§15).
+            if (!(await withSettlementReview((options) => updateTripItem(db, item.id, input, participants, options)))) {
+              return;
+            }
           } catch (error) {
             // An edit that would strand payments (3D-1): refused, nothing saved, reason shown.
             if (alertRefusal(error)) return;

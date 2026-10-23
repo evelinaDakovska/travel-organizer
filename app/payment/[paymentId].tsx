@@ -6,6 +6,7 @@ import { Alert, Text } from 'react-native';
 import { formatMoney } from '../../src/domain/format';
 import { PaymentForm } from '../../src/features/payments/PaymentForm';
 import { alertRefusal } from '../../src/features/payments/refusal';
+import { withSettlementReview } from '../../src/features/settle/settlementReviewPrompt';
 import { queryView } from '../../src/hooks/queryView';
 import { useLiveQuery } from '../../src/hooks/useLiveQuery';
 import {
@@ -84,8 +85,8 @@ export default function PaymentDetail() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            await deleteBookingPayment(db, payment.id);
-            router.back();
+            // The last payment of a refunded cancellation takes it out of the balances: said first (§15).
+            if (await withSettlementReview((options) => deleteBookingPayment(db, payment.id, options))) router.back();
           },
         },
       ],

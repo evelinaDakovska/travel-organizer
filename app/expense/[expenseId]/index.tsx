@@ -7,6 +7,7 @@ import { expenseSplitRefusal, splitGoesText } from '../../../src/domain/costShar
 import { formatMoment, formatMoney } from '../../../src/domain/format';
 import { categoryLabel, expenseTitle } from '../../../src/domain/spending';
 import { ResourceList } from '../../../src/features/resources/ResourceList';
+import { withSettlementReview } from '../../../src/features/settle/settlementReviewPrompt';
 import { SplitSection } from '../../../src/features/split/SplitSection';
 import { queryView } from '../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
@@ -109,8 +110,8 @@ export default function ExpenseDetail() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            await deleteExpense(db, expense.id);
-            router.back();
+            // A shared cost leaving a currency with settlements is said first (§15); Cancel keeps it.
+            if (await withSettlementReview((options) => deleteExpense(db, expense.id, options))) router.back();
           },
         },
       ],
@@ -124,7 +125,10 @@ export default function ExpenseDetail() {
       `It will count as spending of its own${links?.booking ? `, and “${links.booking.title}” will no longer show it as paid` : ''}.`,
       [
         { text: 'Keep linked', style: 'cancel' },
-        { text: 'Unlink', onPress: () => void unlinkExpense(db, expense.id) },
+        {
+          text: 'Unlink',
+          onPress: () => void withSettlementReview((options) => unlinkExpense(db, expense.id, options)),
+        },
       ],
     );
 

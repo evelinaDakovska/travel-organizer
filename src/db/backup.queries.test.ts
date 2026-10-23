@@ -405,13 +405,18 @@ describe('the backup round trip', () => {
     expect(item).toEqual({ details, price_amount: 34000, is_paid: 1 });
   });
 
-  it('writes format 11, and still restores format 10 (0.16.0), 9 (0.15.0), 8 (0.14.0) and 7 (0.13.0)', async () => {
+  it('writes format 12, and still restores 11 (0.16.1), 10 (0.16.0), 9 (0.15.0), 8 (0.14.0) and 7 (0.13.0)', async () => {
     const source = fresh();
     seed(source);
     const current = JSON.parse(JSON.stringify(await documentFrom(source)));
-    expect(current.formatVersion).toBe(11);
+    expect(current.formatVersion).toBe(12);
+    // A format-11 file has no settlement reviews: nothing is held.
+    const { settlementReviews: _reviews, ...elevenTables } = current.tables;
+    const fromEleven = parseExportDocument({ ...current, formatVersion: 11, tables: elevenTables });
+    expect(fromEleven.ok).toBe(true);
+    if (fromEleven.ok) expect(fromEleven.document.tables.settlementReviews).toEqual([]);
     // A format-10 file has no confirmations: no unsplit cost is kept outside.
-    const { unsplitConfirmations: _confirmations, ...tenTables } = current.tables;
+    const { unsplitConfirmations: _confirmations, ...tenTables } = elevenTables;
     const fromTen = parseExportDocument({ ...current, formatVersion: 10, tables: tenTables });
     expect(fromTen.ok).toBe(true);
     if (fromTen.ok) expect(fromTen.document.tables.unsplitConfirmations).toEqual([]);
@@ -430,10 +435,11 @@ describe('the backup round trip', () => {
         expect(fromOlder.document.tables.tripCover).toEqual([]);
         expect(fromOlder.document.tables.settlements).toEqual([]);
         expect(fromOlder.document.tables.unsplitConfirmations).toEqual([]);
+        expect(fromOlder.document.tables.settlementReviews).toEqual([]);
       }
     }
-    // 0.16.0 refuses anything above its own 10 — this app's backups included.
-    expect(current.formatVersion).toBeGreaterThan(10);
+    // 0.16.1 refuses anything above its own 11 — this app's backups included.
+    expect(current.formatVersion).toBeGreaterThan(11);
   });
 
   it('rejects a backup from a future format with a clear message', async () => {

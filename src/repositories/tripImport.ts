@@ -28,6 +28,7 @@ const ORDER: readonly (readonly [keyof TripArchiveTables, ExportTableName])[] = 
   ['settlements', 'settlements'],
   // After the splits: writing a split ends a confirmation (migration 010).
   ['unsplitConfirmations', 'unsplit_confirmations'],
+  ['settlementReviews', 'settlement_reviews'],
   ['resources', 'resources'],
   ['lists', 'lists'],
   ['listItems', 'list_items'],
@@ -107,6 +108,11 @@ export async function verifyTripImport(
       'unsplit costs kept outside',
       plan.tables.unsplitConfirmations.length,
       `SELECT COUNT(*) AS n FROM unsplit_confirmations WHERE trip_id = $trip`,
+    ],
+    [
+      'settlement reviews',
+      plan.tables.settlementReviews.length,
+      `SELECT COUNT(*) AS n FROM settlement_reviews WHERE trip_id = $trip`,
     ],
     [
       'documents',

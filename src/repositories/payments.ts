@@ -26,7 +26,7 @@ import {
   type MoneyRecords,
 } from '../domain/bookingPayments';
 import { parseExpenseRow, type Expense, type ExpenseRow } from '../domain/spending';
-import { endChangedConfirmations } from './confirmations';
+import { afterMoneyWrite, moneyBefore, type MoneyWriteOptions } from './moneyWrites';
 import { getTripItem } from './tripItems';
 
 /**
@@ -139,6 +139,7 @@ export async function createBookingPayment(
     if (!item) throw new MoneyRuleError('That booking is not here any more.');
     const booking = await bookingForRecord(db, itemId, item.tripId);
     await checkPayer(db, booking.tripId, valid.payerId);
+    const before = await moneyBefore(db, booking.tripId);
     await db.runAsync(INSERT_BOOKING_PAYMENT, {
       $id: id,
       $tripId: booking.tripId,
@@ -146,7 +147,7 @@ export async function createBookingPayment(
       $currency: booking.priceCurrency!,
       ...bindings(valid),
     });
-    await endChangedConfirmations(db, booking.tripId);
+    await afterMoneyWrite(db, booking.tripId, before);
   });
   return id;
 }
@@ -166,25 +167,39 @@ export async function updateBookingPayment(
     if (!payment) throw new MoneyRuleError('That payment is not here any more.');
     await bookingForRecord(db, payment.tripItemId, payment.tripId, payment.currency);
     await checkPayer(db, payment.tripId, valid.payerId, payment.payerId);
+    const before = await moneyBefore(db, payment.tripId);
     await db.runAsync(UPDATE_BOOKING_PAYMENT, { $id: id, ...bindings(valid) });
-    await endChangedConfirmations(db, payment.tripId);
+    await afterMoneyWrite(db, payment.tripId, before);
   });
 }
 
-/** The person's own record, removed only when they say so. Never turned into an expense. */
-export async function deleteBookingPayment(db: SQLiteDatabase, id: string): Promise<void> {
+/**
+ * The person's own record, removed only when they say so. Never turned into an expense. The last
+ * payment of a refunded cancellation takes it out of the balances: `acceptSettlementReview` (§15).
+ */
+export async function deleteBookingPayment(
+  db: SQLiteDatabase,
+  id: string,
+  options: MoneyWriteOptions = {},
+): Promise<void> {
   await db.withTransactionAsync(async () => {
     const payment = await getBookingPayment(db, id);
+    const before = payment ? await moneyBefore(db, payment.tripId) : null;
     await db.runAsync(DELETE_BOOKING_PAYMENT, { $id: id });
-    if (payment) await endChangedConfirmations(db, payment.tripId);
+    if (payment) await afterMoneyWrite(db, payment.tripId, before, options);
   });
 }
 
 /** Makes a linked expense standalone spending again (L-2): explicit, never automatic. */
-export async function unlinkExpense(db: SQLiteDatabase, expenseId: string): Promise<void> {
+export async function unlinkExpense(
+  db: SQLiteDatabase,
+  expenseId: string,
+  options: MoneyWriteOptions = {},
+): Promise<void> {
   await db.withTransactionAsync(async () => {
     const row = await db.getFirstAsync<ExpenseRow>(SELECT_EXPENSE, { $id: expenseId });
+    const before = row ? await moneyBefore(db, row.trip_id) : null;
     await db.runAsync(UNLINK_EXPENSE, { $id: expenseId, $now: new Date().toISOString() });
-    if (row) await endChangedConfirmations(db, row.trip_id);
+    if (row) await afterMoneyWrite(db, row.trip_id, before, options);
   });
 }

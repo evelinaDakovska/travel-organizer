@@ -6,6 +6,7 @@ import { expenseFormValues } from '../../../src/domain/spending';
 import { ExpenseForm } from '../../../src/features/expenses/ExpenseForm';
 import { useExpenseContext } from '../../../src/features/expenses/useExpenseContext';
 import { alertRefusal } from '../../../src/features/payments/refusal';
+import { withSettlementReview } from '../../../src/features/settle/settlementReviewPrompt';
 import { confirmSplitMismatch } from '../../../src/features/split/confirmMismatch';
 import { queryView } from '../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
@@ -69,7 +70,8 @@ export default function EditExpense() {
             return;
           }
           try {
-            await updateExpense(db, expense.id, input);
+            // A new currency for a shared cost in a currency with settlements: said first (§15).
+            if (!(await withSettlementReview((options) => updateExpense(db, expense.id, input, options)))) return;
           } catch (error) {
             if (alertRefusal(error)) return;
             throw error;

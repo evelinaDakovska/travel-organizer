@@ -577,6 +577,9 @@ export const EXPORT_COLUMNS = {
                 'created_at', 'updated_at'],
   // Format 11 (migration 010, review P1).
   unsplit_confirmations: ['id', 'trip_id', 'trip_item_id', 'expense_id', 'fingerprint', 'confirmed_at'],
+  // Format 12 (migration 011, settlement review holds).
+  settlement_reviews: ['id', 'trip_id', 'currency', 'reason', 'cost_kind', 'cost_title', 'cost_amount',
+                       'to_currency', 'created_at', 'acknowledged_at'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type ExportTableName = keyof typeof EXPORT_COLUMNS;
@@ -872,6 +875,30 @@ DELETE FROM unsplit_confirmations WHERE trip_item_id = $itemId OR expense_id = $
 export const INSERT_UNSPLIT_CONFIRMATION = `
 INSERT INTO unsplit_confirmations (id, trip_id, trip_item_id, expense_id, fingerprint, confirmed_at)
 VALUES ($id, $tripId, $itemId, $expenseId, $fingerprint, $now)
+`;
+
+// ─── Settlement review holds (§15) ───────────────────────────────────────────────────────────────
+
+export const COUNT_TRIP_SETTLEMENTS = `
+SELECT COUNT(*) AS n FROM settlements WHERE trip_id = $tripId
+`;
+
+/** Open reviews only: an acknowledged one holds nothing. Oldest first. */
+export const SELECT_OPEN_SETTLEMENT_REVIEWS = `
+SELECT * FROM settlement_reviews WHERE trip_id = $tripId AND acknowledged_at IS NULL
+ ORDER BY created_at, rowid
+`;
+
+export const INSERT_SETTLEMENT_REVIEW = `
+INSERT INTO settlement_reviews
+  (id, trip_id, currency, reason, cost_kind, cost_title, cost_amount, to_currency, created_at, acknowledged_at)
+VALUES
+  ($id, $tripId, $currency, $reason, $costKind, $costTitle, $costAmount, $toCurrency, $now, NULL)
+`;
+
+export const ACKNOWLEDGE_SETTLEMENT_REVIEWS = `
+UPDATE settlement_reviews SET acknowledged_at = $now
+ WHERE trip_id = $tripId AND currency = $currency AND acknowledged_at IS NULL
 `;
 
 /** Every booking payment on a trip, for its balances. */

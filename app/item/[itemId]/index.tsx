@@ -1,6 +1,6 @@
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSQLiteContext } from 'expo-sqlite';
+import { useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -36,6 +36,7 @@ import { DirectionsSheet } from '../../../src/features/directions/DirectionsShee
 import { JourneyEnds } from '../../../src/features/items/JourneyEnds';
 import { PaymentsSection } from '../../../src/features/payments/PaymentsSection';
 import { alertRefusal } from '../../../src/features/payments/refusal';
+import { withSettlementReview } from '../../../src/features/settle/settlementReviewPrompt';
 import { SplitSection } from '../../../src/features/split/SplitSection';
 import { ZoneNotice } from '../../../src/features/items/ZoneNotice';
 import { OpenResource } from '../../../src/features/resources/OpenResource';
@@ -187,7 +188,7 @@ export default function ItemDetail() {
           ? [
               {
                 text: 'Cancel booking',
-                onPress: () => confirmCancel(item, () => void setTripItemStatus(db, item.id, 'cancelled')),
+                onPress: () => confirmCancel(item, () => cancelBooking(db, item.id)),
               },
             ]
           : []),
@@ -198,7 +199,7 @@ export default function ItemDetail() {
     const split = await itemSplitFacts(db, item.id);
     confirmDelete(item, await countItemOwnFiles(db, item.id), splitGoesText(split.people), async () => {
       try {
-        await deleteTripItem(db, item.id);
+        if (!(await withSettlementReview((options) => deleteTripItem(db, item.id, options)))) return;
       } catch (error) {
         if (alertRefusal(error, 'Not deleted')) return;
         throw error;
@@ -460,7 +461,7 @@ export default function ItemDetail() {
                   variant="secondary"
                   onPress={() => {
                     setMoreOpen(false);
-                    confirmCancel(item, () => setTripItemStatus(db, item.id, 'cancelled'));
+                    confirmCancel(item, () => cancelBooking(db, item.id));
                   }}
                 />
               ) : null}
@@ -508,6 +509,13 @@ async function openMaps(url: string) {
     console.warn('Open in Maps failed', error);
     Alert.alert('Could not open Maps', 'No maps app on this phone can show this place.');
   }
+}
+
+/** Cancelling can take a shared cost out of a currency with settlements: said first (§15). */
+function cancelBooking(db: SQLiteDatabase, id: string) {
+  void withSettlementReview((options) => setTripItemStatus(db, id, 'cancelled', options)).catch((error: unknown) => {
+    if (!alertRefusal(error, 'Not cancelled')) throw error;
+  });
 }
 
 function confirmCancel(item: TripItem, cancel: () => void) {

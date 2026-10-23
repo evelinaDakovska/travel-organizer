@@ -2,36 +2,32 @@ import { randomUUID } from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import {
+  ACKNOWLEDGE_SETTLEMENT_REVIEWS,
   DELETE_SETTLEMENT,
   DELETE_UNSPLIT_CONFIRMATION,
   INSERT_SETTLEMENT,
   INSERT_UNSPLIT_CONFIRMATION,
+  SELECT_OPEN_SETTLEMENT_REVIEWS,
   SELECT_SETTLEMENT,
-  SELECT_TRIP_BOOKING_PAYMENTS,
   SELECT_TRIP_SETTLEMENTS,
-  SELECT_TRIP_UNSPLIT_CONFIRMATIONS,
   UPDATE_SETTLEMENT,
 } from '../db/queries';
 import {
-  balanceCosts,
   costFingerprint,
   parseSettlementRow,
-  parseUnsplitConfirmationRow,
   settlementInputSchema,
   settlementRefusal,
   tripBalances,
   type BalanceCost,
-  type BalanceInput,
   type Settlement,
   type SettlementInput,
+  type SettlementReviewRow,
   type SettlementRow,
-  type UnsplitConfirmationRow,
 } from '../domain/balances';
-import { MoneyRuleError, parseBookingPaymentRow, type BookingPaymentRow } from '../domain/bookingPayments';
-import { listTripCover, listTripShares } from './costShares';
-import { listExpenses } from './expenses';
-import { listTripTravellers } from './travellers';
-import { listTripItems } from './tripItems';
+import { MoneyRuleError } from '../domain/bookingPayments';
+import { balanceInput } from './moneyWrites';
+
+export { balanceInput } from './moneyWrites';
 
 /**
  * Settlements and the balances they move (3E, `docs/phase3e-plan.md`). Balances are never stored:
@@ -43,6 +39,7 @@ import { listTripItems } from './tripItems';
 /** Everything a balance reads: a change to any of these can change one. */
 export const BALANCE_TABLES = [
   'settlements',
+  'settlement_reviews',
   'unsplit_confirmations',
   'booking_payments',
   'expenses',
@@ -61,27 +58,6 @@ export async function listTripSettlements(db: SQLiteDatabase, tripId: string): P
 export async function getSettlement(db: SQLiteDatabase, id: string): Promise<Settlement | null> {
   const row = await db.getFirstAsync<SettlementRow>(SELECT_SETTLEMENT, { $id: id });
   return row ? parseSettlementRow(row) : null;
-}
-
-/** Every record a trip's balances are worked out from, read as it is now. */
-export async function balanceInput(db: SQLiteDatabase, tripId: string): Promise<BalanceInput> {
-  const [members, tripCover, items, expenses, paymentRows, shares, settlements, confirmations] = await Promise.all([
-    listTripTravellers(db, tripId),
-    listTripCover(db, tripId),
-    listTripItems(db, tripId),
-    listExpenses(db, tripId),
-    db.getAllAsync<BookingPaymentRow>(SELECT_TRIP_BOOKING_PAYMENTS, { $tripId: tripId }),
-    listTripShares(db, tripId),
-    listTripSettlements(db, tripId),
-    db.getAllAsync<UnsplitConfirmationRow>(SELECT_TRIP_UNSPLIT_CONFIRMATIONS, { $tripId: tripId }),
-  ]);
-  return {
-    members,
-    tripCover,
-    costs: balanceCosts({ items, expenses, payments: paymentRows.map(parseBookingPaymentRow), shares }),
-    settlements,
-    confirmations: confirmations.map(parseUnsplitConfirmationRow),
-  };
 }
 
 /** The form's own schema, again at the boundary: a caller's types are not a check. */
@@ -178,4 +154,35 @@ export async function keepOutside(db: SQLiteDatabase, tripId: string, cost: Cost
 /** Takes a cost back to review: its confirmation goes, nothing else changes. */
 export async function reviewAgain(db: SQLiteDatabase, cost: CostRef): Promise<void> {
   await db.runAsync(DELETE_UNSPLIT_CONFIRMATION, costBindings(cost));
+}
+
+/**
+ * *Settlements still stand* (§15.3): acknowledges exactly the reviews of this currency the screen
+ * showed. Inside the transaction the open ones are read again; if any was added (or acknowledged)
+ * since, the screen was stale and nothing is written. Stamps the reviews and nothing else — no
+ * settlement, cost or record changes.
+ */
+export async function settlementsStillStand(
+  db: SQLiteDatabase,
+  tripId: string,
+  currency: string,
+  seenIds: readonly string[],
+): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    const open = (await db.getAllAsync<SettlementReviewRow>(SELECT_OPEN_SETTLEMENT_REVIEWS, { $tripId: tripId }))
+      .filter((row) => row.currency === currency)
+      .map((row) => row.id);
+    const seen = new Set(seenIds);
+    if (open.length === 0) throw new MoneyRuleError(`Nothing in ${currency} is waiting for review any more.`);
+    if (open.length !== seen.size || !open.every((id) => seen.has(id))) {
+      throw new MoneyRuleError(
+        `Something changed in ${currency} since you opened this review. Check the settlements again before saying they still stand.`,
+      );
+    }
+    await db.runAsync(ACKNOWLEDGE_SETTLEMENT_REVIEWS, {
+      $tripId: tripId,
+      $currency: currency,
+      $now: new Date().toISOString(),
+    });
+  });
 }

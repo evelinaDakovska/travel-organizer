@@ -109,7 +109,9 @@ export default function BalanceExplanation() {
             {entry.state === 'soFar'
               ? 'Balances so far: some costs in this currency are not complete yet, so this is not final.'
               : entry.state === 'review'
-                ? 'Balances so far: an unsplit cost in this currency is waiting for review on Settle up, so this is not final.'
+                ? entry.settlementReviews.length > 0
+                  ? 'Balances so far: shared costs in this currency changed after settlements were recorded. Review the settlements on Settle up; until then this is not final.'
+                  : 'Balances so far: an unsplit cost in this currency is waiting for review on Settle up, so this is not final.'
                 : 'Only settlements in this currency, no costs in the balances: check the currency.'}
           </Text>
         ) : null}

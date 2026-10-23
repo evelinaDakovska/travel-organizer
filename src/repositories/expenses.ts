@@ -20,7 +20,7 @@ import {
   type ExpenseInput,
   type ExpenseRow,
 } from '../domain/spending';
-import { endChangedConfirmations } from './confirmations';
+import { afterMoneyWrite, moneyBefore, type MoneyWriteOptions } from './moneyWrites';
 import { bookingForRecord, checkPayer } from './payments';
 import { createResource } from './resources';
 
@@ -112,38 +112,43 @@ export async function createExpense(
   await db.withTransactionAsync(async () => {
     await checkLink(db, tripId, input);
     await checkPayer(db, tripId, input.payerId);
+    const before = await moneyBefore(db, tripId);
     await db.runAsync(INSERT_EXPENSE, { $id: id, $tripId: tripId, ...bindings(input) });
     for (const receipt of receipts) {
       await createResource(db, { scope: 'expense', id }, receipt);
     }
-    await endChangedConfirmations(db, tripId);
+    await afterMoneyWrite(db, tripId, before);
   });
   return id;
 }
 
+/** A new currency or a link takes it out of its currency's balances: `acceptSettlementReview` (§15). */
 export async function updateExpense(
   db: SQLiteDatabase,
   id: string,
   raw: ExpenseInput,
+  options: MoneyWriteOptions = {},
 ): Promise<void> {
   const input = validInput(raw);
   await db.withTransactionAsync(async () => {
     const saved = await getExpense(db, id);
+    const before = saved ? await moneyBefore(db, saved.tripId) : null;
     if (saved) {
       await checkLink(db, saved.tripId, input);
       await checkPayer(db, saved.tripId, input.payerId, saved.payerId);
       await checkSplit(db, saved, input);
     }
     await db.runAsync(UPDATE_EXPENSE, { $id: id, ...bindings(input) });
-    if (saved) await endChangedConfirmations(db, saved.tripId);
+    if (saved) await afterMoneyWrite(db, saved.tripId, before, options);
   });
 }
 
 /** Receipt rows and its split cascade. Their files are reclaimed by the start-up sweep, not here. */
-export async function deleteExpense(db: SQLiteDatabase, id: string): Promise<void> {
+export async function deleteExpense(db: SQLiteDatabase, id: string, options: MoneyWriteOptions = {}): Promise<void> {
   await db.withTransactionAsync(async () => {
     const saved = await getExpense(db, id);
+    const before = saved ? await moneyBefore(db, saved.tripId) : null;
     await db.runAsync(DELETE_EXPENSE, { $id: id });
-    if (saved) await endChangedConfirmations(db, saved.tripId);
+    if (saved) await afterMoneyWrite(db, saved.tripId, before, options);
   });
 }
