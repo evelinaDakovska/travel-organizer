@@ -4,9 +4,11 @@ import { MIGRATIONS } from '../db/migrations';
 import { asyncDatabase } from '../db/testing/asyncDatabase';
 import { FILES, now, SCHEMA, sha, shaAsync, snapshot } from '../db/testing/tripFixture';
 import { unpackBackup } from '../domain/archive';
+import { costFingerprint, tripBalances } from '../domain/balances';
 import { buildExportDocument, planImport } from '../domain/export';
 import {
   buildTripArchive,
+  checkTripArchive,
   earlierImport,
   openTripArchive,
   packTripArchive,
@@ -15,6 +17,7 @@ import {
   type TripImportPlan,
 } from '../domain/tripArchive';
 import { applyImport, readTables } from './backup';
+import { balanceInput, keepOutside } from './settlements';
 import { applyTripImport, importHistory, verifyTripImport } from './tripImport';
 
 jest.mock('expo-crypto', () => ({ randomUUID: () => crypto.randomUUID() }));
@@ -41,7 +44,7 @@ async function setup() {
 const TABLES = [
   'trips', 'trip_items', 'trip_notes', 'resources', 'expenses', 'payments', 'travellers',
   'trip_travellers', 'item_participants', 'lists', 'list_items', 'list_item_recipients',
-  'templates', 'template_uses', 'booking_payments',
+  'templates', 'template_uses', 'booking_payments', 'cost_shares', 'settlements', 'unsplit_confirmations',
 ];
 const dump = (raw: Database.Database) =>
   Object.fromEntries(TABLES.map((t) => [t, raw.prepare(`SELECT * FROM ${t} ORDER BY rowid`).all()]));
@@ -171,7 +174,7 @@ describe('importing a trip archive into a database', () => {
   it('carries payments and linked expenses with new ids, on the copied bookings and payers (3D-1)', async () => {
     const { raw, db } = await setup();
     const { archive } = await archiveFrom(db);
-    expect(archive.manifest.rowFormat).toBe(10);
+    expect(archive.manifest.rowFormat).toBe(11);
     // Evelina is linked to the profile here; Misho comes in as a new one.
     const plan = await importInto(db, archive, new Map([['ev', { kind: 'existing', id: 'ev' }]]));
     const one = (sql: string) => raw.prepare(sql).all(plan.tripId);
@@ -343,5 +346,52 @@ describe('the two importers refuse each other’s files', () => {
     const { db } = await setup();
     const { bytes } = await archiveFrom(db);
     expect(unpackBackup(bytes)).toEqual({ ok: false, reason: expect.stringContaining('Import a trip') });
+  });
+});
+
+describe('unsplit costs kept outside, through a trip archive (review P1)', () => {
+  it('16–17: the confirmation goes to the copied cost and still matches it under new traveller ids', async () => {
+    const { raw, db } = await setup();
+    // Lapland has a settlement; leg1 is unsplit, paid by Evelina and by someone not recorded.
+    const leg1 = (await balanceInput(db, 'lap')).costs.find((cost) => cost.id === 'leg1')!;
+    await keepOutside(db, 'lap', { kind: 'booking', id: 'leg1' }, costFingerprint(leg1));
+    const original = tripBalances(await balanceInput(db, 'lap')).find((entry) => entry.currency === 'EUR')!;
+    expect(original.keptOutside.map((cost) => cost.id)).toEqual(['leg1']);
+    expect(original.toReview.map((cost) => cost.id)).toEqual(['leg2']);
+
+    const { archive } = await archiveFrom(db);
+    expect(archive.tables.unsplitConfirmations).toHaveLength(1);
+    // Every traveller comes in as a new profile: Evelina, the payer in the fingerprint, gets a new id.
+    const plan = await importInto(db, archive);
+    expect(await verifyTripImport(db, plan)).toEqual({ ok: true });
+    const titled = (title: string) =>
+      (raw.prepare(`SELECT id FROM trip_items WHERE trip_id = ? AND title = ?`).get(plan.tripId, title) as { id: string }).id;
+    const copy = tripBalances(await balanceInput(db, plan.tripId)).find((entry) => entry.currency === 'EUR')!;
+    expect(copy.keptOutside.map((cost) => cost.id)).toEqual([titled('leg1')]);
+    expect(copy.toReview.map((cost) => cost.id)).toEqual([titled('leg2')]);
+    const [row] = plan.tables.unsplitConfirmations;
+    expect(row.fingerprint).not.toContain('"ev"');
+
+    // The original is untouched, on its own cost.
+    expect(raw.prepare(`SELECT trip_id, trip_item_id FROM unsplit_confirmations ORDER BY rowid`).all()).toEqual([
+      { trip_id: 'lap', trip_item_id: 'leg1' },
+      { trip_id: plan.tripId, trip_item_id: titled('leg1') },
+    ]);
+  });
+
+  it('refuses an archive whose confirmation names no cost of the trip, or one cost twice', async () => {
+    const { db } = await setup();
+    const leg1 = (await balanceInput(db, 'lap')).costs.find((cost) => cost.id === 'leg1')!;
+    await keepOutside(db, 'lap', { kind: 'booking', id: 'leg1' }, costFingerprint(leg1));
+    const { archive } = await archiveFrom(db);
+    const [row] = archive.tables.unsplitConfirmations;
+    const check = (rows: (typeof row)[]) =>
+      checkTripArchive(archive.manifest, { ...archive.tables, unsplitConfirmations: rows });
+    expect(check([row])).toBeNull();
+    expect(check([{ ...row, trip_item_id: 'colosseum' }])).toBe('a cost kept outside is a missing plan');
+    expect(check([{ ...row, trip_item_id: null, expense_id: 'nowhere' }])).toBe('a cost kept outside is a missing expense');
+    expect(check([{ ...row, expense_id: 'e1' }])).toBe('a cost kept outside has no single cost');
+    expect(check([row, { ...row, id: 'other' }])).toBe('a cost is kept outside twice');
+    expect(check([{ ...row, trip_id: 'rome' }])).toBe('an unsplit cost kept outside belongs to another trip');
   });
 });

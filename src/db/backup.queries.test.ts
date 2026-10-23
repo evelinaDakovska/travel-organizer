@@ -405,13 +405,18 @@ describe('the backup round trip', () => {
     expect(item).toEqual({ details, price_amount: 34000, is_paid: 1 });
   });
 
-  it('writes format 10, and still restores format 9 (0.15.0), 8 (0.14.0) and 7 (0.13.0)', async () => {
+  it('writes format 11, and still restores format 10 (0.16.0), 9 (0.15.0), 8 (0.14.0) and 7 (0.13.0)', async () => {
     const source = fresh();
     seed(source);
     const current = JSON.parse(JSON.stringify(await documentFrom(source)));
-    expect(current.formatVersion).toBe(10);
-    // A format-9 file has no settlements: they read as empty.
-    const { settlements: _settlements, ...nineTables } = current.tables;
+    expect(current.formatVersion).toBe(11);
+    // A format-10 file has no confirmations: no unsplit cost is kept outside.
+    const { unsplitConfirmations: _confirmations, ...tenTables } = current.tables;
+    const fromTen = parseExportDocument({ ...current, formatVersion: 10, tables: tenTables });
+    expect(fromTen.ok).toBe(true);
+    if (fromTen.ok) expect(fromTen.document.tables.unsplitConfirmations).toEqual([]);
+    // A format-9 file has no settlements either: they read as empty.
+    const { settlements: _settlements, ...nineTables } = tenTables;
     const fromNine = parseExportDocument({ ...current, formatVersion: 9, tables: nineTables });
     expect(fromNine.ok).toBe(true);
     if (fromNine.ok) expect(fromNine.document.tables.settlements).toEqual([]);
@@ -424,10 +429,11 @@ describe('the backup round trip', () => {
         expect(fromOlder.document.tables.costShares).toEqual([]);
         expect(fromOlder.document.tables.tripCover).toEqual([]);
         expect(fromOlder.document.tables.settlements).toEqual([]);
+        expect(fromOlder.document.tables.unsplitConfirmations).toEqual([]);
       }
     }
-    // 0.15.0 refuses anything above its own 9 — this app's backups included.
-    expect(current.formatVersion).toBeGreaterThan(9);
+    // 0.16.0 refuses anything above its own 10 — this app's backups included.
+    expect(current.formatVersion).toBeGreaterThan(10);
   });
 
   it('rejects a backup from a future format with a clear message', async () => {
@@ -1009,5 +1015,63 @@ describe('settlements (format 10, 3E)', () => {
       'st2',
     ]);
     expect(filterTablesForTrip(await readAll(source), 't2').settlements).toEqual([]);
+  });
+});
+
+describe('unsplit costs kept outside (format 11, review P1)', () => {
+  function seedConfirmations(db: Database.Database) {
+    run(
+      db,
+      `INSERT INTO unsplit_confirmations (id, trip_id, trip_item_id, expense_id, fingerprint, confirmed_at)
+       VALUES ('uc1', 't1', 'i1', NULL, '{"v":1,"kind":"booking"}', ?),
+              ('uc2', 't1', NULL, 'e1', '{"v":1,"kind":"expense"}', ?)`,
+      now,
+      now,
+    );
+  }
+
+  it('restores them into an empty app byte for byte, after the splits that would end them', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    seedConfirmations(source);
+    const target = fresh();
+
+    await restoreInto(target, source, 'merge');
+
+    const restored = await readAll(target);
+    expect(restored).toEqual(await readAll(source));
+    expect(restored.unsplitConfirmations.map((row) => row.id)).toEqual(['uc1', 'uc2']);
+    expect(target.pragma('foreign_key_check')).toEqual([]);
+  });
+
+  it('replace takes the file’s; merge leaves a trip already here as it is', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    const target = fresh();
+    seed(target);
+    seedFieldbook(target);
+    seedConfirmations(target);
+    const before = await readAll(target);
+
+    await restoreInto(target, source, 'merge');
+    expect(await readAll(target)).toEqual(before);
+
+    await restoreInto(target, source, 'replace');
+    expect(await readAll(target)).toEqual(await readAll(source));
+    expect(target.prepare(`SELECT COUNT(*) AS n FROM unsplit_confirmations`).get()).toEqual({ n: 0 });
+  });
+
+  it('a one-trip selection carries its own, and no other trip’s', async () => {
+    const source = fresh();
+    seed(source);
+    seedFieldbook(source);
+    seedConfirmations(source);
+    expect(filterTablesForTrip(await readAll(source), 't1').unsplitConfirmations.map((row) => row.id)).toEqual([
+      'uc1',
+      'uc2',
+    ]);
+    expect(filterTablesForTrip(await readAll(source), 't2').unsplitConfirmations).toEqual([]);
   });
 });

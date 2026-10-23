@@ -1,8 +1,9 @@
 import { useRouter, type Href } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import {
   balancesHeading,
+  costFingerprint,
   netText,
   recordedText,
   statusText,
@@ -27,15 +28,21 @@ type Props = {
   members: readonly Member[];
   /** Shares the suggested transfers as text; names leave the phone only from here (§9). */
   onShare: () => void;
+  /** Keeps an unsplit cost outside on purpose, as `seen` read (§14.2); rejects with the reason. */
+  onKeepOutside: (cost: BalanceCost, seen: string) => Promise<void>;
+  /** Takes a kept-outside cost back to review. */
+  onReviewAgain: (cost: BalanceCost) => Promise<void>;
 };
 
 /**
  * Who owes whom (3E, `docs/phase3e-plan.md` §8), one currency at a time, never added together.
  * Balances count only costs whose money story is complete; everything else is listed with what is
  * recorded on it and where to finish it. Suggested transfers appear only where nothing waits but
- * costs left unsplit (§12.1): a provisional figure is never worded or coloured as a debt.
+ * costs left unsplit (§12.1): a provisional figure is never worded or coloured as a debt. In a
+ * currency with settlements, an unsplit cost is reviewed first: split it, or keep it outside on
+ * purpose (§14.2).
  */
-export function SettleUpView({ tripId, balances, members, onShare }: Props) {
+export function SettleUpView({ tripId, balances, members, onShare, onKeepOutside, onReviewAgain }: Props) {
   const c = useColors();
   const router = useRouter();
   const byId = new Map(members.map((member) => [member.id, member]));
@@ -57,7 +64,15 @@ export function SettleUpView({ tripId, balances, members, onShare }: Props) {
   return (
     <View style={styles.view}>
       {balances.map((entry) => (
-        <CurrencySection key={entry.currency} tripId={tripId} entry={entry} byId={byId} nameOf={nameOf} />
+        <CurrencySection
+          key={entry.currency}
+          tripId={tripId}
+          entry={entry}
+          byId={byId}
+          nameOf={nameOf}
+          onKeepOutside={onKeepOutside}
+          onReviewAgain={onReviewAgain}
+        />
       ))}
       <Button label="Record a settlement" variant="secondary" onPress={record} />
       <Button label="Share who owes whom" variant="ghost" onPress={onShare} />
@@ -74,17 +89,24 @@ function CurrencySection({
   entry,
   byId,
   nameOf,
+  onKeepOutside,
+  onReviewAgain,
 }: {
   tripId: string;
   entry: CurrencyBalances;
   byId: ReadonlyMap<string, Member>;
   nameOf: (id: string) => string;
+  onKeepOutside: Props['onKeepOutside'];
+  onReviewAgain: Props['onReviewAgain'];
 }) {
   const c = useColors();
   const router = useRouter();
   const money = (amount: number) => formatMoney(amount, entry.currency);
   const status = statusText(entry);
-  const notSplitTotal = entry.notSplit.reduce((sum, cost) => sum + cost.amount, 0);
+  // Each unsplit cost is listed once: to review, kept outside, or simply not split.
+  const otherNotSplit = entry.notSplit.filter((cost) => !entry.toReview.includes(cost) && !entry.keptOutside.includes(cost));
+  const total = (costs: readonly BalanceCost[]) => money(costs.reduce((sum, cost) => sum + cost.amount, 0));
+  const costs = (n: number) => (n === 1 ? '1 cost' : `${n} costs`);
 
   return (
     <View style={styles.section}>
@@ -143,7 +165,12 @@ function CurrencySection({
         <Text
           style={[
             type.caption,
-            { color: entry.state === 'settlementsOnly' || entry.childrenBelowZero.length > 0 ? c.attention : c.textMuted },
+            {
+              color:
+                entry.state === 'settlementsOnly' || entry.state === 'review' || entry.childrenBelowZero.length > 0
+                  ? c.attention
+                  : c.textMuted,
+            },
           ]}>
           {status}
         </Text>
@@ -188,15 +215,43 @@ function CurrencySection({
         </View>
       ) : null}
 
-      {entry.notSplit.length > 0 ? (
+      {entry.toReview.length > 0 ? (
+        <View style={styles.block}>
+          <Text style={[type.label, { color: c.text }]}>To review · {costs(entry.toReview.length)} not split</Text>
+          <Text style={[type.caption, { color: c.textMuted }]}>
+            {entry.toReview.length === 1
+              ? `${entry.currency} has settlements, and one may have paid for this cost while it was split. Split it, or keep it outside on purpose.`
+              : `${entry.currency} has settlements, and one may have paid for any of these while it was split. Split each, or keep it outside on purpose.`}
+          </Text>
+          <Rows>
+            {entry.toReview.map((cost) => (
+              <ReviewRow key={cost.id} tripId={tripId} cost={cost} nameOf={nameOf} onKeepOutside={onKeepOutside} />
+            ))}
+          </Rows>
+        </View>
+      ) : null}
+
+      {entry.keptOutside.length > 0 ? (
+        <Disclosure
+          title="Kept outside on purpose"
+          summary={`${costs(entry.keptOutside.length)}, ${total(entry.keptOutside)} — not part of who owes whom`}>
+          <Rows>
+            {entry.keptOutside.map((cost) => (
+              <KeptRow key={cost.id} cost={cost} nameOf={nameOf} onReviewAgain={onReviewAgain} />
+            ))}
+          </Rows>
+        </Disclosure>
+      ) : null}
+
+      {otherNotSplit.length > 0 ? (
         <Disclosure
           title="Not split"
-          summary={`${entry.notSplit.length === 1 ? '1 cost' : `${entry.notSplit.length} costs`}, ${money(notSplitTotal)} — not part of who owes whom`}>
+          summary={`${costs(otherNotSplit.length)}, ${total(otherNotSplit)} — not part of who owes whom`}>
           <Text style={[type.caption, { color: c.textMuted }]}>
             Nobody has said who these are for, so they stay out of the balances. Split one to bring it in.
           </Text>
           <Rows>
-            {entry.notSplit.map((cost) => (
+            {otherNotSplit.map((cost) => (
               <WaitingRow
                 key={cost.id}
                 tripId={tripId}
@@ -266,6 +321,96 @@ function WaitingRow({
   );
 }
 
+/**
+ * An unsplit cost to review (§14.2): *Split it* opens the split editor, which changes nothing until
+ * saved; *Keep outside* says what it means and asks before saving. The fingerprint is taken from
+ * the cost as this screen shows it, so a cost changed meanwhile is refused, not confirmed.
+ */
+function ReviewRow({
+  tripId,
+  cost,
+  nameOf,
+  onKeepOutside,
+}: {
+  tripId: string;
+  cost: BalanceCost;
+  nameOf: (id: string) => string;
+  onKeepOutside: Props['onKeepOutside'];
+}) {
+  const c = useColors();
+  const router = useRouter();
+  const money = formatMoney(cost.amount, cost.currency);
+  const keep = () => {
+    const seen = costFingerprint(cost);
+    Alert.alert(
+      'Keep it outside the balances?',
+      `“${cost.title}” (${money}) stays unsplit and out of who owes whom in ${cost.currency}. ` +
+        'Settlements already recorded do not change and keep counting as they are. ' +
+        'If its price, payments or split change later, it comes back here for review.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Keep outside',
+          onPress: () =>
+            void onKeepOutside(cost, seen).catch((error: unknown) =>
+              Alert.alert('Not kept outside', error instanceof Error ? error.message : 'Nothing was changed.'),
+            ),
+        },
+      ],
+    );
+  };
+  return (
+    <ListRow
+      title={cost.title}
+      subtitle={recordedText(cost, nameOf)}
+      trailing={<Text style={[type.caption, { color: c.textMuted }]}>{money}</Text>}
+      footer={
+        <View style={styles.actions}>
+          <Button
+            label="Split it"
+            variant="secondary"
+            compact
+            onPress={() => router.push(waitingHref(tripId, cost, 'split'))}
+          />
+          <Button label="Keep outside" variant="ghost" compact onPress={keep} />
+        </View>
+      }
+    />
+  );
+}
+
+/** A cost kept outside on purpose, with the way back to review. */
+function KeptRow({
+  cost,
+  nameOf,
+  onReviewAgain,
+}: {
+  cost: BalanceCost;
+  nameOf: (id: string) => string;
+  onReviewAgain: Props['onReviewAgain'];
+}) {
+  const c = useColors();
+  return (
+    <ListRow
+      title={cost.title}
+      subtitle={recordedText(cost, nameOf)}
+      trailing={<Text style={[type.caption, { color: c.textMuted }]}>{formatMoney(cost.amount, cost.currency)}</Text>}
+      footer={
+        <View style={styles.actions}>
+          <Button
+            label="Review again"
+            variant="ghost"
+            compact
+            onPress={() =>
+              void onReviewAgain(cost).catch(() => Alert.alert('Could not change it', 'Nothing was changed.'))
+            }
+          />
+        </View>
+      }
+    />
+  );
+}
+
 function SettlementRow({ settlement, nameOf }: { settlement: Settlement; nameOf: (id: string) => string }) {
   const c = useColors();
   const router = useRouter();
@@ -289,4 +434,5 @@ const styles = StyleSheet.create({
   section: { gap: spacing.md },
   block: { gap: spacing.xs },
   working: { gap: 2 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingTop: spacing.xs },
 });

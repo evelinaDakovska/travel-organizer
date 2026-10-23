@@ -64,6 +64,7 @@ describe('migrations', () => {
       'trip_notes',
       'trip_travellers',
       'trips',
+      'unsplit_confirmations',
     ]);
     db.close();
   });

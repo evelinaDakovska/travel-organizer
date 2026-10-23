@@ -575,6 +575,8 @@ export const EXPORT_COLUMNS = {
   // Format 10 (migration 009, 3E).
   settlements: ['id', 'trip_id', 'from_id', 'to_id', 'amount', 'currency', 'settled_on', 'note',
                 'created_at', 'updated_at'],
+  // Format 11 (migration 010, review P1).
+  unsplit_confirmations: ['id', 'trip_id', 'trip_item_id', 'expense_id', 'fingerprint', 'confirmed_at'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type ExportTableName = keyof typeof EXPORT_COLUMNS;
@@ -854,6 +856,22 @@ UPDATE settlements
 
 export const DELETE_SETTLEMENT = `
 DELETE FROM settlements WHERE id = $id
+`;
+
+// ─── Unsplit costs kept outside (review P1, §14.2) ───────────────────────────────────────────────
+
+export const SELECT_TRIP_UNSPLIT_CONFIRMATIONS = `
+SELECT * FROM unsplit_confirmations WHERE trip_id = $tripId
+`;
+
+/** One cost's confirmation, whichever kind: the other id is NULL and matches nothing. */
+export const DELETE_UNSPLIT_CONFIRMATION = `
+DELETE FROM unsplit_confirmations WHERE trip_item_id = $itemId OR expense_id = $expenseId
+`;
+
+export const INSERT_UNSPLIT_CONFIRMATION = `
+INSERT INTO unsplit_confirmations (id, trip_id, trip_item_id, expense_id, fingerprint, confirmed_at)
+VALUES ($id, $tripId, $itemId, $expenseId, $fingerprint, $now)
 `;
 
 /** Every booking payment on a trip, for its balances. */

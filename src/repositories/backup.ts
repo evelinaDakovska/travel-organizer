@@ -31,6 +31,8 @@ const TABLES: readonly (readonly [keyof ExportTables, ExportTableName])[] = [
   ['tripCover', 'trip_cover'],
   // After the members they name.
   ['settlements', 'settlements'],
+  // After the bookings, expenses and splits: writing a split ends a confirmation (migration 010).
+  ['unsplitConfirmations', 'unsplit_confirmations'],
   ['resources', 'resources'],
   ['lists', 'lists'],
   ['listItems', 'list_items'],

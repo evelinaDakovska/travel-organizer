@@ -108,7 +108,9 @@ export default function BalanceExplanation() {
           <Text style={[type.caption, { color: c.textMuted }]}>
             {entry.state === 'soFar'
               ? 'Balances so far: some costs in this currency are not complete yet, so this is not final.'
-              : 'Only settlements in this currency, no costs in the balances: check the currency.'}
+              : entry.state === 'review'
+                ? 'Balances so far: an unsplit cost in this currency is waiting for review on Settle up, so this is not final.'
+                : 'Only settlements in this currency, no costs in the balances: check the currency.'}
           </Text>
         ) : null}
         {section('Paid', explanation.paid, '+', (line) => line.title)}

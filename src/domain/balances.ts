@@ -121,6 +121,8 @@ export type BalanceCost = {
   amount: number;
   /** Counts as money spent (`countsAsSpent`); a standalone expense always does. */
   counts: boolean;
+  /** A booking's status; null for a standalone expense. Part of the fingerprint only. */
+  status: TripItem['status'] | null;
   /** A cancellation that is not spent: why. Null for anything else. */
   cancelled: 'refundExpected' | 'refundNotSet' | null;
   /** The legacy *Paid* switch: fully paid, whatever is recorded. */
@@ -128,6 +130,126 @@ export type BalanceCost = {
   records: PaidRecord[];
   shares: Pick<CostShare, 'travellerId' | 'amount' | 'coveredBy' | 'sortOrder'>[];
 };
+
+// ─── Unsplit costs kept outside (review P1, §14.2) ───────────────────────────────────────────────
+
+/** Someone reviewed this unsplit cost and keeps it outside the shared balances, as it was then. */
+export type UnsplitConfirmation = {
+  costKind: BalanceCost['kind'];
+  costId: string;
+  /** `costFingerprint` when it was confirmed: it applies only while the cost still reads so. */
+  fingerprint: string;
+};
+
+export type UnsplitConfirmationRow = {
+  id: string;
+  trip_id: string;
+  trip_item_id: string | null;
+  expense_id: string | null;
+  fingerprint: string;
+  confirmed_at: string;
+};
+
+export function parseUnsplitConfirmationRow(row: UnsplitConfirmationRow): UnsplitConfirmation {
+  return row.trip_item_id !== null
+    ? { costKind: 'booking', costId: row.trip_item_id, fingerprint: row.fingerprint }
+    : { costKind: 'expense', costId: row.expense_id!, fingerprint: row.fingerprint };
+}
+
+type Fingerprint = {
+  v: 1;
+  kind: BalanceCost['kind'];
+  currency: string;
+  amount: number;
+  counts: boolean;
+  status: BalanceCost['status'];
+  cancelled: BalanceCost['cancelled'];
+  isPaid: boolean;
+  /** [a payment or a linked expense, payer, amount] — never a record's id, so a remap keeps it. */
+  records: ['payment' | 'expense', string | null, number][];
+  /** [traveller, amount, covered by, order]. */
+  shares: [string, number | null, string | null, number][];
+};
+
+const byJson = (a: unknown, b: unknown) => {
+  const [x, y] = [JSON.stringify(a), JSON.stringify(b)];
+  return x < y ? -1 : x > y ? 1 : 0;
+};
+
+function canonical(fingerprint: Fingerprint): string {
+  return JSON.stringify({
+    v: fingerprint.v,
+    kind: fingerprint.kind,
+    currency: fingerprint.currency,
+    amount: fingerprint.amount,
+    counts: fingerprint.counts,
+    status: fingerprint.status,
+    cancelled: fingerprint.cancelled,
+    isPaid: fingerprint.isPaid,
+    records: [...fingerprint.records].sort(byJson),
+    shares: [...fingerprint.shares].sort(byJson),
+  });
+}
+
+/**
+ * Everything about a cost that balances read, as one deterministic string: what it costs and in
+ * which currency, its status, whether it is spent, cancelled or marked *Paid*, who paid what towards it, and how
+ * it is split. A title, a note, a date or a category is not in it, and neither is any record's id.
+ */
+export function costFingerprint(cost: BalanceCost): string {
+  return canonical({
+    v: 1,
+    kind: cost.kind,
+    currency: cost.currency,
+    amount: cost.amount,
+    counts: cost.counts,
+    status: cost.status,
+    cancelled: cost.cancelled,
+    isPaid: cost.isPaid,
+    records: cost.records.map((record) => [
+      record.paymentId !== null ? 'payment' : 'expense',
+      record.payerId,
+      record.amount,
+    ]),
+    shares: cost.shares.map((share) => [share.travellerId, share.amount, share.coveredBy, share.sortOrder]),
+  });
+}
+
+/**
+ * The same fingerprint with its travellers renamed, for a trip archive imported under new ids.
+ * Anything that is not a fingerprint comes back as it was: it matches no cost, so it confirms
+ * nothing.
+ */
+export function remapFingerprint(fingerprint: string, travellerId: (id: string) => string): string {
+  let parsed: Fingerprint;
+  try {
+    parsed = JSON.parse(fingerprint) as Fingerprint;
+  } catch {
+    return fingerprint;
+  }
+  if (parsed?.v !== 1 || !Array.isArray(parsed.records) || !Array.isArray(parsed.shares)) return fingerprint;
+  return canonical({
+    ...parsed,
+    records: parsed.records.map(([what, payerId, amount]) => [
+      what,
+      payerId === null ? null : travellerId(payerId),
+      amount,
+    ]),
+    shares: parsed.shares.map(([id, amount, coveredBy, sortOrder]) => [
+      travellerId(id),
+      amount,
+      coveredBy === null ? null : travellerId(coveredBy),
+      sortOrder,
+    ]),
+  });
+}
+
+/** Confirmed, and the cost still reads exactly as it did then. Never a split cost. */
+export function isKeptOutside(cost: BalanceCost, confirmations: readonly UnsplitConfirmation[]): boolean {
+  if (cost.shares.length > 0) return false;
+  const confirmation = confirmations.find((c) => c.costKind === cost.kind && c.costId === cost.id);
+  return confirmation !== undefined && confirmation.fingerprint === costFingerprint(cost);
+}
 
 type CostItem = Pick<
   TripItem,
@@ -187,6 +309,7 @@ export function balanceCosts(input: {
       currency: item.priceCurrency,
       amount: item.priceAmount,
       counts,
+      status: item.status,
       cancelled:
         counts || item.status !== 'cancelled'
           ? null
@@ -207,6 +330,7 @@ export function balanceCosts(input: {
       currency: expense.currency,
       amount: expense.amount,
       counts: true,
+      status: null,
       cancelled: null,
       isPaid: false,
       records: [{ payerId: expense.payerId, amount: expense.amount, paymentId: null, expenseId: expense.id }],
@@ -296,10 +420,12 @@ export type Transfer = { fromId: string; toId: string; amount: number };
 
 /**
  * `final`: only complete costs (and any left unsplit). `soFar`: a cost could be shared but is not
- * complete — the nets are not final and nothing is suggested (§12.1). `settlementsOnly`: no cost
- * at all that could be shared, only settlements (B). `nothing`: nothing to settle yet.
+ * complete — the nets are not final and nothing is suggested (§12.1). `review`: it would be final,
+ * but the currency has settlements and an unsplit cost nobody has reviewed — a settlement may have
+ * paid for it while it was split (§14.2); read like `soFar`. `settlementsOnly`: no cost at all that
+ * could be shared, only settlements (B). `nothing`: nothing to settle yet.
  */
-export type BalanceState = 'final' | 'soFar' | 'settlementsOnly' | 'nothing';
+export type BalanceState = 'final' | 'soFar' | 'review' | 'settlementsOnly' | 'nothing';
 
 export type CurrencyBalances = {
   currency: string;
@@ -309,14 +435,18 @@ export type CurrencyBalances = {
   complete: BalanceCost[];
   /** Waiting for a reason other than *not split*: blocks suggestions. */
   waiting: WaitingCost[];
-  /** Left unsplit: outside the balances, shown collapsed; never blocks (Q2). */
+  /** Left unsplit: outside the balances, shown collapsed; never blocks (Q2) unless to review. */
   notSplit: BalanceCost[];
+  /** Unsplit, unconfirmed, in a currency with settlements: holds suggestions back (§14.2). */
+  toReview: BalanceCost[];
+  /** Unsplit and confirmed as it stands: kept outside on purpose. */
+  keptOutside: BalanceCost[];
   settlements: Settlement[];
   /** Children whose net is below zero after later edits (E): flagged, never shown as owing. */
   childrenBelowZero: string[];
   /** Empty unless `heldBecause` is null. */
   transfers: Transfer[];
-  heldBecause: 'waiting' | 'settlementsOnly' | 'child' | 'nothing' | null;
+  heldBecause: 'waiting' | 'review' | 'settlementsOnly' | 'child' | 'nothing' | null;
 };
 
 export type BalanceInput = {
@@ -324,6 +454,8 @@ export type BalanceInput = {
   tripCover: readonly TripCover[];
   costs: readonly BalanceCost[];
   settlements: readonly Settlement[];
+  /** Unsplit costs kept outside; none when left out. */
+  confirmations?: readonly UnsplitConfirmation[];
 };
 
 /** The trip's balances, one entry per currency, in order of first appearance among the costs. */
@@ -381,11 +513,17 @@ export function tripBalances(input: BalanceInput): CurrencyBalances[] {
       .map((row) => ({ ...row, net: row.paid - row.borne + row.sent - row.received }))
       .sort((a, b) => (order.get(a.travellerId) ?? Infinity) - (order.get(b.travellerId) ?? Infinity));
 
+    const confirmations = input.confirmations ?? [];
+    const keptOutside = notSplit.filter((cost) => isKeptOutside(cost, confirmations));
+    const toReview = settlements.length > 0 ? notSplit.filter((cost) => !keptOutside.includes(cost)) : [];
+
     const state: BalanceState =
       waiting.length > 0
         ? 'soFar'
         : complete.length > 0
-          ? 'final'
+          ? toReview.length > 0
+            ? 'review'
+            : 'final'
           : settlements.length > 0
             ? 'settlementsOnly'
             : 'nothing';
@@ -395,13 +533,15 @@ export function tripBalances(input: BalanceInput): CurrencyBalances[] {
     const heldBecause =
       state === 'soFar'
         ? ('waiting' as const)
-        : state === 'settlementsOnly'
-          ? ('settlementsOnly' as const)
-          : state === 'nothing'
-            ? ('nothing' as const)
-            : childrenBelowZero.length > 0
-              ? ('child' as const)
-              : null;
+        : state === 'review'
+          ? ('review' as const)
+          : state === 'settlementsOnly'
+            ? ('settlementsOnly' as const)
+            : state === 'nothing'
+              ? ('nothing' as const)
+              : childrenBelowZero.length > 0
+                ? ('child' as const)
+                : null;
 
     return {
       currency,
@@ -410,6 +550,8 @@ export function tripBalances(input: BalanceInput): CurrencyBalances[] {
       complete,
       waiting,
       notSplit,
+      toReview,
+      keptOutside,
       settlements,
       childrenBelowZero,
       transfers: heldBecause === null ? settleUp(rows) : [],
@@ -632,6 +774,8 @@ export function balancesHeading(entry: CurrencyBalances): string {
       return `Balances · ${entry.currency}`;
     case 'soFar':
       return `Balances so far · ${entry.currency} — ${plural(entry.waiting.length, 'cost', 'costs')} not included yet`;
+    case 'review':
+      return `Balances so far · ${entry.currency} — ${plural(entry.toReview.length, 'unsplit cost', 'unsplit costs')} to review`;
     case 'settlementsOnly':
       return `Settlements only · ${entry.currency} — no costs in the balances`;
     case 'nothing':
@@ -655,6 +799,10 @@ export function statusText(entry: CurrencyBalances): string | null {
       return allZero
         ? `Balances so far: all at zero · ${plural(entry.waiting.length, 'cost', 'costs')} not included yet.`
         : `Suggested transfers appear once ${entry.waiting.length === 1 ? 'this cost is' : `these ${entry.waiting.length} costs are`} complete.`;
+    case 'review':
+      return entry.toReview.length === 1
+        ? `Suggested transfers are paused: 1 cost is not split and ${entry.currency} has settlements. Split it, or keep it outside on purpose.`
+        : `Suggested transfers are paused: ${entry.toReview.length} costs are not split and ${entry.currency} has settlements. Split each, or keep it outside on purpose.`;
     case 'final':
       if (entry.childrenBelowZero.length > 0) {
         return 'A child has received more than they paid. Check the settlements — nothing is suggested until then.';
@@ -728,6 +876,10 @@ export function settleUpText(tripName: string, balances: readonly CurrencyBalanc
   for (const entry of balances) {
     if (entry.state === 'soFar') {
       sections.push(`${entry.currency}: not final — ${plural(entry.waiting.length, 'cost', 'costs')} not complete`);
+      continue;
+    }
+    if (entry.state === 'review') {
+      sections.push(`${entry.currency}: not final — ${plural(entry.toReview.length, 'unsplit cost', 'unsplit costs')} to review`);
       continue;
     }
     if (entry.transfers.length > 0) {

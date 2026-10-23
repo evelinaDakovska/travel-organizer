@@ -2,22 +2,24 @@ import Database from 'better-sqlite3';
 
 import { MIGRATIONS } from '../db/migrations';
 import { asyncDatabase } from '../db/testing/asyncDatabase';
-import { tripBalances } from '../domain/balances';
+import { costFingerprint, tripBalances } from '../domain/balances';
 import { MoneyRuleError } from '../domain/bookingPayments';
 import { tripItemInputSchema } from '../domain/tripItem';
-import { listHolds, moneyHolds, saveSplit, setTripCover } from './costShares';
-import { createExpense, deleteExpense } from './expenses';
-import { createBookingPayment } from './payments';
+import { listHolds, moneyHolds, removeSplit, saveSplit, setTripCover } from './costShares';
+import { createExpense, deleteExpense, updateExpense } from './expenses';
+import { createBookingPayment, deleteBookingPayment, updateBookingPayment } from './payments';
 import {
   balanceInput,
   createSettlement,
   deleteSettlement,
   getSettlement,
+  keepOutside,
   listTripSettlements,
+  reviewAgain,
   updateSettlement,
 } from './settlements';
 import { createTripTraveller, leaveTripRefusal, removeTripTraveller } from './travellers';
-import { createTripItem, deleteTripItem, updateTripItem } from './tripItems';
+import { createTripItem, deleteTripItem, setTripItemStatus, updateTripItem } from './tripItems';
 import { countTripContents, deleteTrip } from './trips';
 
 jest.mock('expo-crypto', () => ({ randomUUID: () => crypto.randomUUID() }));
@@ -62,6 +64,7 @@ function snapshot(raw: Database.Database) {
       'cost_shares',
       'trip_cover',
       'settlements',
+      'unsplit_confirmations',
       'payments',
     ].map((table) => [table, raw.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all()]),
   );
@@ -330,6 +333,224 @@ describe('the repository checks its input itself (review P2)', () => {
       'Both people must be on this trip.',
     );
     await expect(createSettlement(db, 'lapland', settlement(ana, mia, 100))).rejects.toThrow(/Mia would owe money/);
+  });
+});
+
+describe('unsplit costs kept outside, through the database (§14.2, review P1)', () => {
+  // Ben owes Ana half of a taxi (30) and a museum (20) she paid; he settles 15 for the taxi.
+  async function settledTrip(db: Db) {
+    const { ana, ben, mia } = await people(db);
+    const taxi = await createExpense(db, 'lapland', spend(3000, ana));
+    const museum = await createExpense(db, 'lapland', { ...spend(2000, ana), label: 'Museum' });
+    await saveSplit(db, { expenseId: taxi }, equal(ana, ben));
+    await saveSplit(db, { expenseId: museum }, equal(ana, ben));
+    await createSettlement(db, 'lapland', settlement(ben, ana, 1500));
+    return { ana, ben, mia, taxi, museum };
+  }
+  // …and an unsplit hotel Ana paid in full.
+  async function withHotel(db: Db) {
+    const trip = await settledTrip(db);
+    const hotel = await createTripItem(db, 'lapland', plan('Hotel', { priceAmount: 20000, priceCurrency: 'EUR' }));
+    const paid = await createBookingPayment(db, hotel, pay(20000, trip.ana));
+    return { ...trip, hotel, paid };
+  }
+  const seen = async (db: Db, id: string) =>
+    costFingerprint((await balanceInput(db, 'lapland')).costs.find((cost) => cost.id === id)!);
+  const keep = async (db: Db, kind: 'booking' | 'expense', id: string) =>
+    keepOutside(db, 'lapland', { kind, id }, await seen(db, id));
+  const confirmations = (raw: Database.Database) =>
+    raw.prepare(`SELECT trip_item_id, expense_id FROM unsplit_confirmations ORDER BY rowid`).all();
+
+  it('1–5: split removed after settling → held; kept outside → the suggestion resumes; reviewed again → held', async () => {
+    const { raw, db } = setup();
+    const { ana, ben, taxi } = await settledTrip(db);
+    expect((await eurOf(db)).transfers).toEqual([{ fromId: ben, toId: ana, amount: 1000 }]);
+
+    await removeSplit(db, { expenseId: taxi });
+    const held = await eurOf(db);
+    expect(held.state).toBe('review');
+    expect(held.transfers).toEqual([]);
+    expect(held.toReview.map((c) => c.id)).toEqual([taxi]);
+
+    const before = snapshot(raw);
+    await keep(db, 'expense', taxi);
+    const kept = await eurOf(db);
+    expect(kept.state).toBe('final');
+    expect(kept.transfers).toEqual([{ fromId: ana, toId: ben, amount: 500 }]);
+    // Only the confirmation was written: every money table as it was.
+    expect({ ...snapshot(raw), unsplit_confirmations: [] }).toEqual(before);
+    expect(confirmations(raw)).toEqual([{ trip_item_id: null, expense_id: taxi }]);
+
+    await reviewAgain(db, { kind: 'expense', id: taxi });
+    expect(snapshot(raw)).toEqual(before);
+    expect((await eurOf(db)).state).toBe('review');
+  });
+
+  it('3–6, a booking: an unsplit hotel held; kept → suggestions resume; reviewed again → held; a new one held', async () => {
+    const { raw, db } = setup();
+    const { ana, ben, hotel } = await withHotel(db);
+    const held = await eurOf(db);
+    expect(held.state).toBe('review');
+    expect(held.toReview.map((c) => c.id)).toEqual([hotel]);
+    expect(held.transfers).toEqual([]);
+
+    const before = snapshot(raw);
+    await keep(db, 'booking', hotel);
+    expect({ ...snapshot(raw), unsplit_confirmations: [] }).toEqual(before);
+    expect((await eurOf(db)).transfers).toEqual([{ fromId: ben, toId: ana, amount: 1000 }]);
+
+    await reviewAgain(db, { kind: 'booking', id: hotel });
+    expect((await eurOf(db)).state).toBe('review');
+
+    await keep(db, 'booking', hotel);
+    const cabin = await createTripItem(db, 'lapland', plan('Cabin', { priceAmount: 9000, priceCurrency: 'EUR' }));
+    const entry = await eurOf(db);
+    expect(entry.toReview.map((c) => c.id)).toEqual([cabin]);
+    expect(entry.keptOutside.map((c) => c.id)).toEqual([hotel]);
+    expect(entry.transfers).toEqual([]);
+  });
+
+  it('6: a new unsplit cost needs its own confirmation', async () => {
+    const { db } = setup();
+    const { ben, taxi } = await settledTrip(db);
+    await removeSplit(db, { expenseId: taxi });
+    await keep(db, 'expense', taxi);
+    const soup = await createExpense(db, 'lapland', { ...spend(1200, ben), label: 'Soup' });
+    const entry = await eurOf(db);
+    expect(entry.state).toBe('review');
+    expect(entry.toReview.map((c) => c.id)).toEqual([soup]);
+    expect(entry.keptOutside.map((c) => c.id)).toEqual([taxi]);
+  });
+
+  describe('7–10: financial edits make it stale; others keep it', () => {
+    const bookingEdits: [string, (db: Db, t: Awaited<ReturnType<typeof withHotel>>) => Promise<unknown>][] = [
+      ['the price', (db, t) => updateTripItem(db, t.hotel, plan('Hotel', { priceAmount: 21000, priceCurrency: 'EUR' }))],
+      ['the status (cancelled)', (db, t) => setTripItemStatus(db, t.hotel, 'cancelled')],
+      ['a payment added', (db, t) => createBookingPayment(db, t.hotel, pay(100, t.ben))],
+      ['a payment’s amount', (db, t) => updateBookingPayment(db, t.paid, pay(19000, t.ana))],
+      ['a payment’s payer', (db, t) => updateBookingPayment(db, t.paid, pay(20000, t.ben))],
+      ['a payment removed', (db, t) => deleteBookingPayment(db, t.paid)],
+      ['a linked expense added', (db, t) => createExpense(db, 'lapland', { ...spend(100, t.ben), tripItemId: t.hotel })],
+    ];
+    for (const [what, change] of bookingEdits) {
+      it(`booking — ${what}: no longer kept outside`, async () => {
+        const { db } = setup();
+        const t = await withHotel(db);
+        await keep(db, 'booking', t.hotel);
+        expect((await eurOf(db)).keptOutside.map((c) => c.id)).toEqual([t.hotel]);
+        await change(db, t);
+        expect((await eurOf(db)).keptOutside.map((c) => c.id)).not.toContain(t.hotel);
+      });
+    }
+
+    it('booking — a linked expense’s amount changed: no longer kept outside', async () => {
+      const { db } = setup();
+      const t = await withHotel(db);
+      const linked = await createExpense(db, 'lapland', { ...spend(100, t.ben), tripItemId: t.hotel });
+      await keep(db, 'booking', t.hotel);
+      await updateExpense(db, linked, { ...spend(200, t.ben), tripItemId: t.hotel });
+      expect((await eurOf(db)).toReview.map((c) => c.id)).toEqual([t.hotel]);
+    });
+
+    it('booking — renamed, notes and dates changed: still kept outside', async () => {
+      const { db } = setup();
+      const t = await withHotel(db);
+      await keep(db, 'booking', t.hotel);
+      await updateTripItem(
+        db,
+        t.hotel,
+        plan('Hotel Aurora', { priceAmount: 20000, priceCurrency: 'EUR', notes: 'Late check-in', start: { local: '2026-11-21' } }),
+      );
+      const entry = await eurOf(db);
+      expect(entry.keptOutside.map((c) => c.id)).toEqual([t.hotel]);
+      expect(entry.state).toBe('final');
+    });
+
+    it('expense — amount, payer or currency changed: stale; label, notes, date, category: kept', async () => {
+      const { db } = setup();
+      const t = await settledTrip(db);
+      await removeSplit(db, { expenseId: t.taxi });
+      await keep(db, 'expense', t.taxi);
+      await updateExpense(db, t.taxi, { ...spend(3000, t.ana), label: 'Airport taxi', notes: 'card', spentOn: '2026-11-23', category: 'food' });
+      expect((await eurOf(db)).keptOutside.map((c) => c.id)).toEqual([t.taxi]);
+      for (const changed of [spend(3100, t.ana), spend(3000, t.ben), spend(3000, null)]) {
+        await keep(db, 'expense', t.taxi);
+        await updateExpense(db, t.taxi, changed);
+        expect((await eurOf(db)).toReview.map((c) => c.id)).toEqual([t.taxi]);
+        await updateExpense(db, t.taxi, spend(3000, t.ana));
+      }
+      await keep(db, 'expense', t.taxi);
+      await updateExpense(db, t.taxi, { ...spend(3000, t.ana), currency: 'NOK' });
+      const nok = tripBalances(await balanceInput(db, 'lapland')).find((e) => e.currency === 'NOK')!;
+      expect(nok.keptOutside).toEqual([]);
+    });
+
+    it('a split made and removed again ends it for good, though the cost reads the same', async () => {
+      const { raw, db } = setup();
+      const t = await settledTrip(db);
+      await removeSplit(db, { expenseId: t.taxi });
+      await keep(db, 'expense', t.taxi);
+      await saveSplit(db, { expenseId: t.taxi }, equal(t.ana, t.ben));
+      expect(confirmations(raw)).toEqual([]);
+      await removeSplit(db, { expenseId: t.taxi });
+      expect((await eurOf(db)).toReview.map((c) => c.id)).toEqual([t.taxi]);
+    });
+  });
+
+  it('18: deleting the cost deletes its confirmation, and no settlement', async () => {
+    const { raw, db } = setup();
+    const t = await withHotel(db);
+    await removeSplit(db, { expenseId: t.taxi });
+    await keep(db, 'expense', t.taxi);
+    await keep(db, 'booking', t.hotel);
+    const settlementsBefore = raw.prepare(`SELECT * FROM settlements`).all();
+    await deleteExpense(db, t.taxi);
+    expect(confirmations(raw)).toEqual([{ trip_item_id: t.hotel, expense_id: null }]);
+    await deleteBookingPayment(db, t.paid);
+    await deleteTripItem(db, t.hotel);
+    expect(confirmations(raw)).toEqual([]);
+    expect(raw.prepare(`SELECT * FROM settlements`).all()).toEqual(settlementsBefore);
+  });
+
+  it('19–20: a stale or wrong confirmation is refused inside the transaction, nothing written', async () => {
+    const { raw, db } = setup();
+    const t = await withHotel(db);
+    await removeSplit(db, { expenseId: t.taxi });
+    const stale = await seen(db, t.taxi);
+    // Someone changes the amount after the screen read it.
+    await updateExpense(db, t.taxi, spend(3300, t.ana));
+    const before = snapshot(raw);
+    await expect(keepOutside(db, 'lapland', { kind: 'expense', id: t.taxi }, stale)).rejects.toThrow(
+      'This cost changed while you were looking at it. Check it again before keeping it outside.',
+    );
+    // A split cost, a cost of another trip, a missing cost, something that is not a fingerprint.
+    await expect(keepOutside(db, 'lapland', { kind: 'expense', id: t.museum }, await seen(db, t.museum))).rejects.toThrow(
+      'This cost is split now, so it is part of the balances.',
+    );
+    await expect(keepOutside(db, 'milan', { kind: 'expense', id: t.taxi }, await seen(db, t.taxi))).rejects.toThrow(
+      'That cost is not here any more.',
+    );
+    await expect(keepOutside(db, 'lapland', { kind: 'booking', id: t.taxi }, await seen(db, t.taxi))).rejects.toThrow(
+      'That cost is not here any more.',
+    );
+    await expect(keepOutside(db, 'lapland', { kind: 'expense', id: t.taxi }, 42 as never)).rejects.toThrow(MoneyRuleError);
+    // A cancelled booking waiting for its refund is not left out as unsplit: nothing to confirm.
+    await setTripItemStatus(db, t.hotel, 'cancelled');
+    const cancelled = snapshot(raw);
+    await expect(keepOutside(db, 'lapland', { kind: 'booking', id: t.hotel }, await seen(db, t.hotel))).rejects.toThrow(
+      'This cost is not one the balances leave out as not split.',
+    );
+    expect(snapshot(raw)).toEqual(cancelled);
+    expect(before.unsplit_confirmations).toEqual([]);
+    expect(confirmations(raw)).toEqual([]);
+  });
+
+  it('15: the child rules hold with costs kept outside', async () => {
+    const { db } = setup();
+    const t = await settledTrip(db);
+    await removeSplit(db, { expenseId: t.taxi });
+    await keep(db, 'expense', t.taxi);
+    await expect(createSettlement(db, 'lapland', settlement(t.ana, t.mia, 100))).rejects.toThrow(/Mia would owe money/);
   });
 });
 

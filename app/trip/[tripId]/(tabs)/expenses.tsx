@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Share, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -21,7 +22,7 @@ import {
   RECEIPT_COUNT_TABLES,
 } from '../../../../src/repositories/expenses';
 import { listTripShares, SHARE_TABLES } from '../../../../src/repositories/costShares';
-import { BALANCE_TABLES, balanceInput } from '../../../../src/repositories/settlements';
+import { BALANCE_TABLES, balanceInput, keepOutside, reviewAgain } from '../../../../src/repositories/settlements';
 import { listTripItems, TRIP_ITEM_TABLES } from '../../../../src/repositories/tripItems';
 import { getTrip, TRIP_TABLES } from '../../../../src/repositories/trips';
 import { HeaderAction } from '../../../../src/ui/components/HeaderAction';
@@ -46,6 +47,7 @@ const VIEW_LABELS: Record<ExpenseView, string> = {
 export default function ExpensesScreen() {
   const c = useColors();
   const router = useRouter();
+  const db = useSQLiteContext();
   const tripId = useTripId();
   const [view, setView] = useState<ExpenseView>('bookings');
 
@@ -150,7 +152,14 @@ export default function ExpensesScreen() {
           />
 
           {shown === 'settle' ? (
-            <SettleUpView tripId={tripId} balances={balances} members={members} onShare={share} />
+            <SettleUpView
+              tripId={tripId}
+              balances={balances}
+              members={members}
+              onShare={share}
+              onKeepOutside={(cost, seen) => keepOutside(db, tripId, cost, seen)}
+              onReviewAgain={(cost) => reviewAgain(db, cost)}
+            />
           ) : shown === 'spending' ? (
             <SpendingView
               // An expense that pays for a booking is listed on that booking (3D-1).
