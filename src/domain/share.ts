@@ -9,7 +9,7 @@
 import { z } from 'zod';
 
 import { defaultFileLabel, defaultLinkLabel, isSafeExternalUrl } from './resource';
-import { deviceToday, type Trip } from './trip';
+import { deviceToday, isDated, type Trip } from './trip';
 
 /** Loose on purpose: a field the library adds later must not make a share fail. */
 const incomingFileSchema = z.object({
@@ -94,20 +94,27 @@ export function parseSharedContent(payload: unknown): SharedContent | null {
 }
 
 /**
- * Which trip a share most likely belongs to: the one under way, else the next to start, else the
- * one that ended last. The person can always pick another.
+ * Which trip a share most likely belongs to: the one under way, else the next to start, else one
+ * without dates (the most recently changed: P6-12), else the one that ended last. The person can
+ * always pick another.
  */
 export function suggestTrip<T extends Trip>(trips: readonly T[], now: Date = new Date()): T | null {
   const today = deviceToday(now);
-  const current = trips.find((t) => t.startDate <= today && today <= t.endDate);
+  const dated = trips.filter(isDated);
+  const current = dated.find((t) => t.startDate <= today && today <= t.endDate);
   if (current) return current;
 
-  const upcoming = trips
+  const upcoming = dated
     .filter((t) => t.startDate > today)
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
   if (upcoming.length > 0) return upcoming[0];
 
-  const past = [...trips].sort((a, b) => b.endDate.localeCompare(a.endDate));
+  const undated = trips
+    .filter((t) => !isDated(t))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  if (undated.length > 0) return undated[0];
+
+  const past = [...dated].sort((a, b) => b.endDate.localeCompare(a.endDate));
   return past[0] ?? null;
 }
 

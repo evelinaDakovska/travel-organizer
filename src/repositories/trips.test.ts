@@ -188,3 +188,30 @@ describe('updateTripWithMembers — one transaction for the whole save', () => {
     expect(raw.prepare(`SELECT default_tz FROM trips`).get()).toEqual({ default_tz: 'Europe/Sofia' });
   });
 });
+
+describe('dates set later, or taken away (Phase 6, P6-8)', () => {
+  /** Everything but the trip's own row: what must not move when only its dates change. */
+  const rest = (raw: Database.Database) => {
+    const { trips: _trips, ...others } = snapshot(raw);
+    return others;
+  };
+
+  it('removing the dates and setting them again changes only the two columns', async () => {
+    const { raw, db } = setup();
+    const { ev, ana, kid, safari } = await family(db);
+    await createBookingPayment(db, safari, { amount: 10000, payerId: ev, paidOn: '2026-10-01', note: undefined });
+    const before = rest(raw);
+
+    await updateTripWithMembers(db, 'lapland', fields({ startDate: null, endDate: null }), [ev, ana, kid]);
+    expect(raw.prepare(`SELECT start_date, end_date FROM trips`).get()).toEqual({ start_date: null, end_date: null });
+    expect(rest(raw)).toEqual(before);
+
+    await updateTripWithMembers(db, 'lapland', fields({ startDate: '2027-01-10', endDate: '2027-01-12' }), [ev, ana, kid]);
+    expect(raw.prepare(`SELECT start_date, end_date FROM trips`).get()).toEqual({
+      start_date: '2027-01-10',
+      end_date: '2027-01-12',
+    });
+    // The safari keeps its own date (21 Nov): nothing is moved to fit the trip (CLAUDE.md §5.7).
+    expect(rest(raw)).toEqual(before);
+  });
+});

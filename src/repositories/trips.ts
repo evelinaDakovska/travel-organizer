@@ -12,7 +12,8 @@ export const TRIP_TABLES = ['trips', 'trip_travellers'] as const;
 const SELECT = `SELECT * FROM trips`;
 
 export async function listTrips(db: SQLiteDatabase): Promise<Trip[]> {
-  const rows = await db.getAllAsync<TripRow>(`${SELECT} ORDER BY start_date ASC`);
+  // Trips without dates last; Home groups them on their own (P6-4).
+  const rows = await db.getAllAsync<TripRow>(`${SELECT} ORDER BY start_date IS NULL, start_date ASC`);
   return rows.map(parseTripRow);
 }
 

@@ -72,7 +72,7 @@ export async function createMe(
   return id;
 }
 
-export type TripWithoutTraveller = { id: string; name: string; startDate: string; endDate: string };
+export type TripWithoutTraveller = { id: string; name: string; startDate: string | null; endDate: string | null };
 
 export async function listTripsWithout(
   db: SQLiteDatabase,
@@ -81,8 +81,8 @@ export async function listTripsWithout(
   const rows = await db.getAllAsync<{
     id: string;
     name: string;
-    start_date: string;
-    end_date: string;
+    start_date: string | null;
+    end_date: string | null;
   }>(SELECT_TRIPS_WITHOUT_TRAVELLER, { $id: travellerId });
   return rows.map((row) => ({
     id: row.id,
@@ -150,7 +150,7 @@ export async function renameTraveller(db: SQLiteDatabase, id: string, name: stri
 export async function travellerTripNames(db: SQLiteDatabase): Promise<Record<string, string[]>> {
   const rows = await db.getAllAsync<{ traveller_id: string; name: string }>(
     `SELECT tt.traveller_id, t.name FROM trip_travellers tt JOIN trips t ON t.id = tt.trip_id
-      ORDER BY t.start_date, t.name`,
+      ORDER BY t.start_date IS NULL, t.start_date, t.name`,
   );
   const byTraveller: Record<string, string[]> = {};
   for (const row of rows) (byTraveller[row.traveller_id] ??= []).push(row.name);

@@ -111,6 +111,21 @@ describe('importing a trip archive into a database', () => {
     expect(copy).toEqual({ name: 'Lapland (2)', destination: 'Finland', start_date: '2026-11-20' });
   });
 
+  it('carries a trip without dates as one: the manifest and the copy have no dates (Phase 6)', async () => {
+    const { raw, db } = await setup();
+    raw.prepare(`UPDATE trips SET start_date = NULL, end_date = NULL WHERE id = 'lap'`).run();
+    const { archive } = await archiveFrom(db);
+    expect([archive.manifest.trip.startDate, archive.manifest.trip.endDate]).toEqual([null, null]);
+
+    const plan = await importInto(db, archive);
+
+    expect(raw.prepare(`SELECT start_date, end_date FROM trips WHERE id = ?`).get(plan.tripId)).toEqual({
+      start_date: null,
+      end_date: null,
+    });
+    expect(await verifyTripImport(db, plan)).toEqual({ ok: true });
+  });
+
   it('carries every relationship: participants, recipients, receipts, journeys, members', async () => {
     const { raw, db } = await setup();
     const { archive } = await archiveFrom(db);
@@ -175,7 +190,7 @@ describe('importing a trip archive into a database', () => {
   it('carries payments and linked expenses with new ids, on the copied bookings and payers (3D-1)', async () => {
     const { raw, db } = await setup();
     const { archive } = await archiveFrom(db);
-    expect(archive.manifest.rowFormat).toBe(14);
+    expect(archive.manifest.rowFormat).toBe(15);
     // Evelina is linked to the profile here; Misho comes in as a new one.
     const plan = await importInto(db, archive, new Map([['ev', { kind: 'existing', id: 'ev' }]]));
     const one = (sql: string) => raw.prepare(sql).all(plan.tripId);

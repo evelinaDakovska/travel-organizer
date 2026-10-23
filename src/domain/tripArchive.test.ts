@@ -277,16 +277,16 @@ describe('opening a trip archive', () => {
     }
   });
 
-  it('writes row format 14, and still opens trips exported by 0.17.0 (13), 0.16.2 (12), 0.16.1 (11), 0.16.0 (10), 0.15.0 (9), 0.14.0 (8) and 0.13.0 (7)', async () => {
+  it('writes row format 15, and still opens trips exported by 0.18.x (14), 0.17.0 (13), 0.16.2 (12), 0.16.1 (11), 0.16.0 (10), 0.15.0 (9), 0.14.0 (8) and 0.13.0 (7)', async () => {
     const entries = goodEntries();
     const manifest = manifestOf(entries);
-    expect(manifest.rowFormat).toBe(14);
-    for (const rowFormat of [13, 12, 11, 10, 9, 8, 7]) {
+    expect(manifest.rowFormat).toBe(15);
+    for (const rowFormat of [14, 13, 12, 11, 10, 9, 8, 7]) {
       const older = await open(rawZip(replace(entries, MANIFEST_NAME, json({ ...manifest, rowFormat }))));
       expect(older.ok).toBe(true);
     }
-    // What 0.17.0 does with this app's archives: its own check, with its own number.
-    expect(manifest.rowFormat).toBeGreaterThan(13);
+    // What 0.18.x does with this app's archives: its own check, with its own number.
+    expect(manifest.rowFormat).toBeGreaterThan(14);
   });
 
   it('opens a row-format-13 archive (0.17.0) with its rates as pairs, as migration 013 does', async () => {

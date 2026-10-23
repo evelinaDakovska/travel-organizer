@@ -150,8 +150,9 @@ const manifestSchema = z.object({
   trip: z.object({
     name: z.string().max(200),
     destination: z.string().max(200).nullable(),
-    startDate: z.string().max(10),
-    endDate: z.string().max(10),
+    // Null on a trip without dates (row format 15, Phase 6).
+    startDate: z.string().max(10).nullable(),
+    endDate: z.string().max(10).nullable(),
   }),
   attachments: z.enum(['included', 'excluded']),
   /** Anything a reader would otherwise assume is there, is not: files left out or missing. */

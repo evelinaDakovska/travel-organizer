@@ -20,11 +20,12 @@ import { travellerClassificationSchema } from './traveller';
  * added settlement_reviews (migration 011, §15); 13 added trip_rates, `trips.report_currency` and
  * charged amounts on expenses and booking payments (migration 012, Phase 4); 14 added
  * trip_exchange_rates, one rate per currency pair (migration 013, review P1) — `tripRates` is still
- * carried raw, frozen. Formats 1–13
+ * carried raw, frozen; 15 allows a trip without dates, both `start_date` and `end_date` null
+ * (migration 014, Phase 6), which a format-14 app could not store, so it refuses the file. Formats 1–14
  * still import: their missing tables or columns default safely, and a format-5-or-earlier list item's one `traveller_id` becomes its one recipient
  * (`upgradeDocument`).
  */
-export const EXPORT_FORMAT_VERSION = 14;
+export const EXPORT_FORMAT_VERSION = 15;
 export const EXPORT_APP = 'travel-organizer';
 
 const nullableString = z.string().nullable();
@@ -34,8 +35,9 @@ const tripRowSchema = z.object({
   id: z.string().min(1),
   name: z.string(),
   destination: nullableString,
-  start_date: z.string(),
-  end_date: z.string(),
+  // Null together from format 15: a trip without dates (migration 014 refuses one alone).
+  start_date: nullableString,
+  end_date: nullableString,
   default_tz: z.string(),
   cover_path: nullableString,
   notes: nullableString,

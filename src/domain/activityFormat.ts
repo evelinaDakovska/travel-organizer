@@ -53,7 +53,8 @@ export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
 /** `planned` is the app's `confirmed` — *In my itinerary*. Neither means booked or paid. */
 export const ACTIVITY_STATUSES = ['idea', 'planned'] as const;
 
-export type ActivityTrip = { defaultTz: string; startDate: string; endDate: string };
+/** The trip a file is read for. Null dates: a trip without dates, so nothing is outside them (P6-10). */
+export type ActivityTrip = { defaultTz: string; startDate: string | null; endDate: string | null };
 
 export type ActivityLink = { label: string; url: string; subtype: ResourceSubtype };
 
@@ -512,7 +513,13 @@ export function parseActivity(raw: unknown, index: number, trip: ActivityTrip): 
   if (status === 'confirmed' && date === undefined && errors.length === 0) {
     warnings.push('Planned without a date — it goes under “No date yet” on the Timeline.');
   }
-  if (date !== undefined && datesOk && (date > trip.endDate || (endDate ?? date) < trip.startDate)) {
+  if (
+    date !== undefined &&
+    datesOk &&
+    trip.startDate !== null &&
+    trip.endDate !== null &&
+    (date > trip.endDate || (endDate ?? date) < trip.startDate)
+  ) {
     warnings.push(`On ${formatShortDate(date)}, outside this trip’s dates.`);
   }
 

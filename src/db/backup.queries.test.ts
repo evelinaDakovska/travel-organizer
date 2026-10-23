@@ -217,6 +217,21 @@ describe('the backup round trip', () => {
     expect(await readAll(target)).toEqual(await readAll(source));
   });
 
+  it('restores a trip without dates as one, with no date filled in (Phase 6)', async () => {
+    const source = fresh();
+    seed(source);
+    source.prepare(`UPDATE trips SET start_date = NULL, end_date = NULL WHERE id = 't1'`).run();
+    const target = fresh();
+
+    await restoreInto(target, source, 'merge');
+
+    expect(target.prepare(`SELECT start_date, end_date FROM trips WHERE id = 't1'`).get()).toEqual({
+      start_date: null,
+      end_date: null,
+    });
+    expect(await readAll(target)).toEqual(await readAll(source));
+  });
+
   it('loses nothing on a column that is easy to drop', async () => {
     const source = fresh();
     seed(source);
@@ -405,11 +420,14 @@ describe('the backup round trip', () => {
     expect(item).toEqual({ details, price_amount: 34000, is_paid: 1 });
   });
 
-  it('writes format 14, and still restores 13 (0.17.0), 12 (0.16.2), 11 (0.16.1), 10 (0.16.0), 9 (0.15.0), 8 (0.14.0) and 7 (0.13.0)', async () => {
+  it('writes format 15, and still restores 14 (0.18.x), 13 (0.17.0), 12 (0.16.2), 11 (0.16.1), 10 (0.16.0), 9 (0.15.0), 8 (0.14.0) and 7 (0.13.0)', async () => {
     const source = fresh();
     seed(source);
     const current = JSON.parse(JSON.stringify(await documentFrom(source)));
-    expect(current.formatVersion).toBe(14);
+    expect(current.formatVersion).toBe(15);
+    // A format-14 file is the same rows: every trip has dates.
+    const fromFourteen = parseExportDocument({ ...current, formatVersion: 14 });
+    expect(fromFourteen.ok).toBe(true);
     // A format-13 file has its rates in tripRates only: they are read as pairs.
     const { tripExchangeRates: _pairs, ...thirteenTables } = current.tables;
     const rate = { trip_id: 't1', currency: 'USD', base_currency: 'EUR', rate: '0.92', rate_date: '2026-10-23', updated_at: '2026-10-23' };
@@ -459,8 +477,9 @@ describe('the backup round trip', () => {
         expect(fromOlder.document.tables.settlementReviews).toEqual([]);
       }
     }
-    // 0.17.0 refuses anything above its own 13 — this app's backups included.
-    expect(current.formatVersion).toBeGreaterThan(13);
+    // 0.18.x refuses anything above its own 14 — this app's backups included, which may hold a trip
+    // without dates it could not store.
+    expect(current.formatVersion).toBeGreaterThan(14);
   });
 
   it('rejects a backup from a future format with a clear message', async () => {

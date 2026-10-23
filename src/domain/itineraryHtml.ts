@@ -11,7 +11,7 @@
 import { refundNotSaid, tripExpenses } from './bookingCosts';
 import { convertTripTotal, rateText, type ExchangeRate } from './conversion';
 import { dayStops, daysForStop, tripDates } from './dayRail';
-import { formatDateRange, formatDayHeading, formatMoney, formatShortMoment } from './format';
+import { formatDateRange, formatDayHeading, formatMoney, formatShortMoment, formatTripDates } from './format';
 import { entryRoleLabel, entryZoneLabel, openTasks } from './itinerary';
 import { amountText, listProgress, progressText, type List, type ListItem } from './lists';
 import { pricingOf, pricingText } from './pricing';
@@ -19,7 +19,7 @@ import type { Resource } from './resource';
 import { timeOfDay } from './time';
 import { buildTimeline, type TimelineEntry } from './timeline';
 import { namesLine, type Traveller } from './traveller';
-import type { Trip } from './trip';
+import { isDated, type Trip } from './trip';
 import { routeLabel, transportDetails, type TripItem } from './tripItem';
 import { conversionCosts } from './tripConversion';
 import { routePlace, zoneName } from './zoneHints';
@@ -155,12 +155,13 @@ function daysHtml(input: ItineraryInput, options: PdfOptions): string {
   const dayNumbers = new Map(
     stops.flatMap((stop) => (stop.kind === 'day' ? [[stop.date, stop.number] as const] : [])),
   );
-  // Every trip day, empty ones included, plus anything dated before or after the trip.
+  // Every trip day, empty ones included, plus anything dated before or after the trip. Without
+  // trip dates, only the days that have plans (P6-11).
   const before = daysForStop({ kind: 'before' }, days, input.trip);
   const after = daysForStop({ kind: 'after' }, days, input.trip);
-  const trip = tripDates(input.trip).map(
-    (date) => days.find((day) => day.day === date) ?? { day: date, entries: [] },
-  );
+  const trip = isDated(input.trip)
+    ? tripDates(input.trip).map((date) => days.find((day) => day.day === date) ?? { day: date, entries: [] })
+    : days;
 
   return [...before, ...trip, ...after]
     .map((day) => {
@@ -319,7 +320,7 @@ export function itineraryHtml(input: ItineraryInput, options: PdfOptions): strin
   const people = options.travellers ? namesLine(input.travellers) : '';
   const meta = [
     trip.destination,
-    formatDateRange(trip.startDate, trip.endDate),
+    formatTripDates(trip),
     `Times are local to where each thing happens`,
   ]
     .filter(Boolean)

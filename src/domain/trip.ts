@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { DATES_NOT_SET } from './format';
 import { calendarDaysBetween, isValidLocal, toInstant } from './time';
 import { isResolvableTimezone } from './timezones';
 import { transportDetails, type TripItem } from './tripItem';
@@ -8,8 +9,9 @@ export type Trip = {
   id: string;
   name: string;
   destination: string | null;
-  startDate: string;
-  endDate: string;
+  /** Both set, or both null: a trip whose dates are not decided yet (Phase 6). */
+  startDate: string | null;
+  endDate: string | null;
   defaultTz: string;
   coverPath: string | null;
   notes: string | null;
@@ -28,15 +30,20 @@ export const tripInputSchema = z
   .object({
     name: z.string().trim().min(1, 'Give the trip a name').max(80),
     destination: z.string().trim().max(80).optional(),
-    startDate: isoDate,
-    endDate: isoDate,
+    // Null together: the dates are not decided yet (Phase 6, P6-1). Never one without the other.
+    startDate: isoDate.nullable(),
+    endDate: isoDate.nullable(),
     defaultTz: z.string().refine(isResolvableTimezone, 'Not a valid timezone'),
     travellerCount: z.number().int().min(1).max(50).optional(),
     travellers: z.array(z.string().trim().min(1)).max(50).optional(),
     convertedTravellers: z.array(z.string().trim().min(1)).optional(),
     notes: z.string().trim().optional(),
   })
-  .refine((t) => t.endDate >= t.startDate, {
+  .refine((t) => (t.startDate === null) === (t.endDate === null), {
+    message: 'Choose both dates, or none',
+    path: ['endDate'],
+  })
+  .refine((t) => t.startDate === null || t.endDate === null || t.endDate >= t.startDate, {
     message: 'End date cannot be before the start date',
     path: ['endDate'],
   });
@@ -47,8 +54,8 @@ export type TripRow = {
   id: string;
   name: string;
   destination: string | null;
-  start_date: string;
-  end_date: string;
+  start_date: string | null;
+  end_date: string | null;
   default_tz: string;
   cover_path: string | null;
   notes: string | null;
@@ -91,8 +98,18 @@ function parseTravellers(value: string | null): string[] {
   }
 }
 
+/** A trip with its dates set: both of them, as the schema keeps them (migration 014). */
+export type TripDates = { startDate: string; endDate: string };
+
+/** Whether the trip has dates. An undated one has neither (Phase 6). */
+export function isDated<T extends { startDate: string | null; endDate: string | null }>(
+  trip: T,
+): trip is T & TripDates {
+  return trip.startDate !== null && trip.endDate !== null;
+}
+
 /** Inclusive whole-day count, the way a traveller counts nights-plus-one. */
-export function tripDurationDays(trip: Pick<Trip, 'startDate' | 'endDate'>): number {
+export function tripDurationDays(trip: TripDates): number {
   const start = Date.parse(`${trip.startDate}T00:00:00Z`);
   const end = Date.parse(`${trip.endDate}T00:00:00Z`);
   return Math.round((end - start) / 86_400_000) + 1;
@@ -102,12 +119,15 @@ export function tripDurationDays(trip: Pick<Trip, 'startDate' | 'endDate'>): num
 export type TripPhase =
   | { phase: 'before'; daysToGo: number }
   | { phase: 'during'; day: number; of: number }
-  | { phase: 'after' };
+  | { phase: 'after' }
+  /** No dates yet: laid out as before a trip, without a count (P6-5). */
+  | { phase: 'undated' };
 
 export function tripPhase(
   trip: Pick<Trip, 'startDate' | 'endDate'>,
   now: Date = new Date(),
 ): TripPhase {
+  if (!isDated(trip)) return { phase: 'undated' };
   const today = deviceToday(now);
   if (today < trip.startDate) {
     return { phase: 'before', daysToGo: calendarDaysBetween(today, trip.startDate) };
@@ -126,6 +146,8 @@ export function tripPhaseLabel(phase: TripPhase): string {
       return `Day ${phase.day} of ${phase.of}`;
     case 'after':
       return 'Ended';
+    case 'undated':
+      return DATES_NOT_SET;
   }
 }
 
@@ -143,23 +165,29 @@ export function tripContextLine(trip: Pick<Trip, 'name' | 'destination'>): strin
 }
 
 /**
- * Upcoming keeps trips that have not finished, soonest first; past is most recent first.
- * The boundary uses the device's local date — while travelling the device zone is the trip zone.
+ * Upcoming keeps dated trips that have not finished, soonest first; past is most recent first.
+ * Undated trips are their own group, the most recently changed first (P6-4): with no date they are
+ * neither upcoming nor past. The boundary uses the device's local date — while travelling the
+ * device zone is the trip zone.
  */
-export function groupTrips(
-  trips: Trip[],
+export function groupTrips<T extends Trip>(
+  trips: T[],
   now: Date = new Date(),
-): { upcoming: Trip[]; past: Trip[] } {
+): { upcoming: (T & TripDates)[]; undated: T[]; past: (T & TripDates)[] } {
   const today = deviceToday(now);
+  const dated = trips.filter(isDated);
 
-  const upcoming = trips
+  const upcoming = dated
     .filter((t) => t.endDate >= today)
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
-  const past = trips
+  const undated = trips
+    .filter((t) => !isDated(t))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.name.localeCompare(b.name));
+  const past = dated
     .filter((t) => t.endDate < today)
     .sort((a, b) => b.endDate.localeCompare(a.endDate));
 
-  return { upcoming, past };
+  return { upcoming, undated, past };
 }
 
 /** The device's local date as 'YYYY-MM-DD' — what "today" means to the person holding it. */
@@ -172,13 +200,15 @@ export function deviceToday(now: Date = new Date()): string {
 }
 
 export function isTripActive(trip: Trip, now: Date = new Date()): boolean {
+  if (!isDated(trip)) return false;
   const today = deviceToday(now);
   return trip.startDate <= today && today <= trip.endDate;
 }
 
 /**
  * The day a new item's date picker opens on: today while the trip is under way, otherwise the
- * trip's first day — items are mostly entered weeks ahead, when today is the wrong month.
+ * trip's first day — items are mostly entered weeks ahead, when today is the wrong month. Today
+ * for a trip without dates (P6-12).
  * Only a starting point: items may still be dated outside the trip (CLAUDE.md §5.7).
  */
 export function defaultItemDate(
@@ -186,6 +216,7 @@ export function defaultItemDate(
   now: Date = new Date(),
 ): string {
   const today = deviceToday(now);
+  if (!isDated(trip)) return today;
   return trip.startDate <= today && today <= trip.endDate ? today : trip.startDate;
 }
 

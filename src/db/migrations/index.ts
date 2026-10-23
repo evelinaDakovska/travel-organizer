@@ -11,8 +11,17 @@ import { sql as m010 } from './010-unsplit-confirmations';
 import { sql as m011 } from './011-settlement-reviews';
 import { sql as m012 } from './012-currency-conversion';
 import { sql as m013 } from './013-exchange-rate-pairs';
+import { sql as m014 } from './014-undated-trips';
 
-export type Migration = { version: number; sql: string };
+export type Migration = {
+  version: number;
+  sql: string;
+  /**
+   * Drops and recreates a table other tables reference, so it must run with foreign keys OFF —
+   * or the drop would cascade-delete their rows. The runner checks them before it commits.
+   */
+  rebuildsTables?: true;
+};
 
 /** Append-only. Never edit a shipped migration — add a new one. */
 export const MIGRATIONS: Migration[] = [
@@ -29,6 +38,7 @@ export const MIGRATIONS: Migration[] = [
   { version: 11, sql: m011 },
   { version: 12, sql: m012 },
   { version: 13, sql: m013 },
+  { version: 14, sql: m014, rebuildsTables: true },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

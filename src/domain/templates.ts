@@ -69,26 +69,28 @@ export function parseTemplateContent(json: string): TemplateContent | null {
 /** A task as a template keeps it: its day relative to the trip's start, its time of day. */
 export function templateTask(
   task: { title: string; notes: string | null; start: LocalMoment | null },
-  tripStart: string,
+  tripStart: string | null,
 ): TemplateTask {
+  // A trip without dates has no first day to count from: its tasks are kept undated (P6-9).
+  const start = tripStart === null ? null : task.start;
   return {
     title: task.title,
     ...(task.notes ? { notes: task.notes } : {}),
-    offsetDays: task.start ? calendarDaysBetween(tripStart, dayKey(task.start)) : null,
-    time: task.start ? timeOfDay(task.start) : null,
+    offsetDays: start ? calendarDaysBetween(tripStart!, dayKey(start)) : null,
+    time: start ? timeOfDay(start) : null,
   };
 }
 
 /**
  * A template task on a trip: its day counted from the trip's first day, its time — if it had one —
  * on that day in the trip's own zone (the old task's zone is not carried over). Undated stays
- * undated. Ready for the item schema.
+ * undated, and so does every task on a trip without dates (P6-9). Ready for the item schema.
  */
 export function taskStart(
   task: Pick<TemplateTask, 'offsetDays' | 'time'>,
-  tripStart: string,
+  tripStart: string | null,
 ): { local: string } | undefined {
-  if (task.offsetDays === null) return undefined;
+  if (task.offsetDays === null || tripStart === null) return undefined;
   const date = addCalendarDays(tripStart, task.offsetDays);
   return { local: task.time ? `${date}T${task.time}` : date };
 }

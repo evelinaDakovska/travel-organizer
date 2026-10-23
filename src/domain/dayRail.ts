@@ -4,17 +4,18 @@
  * local day, so an overnight arrival stays on the day it lands (CLAUDE.md §5.3).
  */
 
-import { formatDayHeading } from './format';
+import { formatDayHeading, formatDayMonth } from './format';
 import { addCalendarDays } from './time';
 import type { TimelineDay, TimelineItem } from './timeline';
-import type { Trip } from './trip';
+import { isDated, type Trip } from './trip';
 
 export type DayStop =
   /** Every day, one after another: the whole trip at a glance. */
   | { kind: 'all' }
   /** Anything dated before the first day: check-in reminders, bookings made ahead. */
   | { kind: 'before' }
-  | { kind: 'day'; date: string; number: number }
+  /** `number` counts from the trip's first day; null on a trip without dates (P6-6). */
+  | { kind: 'day'; date: string; number: number | null }
   | { kind: 'after' }
   /** Confirmed, with no date yet. */
   | { kind: 'undated' };
@@ -24,8 +25,9 @@ export function stopKey(stop: DayStop): string {
   return stop.kind === 'day' ? stop.date : stop.kind;
 }
 
-/** Every date of the trip, first to last — days with nothing planned included. */
+/** Every date of the trip, first to last — days with nothing planned included. None when undated. */
 export function tripDates(trip: Pick<Trip, 'startDate' | 'endDate'>): string[] {
+  if (!isDated(trip)) return [];
   const dates: string[] = [];
   for (let date = trip.startDate; date <= trip.endDate; date = addCalendarDays(date, 1)) {
     dates.push(date);
@@ -37,6 +39,9 @@ export function tripDates(trip: Pick<Trip, 'startDate' | 'endDate'>): string[] {
  * The rail: All, then Before when anything is dated before the trip, every trip day, After when
  * anything is dated after it, and No date when something confirmed has none. Built from the trip's
  * dates, not from what has entries, so an empty day can still be chosen and planned.
+ *
+ * A trip without dates has no first day to count from (P6-6): All, each date that has entries,
+ * unnumbered, then No date.
  */
 export function dayStops(
   trip: Pick<Trip, 'startDate' | 'endDate'>,
@@ -44,6 +49,11 @@ export function dayStops(
   hasUndated: boolean,
 ): DayStop[] {
   const stops: DayStop[] = [{ kind: 'all' }];
+  if (!isDated(trip)) {
+    [...new Set(datedDays)].sort().forEach((date) => stops.push({ kind: 'day', date, number: null }));
+    if (hasUndated) stops.push({ kind: 'undated' });
+    return stops;
+  }
   if (datedDays.some((day) => day < trip.startDate)) stops.push({ kind: 'before' });
   tripDates(trip).forEach((date, index) => stops.push({ kind: 'day', date, number: index + 1 }));
   if (datedDays.some((day) => day > trip.endDate)) stops.push({ kind: 'after' });
@@ -52,10 +62,12 @@ export function dayStops(
 }
 
 /**
- * Where the rail opens: today during the trip, the first day before it, the last day after it.
- * `today` is the device's date, like the rest of "where are we in the trip".
+ * Where the rail opens: today during the trip, the first day before it, the last day after it;
+ * All on a trip without dates. `today` is the device's date, like the rest of "where are we in the
+ * trip".
  */
 export function defaultStopKey(trip: Pick<Trip, 'startDate' | 'endDate'>, today: string): string {
+  if (!isDated(trip)) return 'all';
   if (today < trip.startDate) return trip.startDate;
   if (today > trip.endDate) return trip.endDate;
   return today;
@@ -85,9 +97,9 @@ export function daysForStop<T extends TimelineItem>(
     case 'all':
       return [...days];
     case 'before':
-      return days.filter((day) => day.day < trip.startDate);
+      return isDated(trip) ? days.filter((day) => day.day < trip.startDate) : [];
     case 'after':
-      return days.filter((day) => day.day > trip.endDate);
+      return isDated(trip) ? days.filter((day) => day.day > trip.endDate) : [];
     case 'day':
       return days.filter((day) => day.day === stop.date);
     case 'undated':
@@ -111,6 +123,8 @@ export function stopLabels(stop: DayStop): { label: string; sublabel?: string } 
     case 'day': {
       const [year, month, day] = stop.date.split('-').map(Number);
       const weekday = WEEKDAYS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
+      // Unnumbered on a trip without dates: the date itself, '22 Nov' over 'Sun'.
+      if (stop.number === null) return { label: formatDayMonth(stop.date), sublabel: weekday };
       return { label: `Day ${stop.number}`, sublabel: `${weekday} ${day}` };
     }
   }
@@ -128,7 +142,10 @@ export function stopDescription(stop: DayStop, today: string): string {
     case 'undated':
       return 'No date yet';
     case 'day': {
-      const description = `Day ${stop.number}, ${formatDayHeading(stop.date)}`;
+      const description =
+        stop.number === null
+          ? formatDayHeading(stop.date)
+          : `Day ${stop.number}, ${formatDayHeading(stop.date)}`;
       return stop.date === today ? `${description}, today` : description;
     }
   }

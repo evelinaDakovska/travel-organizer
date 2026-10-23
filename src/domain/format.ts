@@ -34,6 +34,21 @@ export function formatDateRange(startDate: string, endDate: string): string {
   return `${a.day}–${b.day} ${MONTHS[a.month - 1]} ${a.year}`;
 }
 
+/** What a trip with no dates says where a dated one gives them (Phase 6, P6-4). */
+export const DATES_NOT_SET = 'Dates not set';
+
+/** A trip's dates as a range, or 'Dates not set' for one without (Phase 6). */
+export function formatTripDates(trip: { startDate: string | null; endDate: string | null }): string {
+  if (trip.startDate === null || trip.endDate === null) return DATES_NOT_SET;
+  return formatDateRange(trip.startDate, trip.endDate);
+}
+
+/** '22 Nov' — a day on the rail of a trip without dates. */
+export function formatDayMonth(date: string): string {
+  const { month, day } = parts(date);
+  return `${day} ${MONTHS[month - 1]}`;
+}
+
 /** 'Saturday, 19 September' — for day headers. */
 export function formatDayHeading(date: string): string {
   const { year, month, day } = parts(date);

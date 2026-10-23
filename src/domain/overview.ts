@@ -29,7 +29,8 @@ export type OverviewPlan<T extends TimelineItem> = {
 /**
  * Before the trip, the lead is the first journey still to come — the one to get to the airport
  * for — even if an activity is booked earlier. During and after it, what is on now, else what is
- * next (excluding stays, which have their own dedicated accommodation section).
+ * next (excluding stays, which have their own dedicated accommodation section). A trip without
+ * dates counts as before.
  * `limit` caps the rows of what comes next.
  */
 export function overviewPlan<T extends TimelineItem & { subkind?: string | null }>(
@@ -41,7 +42,8 @@ export function overviewPlan<T extends TimelineItem & { subkind?: string | null 
   const sections = nowSections(items, now, limit + 2);
 
   let lead: OverviewPlan<T>['lead'] = null;
-  const isBefore = deviceToday(now) < trip.startDate;
+  // A trip without dates is laid out as before one (P6-5): nothing is under way yet.
+  const isBefore = trip.startDate === null || deviceToday(now) < trip.startDate;
 
   if (isBefore) {
     const departure = firstDeparture(items, now);

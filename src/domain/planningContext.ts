@@ -13,7 +13,7 @@ import { entryRoleLabel } from './itinerary';
 import { addCalendarDays, dayKey, timeOfDay, type LocalMoment } from './time';
 import { buildTimeline, type TimelineEntry } from './timeline';
 import type { TravellerClassification } from './traveller';
-import type { Trip } from './trip';
+import { isDated, type Trip } from './trip';
 import {
   isValidSubkind,
   kindLabel,
@@ -262,6 +262,8 @@ function startOrder(a: PlanningItem, b: PlanningItem): number {
 }
 
 function tripDatesLine(trip: PlanningInput['trip']): string {
+  // Said plainly, so no assistant assumes dates the person has not chosen (P6-10).
+  if (!isDated(trip)) return 'Not decided yet. Do not assume any; give a date only to a plan tied to one.';
   const days = tripDates(trip).length;
   const startYear = trip.startDate.slice(0, 4);
   const endYear = trip.endDate.slice(0, 4);
@@ -325,12 +327,13 @@ export function buildPlanningContext(input: PlanningInput, options: PlanningOpti
   lines.push(`- Dates: ${tripDatesLine(trip)}`);
   lines.push(`- Times are local to ${tz} unless another zone is shown.`, '');
 
-  // Days: every trip day; three or more empty days in a row collapse into one line.
+  // Days: every trip day; three or more empty days in a row collapse into one line. Without trip
+  // dates, only the days that have plans, by their own dates.
   const byDay = new Map<string, TimelineEntry<PlanningItem>[]>();
   for (const day of buildTimeline(planned)) byDay.set(day.day, day.entries);
-  const days = tripDates(trip);
-  const before = [...byDay.keys()].filter((day) => day < trip.startDate);
-  const after = [...byDay.keys()].filter((day) => day > trip.endDate);
+  const days = isDated(trip) ? tripDates(trip) : [...byDay.keys()].sort();
+  const before = isDated(trip) ? [...byDay.keys()].filter((day) => day < trip.startDate) : [];
+  const after = isDated(trip) ? [...byDay.keys()].filter((day) => day > trip.endDate) : [];
   const dayBlock = (day: string) => [
     `### ${formatShortDate(day)}`,
     ...(byDay.get(day) ?? []).map((entry) => entryLine(entry, tz, secrets)),

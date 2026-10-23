@@ -74,7 +74,7 @@ export type TemplateChoice = {
  */
 export async function saveTemplate(
   db: SQLiteDatabase,
-  tripStart: string,
+  tripStart: string | null,
   name: string,
   chosen: TemplateChoice,
 ): Promise<string> {

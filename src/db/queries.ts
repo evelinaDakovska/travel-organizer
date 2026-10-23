@@ -351,14 +351,17 @@ UPDATE travellers SET classification = $classification, updated_at = $now WHERE 
 /** Where a profile is used: the trips it goes on, and how many items list it. */
 export const SELECT_TRAVELLER_TRIPS = `
 SELECT t.name FROM trip_travellers tt JOIN trips t ON t.id = tt.trip_id
- WHERE tt.traveller_id = $id ORDER BY t.start_date
+ WHERE tt.traveller_id = $id ORDER BY t.start_date IS NULL, t.start_date
 `;
 
-/** Trips a traveller is not on yet, soonest first: what *Add me to trips* offers (2B-0). */
+/**
+ * Trips a traveller is not on yet, soonest first, those without dates last: what *Add me to trips*
+ * offers (2B-0).
+ */
 export const SELECT_TRIPS_WITHOUT_TRAVELLER = `
 SELECT id, name, start_date, end_date FROM trips
  WHERE id NOT IN (SELECT trip_id FROM trip_travellers WHERE traveller_id = $id)
- ORDER BY start_date
+ ORDER BY start_date IS NULL, start_date
 `;
 
 export const COUNT_TRAVELLER_ITEMS = `
