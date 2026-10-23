@@ -168,4 +168,17 @@ columns. The app version is **0.18.0**, versionCode 29.
 
 ## 10. As built
 
-*(Filled in when Phase 5 is done.)*
+**In progress (stopped at a usage limit, 2026-10-23):**
+- **Done and committed:**
+  - `parseCoordinates` / `coordinatesText` and the item form's *Coordinates* field, with the
+    both-or-neither rule and coordinates on the item page;
+  - `domain/dayRoute.ts` (stops, bases, merging, the lists, `schematicLayout`, `dayRouteLinks`), with
+    tests;
+  - the `DaySchematic` component and the `dayMap` icon.
+- **Left:**
+  - the day screen `app/trip/[tripId]/day-map.tsx` (switcher, schematic, stops, the lists, the Google
+    Maps parts with Any / Driving / Walking);
+  - the *Map* action on the Timeline day headings and Overview;
+  - the emulator E2E;
+  - the docs: technical reference §25, D47, status, product status, roadmap, handoff;
+  - the version bump to 0.18.0.

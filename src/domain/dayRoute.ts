@@ -19,7 +19,7 @@ import {
   validateCoordinates,
   type DirectionEndpoint,
 } from './directions';
-import { dayKey } from './time';
+import { addCalendarDays, dayKey } from './time';
 import { buildTimeline, type TimelineEntry } from './timeline';
 import type { TripItem } from './tripItem';
 
@@ -57,11 +57,6 @@ export type DayRoute = {
 
 type Candidate = { place: DirectionEndpoint; plan: StopPlan };
 
-/** 'YYYY-MM-DD' moved by whole days, in UTC so no zone or clock change shifts it. */
-export function addDays(day: string, delta: number): string {
-  const [year, month, date] = day.split('-').map(Number);
-  return new Date(Date.UTC(year, month - 1, date + delta)).toISOString().slice(0, 10);
-}
 
 const isStay = (item: TripItem) => item.kind === 'stay' && item.status === 'confirmed';
 
@@ -133,7 +128,7 @@ export function dayRoute(items: readonly TripItem[], day: string): DayRoute {
   }
 
   // Where you wake up: last night's stay, unless you check out of it at a time today.
-  const lastNight = findStayForDay(stays, addDays(day, -1));
+  const lastNight = findStayForDay(stays, addCalendarDays(day, -1));
   const timedCheckOut = (stay: TripItem) =>
     entries.some((entry) => entry.item.id === stay.id && entry.role === 'end' && !datedStayEntries.has(entry.key));
   const wake: Candidate[] = [];

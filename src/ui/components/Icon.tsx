@@ -72,6 +72,7 @@ import {
   Wine,
   X,
   type LucideIcon,
+  MapIcon,
 } from 'lucide-react-native';
 
 import type { Subkind, TripItemKind } from '../../domain/tripItem';
@@ -127,6 +128,8 @@ const ICONS = {
   travellers: Users,
   pdf: FileDown,
   directions: Route,
+  // The day map (Phase 5).
+  dayMap: MapIcon,
   // The activities file (2C): in from an AI assistant, out to share.
   importActivities: FileInput,
   exportActivities: FileOutput,

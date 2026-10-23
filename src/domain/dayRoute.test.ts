@@ -1,4 +1,4 @@
-import { addDays, dayRoute, dayRouteLinks, routeDays, schematicLayout, STOPS_PER_LINK, type RouteStop } from './dayRoute';
+import { dayRoute, dayRouteLinks, routeDays, schematicLayout, STOPS_PER_LINK, type RouteStop } from './dayRoute';
 import type { TripItem } from './tripItem';
 
 const HEL = 'Europe/Helsinki';
@@ -142,8 +142,6 @@ describe('dayRoute', () => {
       '2026-11-20',
       '2026-11-21',
     ]);
-    expect(addDays('2026-12-31', 1)).toBe('2027-01-01');
-    expect(addDays('2026-03-01', -1)).toBe('2026-02-28');
   });
 });
 
