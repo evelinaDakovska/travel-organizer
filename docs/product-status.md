@@ -88,6 +88,21 @@
 
 ---
 
+### Built in 0.19.0 (roadmap Phase 6, trips without dates) — on the branch `phase-3d1`, verified on emulators, not on a phone
+
+- **A trip without dates:** *Dates → Not decided yet* in the trip form. It has no placeholder date and
+  no partial dates.
+- **Home:** such trips sit under *Dates not set*, between upcoming and past trips.
+- **Overview:** shows *Dates not set* and *Get ready*.
+- **Timeline:** *All*, each date that has plans (no *Day N*), *No date yet*.
+- **Setting the dates later**, or removing them, moves nothing: plans, documents, costs and people stay
+  as they were.
+- **Templates** add their tasks without dates to such a trip.
+- ***Plan with AI*** tells the assistant the dates are not decided.
+- **Backups and trip files** carry it (format 15).
+- **Migration 014** rebuilds the trips table. Verified on the emulator with every table identical.
+  It is a risky change for a phone with real data.
+
 ### Built in 0.18.0 (roadmap Phase 5, the day map) — on the branch `phase-3d1`, verified on emulators, not on a phone
 
 - **Day map:** from *Map* beside each Timeline day, or Overview › More.

@@ -343,7 +343,11 @@ Provide an optional map of a day's relevant stops and travel connections, comple
 - **Read-only:** viewing changes nothing.
 - **Not done:** a tiled map, and offline street maps.
 
-## 12. Phase 6 — Trips Without Fixed Dates [PLANNED]
+## 12. Phase 6 — Trips Without Fixed Dates [BUILT — v0.19.0 on `phase-3d1`; AWAITING INDEPENDENT REVIEW]
+
+As built: `docs/phase6-plan.md` (decisions P6-1…P6-13 for review), D48, technical reference §26.
+Migration 014 rebuilds `trips` with nullable dates; backup/archive format 15. The scope below is kept
+as written.
 
 ### Goal
 

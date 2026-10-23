@@ -127,3 +127,65 @@ database at 13.
   Plan with AI copy; set dates, everything stays; remove them again; a template on the undated trip;
   backup and trip ZIP round trip; the 13 → 14 upgrade compared table by table. Also the 2D case that
   was N/A: *Plan with AI* on an undated trip.
+
+## 6. As built (0.19.0, 2026-10-23)
+
+Built as planned, with the decisions in §2 unchanged. Commits `9d65235` (plan), `0e679f8` (data and
+domain), `a5c0730` (screens).
+
+**Data.**
+- Migration 014 (`src/db/migrations/014-undated-trips.ts`) rebuilds `trips`. It is flagged
+  `rebuildsTables`, so `migrate` runs it in `rebuildTables`:
+  - foreign keys OFF, and refused if they did not turn off;
+  - the rebuild and `user_version` in one transaction on the same connection;
+  - `foreign_key_check` must be the same after the rebuild as before it, or the transaction rolls back.
+    A reference already broken in the file is carried over, not a reason never to start;
+  - foreign keys ON again in `finally`.
+- `Trip.startDate` and `endDate` are `string | null`, with `isDated()` and the `TripDates` type.
+  `tripInputSchema` takes both dates or neither (*Choose both dates, or none*).
+- Backup `EXPORT_FORMAT_VERSION` 15 and archive `rowFormat` 15, with nullable `start_date` and
+  `end_date`; formats 7–14 still read. Trips without dates sort after dated ones in every
+  `ORDER BY start_date`.
+
+**Domain.**
+- `tripPhase` gives `undated`, labelled *Dates not set* (`DATES_NOT_SET`, `formatTripDates`).
+- `groupTrips` returns `{ upcoming, undated, past }`. `isTripActive` is false for an undated trip, and
+  `defaultItemDate` gives today.
+- `dayStops` on an undated trip: All, then each date with entries as an unnumbered stop
+  (`number: null`, labelled *22 Nov* over *Sun*), then No date. It opens on All; Before and After are
+  empty.
+- `overviewPlan` treats an undated trip as before the trip.
+- `suggestTrip` order: current, upcoming, undated, past.
+- `templateTask` and `taskStart` give undated tasks when there is no trip start.
+- The planning context's *Dates* line says *Not decided yet. Do not assume any; give a date only to a
+  plan tied to one.* Its itinerary lists only the days with plans.
+- The activities import gives no *outside the dates* warning.
+- The PDF header says *Dates not set* and lists only the days with plans.
+
+**Screens.**
+- Trip form *Dates*: *Set dates* / *Not decided yet*. The last range is kept while switching.
+- Home *Dates not set* group. Overview subtitle.
+- Timeline rail; *Today* and the month picker only on a dated trip.
+- Day map: an empty state when there is no day at all.
+- Save/use template notes; Me, the list's *Use in a trip* and the import screen's subtitle.
+
+**Verification.**
+- Node: 1743 tests in 89 suites, typecheck clean. New tests:
+  - `014-undated-trips.test.ts`: rows and columns identical through 13 → 14 and 6 → 14; cascades
+    still work; the CHECKs; the app runner, including a pre-existing orphan and a rollback;
+  - `undatedTrips.test.ts`: each decision beside its dated case;
+  - the trips repository: dates removed and set again change nothing else;
+  - backup and archive round trips of an undated trip.
+- Emulator: `%USERPROFILE%\Pictures\TravelOrganizer-0.19.0-P6-e2e\E2E-LOG.md`.
+  - Migration 014 on the device: 23/23 tables identical, 20 trips and 1748 items.
+  - An undated trip through Home, Overview, Timeline, the day map and Plan with AI.
+  - Dates set and removed again, with the items byte-identical in the database.
+  - A dated trip unchanged.
+
+**Limitations.**
+- No relative days (P6-7).
+- Confirmed plans without a date are still absent from the PDF, as on a dated trip.
+- An undated trip's *Plan with AI* screen keeps its general wording (*the dates and what is planned,
+  day by day*). The text it produces says the dates are not decided.
+- Migration 014 is a table rebuild: a **risky** change for the primary phone, which gets it only after
+  the trip (owner, 2026-10-23). The signed release rehearsal from 0.13.0 must now cover 007–014.

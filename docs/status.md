@@ -659,7 +659,15 @@ only when the owner asks.
   - the day opens where you woke up even around a timed check-out.
 
   Awaiting independent review ([`phase5-plan.md`](phase5-plan.md) §11, D47) | ✅ |
-| **P6** | Trips without fixed dates | ⬜ |
+| **P6** | Trips without fixed dates. A trip is dated or undated, never half; undated is stored as NULL.
+  - Migration 014 rebuilds `trips` with foreign keys off; backup/archive format 15.
+  - Home gets a *Dates not set* group, and the Overview says *Dates not set*.
+  - The Timeline rail is unnumbered; templates add tasks undated.
+  - Plan with AI says the dates are not decided.
+  - Setting or removing dates moves nothing.
+
+  **0.19.0 on `phase-3d1`**: 1743 Node tests. Emulator E2E with migration 014 on the device: 23/23
+  tables identical. On no phone. Awaiting independent review ([`phase6-plan.md`](phase6-plan.md), D48) | ✅ |
 | **P7** | Google Maps place import | ⬜ |
 | **P8** | Google Calendar export (.ics) | ⬜ |
 | **B1** | **Pre-beta: feedback deployment and security verification** (owner, 2026-10-20; `MASTER_ROADMAP.md` §16.2). Before the first friends APK, not in 3C: secure HTTPS endpoint, server-side secrets only, input validation and rate limiting, abuse protection and cost limits, no trip data sent automatically, draft cleared only after confirmed server acceptance, a real end-to-end delivery test with the owner's approval. The form stays off until then. Nothing deployed and no test email sent — waits for approval | ⬜ |

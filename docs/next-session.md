@@ -1,4 +1,4 @@
-# Next session — handoff (written 2026-10-23, after Phase 5 was built)
+# Next session — handoff (written 2026-10-23, after Phase 6 was built)
 
 Read `CLAUDE.md` first, then this file. It says where the work stands, what is waiting for the owner,
 and how to pick up the next task. The detailed history is in `docs/session-handoff.md` §11 and
@@ -10,15 +10,16 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
 |---|---|
 | **Branch with the work** | `phase-3d1`, the 0.16.3 commit "Close Phase 3" (pushed to the personal GitHub remote) |
 | **`main`** | `46d256a` — 0.13.0, schema 6, backup format 7. **What the owner's phone runs.** |
-| **`phase-3d1` app** | **0.18.1**, versionCode 30 (Phase 5 with its review corrections) |
-| **Database schema** | 13 (migrations 007–013 exist only on `phase-3d1`) |
-| **Backup / trip archive format** | 14 / row format 14 |
-| **Tests** | 1714 Node tests in 87 suites, `npx tsc --noEmit` clean |
+| **`phase-3d1` app** | **0.19.0**, versionCode 31 (Phase 6, trips without dates) |
+| **Database schema** | 14 (migrations 007–014 exist only on `phase-3d1`; 014 rebuilds `trips`) |
+| **Backup / trip archive format** | 15 / row format 15 |
+| **Tests** | 1743 Node tests in 89 suites, `npx tsc --noEmit` clean |
 | **Phase 3 (3B → 3E)** | **Closed (2026-10-23).** Everything through 0.16.2 passed the owner's review, and the exit checks are in `MASTER_ROADMAP.md` §6.4, §7.5, §8.3 and §9.3. One item is open: the signed release rehearsal 0.13.0 → 0.16.x. |
 | **Phone** | Untouched. Holds a real trip on 0.13.0. |
 | **Phase 4** | **Built as 0.17.0** (`docs/phase4-plan.md`, D45), verified on emulators, **awaiting independent review**. Its product decisions P4-1…P4-8 were taken without stopping, at the owner's request; they are listed in the plan's §11 for review. |
 | **Phase 5** | **Built as 0.18.0** (`docs/phase5-plan.md`, D47): an offline drawing of each day's stops and a Google Maps hand-off, plus a coordinates field. No migration. Awaiting independent review; decisions P5-1…P5-6 in the plan's §9. |
-| **Release APK** | None built for 0.16.1–0.18.1. The newest release APK is 0.16.0, at `%USERPROFILE%\.travel-organizer\`, and it predates the corrections. |
+| **Phase 6** | **Built as 0.19.0** (`docs/phase6-plan.md`, D48): trips without dates, stored as NULL. Migration 014 rebuilds `trips` with foreign keys off; format 15. Emulator verified, including 13 → 14 on the device. Awaiting independent review; decisions P6-1…P6-13 in the plan's §2. |
+| **Release APK** | None built for 0.16.1–0.19.0. The newest release APK is 0.16.0, at `%USERPROFILE%\.travel-organizer\`, and it predates the corrections. |
 
 ### What 0.16.x added after 0.16.0 (all reviewed)
 
@@ -57,7 +58,7 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
 - **Release APK:** do not build one without separate approval.
 - **Phases:** do not start a new phase until the owner asks for it. Finishing one is not permission to
   start the next.
-- **Migrations:** never edit 001–011; add a new one, and only after explaining it and getting
+- **Migrations:** never edit 001–014; add a new one, and only after explaining it and getting
   approval.
 - **Plan first:** for non-trivial work, a written plan the owner approves before any code.
 - **Commits:** end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Pushing task
@@ -67,17 +68,18 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
 
 In the likely order. Ask which one, rather than choosing.
 
-0. **The owner's review of the Phase 5 review corrections (0.18.1, since `1226b05`; plan §11)**, after the
-   reviews of the Phase 4 corrections (0.17.1) and of Phase 5 (0.18.0), with the decisions in `docs/phase5-plan.md` §9. Phase 6 starts only when the
-   owner asks.
-1. **Bring 0.18.x to the phones, after the trip.** Every step needs the owner's go-ahead.
-   0.18.x carries migrations 007–013, so it is **not** a risk-free change. It goes to **the husband's
+0. **The owner's review of Phase 6 (0.19.0, since `5bceacb`; `docs/phase6-plan.md`, decisions §2,
+   as built §6)**, and of the Phase 5 review corrections (0.18.1, since `1226b05`; plan §11). These come
+   after the reviews of the Phase 4 corrections (0.17.1) and of Phase 5 (0.18.0), with the decisions in
+   `docs/phase5-plan.md` §9. Phase 7 starts only when the owner asks.
+1. **Bring 0.19.x to the phones, after the trip.** Every step needs the owner's go-ahead.
+   0.19.x carries migrations 007–014 (014 rebuilds `trips`), so it is **not** a risk-free change. It goes to **the husband's
    phone first**. The primary phone gets it **only after the trip has passed**.
    1. Build a **signed release** 0.16.x (needs approval). *Note:* this session's safety classifier
       blocked switching `buildTypes.release` to the debug key (the §4 recipe). Ask the owner before
       relying on that recipe again; a plain `assembleDebug` dev build works for UI checks.
-   2. Rehearse on an emulator: in-place release upgrade **0.13.0 → 0.18.x** over synthetic data
-      (migrations 007–013 in one start-up), with database snapshots compared before and after. This
+   2. Rehearse on an emulator: in-place release upgrade **0.13.0 → 0.19.x** over synthetic data
+      (migrations 007–014 in one start-up), with database snapshots compared before and after. This
       is the master roadmap §19 checklist item still open for 0.16.1–0.16.3.
    3. Install on the husband's phone (synthetic data) and test everything there.
    4. For the primary phone, **after the trip**: the owner exports a backup first, then merge
@@ -129,6 +131,10 @@ were in a session scratchpad and are probably gone. The essentials:
 - **Typed routes:** a new route file needs `.expo/types/router.d.ts` regenerated. Start
   `npx expo start --offline` briefly, then stop it.
 - **Bash heredocs containing backticks fail** in this environment. Write scripts with the Write tool.
+- Phase 6: `%USERPROFILE%\Pictures\TravelOrganizer-0.19.0-P6-e2e\E2E-LOG.md`. The emulator now holds
+  the synthetic undated trip *P6 Japan someday*. Its database was copied before and after the first
+  0.19.0 launch, and `dbdiff.js` showed 23/23 tables identical. Run scratch scripts with Windows-style
+  paths (`C:/Users/...`) when `MSYS_NO_PATHCONV=1` is set, or node cannot find them.
 - Phase 5 corrections: `%USERPROFILE%\Pictures\TravelOrganizer-0.18.1-P5-review-e2e\E2E-LOG.md`. The emulator now
   holds a synthetic *Breakfast at the cafe* on E2E Lapland, Tue 24 Nov 09:00.
 - Phase 5: `%USERPROFILE%\Pictures\TravelOrganizer-0.18.0-P5-e2e\E2E-LOG.md`. Deep links do not route in the

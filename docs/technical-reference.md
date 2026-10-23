@@ -163,8 +163,8 @@ CREATE TABLE trips (
   id          TEXT PRIMARY KEY,
   name        TEXT NOT NULL,
   destination TEXT,
-  start_date  TEXT NOT NULL,        -- 'YYYY-MM-DD' date-only. MANDATORY
-  end_date    TEXT NOT NULL,        -- 'YYYY-MM-DD' date-only. MANDATORY
+  start_date  TEXT,                 -- 'YYYY-MM-DD' date-only. NULL together with end_date:
+  end_date    TEXT,                 --   a trip without dates (migration 014, §26)
   default_tz  TEXT NOT NULL,        -- IANA, e.g. 'Europe/Rome'
   cover_path  TEXT,                 -- RELATIVE path under documents dir
   notes       TEXT,
@@ -402,6 +402,12 @@ The migration tests run the same batch the app runs.
 
 `migrate` uses `withExclusiveTransactionAsync`. That is fine here, unlike for imports (§12): it runs
 in `onInit`, before any screen subscribes to changes.
+
+**A migration flagged `rebuildsTables` (014)** drops and recreates a table others reference, so it
+runs in `rebuildTables` on the main connection instead (§26). Foreign keys are turned OFF outside the
+transaction; with them on, the drop would cascade-delete every child row. Inside the transaction run
+the batch and the `foreign_key_check`, which must be unchanged. Foreign keys are turned ON again in
+`finally`.
 
 Migrations are tested from a database shaped like the phone's (`002-expenses.test.ts`: one of
 everything, awkward values, rows compared before/after, a failing batch leaves nothing). Before
@@ -2011,3 +2017,43 @@ Plan: `docs/phase5-plan.md`; why: D47. No schema or format change.
 
 Entries: the Timeline's day headings (*Map*, the `dayMap` icon) and Overview › More › *Day map*
 (`getTripMoreActions`, path `day-map`).
+
+---
+
+## 26. Trips without dates (Phase 6, 0.19.0)
+
+Plan and decisions: `docs/phase6-plan.md` (P6-1…P6-13); rationale D48.
+
+**Storage.**
+- Migration 014 rebuilds `trips` with `start_date` and `end_date` nullable, plus two CHECKs:
+  - `(start_date IS NULL) = (end_date IS NULL)`;
+  - `start_date IS NULL OR end_date >= start_date`.
+- Columns, their order and every other rule are unchanged. The children's `REFERENCES trips(id)`
+  resolve to the new table after the rename.
+- No date is ever stored for an undated trip. Undated trips sort last in `ORDER BY start_date IS NULL,
+  start_date`.
+- Backup format 15 and archive `rowFormat` 15: the trip row's dates and the manifest's `startDate` /
+  `endDate` are nullable. A format-14 app refuses these files as *from a newer version*.
+
+**Model.**
+- `Trip.startDate` / `endDate`: `string | null`. `isDated(trip)` narrows to `TripDates`.
+- `formatTripDates` gives the range or *Dates not set*. `tripDurationDays` takes `TripDates` only.
+
+**Behaviour.**
+
+| Where | Undated trip |
+|---|---|
+| `tripPhase` | `{ phase: 'undated' }`, *Dates not set* |
+| `groupTrips` (Home) | its own `undated` group, by `updatedAt` descending; never the cover; never active |
+| `overviewPlan` | as before the trip |
+| `dayStops` | All, each date with entries (`number: null`), No date; `defaultStopKey` = `all`; Before/After empty |
+| `defaultItemDate` | today |
+| `taskStart` / `templateTask` | undated |
+| `suggestTrip` | after current and upcoming, before past |
+| planning context | *Not decided yet…*; only days with plans |
+| activities import | no out-of-range warning |
+| PDF | *Dates not set*; only days with plans |
+| day map | first day with plans, or an empty state |
+
+**Changing dates** writes only `trips.start_date`, `end_date` and `updated_at` (`writeTrip`). Items keep
+their own dates (CLAUDE.md §5.7).

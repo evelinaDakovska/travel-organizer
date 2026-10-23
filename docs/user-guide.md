@@ -34,7 +34,7 @@ On **Your trips**, tap **New trip** (top right).
 |---|---|
 | **Trip name** | *Lapland* |
 | **Destination** | Optional. *Rovaniemi, Finland* |
-| **Dates** | First and last day, picked as one range on the calendar. Required. |
+| **Dates** | First and last day, picked as one range on the calendar, or **Not decided yet** for a someday trip. Such a trip waits on Home under *Dates not set*. Its plans can still have their own dates. Set the trip's dates later in **Edit trip**: nothing moves. |
 | **Main timezone** | Where you will mostly be: *Helsinki*. Search by city or country. Every time you enter is read in this zone **unless that time says otherwise** (see [time zones](#time-zones-per-leg)). |
 | **Number of people** | Optional. Handy when tickets are per person. |
 | **Travelling with** | Optional, comma separated. For trips made before 0.6.0; the people on a trip are now chosen under **Travellers** (see [section 9](#travellers)). |

@@ -1152,3 +1152,29 @@ app. Parts of five never lose a stop silently, wherever the link opens.
 - **No line across an unknown place:** a line implies the stops it joins were consecutive.
 - **The day opens where you woke up and closes where you sleep,** even around a timed check-out or
   check-in. Adjacent duplicates merge, and a real return trip to check out shows twice.
+
+## D48 — Phase 6: a trip may have no dates, stored as none (0.19.0)
+
+**Decision.** A trip is either dated (start and end) or undated (neither). Undated is stored as NULL,
+never as a placeholder. Migration 014 rebuilds `trips` to allow it, with foreign keys off for the
+rebuild.
+
+**Why.**
+- **No fabricated dates** (roadmap §12). A placeholder date would leak into every screen that forgets
+  to check, and into backups. NULL makes every reader handle the case, and the type checker found
+  them all.
+- **No partial dates.** A start without an end has no rail to draw, and the app would have to invent
+  the end. A month or a season is notes.
+- **No relative days yet.** *Day 1 / Day 2* on an undated trip needs a stored relative day per item
+  and a conversion rule. That is a model of its own, not needed for a wishlist trip.
+- **Setting or removing dates moves nothing.** Items already live independently of the trip's dates
+  (§5.7), so the change touches two columns.
+- **A rebuild, not a new column.** SQLite cannot drop NOT NULL in place. A side flag with dummy dates
+  was the alternative, and it is exactly the fabricated date the roadmap forbids. The rebuild runs
+  with foreign keys off: with them on, `DROP TABLE trips` cascades.
+  - It refuses to run if foreign keys are still on.
+  - It compares `foreign_key_check` before and after, so it rolls back only what it broke itself.
+- **Format 15**, so an older app refuses a file with an undated trip instead of failing halfway.
+
+**Risk.** A table rebuild is not a risk-free change. Under the owner's split (2026-10-23), it goes to
+the husband's phone first and to the primary phone only after the trip.
