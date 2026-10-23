@@ -63,6 +63,7 @@ describe('migrations', () => {
       'trip_cover',
       'trip_items',
       'trip_notes',
+      'trip_rates',
       'trip_travellers',
       'trips',
       'unsplit_confirmations',

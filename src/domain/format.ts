@@ -1,3 +1,5 @@
+import { currencyDecimals } from './currencies';
+
 const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
@@ -64,7 +66,10 @@ export function formatRelative(minutes: number): string {
 export function formatMoney(minorUnits: number, currency: string): string {
   const sign = minorUnits < 0 ? '-' : '';
   const abs = Math.abs(minorUnits);
-  return `${sign}${currency} ${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`;
+  const whole = `${sign}${currency} ${Math.floor(abs / 100)}`;
+  // A yen has no cents: 'JPY 1500', unless hundredths were stored, which are never hidden.
+  if (currencyDecimals(currency) === 0 && abs % 100 === 0) return whole;
+  return `${whole}.${String(abs % 100).padStart(2, '0')}`;
 }
 
 /** 'Saturday, 19 September · 14:00', or just the day when only the date is known. */

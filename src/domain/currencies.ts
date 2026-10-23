@@ -23,3 +23,14 @@ export const CURRENCY_CODE = /^[A-Z]{3}$/;
 export function isKnownCurrency(code: string): boolean {
   return KNOWN.has(code);
 }
+
+/** ISO 4217 currencies with no minor unit: shown without decimals, converted to whole units. */
+const ZERO_DECIMAL = new Set([
+  'BIF', 'CLP', 'DJF', 'GNF', 'ISK', 'JPY', 'KMF', 'KRW', 'PYG', 'RWF', 'UGX', 'UYI', 'VND', 'VUV',
+  'XAF', 'XOF', 'XPF',
+]);
+
+/** Decimals a currency is shown with: 0 for yen and the like, else 2. */
+export function currencyDecimals(code: string): 0 | 2 {
+  return ZERO_DECIMAL.has(code) ? 0 : 2;
+}

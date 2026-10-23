@@ -23,6 +23,7 @@ const expense = (over: Partial<Expense> = {}): Expense => ({
   notes: null,
   tripItemId: null,
   payerId: null,
+  charged: null,
   createdAt: '2026-11-02T12:00:00.000Z',
   updatedAt: '2026-11-02T12:00:00.000Z',
   ...over,
@@ -117,6 +118,7 @@ describe('rows and form values', () => {
       notes: 'To the hotel',
       payerId: null,
       tripItemId: null,
+      charged: null,
     });
   });
 
@@ -295,6 +297,7 @@ describe('Quick Expense calculations & receipt independence', () => {
       notes: null,
       tripItemId: null,
       payerId: null,
+      charged: null,
       createdAt: '2026-10-10T08:00:00.000Z',
       updatedAt: '2026-10-10T08:00:00.000Z',
     });

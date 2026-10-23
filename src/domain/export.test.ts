@@ -25,6 +25,7 @@ const trip = (id: string) => ({
   traveller_count: null,
   travellers: null,
   converted_travellers: '[]',
+  report_currency: null,
   created_at: now,
   updated_at: now,
 });
@@ -106,6 +107,8 @@ const expense = (id: string, tripId: string) => ({
   split: null,
   trip_item_id: null,
   payer_id: null,
+  charged_amount: null,
+  charged_currency: null,
   created_at: now,
   updated_at: now,
 });

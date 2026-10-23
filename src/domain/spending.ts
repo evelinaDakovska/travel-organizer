@@ -2,11 +2,13 @@
  * Spending entered during a trip (N5): a taxi, groceries, a souvenir. Not a TripItem — it has no
  * time, no place on the timeline and no reminder; it is money and a receipt.
  *
- * Money stays in minor units and in its own currency. Nothing is converted (CLAUDE.md §7).
+ * Money stays in minor units and in its own currency. A converted total is worked out on demand
+ * (`conversion.ts`, Phase 4); nothing stored is ever converted.
  */
 
 import { z } from 'zod';
 
+import { chargedFromRow, chargedRefusal, chargedSchema, type Charged } from './conversion';
 import { DEFAULT_CURRENCY } from './tripItem';
 
 export const EXPENSE_CATEGORIES = [
@@ -53,6 +55,8 @@ export type Expense = {
   tripItemId: string | null;
   /** Who paid; null: not recorded. The legacy text column `paid_by` is never read. */
   payerId: string | null;
+  /** What it really cost in another currency (Phase 4): locked, never re-estimated. */
+  charged: Charged | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -68,6 +72,9 @@ export type ExpenseRow = {
   notes: string | null;
   trip_item_id: string | null;
   payer_id: string | null;
+  // Migration 012; absent from rows built before it.
+  charged_amount?: number | null;
+  charged_currency?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -85,6 +92,7 @@ export function parseExpenseRow(row: ExpenseRow): Expense {
     notes: row.notes,
     tripItemId: row.trip_item_id,
     payerId: row.payer_id,
+    charged: chargedFromRow(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -117,6 +125,11 @@ export const expenseInputSchema = z.object({
   // 3D-1. Absent in the quick sheet: not recorded, and standalone.
   payerId: z.string().min(1).nullable().default(null),
   tripItemId: z.string().min(1).nullable().default(null),
+  // Phase 4. Absent: an edit keeps what is saved; null clears it.
+  charged: chargedSchema.optional(),
+}).refine((input) => !chargedRefusal(input.currency, input.charged), {
+  message: 'The charged amount must be in another currency than the expense.',
+  path: ['charged'],
 });
 
 export type ExpenseInput = z.output<typeof expenseInputSchema>;
@@ -132,6 +145,7 @@ export function expenseFormValues(expense: Expense): ExpenseFormValues {
     notes: expense.notes ?? undefined,
     payerId: expense.payerId,
     tripItemId: expense.tripItemId,
+    charged: expense.charged,
   };
 }
 

@@ -14,6 +14,7 @@
 import { z } from 'zod';
 
 import { countsAsSpent, isFullyPaid, paidOf } from './bookingCosts';
+import { chargedFromRow, chargedSchema, type Charged } from './conversion';
 import { formatMoney } from './format';
 import type { TripItem } from './tripItem';
 
@@ -37,6 +38,8 @@ export type BookingPayment = {
   /** Local date, YYYY-MM-DD; null when nobody said. */
   paidOn: string | null;
   note: string | null;
+  /** What it really cost in another currency (Phase 4): locked, never re-estimated. */
+  charged: Charged | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -50,6 +53,9 @@ export type BookingPaymentRow = {
   currency: string;
   paid_on: string | null;
   note: string | null;
+  // Migration 012; absent from rows built before it.
+  charged_amount?: number | null;
+  charged_currency?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -64,6 +70,7 @@ export function parseBookingPaymentRow(row: BookingPaymentRow): BookingPayment {
     currency: row.currency,
     paidOn: row.paid_on,
     note: row.note,
+    charged: chargedFromRow(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -88,6 +95,9 @@ export const bookingPaymentInputSchema = z.object({
     .max(500)
     .optional()
     .transform((value) => (value ? value : undefined)),
+  // Phase 4. Absent: an edit keeps what is saved; null clears it. Checked against the booking's
+  // currency in the repository, since the form has no currency.
+  charged: chargedSchema.optional(),
 });
 
 export type BookingPaymentInput = z.output<typeof bookingPaymentInputSchema>;

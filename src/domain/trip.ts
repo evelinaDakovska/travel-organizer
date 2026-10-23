@@ -16,6 +16,8 @@ export type Trip = {
   travellerCount: number | null;
   travellers: string[];
   convertedTravellers: string[];
+  /** The currency its total is converted to (Phase 4); null: not converted. */
+  reportCurrency: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -53,6 +55,8 @@ export type TripRow = {
   traveller_count: number | null;
   travellers: string | null;
   converted_travellers?: string | null;
+  // Migration 012; absent from rows built before it.
+  report_currency?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -70,6 +74,7 @@ export function parseTripRow(row: TripRow): Trip {
     travellerCount: row.traveller_count,
     travellers: parseTravellers(row.travellers),
     convertedTravellers: parseTravellers(row.converted_travellers ?? null),
+    reportCurrency: row.report_currency ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

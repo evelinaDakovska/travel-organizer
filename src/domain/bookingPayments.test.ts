@@ -52,6 +52,7 @@ describe('rows and input', () => {
       currency: 'EUR',
       paidOn: null,
       note: 'Deposit',
+      charged: null,
       createdAt: 'c',
       updatedAt: 'u',
     });

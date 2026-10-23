@@ -175,7 +175,7 @@ describe('importing a trip archive into a database', () => {
   it('carries payments and linked expenses with new ids, on the copied bookings and payers (3D-1)', async () => {
     const { raw, db } = await setup();
     const { archive } = await archiveFrom(db);
-    expect(archive.manifest.rowFormat).toBe(12);
+    expect(archive.manifest.rowFormat).toBe(13);
     // Evelina is linked to the profile here; Misho comes in as a new one.
     const plan = await importInto(db, archive, new Map([['ev', { kind: 'existing', id: 'ev' }]]));
     const one = (sql: string) => raw.prepare(sql).all(plan.tripId);
@@ -486,5 +486,36 @@ describe('settlement reviews, through a trip archive (§15.3)', () => {
     raw.exec(`CREATE TEMP TRIGGER fail_review BEFORE INSERT ON settlement_reviews BEGIN SELECT RAISE(ABORT, 'disk full'); END`);
     await expect(importInto(db, archive)).rejects.toThrow('disk full');
     expect(dump(raw)).toEqual(before);
+  });
+
+  it('carries the reporting currency, the rates and the charged amounts onto the new trip (Phase 4)', async () => {
+    const { raw, db } = await setup();
+    raw.prepare(`UPDATE trips SET report_currency = 'EUR' WHERE id = 'lap'`).run();
+    raw
+      .prepare(
+        `INSERT INTO trip_rates (trip_id, currency, base_currency, rate, rate_date, updated_at)
+         VALUES ('lap', 'USD', 'EUR', '0.92', '2026-10-20', ?), ('lap', 'NOK', 'GBP', '0.07', '2026-10-01', ?),
+                ('rome', 'USD', 'EUR', '0.5', '2026-10-20', ?)`,
+      )
+      .run(now, now, now);
+    raw.prepare(`UPDATE booking_payments SET charged_amount = 18000, charged_currency = 'USD' WHERE id = 'bp1'`).run();
+    raw.prepare(`UPDATE expenses SET charged_amount = 1300, charged_currency = 'USD' WHERE id = 'e1'`).run();
+    const { archive } = await archiveFrom(db);
+    const plan = await importInto(db, archive);
+
+    const trip = raw.prepare(`SELECT report_currency FROM trips WHERE id = ?`).get(plan.tripId);
+    expect(trip).toEqual({ report_currency: 'EUR' });
+    expect(raw.prepare(`SELECT currency, base_currency, rate, rate_date FROM trip_rates WHERE trip_id = ? ORDER BY currency`).all(plan.tripId)).toEqual([
+      { currency: 'NOK', base_currency: 'GBP', rate: '0.07', rate_date: '2026-10-01' },
+      { currency: 'USD', base_currency: 'EUR', rate: '0.92', rate_date: '2026-10-20' },
+    ]);
+    expect(raw.prepare(`SELECT amount, charged_amount, charged_currency FROM booking_payments WHERE trip_id = ? AND charged_amount IS NOT NULL`).all(plan.tripId)).toEqual([
+      { amount: 20000, charged_amount: 18000, charged_currency: 'USD' },
+    ]);
+    expect(raw.prepare(`SELECT amount, charged_amount, charged_currency FROM expenses WHERE trip_id = ? AND charged_amount IS NOT NULL`).all(plan.tripId)).toEqual([
+      { amount: 1250, charged_amount: 1300, charged_currency: 'USD' },
+    ]);
+    // The other trip's rate stayed out of the archive.
+    expect(raw.prepare(`SELECT COUNT(*) AS n FROM trip_rates WHERE rate = '0.5'`).get()).toEqual({ n: 1 });
   });
 });

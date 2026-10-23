@@ -69,6 +69,7 @@ const TABLE_KEYS = [
   'settlements',
   'unsplitConfirmations',
   'settlementReviews',
+  'tripRates',
   'travellers',
   'tripTravellers',
   'itemParticipants',
@@ -98,6 +99,8 @@ const tablesSchema = z.object({
   unsplitConfirmations: z.array(ROW_SCHEMAS.unsplitConfirmations).default([]),
   // Absent before row format 12 (§15): nothing was held for review.
   settlementReviews: z.array(ROW_SCHEMAS.settlementReviews).default([]),
+  // Absent before row format 13 (Phase 4): no rates.
+  tripRates: z.array(ROW_SCHEMAS.tripRates).default([]),
   travellers: z.array(ROW_SCHEMAS.travellers),
   tripTravellers: z.array(ROW_SCHEMAS.tripTravellers),
   itemParticipants: z.array(ROW_SCHEMAS.itemParticipants),
@@ -249,6 +252,7 @@ export function buildTripArchive(
     settlements: one.settlements,
     unsplitConfirmations: one.unsplitConfirmations,
     settlementReviews: one.settlementReviews,
+    tripRates: one.tripRates,
     travellers: one.travellers,
     tripTravellers: one.tripTravellers,
     itemParticipants: one.itemParticipants,
@@ -526,6 +530,7 @@ export function checkTripArchive(
   if (!ownedByTrip(t.settlements)) return 'a settlement belongs to another trip';
   if (!ownedByTrip(t.unsplitConfirmations)) return 'an unsplit cost kept outside belongs to another trip';
   if (!ownedByTrip(t.settlementReviews)) return 'a settlement review belongs to another trip';
+  if (!ownedByTrip(t.tripRates)) return 'an exchange rate belongs to another trip';
   if (!ownedByTrip(t.lists)) return 'a list belongs to another trip';
   if (!ownedByTrip(t.tripTravellers)) return 'a traveller is listed on another trip';
   if (!ownedByTrip(t.templateUses)) return 'a template record belongs to another trip';
@@ -549,6 +554,7 @@ export function checkTripArchive(
   // stay on it here.
   const members = new Set(t.tripTravellers.map((row) => row.traveller_id));
   const pairs = (rows: readonly string[]) => new Set(rows).size === rows.length;
+  if (!pairs(t.tripRates.map((row) => row.currency))) return 'a currency has two rates';
   for (const row of t.bookingPayments) {
     if (!items.has(row.trip_item_id)) return 'a payment is for a missing booking';
     if (row.payer_id !== null && !travellers.has(row.payer_id)) {
@@ -929,6 +935,8 @@ export function planTripImport(
         id: must(reviewIds, row.id, 'settlement review'),
         trip_id: tripId,
       })),
+      // As typed, against the reporting currency they were set for.
+      tripRates: t.tripRates.map((row) => ({ ...row, trip_id: tripId })),
       travellers: newTravellers,
       // Two archive travellers linked to one profile here become one member, one participant.
       tripTravellers: t.tripTravellers

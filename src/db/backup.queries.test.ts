@@ -405,13 +405,27 @@ describe('the backup round trip', () => {
     expect(item).toEqual({ details, price_amount: 34000, is_paid: 1 });
   });
 
-  it('writes format 12, and still restores 11 (0.16.1), 10 (0.16.0), 9 (0.15.0), 8 (0.14.0) and 7 (0.13.0)', async () => {
+  it('writes format 13, and still restores 12 (0.16.2), 11 (0.16.1), 10 (0.16.0), 9 (0.15.0), 8 (0.14.0) and 7 (0.13.0)', async () => {
     const source = fresh();
     seed(source);
     const current = JSON.parse(JSON.stringify(await documentFrom(source)));
-    expect(current.formatVersion).toBe(12);
+    expect(current.formatVersion).toBe(13);
+    // A format-12 file has no rates, no reporting currency and nothing charged: nothing is converted.
+    const { tripRates: _rates, ...twelveTables } = current.tables;
+    const strip = (rows: Record<string, unknown>[], ...columns: string[]) =>
+      rows.map((row) => Object.fromEntries(Object.entries(row).filter(([key]) => !columns.includes(key))));
+    twelveTables.trips = strip(twelveTables.trips, 'report_currency');
+    twelveTables.expenses = strip(twelveTables.expenses, 'charged_amount', 'charged_currency');
+    twelveTables.bookingPayments = strip(twelveTables.bookingPayments, 'charged_amount', 'charged_currency');
+    const fromTwelve = parseExportDocument({ ...current, formatVersion: 12, tables: twelveTables });
+    expect(fromTwelve.ok).toBe(true);
+    if (fromTwelve.ok) {
+      expect(fromTwelve.document.tables.tripRates).toEqual([]);
+      expect(fromTwelve.document.tables.trips.every((trip) => trip.report_currency === null)).toBe(true);
+      expect(fromTwelve.document.tables.expenses.every((row) => row.charged_amount === null && row.charged_currency === null)).toBe(true);
+    }
     // A format-11 file has no settlement reviews: nothing is held.
-    const { settlementReviews: _reviews, ...elevenTables } = current.tables;
+    const { settlementReviews: _reviews, ...elevenTables } = twelveTables;
     const fromEleven = parseExportDocument({ ...current, formatVersion: 11, tables: elevenTables });
     expect(fromEleven.ok).toBe(true);
     if (fromEleven.ok) expect(fromEleven.document.tables.settlementReviews).toEqual([]);
@@ -438,8 +452,8 @@ describe('the backup round trip', () => {
         expect(fromOlder.document.tables.settlementReviews).toEqual([]);
       }
     }
-    // 0.16.1 refuses anything above its own 11 — this app's backups included.
-    expect(current.formatVersion).toBeGreaterThan(11);
+    // 0.16.x refuses anything above its own 12 — this app's backups included.
+    expect(current.formatVersion).toBeGreaterThan(12);
   });
 
   it('rejects a backup from a future format with a clear message', async () => {

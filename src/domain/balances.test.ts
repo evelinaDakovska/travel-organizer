@@ -62,6 +62,7 @@ const expense = (id: string, amount: number, payerId: string | null, extra: Part
   notes: null,
   tripItemId: null,
   payerId,
+  charged: null,
   createdAt: now,
   updatedAt: now,
   ...extra,
@@ -77,6 +78,7 @@ const payment = (itemId: string, amount: number, payerId: string | null, currenc
   currency,
   paidOn: null,
   note: null,
+  charged: null,
   createdAt: now,
   updatedAt: now,
 });

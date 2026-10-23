@@ -22,6 +22,7 @@ const trip = (id: string) => ({
   traveller_count: null,
   travellers: null,
   converted_travellers: '[]',
+  report_currency: null,
   created_at: '2026-09-15T00:00:00.000Z',
   updated_at: '2026-09-15T00:00:00.000Z',
 });
@@ -182,6 +183,8 @@ describe('summariseImportPlan', () => {
       split: null,
       trip_item_id: null,
       payer_id: null,
+      charged_amount: null,
+      charged_currency: null,
       created_at: '2026-09-15T00:00:00.000Z',
       updated_at: '2026-09-15T00:00:00.000Z',
     });

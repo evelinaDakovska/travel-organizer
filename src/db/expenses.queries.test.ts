@@ -42,6 +42,8 @@ function setup() {
       notes: null,
       payerId: null,
       tripItemId: null,
+      chargedAmount: null,
+      chargedCurrency: null,
       now,
       ...values,
     });
@@ -113,6 +115,8 @@ describe('expenses', () => {
       notes: 'To the airport',
       payerId: null,
       tripItemId: null,
+      chargedAmount: null,
+      chargedCurrency: null,
       now: '2026-11-03T10:00:00.000Z',
     });
 

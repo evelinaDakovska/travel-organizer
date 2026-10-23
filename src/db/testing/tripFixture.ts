@@ -34,6 +34,7 @@ function trip(id: string, name: string) {
     created_at: now,
     updated_at: now,
     converted_travellers: '[]',
+    report_currency: null,
   };
 }
 
@@ -104,14 +105,14 @@ export function snapshot(): ExportTables {
     { id: 'n2', trip_id: 'rome', title: 'Rome secret', body: 'x', pinned: 0, sort_order: 0, created_at: now, updated_at: now },
   ];
   t.expenses = [
-    { id: 'e1', trip_id: 'lap', category: 'groceries', label: 'K-Market', amount: 1250, currency: 'EUR', spent_on: '2026-11-21', notes: null, paid_by: 'Evelina', split: null, created_at: now, updated_at: now, trip_item_id: null, payer_id: null },
+    { id: 'e1', trip_id: 'lap', category: 'groceries', label: 'K-Market', amount: 1250, currency: 'EUR', spent_on: '2026-11-21', notes: null, paid_by: 'Evelina', split: null, created_at: now, updated_at: now, trip_item_id: null, payer_id: null, charged_amount: null, charged_currency: null },
     // Pays for the safari (3D-1): linked, with its payer.
-    { id: 'e2', trip_id: 'lap', category: 'activities', label: 'Safari balance', amount: 6000, currency: 'EUR', spent_on: '2026-11-22', notes: null, paid_by: null, split: null, created_at: now, updated_at: now, trip_item_id: 'safari', payer_id: 'mi' },
+    { id: 'e2', trip_id: 'lap', category: 'activities', label: 'Safari balance', amount: 6000, currency: 'EUR', spent_on: '2026-11-22', notes: null, paid_by: null, split: null, created_at: now, updated_at: now, trip_item_id: 'safari', payer_id: 'mi', charged_amount: null, charged_currency: null },
   ];
   t.bookingPayments = [
-    { id: 'bp1', trip_id: 'lap', trip_item_id: 'leg1', payer_id: 'ev', amount: 20000, currency: 'EUR', paid_on: '2026-10-01', note: 'Deposit', created_at: now, updated_at: now },
-    { id: 'bp2', trip_id: 'lap', trip_item_id: 'leg1', payer_id: null, amount: 5000, currency: 'EUR', paid_on: null, note: null, created_at: now, updated_at: now },
-    { id: 'bp-rome', trip_id: 'rome', trip_item_id: 'colosseum', payer_id: 'stranger', amount: 3000, currency: 'EUR', paid_on: null, note: null, created_at: now, updated_at: now },
+    { id: 'bp1', trip_id: 'lap', trip_item_id: 'leg1', payer_id: 'ev', amount: 20000, currency: 'EUR', paid_on: '2026-10-01', note: 'Deposit', created_at: now, updated_at: now, charged_amount: null, charged_currency: null },
+    { id: 'bp2', trip_id: 'lap', trip_item_id: 'leg1', payer_id: null, amount: 5000, currency: 'EUR', paid_on: null, note: null, created_at: now, updated_at: now, charged_amount: null, charged_currency: null },
+    { id: 'bp-rome', trip_id: 'rome', trip_item_id: 'colosseum', payer_id: 'stranger', amount: 3000, currency: 'EUR', paid_on: null, note: null, created_at: now, updated_at: now, charged_amount: null, charged_currency: null },
   ];
   // Split (3D-2): the safari equally, Mitko's share covered by Misho; the groceries by amount.
   const share = (id: string, tripId: string, owner: { item?: string; expense?: string }, who: string, extra: { amount?: number; coveredBy?: string; order?: number } = {}) => ({

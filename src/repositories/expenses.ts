@@ -11,6 +11,7 @@ import {
   UPDATE_EXPENSE,
 } from '../db/queries';
 import { MoneyRuleError } from '../domain/bookingPayments';
+import { chargedRefusal, type Charged } from '../domain/conversion';
 import { expenseSplitEditRefusal, splitFactsFrom } from '../domain/costShares';
 import type { ResourceInput } from '../domain/resource';
 import {
@@ -57,7 +58,8 @@ function validInput(input: ExpenseInput): ExpenseInput {
   return result.data;
 }
 
-const bindings = (input: ExpenseInput) => ({
+/** `charged` is the value to store: the input's, or the saved one when the input left it out. */
+const bindings = (input: ExpenseInput, charged: Charged | null) => ({
   $category: input.category,
   $label: input.label ?? null,
   $amount: input.amount,
@@ -66,6 +68,8 @@ const bindings = (input: ExpenseInput) => ({
   $notes: input.notes ?? null,
   $payerId: input.payerId,
   $tripItemId: input.tripItemId,
+  $chargedAmount: charged?.amount ?? null,
+  $chargedCurrency: charged?.currency ?? null,
   $now: new Date().toISOString(),
 });
 
@@ -113,7 +117,7 @@ export async function createExpense(
     await checkLink(db, tripId, input);
     await checkPayer(db, tripId, input.payerId);
     const before = await moneyBefore(db, tripId);
-    await db.runAsync(INSERT_EXPENSE, { $id: id, $tripId: tripId, ...bindings(input) });
+    await db.runAsync(INSERT_EXPENSE, { $id: id, $tripId: tripId, ...bindings(input, input.charged ?? null) });
     for (const receipt of receipts) {
       await createResource(db, { scope: 'expense', id }, receipt);
     }
@@ -138,7 +142,12 @@ export async function updateExpense(
       await checkPayer(db, saved.tripId, input.payerId, saved.payerId);
       await checkSplit(db, saved, input);
     }
-    await db.runAsync(UPDATE_EXPENSE, { $id: id, ...bindings(input) });
+    const charged = input.charged === undefined ? (saved?.charged ?? null) : input.charged;
+    // Kept from before, it must still name another currency than a changed one.
+    if (input.charged === undefined && chargedRefusal(input.currency, charged)) {
+      throw new MoneyRuleError('The charged amount is in the new currency. Change or clear it first.');
+    }
+    await db.runAsync(UPDATE_EXPENSE, { $id: id, ...bindings(input, charged) });
     if (saved) await afterMoneyWrite(db, saved.tripId, before, options);
   });
 }

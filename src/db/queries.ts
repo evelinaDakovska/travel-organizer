@@ -537,7 +537,9 @@ INSERT OR IGNORE INTO list_item_recipients (list_item_id, traveller_id) VALUES (
 /** Column order for the backup. Append only — a restore binds by name, but order documents it. */
 export const EXPORT_COLUMNS = {
   trips: ['id', 'name', 'destination', 'start_date', 'end_date', 'default_tz', 'cover_path',
-          'notes', 'traveller_count', 'travellers', 'created_at', 'updated_at', 'converted_travellers'],
+          'notes', 'traveller_count', 'travellers', 'created_at', 'updated_at', 'converted_travellers',
+          // Format 13 (migration 012, Phase 4).
+          'report_currency'],
   trip_items: ['id', 'trip_id', 'kind', 'subkind', 'status', 'priority', 'title',
                'start_local', 'start_tz', 'start_precision', 'start_utc',
                'end_local', 'end_tz', 'end_precision', 'end_utc', 'completed_at',
@@ -552,7 +554,9 @@ export const EXPORT_COLUMNS = {
   expenses: ['id', 'trip_id', 'category', 'label', 'amount', 'currency', 'spent_on', 'notes',
              'paid_by', 'split', 'created_at', 'updated_at',
              // Format 8 (migration 007, 3D-1).
-             'trip_item_id', 'payer_id'],
+             'trip_item_id', 'payer_id',
+             // Format 13 (migration 012, Phase 4).
+             'charged_amount', 'charged_currency'],
   payments: ['id', 'trip_id', 'from_name', 'to_name', 'amount', 'currency', 'created_at'],
   settings: ['key', 'value'],
   // Format 3 (Fieldbook, migration 003). Format 4 adds classification (migration 004).
@@ -567,7 +571,9 @@ export const EXPORT_COLUMNS = {
   template_uses: ['trip_id', 'template_id', 'applied_at'],
   list_item_recipients: ['list_item_id', 'traveller_id'],
   booking_payments: ['id', 'trip_id', 'trip_item_id', 'payer_id', 'amount', 'currency', 'paid_on',
-                     'note', 'created_at', 'updated_at'],
+                     'note', 'created_at', 'updated_at',
+                     // Format 13 (migration 012, Phase 4).
+                     'charged_amount', 'charged_currency'],
   // Format 9 (migration 008, 3D-2).
   cost_shares: ['id', 'trip_id', 'trip_item_id', 'expense_id', 'traveller_id', 'amount',
                 'covered_by', 'sort_order', 'created_at', 'updated_at'],
@@ -580,6 +586,8 @@ export const EXPORT_COLUMNS = {
   // Format 12 (migration 011, settlement review holds).
   settlement_reviews: ['id', 'trip_id', 'currency', 'reason', 'cost_kind', 'cost_title', 'cost_amount',
                        'to_currency', 'created_at', 'acknowledged_at'],
+  // Format 13 (migration 012, Phase 4).
+  trip_rates: ['trip_id', 'currency', 'base_currency', 'rate', 'rate_date', 'updated_at'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type ExportTableName = keyof typeof EXPORT_COLUMNS;
@@ -644,10 +652,10 @@ SELECT * FROM expenses WHERE id = $id
 export const INSERT_EXPENSE = `
 INSERT INTO expenses
   (id, trip_id, category, label, amount, currency, spent_on, notes, payer_id, trip_item_id,
-   created_at, updated_at)
+   charged_amount, charged_currency, created_at, updated_at)
 VALUES
   ($id, $tripId, $category, $label, $amount, $currency, $spentOn, $notes, $payerId, $tripItemId,
-   $now, $now)
+   $chargedAmount, $chargedCurrency, $now, $now)
 `;
 
 /** Leaves the legacy paid_by and split alone: they are never read or written (3D-1). */
@@ -655,7 +663,7 @@ export const UPDATE_EXPENSE = `
 UPDATE expenses
    SET category = $category, label = $label, amount = $amount, currency = $currency,
        spent_on = $spentOn, notes = $notes, payer_id = $payerId, trip_item_id = $tripItemId,
-       updated_at = $now
+       charged_amount = $chargedAmount, charged_currency = $chargedCurrency, updated_at = $now
  WHERE id = $id
 `;
 
@@ -701,15 +709,18 @@ SELECT (SELECT COUNT(*) FROM booking_payments WHERE trip_item_id = $itemId) AS p
 
 export const INSERT_BOOKING_PAYMENT = `
 INSERT INTO booking_payments
-  (id, trip_id, trip_item_id, payer_id, amount, currency, paid_on, note, created_at, updated_at)
+  (id, trip_id, trip_item_id, payer_id, amount, currency, paid_on, note, charged_amount,
+   charged_currency, created_at, updated_at)
 VALUES
-  ($id, $tripId, $itemId, $payerId, $amount, $currency, $paidOn, $note, $now, $now)
+  ($id, $tripId, $itemId, $payerId, $amount, $currency, $paidOn, $note, $chargedAmount,
+   $chargedCurrency, $now, $now)
 `;
 
 /** The booking and the currency never change: a payment stays on the booking it was made for. */
 export const UPDATE_BOOKING_PAYMENT = `
 UPDATE booking_payments
-   SET payer_id = $payerId, amount = $amount, paid_on = $paidOn, note = $note, updated_at = $now
+   SET payer_id = $payerId, amount = $amount, paid_on = $paidOn, note = $note,
+       charged_amount = $chargedAmount, charged_currency = $chargedCurrency, updated_at = $now
  WHERE id = $id
 `;
 
@@ -904,4 +915,27 @@ UPDATE settlement_reviews SET acknowledged_at = $now
 /** Every booking payment on a trip, for its balances. */
 export const SELECT_TRIP_BOOKING_PAYMENTS = `
 SELECT * FROM booking_payments WHERE trip_id = $tripId ORDER BY (paid_on IS NULL), paid_on, created_at
+`;
+
+// ─── Currency conversion (Phase 4) ───────────────────────────────────────────────────────────────
+
+export const SELECT_TRIP_RATES = `
+SELECT * FROM trip_rates WHERE trip_id = $tripId ORDER BY currency
+`;
+
+export const UPDATE_TRIP_REPORT_CURRENCY = `
+UPDATE trips SET report_currency = $currency, updated_at = $now WHERE id = $tripId
+`;
+
+/** One rate per trip and currency; setting it again replaces it. */
+export const UPSERT_TRIP_RATE = `
+INSERT INTO trip_rates (trip_id, currency, base_currency, rate, rate_date, updated_at)
+VALUES ($tripId, $currency, $base, $rate, $rateDate, $now)
+ON CONFLICT (trip_id, currency) DO UPDATE
+   SET base_currency = excluded.base_currency, rate = excluded.rate, rate_date = excluded.rate_date,
+       updated_at = excluded.updated_at
+`;
+
+export const DELETE_TRIP_RATE = `
+DELETE FROM trip_rates WHERE trip_id = $tripId AND currency = $currency
 `;

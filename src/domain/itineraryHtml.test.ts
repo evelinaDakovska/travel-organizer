@@ -29,6 +29,7 @@ const trip: Trip = {
   travellerCount: null,
   travellers: [],
   convertedTravellers: [],
+  reportCurrency: null,
   createdAt: '',
   updatedAt: '',
 };

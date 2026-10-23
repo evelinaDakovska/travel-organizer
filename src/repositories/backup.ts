@@ -35,6 +35,8 @@ const TABLES: readonly (readonly [keyof ExportTables, ExportTableName])[] = [
   ['unsplitConfirmations', 'unsplit_confirmations'],
   // Names no cost or settlement: only the trip.
   ['settlementReviews', 'settlement_reviews'],
+  // Names only the trip.
+  ['tripRates', 'trip_rates'],
   ['resources', 'resources'],
   ['lists', 'lists'],
   ['listItems', 'list_items'],

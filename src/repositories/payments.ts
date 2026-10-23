@@ -25,6 +25,7 @@ import {
   type BookingPaymentRow,
   type MoneyRecords,
 } from '../domain/bookingPayments';
+import { chargedRefusal, type Charged } from '../domain/conversion';
 import { parseExpenseRow, type Expense, type ExpenseRow } from '../domain/spending';
 import { afterMoneyWrite, moneyBefore, type MoneyWriteOptions } from './moneyWrites';
 import { getTripItem } from './tripItems';
@@ -118,13 +119,22 @@ function validInput(input: BookingPaymentInput): BookingPaymentInput {
   return result.data;
 }
 
-const bindings = (input: BookingPaymentInput) => ({
+/** `charged` is the value to store: the input's, or the saved one when the input left it out. */
+const bindings = (input: BookingPaymentInput, charged: Charged | null) => ({
   $payerId: input.payerId,
   $amount: input.amount,
   $paidOn: input.paidOn,
   $note: input.note ?? null,
+  $chargedAmount: charged?.amount ?? null,
+  $chargedCurrency: charged?.currency ?? null,
   $now: new Date().toISOString(),
 });
+
+/** A charged amount is in another currency than the booking's (Phase 4). */
+function checkCharged(currency: string, charged: Charged | null): void {
+  const refusal = chargedRefusal(currency, charged);
+  if (refusal) throw new MoneyRuleError(refusal);
+}
 
 /** In the booking's currency, always: the form has no currency of its own (L-3). */
 export async function createBookingPayment(
@@ -139,13 +149,14 @@ export async function createBookingPayment(
     if (!item) throw new MoneyRuleError('That booking is not here any more.');
     const booking = await bookingForRecord(db, itemId, item.tripId);
     await checkPayer(db, booking.tripId, valid.payerId);
+    checkCharged(booking.priceCurrency!, valid.charged ?? null);
     const before = await moneyBefore(db, booking.tripId);
     await db.runAsync(INSERT_BOOKING_PAYMENT, {
       $id: id,
       $tripId: booking.tripId,
       $itemId: itemId,
       $currency: booking.priceCurrency!,
-      ...bindings(valid),
+      ...bindings(valid, valid.charged ?? null),
     });
     await afterMoneyWrite(db, booking.tripId, before);
   });
@@ -167,8 +178,10 @@ export async function updateBookingPayment(
     if (!payment) throw new MoneyRuleError('That payment is not here any more.');
     await bookingForRecord(db, payment.tripItemId, payment.tripId, payment.currency);
     await checkPayer(db, payment.tripId, valid.payerId, payment.payerId);
+    const charged = valid.charged === undefined ? payment.charged : valid.charged;
+    checkCharged(payment.currency, charged);
     const before = await moneyBefore(db, payment.tripId);
-    await db.runAsync(UPDATE_BOOKING_PAYMENT, { $id: id, ...bindings(valid) });
+    await db.runAsync(UPDATE_BOOKING_PAYMENT, { $id: id, ...bindings(valid, charged) });
     await afterMoneyWrite(db, payment.tripId, before);
   });
 }
