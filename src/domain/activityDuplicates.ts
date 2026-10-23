@@ -67,7 +67,11 @@ export function factsOfInput(input: TripItemInput): DuplicateFacts {
   };
 }
 
-function metresBetween(a: DuplicateFacts, b: DuplicateFacts): number | null {
+/** Great-circle distance in metres, or null when either has no coordinates. */
+export function metresBetween(
+  a: Pick<DuplicateFacts, 'latitude' | 'longitude'>,
+  b: Pick<DuplicateFacts, 'latitude' | 'longitude'>,
+): number | null {
   if (a.latitude === null || a.longitude === null || b.latitude === null || b.longitude === null) {
     return null;
   }

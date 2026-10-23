@@ -23,6 +23,8 @@ export type ShareTarget =
       status: 'idea' | 'confirmed';
       priority: Priority | null;
       title: string;
+      /** Read from a Google Maps link and checked by the person (Phase 7); absent for other shares. */
+      place?: { locationName?: string; address?: string; latitude?: number; longitude?: number };
     }
   | { to: 'item'; itemId: string; itemTitle: string }
   | { to: 'trip-documents' }
@@ -92,6 +94,7 @@ export async function saveShare(
             status: target.status,
             priority: target.status === 'idea' ? target.priority : null,
             title: target.title,
+            ...target.place,
           }),
         }
       : {

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { formatFileSize } from '../src/domain/format';
+import { findPlaceDuplicate, isGoogleMapsLink, isShortMapsLink, parseMapsLink } from '../src/domain/mapsLink';
 import { linkHost } from '../src/domain/resource';
 import {
   destinationLabel,
@@ -23,6 +24,7 @@ import {
   type Priority,
   type TripItemKind,
 } from '../src/domain/tripItem';
+import { lookUpMapsLink } from '../src/features/share/lookUpMapsLink';
 import { saveShare } from '../src/features/share/saveShare';
 import { queryView } from '../src/hooks/queryView';
 import { useLiveQuery } from '../src/hooks/useLiveQuery';
@@ -31,7 +33,9 @@ import { listTrips, TRIP_TABLES } from '../src/repositories/trips';
 import { Button } from '../src/ui/components/Button';
 import { Card } from '../src/ui/components/Card';
 import { ChoiceField } from '../src/ui/components/ChoiceField';
+import { CoordinatesInput } from '../src/ui/components/CoordinatesInput';
 import { Field, Input } from '../src/ui/components/Field';
+import { Notice } from '../src/ui/components/Notice';
 import { LoadFailed } from '../src/ui/components/QueryStates';
 import { Screen } from '../src/ui/components/Screen';
 import { ScreenHeader } from '../src/ui/components/ScreenHeader';
@@ -82,9 +86,28 @@ function ShareForm({ content }: { content: SharedContent }) {
   const destinations = destinationsFor(content);
   const [destination, setDestination] = useState<ShareDestination>(destinations[0]);
 
+  // A Google Maps link (Phase 7): what its URL says, shown and editable before saving (P7-3).
+  const mapsUrl = content.kind === 'link' && isGoogleMapsLink(content.url) ? content.url : null;
+  const [place, setPlace] = useState(() => {
+    const read = mapsUrl ? parseMapsLink(mapsUrl) : null;
+    return {
+      address: read?.address ?? '',
+      latitude: read?.latitude ?? undefined,
+      longitude: read?.longitude ?? undefined,
+      name: read?.name ?? null,
+    };
+  });
+  const [lookUp, setLookUp] = useState<'idle' | 'busy' | 'done' | 'offline' | 'unreadable'>('idle');
+  // Remounts the coordinates field when a lookup fills it, since it keeps its own text.
+  const [coordinatesKey, setCoordinatesKey] = useState(0);
+
   const suggested = newItemFor(content);
   const [title, setTitle] = useState(
-    content.kind === 'text' ? noteTitleFor(content.text) : suggested.title,
+    content.kind === 'text'
+      ? noteTitleFor(content.text)
+      : content.kind === 'link' && !content.title && place.name
+        ? place.name
+        : suggested.title,
   );
   const [kind, setKind] = useState<TripItemKind>(content.kind === 'files' ? 'other' : 'activity');
   const [status, setStatus] = useState<'idea' | 'confirmed'>(suggested.status);
@@ -127,11 +150,41 @@ function ShareForm({ content }: { content: SharedContent }) {
   }
 
   const needsTitle = destination === 'new-item' || destination === 'note';
+  const showsPlace = mapsUrl !== null && destination === 'new-item';
+  const coordinatesBad = place.latitude !== undefined && Number.isNaN(place.latitude);
   const canSave =
     trip !== null &&
     !busy &&
     (!needsTitle || title.trim().length > 0) &&
-    (destination !== 'item' || itemId !== null);
+    (destination !== 'item' || itemId !== null) &&
+    !(showsPlace && coordinatesBad);
+  const duplicate = showsPlace
+    ? findPlaceDuplicate(
+        { title, latitude: place.latitude ?? null, longitude: place.longitude ?? null },
+        items ?? [],
+      )
+    : null;
+
+  const runLookUp = async () => {
+    if (!mapsUrl) return;
+    setLookUp('busy');
+    const result = await lookUpMapsLink(mapsUrl);
+    if (!result.ok) {
+      setLookUp(result.reason);
+      return;
+    }
+    // Fills only what is still empty: anything the person typed stays theirs.
+    const found = result.place;
+    setPlace((current) => ({
+      address: current.address.trim() ? current.address : (found.address ?? ''),
+      latitude: current.latitude ?? found.latitude ?? undefined,
+      longitude: current.longitude ?? found.longitude ?? undefined,
+      name: current.name ?? found.name,
+    }));
+    if (!title.trim() && found.name) setTitle(found.name);
+    setCoordinatesKey((key) => key + 1);
+    setLookUp('done');
+  };
 
   const save = async () => {
     if (!trip) return;
@@ -143,7 +196,21 @@ function ShareForm({ content }: { content: SharedContent }) {
         trip,
         content,
         destination === 'new-item'
-          ? { to: 'new-item', kind, status, priority, title }
+          ? {
+              to: 'new-item',
+              kind,
+              status,
+              priority,
+              title,
+              place: showsPlace
+                ? {
+                    locationName: (place.name ?? title).trim() || undefined,
+                    address: place.address.trim() || undefined,
+                    latitude: place.latitude,
+                    longitude: place.longitude,
+                  }
+                : undefined,
+            }
           : destination === 'item'
             ? { to: 'item', itemId: itemId!, itemTitle }
             : destination === 'note'
@@ -214,6 +281,56 @@ function ShareForm({ content }: { content: SharedContent }) {
           <Field label="Title">
             <Input value={title} onChangeText={setTitle} placeholder="What is it" />
           </Field>
+        ) : null}
+
+        {showsPlace ? (
+          <>
+            {mapsUrl && isShortMapsLink(mapsUrl) && lookUp !== 'done' ? (
+              <View style={styles.lookUp}>
+                <Button
+                  label="Look up address and coordinates"
+                  variant="secondary"
+                  busy={lookUp === 'busy'}
+                  onPress={() => void runLookUp()}
+                />
+                <Text style={[type.caption, { color: c.textMuted }]}>
+                  {lookUp === 'offline'
+                    ? 'No answer — perhaps no connection. Save it with the link, and add the rest later.'
+                    : lookUp === 'unreadable'
+                      ? 'Google did not say where this link points. Save it with the link, and add the rest later.'
+                      : 'Asks Google where this short link points. Nothing else is sent.'}
+                </Text>
+              </View>
+            ) : null}
+            <Field label="Address" hint="Optional">
+              <Input
+                value={place.address}
+                onChangeText={(address) => setPlace((current) => ({ ...current, address }))}
+                placeholder="Pohjoisranta 4, Rovaniemi"
+              />
+            </Field>
+            <Field
+              label="Coordinates"
+              hint={coordinatesBad ? undefined : 'Optional. They put it on the day map'}
+              error={coordinatesBad ? 'Enter coordinates like 66.5115, 25.7311' : undefined}>
+              <CoordinatesInput
+                key={coordinatesKey}
+                latitude={place.latitude}
+                longitude={place.longitude}
+                onChange={(latitude, longitude) => setPlace((current) => ({ ...current, latitude, longitude }))}
+                onBlur={() => undefined}
+                invalid={coordinatesBad}
+              />
+            </Field>
+            {duplicate ? (
+              // A warning, never a block (P7-4): two visits to one place can be meant.
+              <Notice title="Already in this trip" tone="info" icon="places">
+                {`“${duplicate.title}” (${
+                  duplicate.status === 'idea' ? 'saved place' : duplicate.status === 'cancelled' ? 'cancelled' : 'in the itinerary'
+                }) has ${duplicate.reason === 'title' ? 'the same name' : 'a place within 100 m'}. Saving adds another.`}
+              </Notice>
+            ) : null}
+          </>
         ) : null}
 
         {destination === 'new-item' ? (
@@ -352,6 +469,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxxl,
   },
   items: { gap: spacing.sm },
+  lookUp: { gap: spacing.sm },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
