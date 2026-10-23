@@ -18,11 +18,13 @@ import { travellerClassificationSchema } from './traveller';
  * (migration 007, 3D-1); 9 added cost_shares and trip_cover (migration 008, 3D-2); 10 added
  * settlements (migration 009, 3E); 11 added unsplit_confirmations (migration 010, review P1); 12
  * added settlement_reviews (migration 011, §15); 13 added trip_rates, `trips.report_currency` and
- * charged amounts on expenses and booking payments (migration 012, Phase 4). Formats 1–12
+ * charged amounts on expenses and booking payments (migration 012, Phase 4); 14 added
+ * trip_exchange_rates, one rate per currency pair (migration 013, review P1) — `tripRates` is still
+ * carried raw, frozen. Formats 1–13
  * still import: their missing tables or columns default safely, and a format-5-or-earlier list item's one `traveller_id` becomes its one recipient
  * (`upgradeDocument`).
  */
-export const EXPORT_FORMAT_VERSION = 13;
+export const EXPORT_FORMAT_VERSION = 14;
 export const EXPORT_APP = 'travel-organizer';
 
 const nullableString = z.string().nullable();
@@ -303,6 +305,7 @@ export const ROW_SCHEMAS = {
   unsplitConfirmations: unsplitConfirmationRowSchema,
   settlementReviews: settlementReviewRowSchema,
   tripRates: tripRateRowSchema,
+  tripExchangeRates: tripRateRowSchema,
   travellers: travellerRowSchema,
   tripTravellers: tripTravellerRowSchema,
   itemParticipants: itemParticipantRowSchema,
@@ -348,6 +351,8 @@ export type ExportTables = {
   unsplitConfirmations: UnsplitConfirmationExportRow[];
   settlementReviews: SettlementReviewExportRow[];
   tripRates: TripRateExportRow[];
+  /** Same columns as `tripRates`, keyed by the pair (migration 013). */
+  tripExchangeRates: TripRateExportRow[];
   resources: ResourceExportRow[];
   settings: SettingExportRow[];
   travellers: TravellerExportRow[];
@@ -409,6 +414,8 @@ export const exportDocumentSchema = z.object({
     settlementReviews: z.array(settlementReviewRowSchema).default([]),
     // Absent before format 13: no rates.
     tripRates: z.array(tripRateRowSchema).default([]),
+    // Absent before format 14: rebuilt from tripRates by upgradeDocument, as migration 013 does.
+    tripExchangeRates: z.array(tripRateRowSchema).default([]),
   }),
   files: z.array(fileManifestEntrySchema),
 });
@@ -430,6 +437,7 @@ export function emptyExportTables(): ExportTables {
     unsplitConfirmations: [],
     settlementReviews: [],
     tripRates: [],
+    tripExchangeRates: [],
     resources: [],
     settings: [],
     travellers: [],
@@ -456,6 +464,7 @@ export const EXPORT_TABLE_ORDER = [
   'unsplitConfirmations',
   'settlementReviews',
   'tripRates',
+  'tripExchangeRates',
   'resources',
   'settings',
   'travellers',
@@ -527,11 +536,24 @@ export function parseExportDocument(value: unknown): ParseResult {
 }
 
 /**
+ * A format-13 backup keeps its rates in `tripRates` only; from 14 on they are pairs in
+ * `tripExchangeRates`. Each becomes a pair, exactly as migration 013 copies them on the phone.
+ */
+export function upgradeRates(document: ExportDocument): ExportDocument {
+  if (document.formatVersion >= 14) return document;
+  return { ...document, tables: { ...document.tables, tripExchangeRates: document.tables.tripRates } };
+}
+
+/**
  * A backup from before format 6 has one "For" per list item, in `traveller_id`; from 6 on, who an
  * item is for lives in `listItemRecipients`. The old value becomes the one recipient, exactly as
  * migration 006 does on the phone, so restoring an old backup loses no assignment.
  */
 export function upgradeDocument(document: ExportDocument): ExportDocument {
+  return upgradeRates(upgradeRecipients(document));
+}
+
+function upgradeRecipients(document: ExportDocument): ExportDocument {
   if (document.formatVersion >= 6) return document;
   const travellerIds = new Set(document.tables.travellers.map((traveller) => traveller.id));
   const listItemRecipients = document.tables.listItems.flatMap((item) =>
@@ -567,6 +589,7 @@ export function filterTablesForTrip(tables: ExportTables, tripId: string): Expor
   const unsplitConfirmations = tables.unsplitConfirmations.filter((row) => row.trip_id === tripId);
   const settlementReviews = tables.settlementReviews.filter((row) => row.trip_id === tripId);
   const tripRates = tables.tripRates.filter((row) => row.trip_id === tripId);
+  const tripExchangeRates = tables.tripExchangeRates.filter((row) => row.trip_id === tripId);
   const usedTravellers = new Set([
     ...tripTravellers.map((member) => member.traveller_id),
     ...expenses.flatMap((expense) => (expense.payer_id ? [expense.payer_id] : [])),
@@ -589,6 +612,7 @@ export function filterTablesForTrip(tables: ExportTables, tripId: string): Expor
     unsplitConfirmations,
     settlementReviews,
     tripRates,
+    tripExchangeRates,
     resources: tables.resources.filter(
       (resource) =>
         resource.trip_id === tripId ||
@@ -693,6 +717,7 @@ export function planImport(
       unsplitConfirmations: document.tables.unsplitConfirmations.filter((row) => keptTripIds.has(row.trip_id)),
       settlementReviews: document.tables.settlementReviews.filter((row) => keptTripIds.has(row.trip_id)),
       tripRates: document.tables.tripRates.filter((row) => keptTripIds.has(row.trip_id)),
+      tripExchangeRates: document.tables.tripExchangeRates.filter((row) => keptTripIds.has(row.trip_id)),
       resources,
       settings: document.tables.settings,
       travellers: tables.travellers.filter(missing(existingShared.travellers)),

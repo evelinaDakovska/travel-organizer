@@ -405,13 +405,19 @@ describe('the backup round trip', () => {
     expect(item).toEqual({ details, price_amount: 34000, is_paid: 1 });
   });
 
-  it('writes format 13, and still restores 12 (0.16.2), 11 (0.16.1), 10 (0.16.0), 9 (0.15.0), 8 (0.14.0) and 7 (0.13.0)', async () => {
+  it('writes format 14, and still restores 13 (0.17.0), 12 (0.16.2), 11 (0.16.1), 10 (0.16.0), 9 (0.15.0), 8 (0.14.0) and 7 (0.13.0)', async () => {
     const source = fresh();
     seed(source);
     const current = JSON.parse(JSON.stringify(await documentFrom(source)));
-    expect(current.formatVersion).toBe(13);
+    expect(current.formatVersion).toBe(14);
+    // A format-13 file has its rates in tripRates only: they are read as pairs.
+    const { tripExchangeRates: _pairs, ...thirteenTables } = current.tables;
+    const rate = { trip_id: 't1', currency: 'USD', base_currency: 'EUR', rate: '0.92', rate_date: '2026-10-23', updated_at: '2026-10-23' };
+    const fromThirteen = parseExportDocument({ ...current, formatVersion: 13, tables: { ...thirteenTables, tripRates: [rate] } });
+    expect(fromThirteen.ok).toBe(true);
+    if (fromThirteen.ok) expect(fromThirteen.document.tables.tripExchangeRates).toEqual([rate]);
     // A format-12 file has no rates, no reporting currency and nothing charged: nothing is converted.
-    const { tripRates: _rates, ...twelveTables } = current.tables;
+    const { tripRates: _rates, ...twelveTables } = thirteenTables;
     const strip = (rows: Record<string, unknown>[], ...columns: string[]) =>
       rows.map((row) => Object.fromEntries(Object.entries(row).filter(([key]) => !columns.includes(key))));
     twelveTables.trips = strip(twelveTables.trips, 'report_currency');
@@ -421,6 +427,7 @@ describe('the backup round trip', () => {
     expect(fromTwelve.ok).toBe(true);
     if (fromTwelve.ok) {
       expect(fromTwelve.document.tables.tripRates).toEqual([]);
+      expect(fromTwelve.document.tables.tripExchangeRates).toEqual([]);
       expect(fromTwelve.document.tables.trips.every((trip) => trip.report_currency === null)).toBe(true);
       expect(fromTwelve.document.tables.expenses.every((row) => row.charged_amount === null && row.charged_currency === null)).toBe(true);
     }
@@ -452,8 +459,8 @@ describe('the backup round trip', () => {
         expect(fromOlder.document.tables.settlementReviews).toEqual([]);
       }
     }
-    // 0.16.x refuses anything above its own 12 — this app's backups included.
-    expect(current.formatVersion).toBeGreaterThan(12);
+    // 0.17.0 refuses anything above its own 13 — this app's backups included.
+    expect(current.formatVersion).toBeGreaterThan(13);
   });
 
   it('rejects a backup from a future format with a clear message', async () => {

@@ -1082,3 +1082,26 @@ changing what stored yen amounts mean would be a migration of meaning.
 - deleting rates when the base changes;
 - REAL or scaled-integer rates;
 - a table rebuild for cross-column CHECKs (D25's rule on the riskiest migration).
+
+## D46 — Phase 4 review corrections: rates per pair, partial totals (0.17.1, migration 013)
+
+An independent review of 0.17.0 found three things.
+
+**P1: a rate is a pair.** 012 keyed a rate by currency, so a rate to a new reporting currency replaced
+the rate to the old one. That broke P4-5 after one switch.
+- 012 is never edited, and SQLite cannot re-key a table in place. So rates moved to a new table keyed
+  by `(trip, currency, base)`, every row copied.
+- The old table is kept, frozen. A rebuild would have been shorter, and is the riskiest kind of
+  migration (D25).
+
+**P2: partial is said in words.** A total that leaves a currency out was shown like a complete one
+whenever no estimate was involved. Being estimated (≈) and being complete are now separate signals,
+and the heading names the state.
+- *No EUR total yet* replaces a figure when nothing could be counted, so an unknown is never shown as
+  0.00.
+
+**P3: charged amounts are records, not conversions.** A charged amount keeps the currency it was
+recorded in, and counts only while that currency reports.
+- Chaining it through a rate would put an estimate on top of a fact.
+- Relabelling it would rewrite history.
+- The screens now say when one is not counted.

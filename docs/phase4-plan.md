@@ -342,3 +342,29 @@ relabelled.
 - The form's hint already says so. It now also covers a trip that is not converted.
 - A repository test switches the reporting currency twice and checks that the stored charged amount
   and currency are byte-identical and are used again on switching back.
+
+### 13.4 As built (0.17.1, versionCode 28)
+
+Built as planned in §13.1–§13.3; technical reference §24.1, D46.
+- **Node:**
+  - 1684 tests in 86 suites, typecheck clean;
+  - migration 12 → 13 and 6 → 13, a failed batch, idempotence, the pair key and the CHECKs;
+  - three reporting currencies in turn, changing one pair, deleting one pair, and the frozen table
+    never written;
+  - the backup round trip with two pairs, and a format-13 file read as pairs;
+  - the archive round trip with two pairs, and a rowFormat-13 archive opened as pairs;
+  - the four total states plus *nothing counted*, in the domain and the PDF;
+  - charged amounts unchanged across two switches and counted again on the way back.
+- **Emulator** (`TO_2B_Test`, debug build over Metro, synthetic data):
+  - **12 → 13 on the device.** The schema-12 database written by 0.17.0 was migrated by 0.17.1: 22/22
+    tables identical, and the one real rate row copied exactly into `trip_exchange_rates`.
+  - **The review's scenario.** EUR (USD 0.92), then GBP (USD 0.78), then EUR again: 0.92 is back,
+    and 0.78 is listed as kept.
+  - **The totals:** *Partial total in EUR* (exact), *Partial total in GBP ≈* (estimated), and
+    *No JPY total yet* with nothing counted.
+  - **The charged amount:** *not counted while the trip reports in GBP*, with the form hint.
+  - **Display:** the PDF was made on the device; 360 dp, font 2.0 and dark mode.
+  - **One fix:** the heading is not shown above *No … total yet*.
+  - Log: `%USERPROFILE%\Pictures\TravelOrganizer-0.17.1-P4-review-e2e\E2E-LOG.md`.
+- **Not done:** no release APK, and on no phone. The signed upgrade 0.13.0 → 0.17.1 (migrations
+  007–013) is still to rehearse.

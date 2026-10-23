@@ -88,6 +88,14 @@
 
 ---
 
+### Built in 0.17.1 (Phase 4 review corrections) — on the branch `phase-3d1`, verified on emulators, not on a phone
+
+- **Rates are kept per currency pair.** A USD rate set for EUR is still there after setting one for
+  GBP, and is used again on switching back. Migration 013, backup format 14.
+- **A partial total says so:** *Partial total in EUR*, with what is not included named. With nothing
+  countable it shows *No EUR total yet*, never 0.00. ≈ means a rate was used.
+- **A charged amount** keeps its currency, and says when it is not counted.
+
 ### Built in 0.17.0 (roadmap Phase 4, currency conversion) — on the branch `phase-3d1`, verified on emulators, not on a phone
 
 Not on any phone; it brings migration 012 (and 007–011 with it).

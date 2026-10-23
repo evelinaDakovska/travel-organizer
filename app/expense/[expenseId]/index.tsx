@@ -20,6 +20,7 @@ import {
 import { PAYMENT_TABLES, unlinkExpense } from '../../../src/repositories/payments';
 import { listTravellers } from '../../../src/repositories/travellers';
 import { getTripItem } from '../../../src/repositories/tripItems';
+import { getTrip, TRIP_TABLES } from '../../../src/repositories/trips';
 import { listResources, RESOURCE_TABLES } from '../../../src/repositories/resources';
 import { Button } from '../../../src/ui/components/Button';
 import { Fact } from '../../../src/ui/components/Fact';
@@ -56,6 +57,13 @@ export default function ExpenseDetail() {
 
   const expense = expenseQuery.data;
   const receipts = receiptsQuery.data;
+  // Whether a charged amount counts (Phase 4): only while its currency is the trip's reporting one.
+  const tripId = expense?.tripId ?? null;
+  const { data: reportCurrency } = useLiveQuery(
+    useCallback(async (database) => (tripId ? ((await getTrip(database, tripId))?.reportCurrency ?? null) : null), [tripId]),
+    TRIP_TABLES,
+    [tripId],
+  );
   // Who paid and what it pays for (3D-1), by name and title.
   const payerId = expense?.payerId ?? null;
   const bookingId = expense?.tripItemId ?? null;
@@ -172,7 +180,15 @@ export default function ExpenseDetail() {
           {expense.charged ? (
             <Fact
               label={`Charged in ${expense.charged.currency}`}
-              value={formatMoney(expense.charged.amount, expense.charged.currency)}
+              value={
+                formatMoney(expense.charged.amount, expense.charged.currency) +
+                // Kept as recorded, never converted or relabelled (review P3).
+                (reportCurrency === undefined || reportCurrency === expense.charged.currency
+                  ? ''
+                  : reportCurrency === null
+                    ? ' · counts when the trip reports in ' + expense.charged.currency
+                    : ` · not counted while the trip reports in ${reportCurrency}`)
+              }
             />
           ) : null}
           {expense.payerId ? <Fact label="Paid by" value={links?.payer ?? '…'} /> : null}

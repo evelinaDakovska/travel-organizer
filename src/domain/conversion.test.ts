@@ -103,6 +103,8 @@ describe('convertTripTotal', () => {
       spending: 2400 + 920,
       total: 25000 + 9200 + 2400 + 920,
       estimated: true,
+      complete: true,
+      included: true,
       ratesUsed: [rate('USD', '0.92')],
       notIncluded: [],
     });
@@ -231,6 +233,48 @@ describe('convertTripTotal', () => {
           spending.filter((s) => s.currency === base).reduce((sum, s) => sum + s.amount, 0),
       );
     }
+  });
+});
+
+describe('convertTripTotal — complete or partial, exact or estimated (review P2)', () => {
+  const rates = [rate('USD', '0.92')];
+  const state = (spending: SpendingCost[]) => {
+    const { total, estimated, complete, included, notIncluded } = convertTripTotal({ base: 'EUR', rates, bookings: [], spending });
+    return { total, estimated, complete, included, notIncluded };
+  };
+
+  it('complete and exact: everything in the base or locked', () => {
+    expect(state([spend('EUR', 50000), spend('NOK', 1000, { amount: 85, currency: 'EUR' })])).toEqual({
+      total: 50085, estimated: false, complete: true, included: true, notIncluded: [],
+    });
+  });
+
+  it('complete and estimated: a rate was applied, nothing left out', () => {
+    expect(state([spend('EUR', 50000), spend('USD', 30000)])).toEqual({
+      total: 77600, estimated: true, complete: true, included: true, notIncluded: [],
+    });
+  });
+
+  it('partial and exact: no rate applied, a currency left out — never estimated, never complete', () => {
+    expect(state([spend('EUR', 50000), spend('GBP', 30000)])).toEqual({
+      total: 50000, estimated: false, complete: false, included: true, notIncluded: [{ currency: 'GBP', amount: 30000 }],
+    });
+  });
+
+  it('partial and estimated: both at once', () => {
+    expect(state([spend('EUR', 50000), spend('USD', 10000), spend('GBP', 30000)])).toEqual({
+      total: 59200, estimated: true, complete: false, included: true, notIncluded: [{ currency: 'GBP', amount: 30000 }],
+    });
+  });
+
+  it('nothing counted: no total, only what is missing — the unknown is not zero', () => {
+    expect(state([spend('GBP', 30000)])).toEqual({
+      total: 0, estimated: false, complete: false, included: false, notIncluded: [{ currency: 'GBP', amount: 30000 }],
+    });
+  });
+
+  it('an empty trip is complete with nothing counted', () => {
+    expect(state([])).toMatchObject({ complete: true, included: false });
   });
 });
 

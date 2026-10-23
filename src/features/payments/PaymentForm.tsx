@@ -106,7 +106,7 @@ export function PaymentForm({
               value={field.value}
               onChange={field.onChange}
               onBlur={field.onBlur}
-              reportCurrency={reportCurrency ?? field.value?.currency ?? ''}
+              reportCurrency={reportCurrency}
               error={errors.charged?.message ?? errors.charged?.amount?.message}
             />
           )}

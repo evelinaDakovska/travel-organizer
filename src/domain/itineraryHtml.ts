@@ -240,7 +240,11 @@ function convertedHtml(input: ItineraryInput): string {
   const missing = converted.notIncluded
     .map(({ amount, currency }) => escapeHtml(formatMoney(amount, currency)))
     .join(', ');
-  return `<p><strong>${converted.estimated ? '≈ ' : ''}${escapeHtml(formatMoney(converted.bookings, base))}</strong> in ${escapeHtml(base)}${
+  // Nothing counted: no figure, which would read as zero (review P2).
+  if (!converted.included) return `<p>No total in ${escapeHtml(base)}: no rate for ${missing}.</p>`;
+  return `<p>${converted.complete ? '' : 'Partial total: '}<strong>${converted.estimated ? '≈ ' : ''}${escapeHtml(
+    formatMoney(converted.bookings, base),
+  )}</strong> in ${escapeHtml(base)}${
     converted.estimated
       ? ` (estimated at ${converted.ratesUsed.map((rate) => escapeHtml(rateText(rate))).join(', ')})`
       : ''

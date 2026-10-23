@@ -195,7 +195,9 @@ holds that currency's suggestions until *Settlements still stand* — every mone
 Migration 012 (Phase 4, 0.17.0) adds `trips.report_currency`, `trip_rates` (typed-in rates, exact
 decimal text, each set against a stored base) and `charged_amount` / `charged_currency` on expenses
 and booking payments; a converted total is worked out on demand, never stored, and balances stay per
-currency (backup format 13; D45).
+currency (backup format 13; D45). Migration 013 (0.17.1, review P1) moves rates to
+`trip_exchange_rates`, keyed by the pair `(trip, currency, base)`; `trip_rates` is frozen and never
+read or written again (backup format 14; D46).
 Backup format 7 (0.13.0: same tables as 6; price lines in
 `details` may carry who they are for, group prices and extras). No per-kind tables.
 Kind-specific extras live in a Zod-validated `details` JSON column.

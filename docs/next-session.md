@@ -10,14 +10,14 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
 |---|---|
 | **Branch with the work** | `phase-3d1`, the 0.16.3 commit "Close Phase 3" (pushed to the personal GitHub remote) |
 | **`main`** | `46d256a` — 0.13.0, schema 6, backup format 7. **What the owner's phone runs.** |
-| **`phase-3d1` app** | **0.17.0**, versionCode 27 (Phase 4, currency conversion; 0.16.3 was a header fix) |
-| **Database schema** | 12 (migrations 007–012 exist only on `phase-3d1`) |
-| **Backup / trip archive format** | 13 / row format 13 |
-| **Tests** | 1664 Node tests in 85 suites, `npx tsc --noEmit` clean |
+| **`phase-3d1` app** | **0.17.1**, versionCode 28 (Phase 4 and its review corrections) |
+| **Database schema** | 13 (migrations 007–013 exist only on `phase-3d1`) |
+| **Backup / trip archive format** | 14 / row format 14 |
+| **Tests** | 1684 Node tests in 86 suites, `npx tsc --noEmit` clean |
 | **Phase 3 (3B → 3E)** | **Closed (2026-10-23).** Everything through 0.16.2 passed the owner's review, and the exit checks are in `MASTER_ROADMAP.md` §6.4, §7.5, §8.3 and §9.3. One item is open: the signed release rehearsal 0.13.0 → 0.16.x. |
 | **Phone** | Untouched. Holds a real trip on 0.13.0. |
 | **Phase 4** | **Built as 0.17.0** (`docs/phase4-plan.md`, D45), verified on emulators, **awaiting independent review**. Its product decisions P4-1…P4-8 were taken without stopping, at the owner's request; they are listed in the plan's §11 for review. |
-| **Release APK** | None built for 0.16.1–0.17.0. The newest release APK is 0.16.0, at `%USERPROFILE%\.travel-organizer\`, and it predates the corrections. |
+| **Release APK** | None built for 0.16.1–0.17.1. The newest release APK is 0.16.0, at `%USERPROFILE%\.travel-organizer\`, and it predates the corrections. |
 
 ### What 0.16.x added after 0.16.0 (all reviewed)
 
@@ -69,13 +69,13 @@ In the likely order. Ask which one, rather than choosing.
 0. **The owner's review of Phase 4** (0.17.0): the diff since `1df90c6`, and the decisions in
    `docs/phase4-plan.md` §11. Correct what the review finds.
 1. **Bring 0.17.x to the phones, after the trip.** Every step needs the owner's go-ahead.
-   0.17.x carries migrations 007–012, so it is **not** a risk-free change. It goes to **the husband's
+   0.17.x carries migrations 007–013, so it is **not** a risk-free change. It goes to **the husband's
    phone first**. The primary phone gets it **only after the trip has passed**.
    1. Build a **signed release** 0.16.x (needs approval). *Note:* this session's safety classifier
       blocked switching `buildTypes.release` to the debug key (the §4 recipe). Ask the owner before
       relying on that recipe again; a plain `assembleDebug` dev build works for UI checks.
    2. Rehearse on an emulator: in-place release upgrade **0.13.0 → 0.17.x** over synthetic data
-      (migrations 007–012 in one start-up), with database snapshots compared before and after. This
+      (migrations 007–013 in one start-up), with database snapshots compared before and after. This
       is the master roadmap §19 checklist item still open for 0.16.1–0.16.3.
    3. Install on the husband's phone (synthetic data) and test everything there.
    4. For the primary phone, **after the trip**: the owner exports a backup first, then merge

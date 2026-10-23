@@ -20,7 +20,7 @@ import { listTripItems } from './tripItems';
  */
 
 /** Everything a converted total reads. */
-export const CONVERSION_TABLES = ['trips', 'trip_rates', 'trip_items', 'expenses', 'booking_payments'] as const;
+export const CONVERSION_TABLES = ['trips', 'trip_exchange_rates', 'trip_items', 'expenses', 'booking_payments'] as const;
 
 type RateRow = {
   currency: string;
@@ -63,16 +63,17 @@ export async function conversionInput(db: SQLiteDatabase, tripId: string) {
 export type CurrencySettings = {
   /** Null: the trip is not converted. Its rates are kept. */
   reportCurrency: string | null;
-  /** Rates as typed, by currency. Empty text removes that currency's rate. */
+  /** Rates to the reporting currency as typed, by currency. Empty text removes that pair's rate. */
   rates: readonly { currency: string; rate: string }[];
   /** `YYYY-MM-DD`: the date a new or changed rate is recorded as set. */
   today: string;
 };
 
 /**
- * Saves the reporting currency and the rates in one transaction, or nothing. A rate is always set
- * against the reporting currency being saved; one left unchanged keeps its date, a changed one
- * takes today's. Rates of currencies not on the form are left as they are.
+ * Saves the reporting currency and its rates in one transaction, or nothing. Every rate is a pair,
+ * currency → reporting currency: one left unchanged keeps its date, a changed one takes today's, a
+ * blank one removes that pair only. Rates to any other reporting currency are never touched, so
+ * switching back finds them as they were (review P1).
  */
 export async function saveCurrencySettings(
   db: SQLiteDatabase,
@@ -97,16 +98,18 @@ export async function saveCurrencySettings(
 
   await db.withTransactionAsync(async () => {
     const now = new Date().toISOString();
-    const saved = new Map((await listRates(db, tripId)).map((rate) => [rate.currency, rate]));
+    const saved = new Map(
+      (await listRates(db, tripId)).filter((rate) => rate.baseCurrency === base).map((rate) => [rate.currency, rate]),
+    );
     const result = await db.runAsync(UPDATE_TRIP_REPORT_CURRENCY, { $tripId: tripId, $currency: base, $now: now });
     if (result.changes === 0) throw new MoneyRuleError('That trip is not here any more.');
     for (const { currency, rate } of rates) {
       const before = saved.get(currency);
       if (rate === null) {
-        if (before) await db.runAsync(DELETE_TRIP_RATE, { $tripId: tripId, $currency: currency });
+        if (before) await db.runAsync(DELETE_TRIP_RATE, { $tripId: tripId, $currency: currency, $base: base });
         continue;
       }
-      const unchanged = before && before.rate === rate && before.baseCurrency === base;
+      const unchanged = before && before.rate === rate;
       if (unchanged) continue;
       await db.runAsync(UPSERT_TRIP_RATE, {
         $tripId: tripId,

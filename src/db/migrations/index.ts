@@ -10,6 +10,7 @@ import { sql as m009 } from './009-settlements';
 import { sql as m010 } from './010-unsplit-confirmations';
 import { sql as m011 } from './011-settlement-reviews';
 import { sql as m012 } from './012-currency-conversion';
+import { sql as m013 } from './013-exchange-rate-pairs';
 
 export type Migration = { version: number; sql: string };
 
@@ -27,6 +28,7 @@ export const MIGRATIONS: Migration[] = [
   { version: 10, sql: m010 },
   { version: 11, sql: m011 },
   { version: 12, sql: m012 },
+  { version: 13, sql: m013 },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

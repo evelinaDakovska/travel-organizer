@@ -30,6 +30,7 @@ const ORDER: readonly (readonly [keyof TripArchiveTables, ExportTableName])[] = 
   ['unsplitConfirmations', 'unsplit_confirmations'],
   ['settlementReviews', 'settlement_reviews'],
   ['tripRates', 'trip_rates'],
+  ['tripExchangeRates', 'trip_exchange_rates'],
   ['resources', 'resources'],
   ['lists', 'lists'],
   ['listItems', 'list_items'],
@@ -115,7 +116,8 @@ export async function verifyTripImport(
       plan.tables.settlementReviews.length,
       `SELECT COUNT(*) AS n FROM settlement_reviews WHERE trip_id = $trip`,
     ],
-    ['exchange rates', plan.tables.tripRates.length, `SELECT COUNT(*) AS n FROM trip_rates WHERE trip_id = $trip`],
+    ['exchange rates (frozen)', plan.tables.tripRates.length, `SELECT COUNT(*) AS n FROM trip_rates WHERE trip_id = $trip`],
+    ['exchange rates', plan.tables.tripExchangeRates.length, `SELECT COUNT(*) AS n FROM trip_exchange_rates WHERE trip_id = $trip`],
     [
       'documents',
       plan.tables.resources.length,

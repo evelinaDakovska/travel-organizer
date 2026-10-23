@@ -88,13 +88,12 @@ function RatesForm({ tripId, tripName, savedBase, saved, costs }: FormProps) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  const savedFor = (currency: string) => saved.find((rate) => rate.currency === currency) ?? null;
-  // A rate set against this base, as saved; one set for another base is shown but not used.
-  const savedText = (currency: string) => {
-    const rate = savedFor(currency);
-    return rate && rate.baseCurrency === base ? rate.rate : '';
-  };
-  const textFor = (currency: string) => drafts[currency] ?? savedText(currency);
+  // Every rate is a pair (review P1): this currency's rate to the chosen base, if one was saved.
+  const savedFor = (currency: string) =>
+    saved.find((rate) => rate.currency === currency && rate.baseCurrency === base) ?? null;
+  const textFor = (currency: string) => drafts[currency] ?? savedFor(currency)?.rate ?? '';
+  // Rates to other reporting currencies: kept, never changed here, used again on switching back.
+  const kept = base ? saved.filter((rate) => rate.baseCurrency !== base) : [];
 
   const used = currenciesToConvert(costs, null);
   // Alphabetical, so a chip stays where it was after a save.
@@ -102,7 +101,8 @@ function RatesForm({ tripId, tripName, savedBase, saved, costs }: FormProps) {
   const covered = new Map(currenciesToConvert(costs, base).map((line) => [line.currency, line.amount]));
   // Every other currency the trip uses, and any with a saved rate, so a rate can be removed.
   const rows = base
-    ? [...new Set([...covered.keys(), ...saved.map((rate) => rate.currency)])].filter((currency) => currency !== base)
+    ? [...new Set([...covered.keys(), ...saved.filter((rate) => rate.baseCurrency === base).map((rate) => rate.currency)])]
+        .filter((currency) => currency !== base)
     : [];
 
   const chooseBase = (next: string | null) => {
@@ -113,7 +113,7 @@ function RatesForm({ tripId, tripName, savedBase, saved, costs }: FormProps) {
   const save = async () => {
     // A blank field removes a rate set against this base; one set for another base is left alone.
     const rates = rows
-      .filter((currency) => textFor(currency).trim() !== '' || savedFor(currency)?.baseCurrency === base)
+      .filter((currency) => textFor(currency).trim() !== '' || savedFor(currency) !== null)
       .map((currency) => ({ currency, rate: textFor(currency) }));
     setSaving(true);
     try {
@@ -168,16 +168,15 @@ function RatesForm({ tripId, tripName, savedBase, saved, costs }: FormProps) {
                 const text = textFor(currency);
                 const parsed = rateTextSchema.safeParse(text);
                 const amount = covered.get(currency);
-                const stale = savedFor(currency);
-                const unchanged = stale && stale.baseCurrency === base && stale.rate === text.trim();
+                const pair = savedFor(currency);
+                const unchanged = pair && pair.rate === text.trim();
                 const hint = [
                   amount !== undefined
                     ? parsed.success
                       ? `${formatMoney(amount, currency)} ≈ ${formatMoney(convertAmount(amount, parsed.data, base), base)}`
                       : `${formatMoney(amount, currency)} on this trip`
                     : 'Not used on this trip any more: clear it to remove it',
-                  unchanged ? `set ${formatShortDate(stale.rateDate)}` : null,
-                  stale && stale.baseCurrency !== base ? `${rateText(stale)} kept for ${stale.baseCurrency}, not used` : null,
+                  unchanged ? `set ${formatShortDate(pair.rateDate)}` : null,
                 ]
                   .filter(Boolean)
                   .join(' · ');
@@ -202,6 +201,12 @@ function RatesForm({ tripId, tripName, savedBase, saved, costs }: FormProps) {
             <Text style={[type.caption, { color: c.textMuted }]}>
               A currency without a rate is left out of the converted total and named beside it, never guessed.
             </Text>
+            {kept.length > 0 ? (
+              <Text style={[type.caption, { color: c.textMuted }]}>
+                Kept for other reporting currencies, not used with {base}:{' '}
+                {kept.map((rate) => `${rateText(rate)} (${formatShortDate(rate.rateDate)})`).join(', ')}.
+              </Text>
+            ) : null}
           </View>
         ) : null}
       </FormScroll>

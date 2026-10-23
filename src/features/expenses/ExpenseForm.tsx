@@ -179,7 +179,7 @@ export function ExpenseForm({
               value={field.value}
               onChange={field.onChange}
               onBlur={field.onBlur}
-              reportCurrency={report ?? field.value?.currency ?? ''}
+              reportCurrency={report}
               error={errors.charged?.message ?? errors.charged?.amount?.message}
             />
           )}

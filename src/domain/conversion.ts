@@ -117,8 +117,15 @@ export type ConvertedTotal = {
   bookings: number;
   spending: number;
   total: number;
-  /** Some part came from a typed-in rate: the total is an estimate. */
+  /** Some part came from a typed-in rate: the total is an estimate (≈). */
   estimated: boolean;
+  /**
+   * Nothing was left out for want of a rate. Otherwise the total is partial — a known part only —
+   * whether or not it is also estimated; the missing amounts are in `notIncluded`, never zero.
+   */
+  complete: boolean;
+  /** Some amount was counted at all. Without one there is no total to show, only what is missing. */
+  included: boolean;
   /** Rates actually applied, by currency. */
   ratesUsed: ExchangeRate[];
   /** Original amounts left out for want of a rate, per currency, largest first. */
@@ -145,6 +152,7 @@ export function convertTripTotal(input: {
   const used = new Map<string, ExchangeRate>();
   const missing = new Map<string, number>();
   let estimated = false;
+  let included = false;
 
   const estimate = (amount: number, currency: string): number | null => {
     if (amount === 0) return 0;
@@ -160,6 +168,7 @@ export function convertTripTotal(input: {
   for (const booking of input.bookings) {
     if (booking.currency === base) {
       bookings += booking.price;
+      included = true;
       continue;
     }
     const locked = booking.records.filter((record) => record.charged?.currency === base);
@@ -168,11 +177,15 @@ export function convertTripTotal(input: {
     if (lockedOriginal >= booking.price && lockedOriginal > 0) {
       // Locked records cover the whole price: their cost, scaled down when they paid more than it.
       bookings += scaled(lockedBase, BigInt(booking.price), BigInt(lockedOriginal), base);
+      included = true;
       continue;
     }
     const rest = estimate(booking.price - lockedOriginal, booking.currency);
     if (rest === null) leaveOut(booking.currency, booking.price);
-    else bookings += lockedBase + rest;
+    else {
+      bookings += lockedBase + rest;
+      included = true;
+    }
   }
 
   let spending = 0;
@@ -181,9 +194,13 @@ export function convertTripTotal(input: {
     else if (expense.charged?.currency === base) spending += expense.charged.amount;
     else {
       const converted = estimate(expense.amount, expense.currency);
-      if (converted === null) leaveOut(expense.currency, expense.amount);
-      else spending += converted;
+      if (converted === null) {
+        leaveOut(expense.currency, expense.amount);
+        continue;
+      }
+      spending += converted;
     }
+    included = true;
   }
 
   return {
@@ -192,6 +209,8 @@ export function convertTripTotal(input: {
     spending,
     total: bookings + spending,
     estimated,
+    complete: missing.size === 0,
+    included,
     ratesUsed: [...used.values()].sort((a, b) => a.currency.localeCompare(b.currency)),
     notIncluded: [...missing.entries()]
       .map(([currency, amount]) => ({ currency, amount }))

@@ -1913,3 +1913,36 @@ lists, and the 2C/2D formats.
 **Formats.** Backup format **13** and archive rowFormat **13**: `tripRates`, `trips.report_currency`
 and the charged columns. Format 12 and older read as nothing converted. Archive import moves the rates
 to the new trip id.
+
+### 24.1 Review corrections (0.17.1, migration 013)
+
+Plan §13, D46.
+
+**Rates are pairs (P1).** Migration 013 creates `trip_exchange_rates`, with primary key `(trip_id,
+currency, base_currency)` and the same columns and CHECKs as `trip_rates`, and copies every
+`trip_rates` row into it.
+- `trip_rates` stays as it is, frozen. The app never reads or writes it again, and it is carried raw
+  in backups and archives.
+- `SELECT_TRIP_RATES`, `UPSERT_TRIP_RATE` (conflict on the pair) and `DELETE_TRIP_RATE` (by the pair)
+  use the new table.
+- `saveCurrencySettings` compares only with the rates of the base being saved.
+- The rates screen shows the chosen pair and lists the rates kept for other reporting currencies.
+- **Backup format 14** and **archive rowFormat 14** add `tripExchangeRates`. In format 13, the
+  `tripRates` rows become pairs on reading: `upgradeRates`, and the archive's `rowFormat < 14` branch
+  in `openTripArchive`.
+
+**Complete or partial (P2).** `ConvertedTotal.complete` is true when `notIncluded` is empty.
+`ConvertedTotal.included` is true when any amount was counted.
+- `TripTotal` heads the figure *Total in EUR* or *Partial total in EUR*. The figure carries ≈ only
+  when a rate was applied.
+- Without anything counted, it shows *No EUR total yet* instead of a figure, with no heading above
+  it.
+- The PDF writes *Partial total:*, or *No total in EUR: no rate for …*.
+
+**Charged amounts (P3).** Unchanged by design:
+- a charged amount keeps its currency and amount;
+- it counts only while that currency reports;
+- it is never chained through a rate.
+
+The expense page adds *not counted while the trip reports in GBP*, and `ChargedField` explains every
+case, including a trip that is not converted.

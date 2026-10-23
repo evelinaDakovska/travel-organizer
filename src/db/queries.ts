@@ -588,6 +588,8 @@ export const EXPORT_COLUMNS = {
                        'to_currency', 'created_at', 'acknowledged_at'],
   // Format 13 (migration 012, Phase 4).
   trip_rates: ['trip_id', 'currency', 'base_currency', 'rate', 'rate_date', 'updated_at'],
+  // Format 14 (migration 013, review P1): one rate per pair; trip_rates is carried frozen.
+  trip_exchange_rates: ['trip_id', 'currency', 'base_currency', 'rate', 'rate_date', 'updated_at'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type ExportTableName = keyof typeof EXPORT_COLUMNS;
@@ -919,23 +921,23 @@ SELECT * FROM booking_payments WHERE trip_id = $tripId ORDER BY (paid_on IS NULL
 
 // ─── Currency conversion (Phase 4) ───────────────────────────────────────────────────────────────
 
+/** Every pair's rate (migration 013); `trip_rates` is frozen and never read. */
 export const SELECT_TRIP_RATES = `
-SELECT * FROM trip_rates WHERE trip_id = $tripId ORDER BY currency
+SELECT * FROM trip_exchange_rates WHERE trip_id = $tripId ORDER BY base_currency, currency
 `;
 
 export const UPDATE_TRIP_REPORT_CURRENCY = `
 UPDATE trips SET report_currency = $currency, updated_at = $now WHERE id = $tripId
 `;
 
-/** One rate per trip and currency; setting it again replaces it. */
+/** One rate per trip and currency pair; setting it again replaces that pair's only. */
 export const UPSERT_TRIP_RATE = `
-INSERT INTO trip_rates (trip_id, currency, base_currency, rate, rate_date, updated_at)
+INSERT INTO trip_exchange_rates (trip_id, currency, base_currency, rate, rate_date, updated_at)
 VALUES ($tripId, $currency, $base, $rate, $rateDate, $now)
-ON CONFLICT (trip_id, currency) DO UPDATE
-   SET base_currency = excluded.base_currency, rate = excluded.rate, rate_date = excluded.rate_date,
-       updated_at = excluded.updated_at
+ON CONFLICT (trip_id, currency, base_currency) DO UPDATE
+   SET rate = excluded.rate, rate_date = excluded.rate_date, updated_at = excluded.updated_at
 `;
 
 export const DELETE_TRIP_RATE = `
-DELETE FROM trip_rates WHERE trip_id = $tripId AND currency = $currency
+DELETE FROM trip_exchange_rates WHERE trip_id = $tripId AND currency = $currency AND base_currency = $base
 `;

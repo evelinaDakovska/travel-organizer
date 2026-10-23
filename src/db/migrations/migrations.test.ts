@@ -61,6 +61,7 @@ describe('migrations', () => {
       'templates',
       'travellers',
       'trip_cover',
+      'trip_exchange_rates',
       'trip_items',
       'trip_notes',
       'trip_rates',

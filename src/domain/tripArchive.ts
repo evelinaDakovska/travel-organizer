@@ -70,6 +70,7 @@ const TABLE_KEYS = [
   'unsplitConfirmations',
   'settlementReviews',
   'tripRates',
+  'tripExchangeRates',
   'travellers',
   'tripTravellers',
   'itemParticipants',
@@ -101,6 +102,8 @@ const tablesSchema = z.object({
   settlementReviews: z.array(ROW_SCHEMAS.settlementReviews).default([]),
   // Absent before row format 13 (Phase 4): no rates.
   tripRates: z.array(ROW_SCHEMAS.tripRates).default([]),
+  // Absent before row format 14 (review P1): rebuilt from tripRates on opening, as migration 013 does.
+  tripExchangeRates: z.array(ROW_SCHEMAS.tripExchangeRates).default([]),
   travellers: z.array(ROW_SCHEMAS.travellers),
   tripTravellers: z.array(ROW_SCHEMAS.tripTravellers),
   itemParticipants: z.array(ROW_SCHEMAS.itemParticipants),
@@ -253,6 +256,7 @@ export function buildTripArchive(
     unsplitConfirmations: one.unsplitConfirmations,
     settlementReviews: one.settlementReviews,
     tripRates: one.tripRates,
+    tripExchangeRates: one.tripExchangeRates,
     travellers: one.travellers,
     tripTravellers: one.tripTravellers,
     itemParticipants: one.itemParticipants,
@@ -434,7 +438,10 @@ export async function openTripArchive(
   if (dataValue === undefined) return refuse('The trip data in this archive is damaged.');
   const parsedData = dataSchema.safeParse(dataValue);
   if (!parsedData.success) return refuse('The trip data in this archive is not valid.');
-  const tables = parsedData.data.tables;
+  const parsedTables = parsedData.data.tables;
+  // Before row format 14 the rates were keyed by currency only: each becomes a pair, as migration 013.
+  const tables =
+    manifest.rowFormat < 14 ? { ...parsedTables, tripExchangeRates: parsedTables.tripRates } : parsedTables;
 
   const problem = checkTripArchive(manifest, tables);
   if (problem) return refuse(`This trip archive is inconsistent: ${problem}.`);
@@ -531,6 +538,7 @@ export function checkTripArchive(
   if (!ownedByTrip(t.unsplitConfirmations)) return 'an unsplit cost kept outside belongs to another trip';
   if (!ownedByTrip(t.settlementReviews)) return 'a settlement review belongs to another trip';
   if (!ownedByTrip(t.tripRates)) return 'an exchange rate belongs to another trip';
+  if (!ownedByTrip(t.tripExchangeRates)) return 'an exchange rate belongs to another trip';
   if (!ownedByTrip(t.lists)) return 'a list belongs to another trip';
   if (!ownedByTrip(t.tripTravellers)) return 'a traveller is listed on another trip';
   if (!ownedByTrip(t.templateUses)) return 'a template record belongs to another trip';
@@ -555,6 +563,9 @@ export function checkTripArchive(
   const members = new Set(t.tripTravellers.map((row) => row.traveller_id));
   const pairs = (rows: readonly string[]) => new Set(rows).size === rows.length;
   if (!pairs(t.tripRates.map((row) => row.currency))) return 'a currency has two rates';
+  if (!pairs(t.tripExchangeRates.map((row) => `${row.currency}>${row.base_currency}`))) {
+    return 'a currency pair has two rates';
+  }
   for (const row of t.bookingPayments) {
     if (!items.has(row.trip_item_id)) return 'a payment is for a missing booking';
     if (row.payer_id !== null && !travellers.has(row.payer_id)) {
@@ -937,6 +948,7 @@ export function planTripImport(
       })),
       // As typed, against the reporting currency they were set for.
       tripRates: t.tripRates.map((row) => ({ ...row, trip_id: tripId })),
+      tripExchangeRates: t.tripExchangeRates.map((row) => ({ ...row, trip_id: tripId })),
       travellers: newTravellers,
       // Two archive travellers linked to one profile here become one member, one participant.
       tripTravellers: t.tripTravellers

@@ -37,6 +37,7 @@ const TABLES: readonly (readonly [keyof ExportTables, ExportTableName])[] = [
   ['settlementReviews', 'settlement_reviews'],
   // Names only the trip.
   ['tripRates', 'trip_rates'],
+  ['tripExchangeRates', 'trip_exchange_rates'],
   ['resources', 'resources'],
   ['lists', 'lists'],
   ['listItems', 'list_items'],

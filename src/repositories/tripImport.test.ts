@@ -175,7 +175,7 @@ describe('importing a trip archive into a database', () => {
   it('carries payments and linked expenses with new ids, on the copied bookings and payers (3D-1)', async () => {
     const { raw, db } = await setup();
     const { archive } = await archiveFrom(db);
-    expect(archive.manifest.rowFormat).toBe(13);
+    expect(archive.manifest.rowFormat).toBe(14);
     // Evelina is linked to the profile here; Misho comes in as a new one.
     const plan = await importInto(db, archive, new Map([['ev', { kind: 'existing', id: 'ev' }]]));
     const one = (sql: string) => raw.prepare(sql).all(plan.tripId);
@@ -488,9 +488,15 @@ describe('settlement reviews, through a trip archive (§15.3)', () => {
     expect(dump(raw)).toEqual(before);
   });
 
-  it('carries the reporting currency, the rates and the charged amounts onto the new trip (Phase 4)', async () => {
+  it('carries the reporting currency, every rate pair and the charged amounts onto the new trip (Phase 4)', async () => {
     const { raw, db } = await setup();
     raw.prepare(`UPDATE trips SET report_currency = 'EUR' WHERE id = 'lap'`).run();
+    raw
+      .prepare(
+        `INSERT INTO trip_exchange_rates (trip_id, currency, base_currency, rate, rate_date, updated_at)
+         VALUES ('lap', 'USD', 'EUR', '0.92', '2026-10-20', ?), ('lap', 'USD', 'GBP', '0.78', '2026-10-21', ?)`,
+      )
+      .run(now, now);
     raw
       .prepare(
         `INSERT INTO trip_rates (trip_id, currency, base_currency, rate, rate_date, updated_at)
@@ -505,6 +511,11 @@ describe('settlement reviews, through a trip archive (§15.3)', () => {
 
     const trip = raw.prepare(`SELECT report_currency FROM trips WHERE id = ?`).get(plan.tripId);
     expect(trip).toEqual({ report_currency: 'EUR' });
+    expect(raw.prepare(`SELECT currency, base_currency, rate FROM trip_exchange_rates WHERE trip_id = ? ORDER BY base_currency`).all(plan.tripId)).toEqual([
+      { currency: 'USD', base_currency: 'EUR', rate: '0.92' },
+      { currency: 'USD', base_currency: 'GBP', rate: '0.78' },
+    ]);
+    // The frozen table is carried as it was.
     expect(raw.prepare(`SELECT currency, base_currency, rate, rate_date FROM trip_rates WHERE trip_id = ? ORDER BY currency`).all(plan.tripId)).toEqual([
       { currency: 'NOK', base_currency: 'GBP', rate: '0.07', rate_date: '2026-10-01' },
       { currency: 'USD', base_currency: 'EUR', rate: '0.92', rate_date: '2026-10-20' },

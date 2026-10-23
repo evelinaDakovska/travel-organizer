@@ -50,12 +50,19 @@ function setup() {
   return { raw, db: asyncDatabase(raw) };
 }
 
-const TABLES = ['trips', 'trip_rates', 'trip_items', 'expenses', 'booking_payments', 'settlements', 'unsplit_confirmations',
+const TABLES = ['trips', 'trip_rates', 'trip_exchange_rates', 'trip_items', 'expenses', 'booking_payments', 'settlements', 'unsplit_confirmations',
   'settlement_reviews', 'cost_shares'];
 const snapshot = (raw: Database.Database) =>
   Object.fromEntries(TABLES.map((table) => [table, raw.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all()]));
 const rateRows = (raw: Database.Database) =>
-  raw.prepare(`SELECT currency, base_currency, rate, rate_date FROM trip_rates ORDER BY currency`).all();
+  raw
+    .prepare(`SELECT currency, base_currency, rate, rate_date FROM trip_exchange_rates ORDER BY base_currency, currency`)
+    .all();
+const settings = (base: string | null, rates: Record<string, string>, today = '2026-10-23') => ({
+  reportCurrency: base,
+  rates: Object.entries(rates).map(([currency, rate]) => ({ currency, rate })),
+  today,
+});
 
 describe('saveCurrencySettings', () => {
   it('sets the reporting currency and the rates, normalised, dated today', async () => {
@@ -136,6 +143,73 @@ describe('saveCurrencySettings', () => {
   });
 });
 
+describe('rates per currency pair (review P1)', () => {
+  it('keeps USD → EUR when USD → GBP is saved, and uses it again on switching back', async () => {
+    const { raw, db } = setup();
+    await createExpense(db, 't1', expense(10000, 'USD'));
+    await saveCurrencySettings(db, 't1', settings('EUR', { USD: '0.92' }, '2026-10-20'));
+    await saveCurrencySettings(db, 't1', settings('GBP', { USD: '0.78' }, '2026-10-21'));
+    await saveCurrencySettings(db, 't1', settings('EUR', {}, '2026-10-23'));
+    expect(rateRows(raw)).toEqual([
+      { currency: 'USD', base_currency: 'EUR', rate: '0.92', rate_date: '2026-10-20' },
+      { currency: 'USD', base_currency: 'GBP', rate: '0.78', rate_date: '2026-10-21' },
+    ]);
+    const total = convertTripTotal({ base: 'EUR', ...(await conversionInput(db, 't1')) });
+    expect(total.spending).toBe(9200);
+    expect(total.ratesUsed.map((rate) => rate.rate)).toEqual(['0.92']);
+  });
+
+  it('switches between three reporting currencies, each keeping its own pairs', async () => {
+    const { raw, db } = setup();
+    await createExpense(db, 't1', expense(10000, 'USD'));
+    await createExpense(db, 't1', expense(5000, 'NOK'));
+    await saveCurrencySettings(db, 't1', settings('EUR', { USD: '0.92', NOK: '0.085' }, '2026-10-20'));
+    await saveCurrencySettings(db, 't1', settings('GBP', { USD: '0.78', NOK: '0.072' }, '2026-10-21'));
+    await saveCurrencySettings(db, 't1', settings('JPY', { USD: '150', NOK: '13.5' }, '2026-10-22'));
+    expect(rateRows(raw)).toHaveLength(6);
+
+    const totals: Record<string, number> = {};
+    for (const base of ['EUR', 'GBP', 'JPY']) {
+      await saveCurrencySettings(db, 't1', settings(base, {}, '2026-10-23'));
+      totals[base] = convertTripTotal({ base, ...(await conversionInput(db, 't1')) }).total;
+    }
+    expect(totals).toEqual({ EUR: 9200 + 425, GBP: 7800 + 360, JPY: 1500000 + 67500 });
+    // Re-selecting a reporting currency retyped nothing, so no date changed.
+    expect((rateRows(raw) as { rate_date: string }[]).map((row) => row.rate_date)).toEqual([
+      '2026-10-20', '2026-10-20', '2026-10-21', '2026-10-21', '2026-10-22', '2026-10-22',
+    ]);
+  });
+
+  it('changes one pair without touching the same currency to another base', async () => {
+    const { raw, db } = setup();
+    await saveCurrencySettings(db, 't1', settings('EUR', { USD: '0.92' }, '2026-10-20'));
+    await saveCurrencySettings(db, 't1', settings('GBP', { USD: '0.78' }, '2026-10-20'));
+    await saveCurrencySettings(db, 't1', settings('EUR', { USD: '0.95' }, '2026-10-23'));
+    expect(rateRows(raw)).toEqual([
+      { currency: 'USD', base_currency: 'EUR', rate: '0.95', rate_date: '2026-10-23' },
+      { currency: 'USD', base_currency: 'GBP', rate: '0.78', rate_date: '2026-10-20' },
+    ]);
+  });
+
+  it('deletes one pair without deleting another', async () => {
+    const { raw, db } = setup();
+    await saveCurrencySettings(db, 't1', settings('EUR', { USD: '0.92', NOK: '0.085' }, '2026-10-20'));
+    await saveCurrencySettings(db, 't1', settings('GBP', { USD: '0.78' }, '2026-10-20'));
+    await saveCurrencySettings(db, 't1', settings('EUR', { USD: '', NOK: '0.085' }, '2026-10-23'));
+    expect(rateRows(raw)).toEqual([
+      { currency: 'NOK', base_currency: 'EUR', rate: '0.085', rate_date: '2026-10-20' },
+      { currency: 'USD', base_currency: 'GBP', rate: '0.78', rate_date: '2026-10-20' },
+    ]);
+  });
+
+  it('never writes the frozen trip_rates table', async () => {
+    const { raw, db } = setup();
+    await saveCurrencySettings(db, 't1', settings('EUR', { USD: '0.92' }));
+    await saveCurrencySettings(db, 't1', settings('EUR', { USD: '' }));
+    expect(raw.prepare(`SELECT COUNT(*) AS n FROM trip_rates`).get()).toEqual({ n: 0 });
+  });
+});
+
 describe('charged amounts', () => {
   it('are saved on an expense, kept by an edit that leaves them out, and cleared by null', async () => {
     const { db } = setup();
@@ -178,6 +252,28 @@ describe('charged amounts', () => {
     expect((await getBookingPayment(db, id))?.charged).toEqual({ amount: 9100, currency: 'EUR' });
     await updateBookingPayment(db, id, { amount: 10000, note: undefined, payerId: null, paidOn: '2026-10-01', charged: null });
     expect((await getBookingPayment(db, id))?.charged).toBeNull();
+  });
+
+  it('keep their own currency and amount when the reporting currency changes, and count again on switching back (review P3)', async () => {
+    const { raw, db } = setup();
+    const id = await createExpense(db, 't1', expense(10000, 'USD', { charged: { amount: 9510, currency: 'EUR' } }));
+    const stored = () =>
+      raw.prepare(`SELECT amount, currency, charged_amount, charged_currency, updated_at FROM expenses WHERE id = ?`).get(id);
+    const before = stored();
+    await saveCurrencySettings(db, 't1', settings('EUR', { USD: '0.92' }));
+    const inEur = convertTripTotal({ base: 'EUR', ...(await conversionInput(db, 't1')) });
+    expect(inEur).toMatchObject({ spending: 9510, estimated: false, complete: true });
+
+    await saveCurrencySettings(db, 't1', settings('GBP', { USD: '0.78' }));
+    expect(stored()).toEqual(before);
+    expect((await getExpense(db, id))?.charged).toEqual({ amount: 9510, currency: 'EUR' });
+    // Never chained through a rate: in GBP it is the USD amount at the USD → GBP rate, an estimate.
+    const inGbp = convertTripTotal({ base: 'GBP', ...(await conversionInput(db, 't1')) });
+    expect(inGbp).toMatchObject({ spending: 7800, estimated: true });
+
+    await saveCurrencySettings(db, 't1', settings('EUR', {}));
+    expect(stored()).toEqual(before);
+    expect(convertTripTotal({ base: 'EUR', ...(await conversionInput(db, 't1')) }).spending).toBe(9510);
   });
 
   it('change no balance and end no confirmation, and need no settlement review', async () => {
@@ -227,8 +323,9 @@ describe('the converted total from the database', () => {
 });
 
 describe('backups', () => {
-  it('carry the reporting currency, the rates and the charged amounts', async () => {
+  it('carry the reporting currency, every rate pair and the charged amounts', async () => {
     const { raw, db } = setup();
+    await saveCurrencySettings(db, 't1', settings('GBP', { USD: '0.78' }));
     await saveCurrencySettings(db, 't1', { reportCurrency: 'EUR', rates: [{ currency: 'USD', rate: '0.92' }], today: '2026-10-23' });
     const itemId = await createTripItem(db, 't1', booking('Husky safari', 25000, 'USD'));
     await createBookingPayment(db, itemId, { amount: 10000, note: undefined, payerId: null, paidOn: null, charged: { amount: 9100, currency: 'EUR' } });
@@ -241,5 +338,23 @@ describe('backups', () => {
     restored.raw.prepare(`DELETE FROM trips`).run();
     await applyImport(restored.db, planImport(parsed.document, [], 'merge', []));
     expect(snapshot(restored.raw)).toEqual(snapshot(raw));
+    expect(rateRows(restored.raw)).toHaveLength(2);
+  });
+
+  it('read a format-13 file: its rates become pairs, as migration 013 does', async () => {
+    const { raw, db } = setup();
+    await saveCurrencySettings(db, 't1', settings('EUR', { USD: '0.92' }));
+    const document = JSON.parse(JSON.stringify(buildExportDocument(await readTables(db), { exportedAt: now })));
+    // What 0.17.0 wrote: the rates in tripRates, and no tripExchangeRates.
+    document.formatVersion = 13;
+    document.tables.tripRates = document.tables.tripExchangeRates;
+    delete document.tables.tripExchangeRates;
+    const parsed = parseExportDocument(document);
+    if (!parsed.ok) throw new Error(parsed.reason);
+    const restored = setup();
+    restored.raw.prepare(`DELETE FROM trips`).run();
+    await applyImport(restored.db, planImport(parsed.document, [], 'merge', []));
+    expect(rateRows(restored.raw)).toEqual(rateRows(raw));
+    expect(restored.raw.prepare(`SELECT COUNT(*) AS n FROM trip_rates`).get()).toEqual({ n: 1 });
   });
 });

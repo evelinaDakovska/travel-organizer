@@ -43,16 +43,25 @@ export function TripTotal({ totals, notCounted, converted, onRates }: Props) {
       {converted ? (
         <>
           <View style={styles.line}>
-            <Text
-              style={[type.display, { color: c.text }]}
-              accessibilityLabel={`${converted.estimated ? 'About ' : ''}${formatMoney(converted.total, converted.base)}`}>
-              {converted.estimated ? '≈ ' : ''}
-              {formatMoney(converted.total, converted.base)}
-            </Text>
-            <Text style={[type.caption, { color: c.textMuted }]}>
-              Bookings {formatMoney(converted.bookings, converted.base)} · Spending{' '}
-              {formatMoney(converted.spending, converted.base)}
-            </Text>
+            {/* Complete or partial, said in words, never left to the number (review P2). */}
+            {converted.included ? (
+              <>
+                <Text style={[type.bodyStrong, { color: converted.complete ? c.text : c.attention }]}>
+                  {converted.complete ? `Total in ${converted.base}` : `Partial total in ${converted.base}`}
+                </Text>
+                <Text style={[type.display, { color: c.text }]} accessibilityLabel={convertedLabel(converted)}>
+                  {converted.estimated ? '≈ ' : ''}
+                  {formatMoney(converted.total, converted.base)}
+                </Text>
+                <Text style={[type.caption, { color: c.textMuted }]}>
+                  Bookings {formatMoney(converted.bookings, converted.base)} · Spending{' '}
+                  {formatMoney(converted.spending, converted.base)}
+                </Text>
+              </>
+            ) : (
+              // Nothing could be counted: a figure would read as zero, and the unknown is not zero.
+              <Text style={[type.title, { color: c.text }]}>No {converted.base} total yet</Text>
+            )}
             {converted.ratesUsed.length > 0 ? (
               <Text style={[type.caption, { color: c.textMuted }]}>
                 Estimated at{' '}
@@ -63,7 +72,7 @@ export function TripTotal({ totals, notCounted, converted, onRates }: Props) {
               <Text style={[type.caption, { color: c.attention }]}>
                 Not included:{' '}
                 {converted.notIncluded.map(({ currency, amount }) => formatMoney(amount, currency)).join(' · ')}{' '}
-                — no rate to {converted.base}.
+                — no rate to {converted.base}. Add one in Currencies and rates.
               </Text>
             ) : null}
           </View>
@@ -99,6 +108,17 @@ export function TripTotal({ totals, notCounted, converted, onRates }: Props) {
       ) : null}
     </View>
   );
+}
+
+/** What a screen reader says for the converted figure: partial and estimated in words. */
+function convertedLabel(converted: ConvertedTotal): string {
+  return [
+    converted.complete ? null : 'Partial total,',
+    converted.estimated ? 'about' : null,
+    formatMoney(converted.total, converted.base),
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 const styles = StyleSheet.create({
