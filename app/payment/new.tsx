@@ -13,6 +13,7 @@ import { useLiveQuery } from '../../src/hooks/useLiveQuery';
 import { createBookingPayment, lastPayerId, PAYMENT_TABLES } from '../../src/repositories/payments';
 import { listTripTravellers } from '../../src/repositories/travellers';
 import { getTripItem } from '../../src/repositories/tripItems';
+import { getTrip } from '../../src/repositories/trips';
 import { Notice } from '../../src/ui/components/Notice';
 import { QueryScreen } from '../../src/ui/components/QueryStates';
 import { Screen } from '../../src/ui/components/Screen';
@@ -34,15 +35,16 @@ export default function NewPayment() {
       async (database) => {
         const item = await getTripItem(database, itemId);
         if (!item) return null;
-        const [travellers, lastPayer] = await Promise.all([
+        const [travellers, lastPayer, trip] = await Promise.all([
           listTripTravellers(database, item.tripId),
           lastPayerId(database, item.tripId),
+          getTrip(database, item.tripId),
         ]);
-        return { item, travellers, lastPayer };
+        return { item, travellers, lastPayer, reportCurrency: trip?.reportCurrency ?? null };
       },
       [itemId],
     ),
-    PAYMENT_TABLES,
+    [...PAYMENT_TABLES, 'trips'],
     [itemId],
   );
 
@@ -60,7 +62,7 @@ export default function NewPayment() {
     );
   }
 
-  const { item, travellers, lastPayer } = data;
+  const { item, travellers, lastPayer, reportCurrency } = data;
   const refusal = recordRefusal(item);
   if (refusal) {
     return (
@@ -82,6 +84,7 @@ export default function NewPayment() {
         currency={item.priceCurrency!}
         travellers={travellers}
         lastPayerId={lastPayer}
+        reportCurrency={reportCurrency}
         defaultValues={{
           amount: suggestedAmount(item),
           payerId: null,

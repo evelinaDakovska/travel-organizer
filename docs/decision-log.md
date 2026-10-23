@@ -1045,3 +1045,40 @@ as the record.
 - A derived over-settlement check (option C): wrong in ordinary use, and it misses partial cases.
 - Holding the destination currency of a move: nothing left it.
 - Deleting or reversing settlements: money history is never changed by itself.
+
+## D45 — Phase 4: a reporting currency, typed-in rates, charged amounts (0.17.0, migration 012)
+
+The owner asked for Phase 4 to be planned and built in one run (2026-10-23), so the decisions below
+were taken without stopping. Each is listed in `docs/phase4-plan.md` §11 for review.
+
+**The converted figure is an addition, never a replacement.** Every amount keeps its currency. A trip
+with a reporting currency shows one converted total, marked *≈* whenever a typed-in rate made any part
+of it, above the per-currency totals *as recorded*. A currency with no rate is named as *not
+included*, never guessed and never counted as zero. That is D32's reversal of *never convert*, with
+the original kept.
+
+**Rates are typed in, per trip (P4-1, P4-2).** There is no rate service: master §10 says "No silent
+online requests or paid service", and there is no backend. One rate per currency per trip, with its
+date. A rate service is *Discovery*.
+
+**Charged amounts make the history exact.** A payment made at a different date and rate is recorded by
+what the card was actually charged in the reporting currency. That amount is locked and never
+re-estimated. This covers deposits paid at one rate and balances paid at another, without a table of
+daily rates.
+
+**Balances stay per currency (P4-3).** A debt in USD is settled in USD; converting it would change who
+owes what each time a rate moved. Settle up is untouched.
+
+**A rate remembers its base (P4-5).** When the reporting currency changes, a rate set against the old
+one is kept and shown, but not applied. Never reinterpreting a recorded value outranks convenience.
+
+**Exactness (P4-6, P4-7).** A rate is exact decimal text, and the arithmetic is BigInt, so money never
+touches a float. Zero-decimal currencies change in display only. Storage stays hundredths, because
+changing what stored yen amounts mean would be a migration of meaning.
+
+**Rejected:**
+- an online rate API, or built-in rates (stale and silent);
+- converting balances or every list;
+- deleting rates when the base changes;
+- REAL or scaled-integer rates;
+- a table rebuild for cross-column CHECKs (D25's rule on the riskiest migration).

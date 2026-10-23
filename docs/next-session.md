@@ -1,4 +1,4 @@
-# Next session — handoff (written 2026-10-23, after Phase 3 was closed)
+# Next session — handoff (written 2026-10-23, after Phase 4 was built)
 
 Read `CLAUDE.md` first, then this file. It says where the work stands, what is waiting for the owner,
 and how to pick up the next task. The detailed history is in `docs/session-handoff.md` §11 and
@@ -10,13 +10,14 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
 |---|---|
 | **Branch with the work** | `phase-3d1`, the 0.16.3 commit "Close Phase 3" (pushed to the personal GitHub remote) |
 | **`main`** | `46d256a` — 0.13.0, schema 6, backup format 7. **What the owner's phone runs.** |
-| **`phase-3d1` app** | **0.16.3**, versionCode 26 (a header fix; no schema or format change) |
-| **Database schema** | 11 (migrations 007–011 exist only on `phase-3d1`) |
-| **Backup / trip archive format** | 12 / row format 12 |
-| **Tests** | 1626 Node tests in 81 suites, `npx tsc --noEmit` clean |
+| **`phase-3d1` app** | **0.17.0**, versionCode 27 (Phase 4, currency conversion; 0.16.3 was a header fix) |
+| **Database schema** | 12 (migrations 007–012 exist only on `phase-3d1`) |
+| **Backup / trip archive format** | 13 / row format 13 |
+| **Tests** | 1664 Node tests in 85 suites, `npx tsc --noEmit` clean |
 | **Phase 3 (3B → 3E)** | **Closed (2026-10-23).** Everything through 0.16.2 passed the owner's review, and the exit checks are in `MASTER_ROADMAP.md` §6.4, §7.5, §8.3 and §9.3. One item is open: the signed release rehearsal 0.13.0 → 0.16.x. |
 | **Phone** | Untouched. Holds a real trip on 0.13.0. |
-| **Release APK** | None built for 0.16.1, 0.16.2 or 0.16.3. The newest release APK is 0.16.0, at `%USERPROFILE%\.travel-organizer\`, and it predates the corrections. |
+| **Phase 4** | **Built as 0.17.0** (`docs/phase4-plan.md`, D45), verified on emulators, **awaiting independent review**. Its product decisions P4-1…P4-8 were taken without stopping, at the owner's request; they are listed in the plan's §11 for review. |
+| **Release APK** | None built for 0.16.1–0.17.0. The newest release APK is 0.16.0, at `%USERPROFILE%\.travel-organizer\`, and it predates the corrections. |
 
 ### What 0.16.x added after 0.16.0 (all reviewed)
 
@@ -65,23 +66,23 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
 
 In the likely order. Ask which one, rather than choosing.
 
-1. **Bring 0.16.x to the phones, after the trip.** Every step needs the owner's go-ahead.
-   0.16.x carries migrations 007–011, so it is **not** a risk-free change. It goes to **the husband's
+0. **The owner's review of Phase 4** (0.17.0): the diff since `1df90c6`, and the decisions in
+   `docs/phase4-plan.md` §11. Correct what the review finds.
+1. **Bring 0.17.x to the phones, after the trip.** Every step needs the owner's go-ahead.
+   0.17.x carries migrations 007–012, so it is **not** a risk-free change. It goes to **the husband's
    phone first**. The primary phone gets it **only after the trip has passed**.
    1. Build a **signed release** 0.16.x (needs approval). *Note:* this session's safety classifier
       blocked switching `buildTypes.release` to the debug key (the §4 recipe). Ask the owner before
       relying on that recipe again; a plain `assembleDebug` dev build works for UI checks.
-   2. Rehearse on an emulator: in-place release upgrade **0.13.0 → 0.16.x** over synthetic data
-      (migrations 007–011 in one start-up), with database snapshots compared before and after. This
+   2. Rehearse on an emulator: in-place release upgrade **0.13.0 → 0.17.x** over synthetic data
+      (migrations 007–012 in one start-up), with database snapshots compared before and after. This
       is the master roadmap §19 checklist item still open for 0.16.1–0.16.3.
    3. Install on the husband's phone (synthetic data) and test everything there.
    4. For the primary phone, **after the trip**: the owner exports a backup first, then merge
       `phase-3d1` into `main` and install only when the owner explicitly allows it.
 2. ~~Close Phase 3~~ — **done 2026-10-23** (0.16.3).
-3. **Phase 4 — multi-currency integrity and conversion** (master roadmap §10). Not started. It needs
-   its own plan, a decision on where exchange rates come from, a migration review, and the owner's
-   approval. It reverses the earlier "never convert" rule (D25 → D32), so the 3E balances (one per
-   currency, never added together) are its starting point.
+3. ~~Phase 4~~ — **built 2026-10-23** (0.17.0), awaiting review (item 0). Phase 5 starts only when
+   the owner asks.
 4. **B1 — the feedback worker** deployment and security check, before any friends APK (master
    roadmap §16.2). Off behind `FEATURE_FEEDBACK_ENABLED`.
 5. **Small known items**, not scheduled:
@@ -126,6 +127,10 @@ were in a session scratchpad and are probably gone. The essentials:
 - **Typed routes:** a new route file needs `.expo/types/router.d.ts` regenerated. Start
   `npx expo start --offline` briefly, then stop it.
 - **Bash heredocs containing backticks fail** in this environment. Write scripts with the Write tool.
+- Phase 4: `%USERPROFILE%\Pictures\TravelOrganizer-0.17.0-P4-e2e\E2E-LOG.md`. To rehearse a migration
+  on the device after Metro has already applied it, rebuild the older schema from the pulled database
+  (drop what the migration added, set `user_version`), put it back with `run-as cp`, and start the app.
+  The dev menu's *Tools button* switch hides the floating gear that covers *Add*.
 - 0.16.3 header check: `%USERPROFILE%\Pictures\TravelOrganizer-0.16.3-header-e2e\E2E-LOG.md`.
 - Evidence from the last rounds: `%USERPROFILE%\Pictures\TravelOrganizer-0.16.1-review-e2e\` and
   `…-0.16.2-holds-e2e\` (`E2E-LOG.md` and screenshots).

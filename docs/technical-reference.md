@@ -1141,8 +1141,9 @@ it. A row opens the expense's detail page (`app/expense/[expenseId]/index.tsx`: 
 receipts, Delete); **Edit** there opens the form (`[expenseId]/edit.tsx`), F5. A cancelled booking
 with refundability not set is listed under *Refund not specified* (`refundNotSaid`, R10).
 
-**Currencies are never converted or summed across** (CLAUDE.md §7): every total is a list, one
-entry per currency.
+**Currencies are never summed across** (CLAUDE.md §7): every total is a list, one entry per
+currency. Since Phase 4 (§24) a trip with a reporting currency also shows one converted total
+beside that list, never instead of it.
 
 ### Rules (pure, tested)
 
@@ -1845,3 +1846,70 @@ as none.
 - `/trip/[tripId]/settlement-review?currency=`: the changes, the currency's settlements (each opens),
   and *Settlements still stand* (asks, then acknowledges the ids on screen).
 - The balance screen explains the hold.
+
+## 24. Currency conversion (Phase 4, 0.17.0, migration 012)
+
+Plan: `docs/phase4-plan.md`; why: D45.
+
+**Schema (012), additive.**
+- `trips.report_currency TEXT`: three capitals, or NULL (not converted).
+- `trip_rates (trip_id → trips CASCADE, currency, base_currency, rate TEXT, rate_date, updated_at)`,
+  primary key `(trip_id, currency)`, `CHECK (currency <> base_currency)`. `rate` is the exact decimal
+  as typed, normalised (`0,9200` → `0.92`): 1 `currency` = `rate` `base_currency`.
+- `expenses.charged_amount INTEGER` (> 0) / `charged_currency TEXT` and the same two columns on
+  `booking_payments`.
+- No row is written. The pairing (both or neither, never the record's own currency) is checked in the
+  repository, because a cross-column table CHECK would need a rebuild.
+
+**Money is hundredths for every currency** (unchanged). `currencyDecimals` (`currencies.ts`) is 0 for
+ISO zero-decimal codes. `formatMoney` drops *.00* for them when the hundredths are 0, and shows stored
+hundredths in full.
+
+**Converting (`domain/conversion.ts`, pure).**
+- **Arithmetic.** `rateTextSchema` validates and normalises a rate (≤ 12 significant digits, ≤ 10
+  decimals, > 0). `convertAmount(amount, rate, base)` uses BigInt with no float: half away from
+  zero, to hundredths, or to whole units for a zero-decimal base.
+- **`convertTripTotal({ base, rates, bookings, spending })`.**
+  - An amount in `base` counts as it is.
+  - A standalone expense counts at its charged amount when that is in `base`. Otherwise it is
+    estimated at `rateFor(rates, currency, base)`, which needs a rate set against this base.
+    Otherwise it is not included.
+  - A booking:
+    - Its records charged in `base` cover `Lo` of the price `P` at a cost of `Lb`.
+    - If `Lo ≥ P`, it counts as `Lb × P / Lo`.
+    - Otherwise it counts as `Lb + estimate(P − Lo)`. With no rate, the whole `P` is not included.
+  - Returns `{ bookings, spending, total, estimated, ratesUsed, notIncluded }`.
+- **`domain/tripConversion.ts`.**
+  - `conversionCosts(items, expenses, payments)` gives the bookings that `countsAsSpent`, each with
+    its payments and linked expenses, and the standalone spending: the same split as `tripTotals`.
+  - `currenciesToConvert` lists the rows of the rates screen.
+
+**Repositories.**
+- `repositories/rates.ts`:
+  - `listRates`;
+  - `conversionRecords` and `conversionInput`, both reading `CONVERSION_TABLES`;
+  - `saveCurrencySettings(db, tripId, { reportCurrency, rates, today })`, in one transaction. An
+    unchanged rate keeps its date. A blank one deletes the row, and the screen sends blanks only for
+    rates set against the chosen base, so a rate set for an earlier reporting currency is kept,
+    unused.
+- `createExpense` / `updateExpense` / `createBookingPayment` / `updateBookingPayment` take an
+  optional `charged`: left out keeps the saved value, and `null` clears it.
+- Charged amounts are not in the 3E fingerprint or the balances, so they end no confirmation and need
+  no settlement review.
+
+**Screens.**
+- `app/trip/[tripId]/rates.tsx`: the reporting currency, and one rate field per other currency, with
+  a live *≈* preview.
+- `TripTotal`: with a reporting currency it shows the *≈* converted total, the rates used and what is
+  not included, then *As recorded*. A trip in two or more currencies offers *Convert to one
+  currency*.
+- `ChargedField` (`features/payments/`) on the expense and payment forms; *Charged in …* on the
+  expense page.
+- PDF: one converted bookings line under the bookings table (`ItineraryInput.conversion`).
+
+**Not converted, on purpose:** balances, settlements, Settle up and its text, the Bookings and Spending
+lists, and the 2C/2D formats.
+
+**Formats.** Backup format **13** and archive rowFormat **13**: `tripRates`, `trips.report_currency`
+and the charged columns. Format 12 and older read as nothing converted. Archive import moves the rates
+to the new trip id.

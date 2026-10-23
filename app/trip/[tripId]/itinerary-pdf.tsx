@@ -17,6 +17,7 @@ import { listListItems, listTripLists } from '../../../src/repositories/lists';
 import { listItemResourcesForTrip } from '../../../src/repositories/resources';
 import { listTripTravellers } from '../../../src/repositories/travellers';
 import { listTripItems } from '../../../src/repositories/tripItems';
+import { conversionRecords } from '../../../src/repositories/rates';
 import { getTrip, TRIP_TABLES } from '../../../src/repositories/trips';
 import { Button } from '../../../src/ui/components/Button';
 import { CheckBox } from '../../../src/ui/components/CheckBox';
@@ -72,11 +73,12 @@ export default function ItineraryPdfScreen() {
 
   /** Read everything at the moment of making it: the PDF is a snapshot. */
   const makePdf = async () => {
-    const [items, travellers, resources, lists] = await Promise.all([
+    const [items, travellers, resources, lists, conversion] = await Promise.all([
       listTripItems(db, trip.id),
       listTripTravellers(db, trip.id),
       listItemResourcesForTrip(db, trip.id),
       listTripLists(db, trip.id),
+      conversionRecords(db, trip.id),
     ]);
     const withItems = await Promise.all(
       lists.map(async (list) => ({ list, items: await listListItems(db, list.id) })),
@@ -90,6 +92,7 @@ export default function ItineraryPdfScreen() {
         documents: groupResourcesByItem(resources),
         lists: withItems,
         generatedAt: now,
+        conversion,
       },
       options,
     );

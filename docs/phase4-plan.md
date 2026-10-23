@@ -220,6 +220,40 @@ husband's phone first, and to the primary phone only after the trip.
 | P4-7 | Zero-decimal currencies | Display without *.00*; storage unchanged | No data change and no migration of meaning | Real minor units (rewrites every stored yen amount) |
 | P4-8 | Pairing checks | Zod in the repository, not table CHECKs | Adding table CHECKs needs a table rebuild | A rebuild migration (risk to real data) |
 
-## 12. As built
+## 12. As built (2026-10-23, 0.17.0, versionCode 27)
 
-*(Filled in when Phase 4 is done.)*
+Built as planned. Implementation details are in technical reference §24.
+
+**Deviations and additions.**
+- **What a blank rate field does.** A blank field deletes only a rate set against the chosen
+  reporting currency. A rate kept for an earlier base is never deleted by leaving its field empty
+  (P4-5).
+- **Where the charged field appears.** It shows only where it can matter: the trip is converted and
+  the record is in another currency. A charged amount already saved is always shown, so it can be
+  cleared.
+- **An edit that leaves `charged` out keeps it.** That covers the quick sheet and any older caller.
+  A currency change that would make a kept charged amount name the record's own currency is refused.
+- **The *Convert to one currency* link** appears only on a trip in two or more currencies, or one
+  already converted.
+- **Two screen fixes found on the emulator:**
+  - the reporting-currency chips are in a stable alphabetical order;
+  - the *Or another currency* box's placeholder reads *Code*.
+
+**Verification.**
+- **Node:** 1664 tests in 85 suites (new: migration 012, conversion incl. a property test, the
+  builder, rates and charged amounts through the repositories, backup and archive 13, PDF);
+  typecheck clean.
+- **Emulator** (`TO_2B_Test`, debug build over Metro, synthetic data):
+  - 11 → 12 on the device: a schema-11 copy of the emulator's own database, migrated by the app, with
+    21/21 tables identical, the new columns NULL, `trip_rates` empty, and the integrity and
+    foreign-key checks passing;
+  - the screens: an EUR-only trip unchanged; *Convert to one currency*; a rate with its live
+    preview; *≈* total; a charged amount making it exact; a currency with no rate named; switching
+    to USD and back, with the old rate kept and reused; a charged booking payment locking the hotel;
+    360 dp, font 2.0 and dark mode.
+  - Log: `%USERPROFILE%\Pictures\TravelOrganizer-0.17.0-P4-e2e\E2E-LOG.md`.
+- **Not done:**
+  - **No release APK** was built, and the in-place signed upgrade 0.13.0 → 0.17.0 (migrations
+    007–012) is still to rehearse.
+  - **On no phone.** Under the owner's split, this is a risky change: it goes to the husband's phone
+    first, and to the primary phone only after the trip.

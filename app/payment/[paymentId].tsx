@@ -18,6 +18,7 @@ import {
 } from '../../src/repositories/payments';
 import { listTravellers, listTripTravellers } from '../../src/repositories/travellers';
 import { getTripItem } from '../../src/repositories/tripItems';
+import { getTrip } from '../../src/repositories/trips';
 import { Button } from '../../src/ui/components/Button';
 import { QueryScreen } from '../../src/ui/components/QueryStates';
 import { Screen } from '../../src/ui/components/Screen';
@@ -39,21 +40,22 @@ export default function PaymentDetail() {
       async (database) => {
         const payment = await getBookingPayment(database, paymentId);
         if (!payment) return null;
-        const [item, members, everyone, lastPayer] = await Promise.all([
+        const [item, members, everyone, lastPayer, trip] = await Promise.all([
           getTripItem(database, payment.tripItemId),
           listTripTravellers(database, payment.tripId),
           listTravellers(database),
           lastPayerId(database, payment.tripId),
+          getTrip(database, payment.tripId),
         ]);
         // A payer always stays a member (they cannot leave the trip), but never lose the name.
         const payer = everyone.find((person) => person.id === payment.payerId);
         const travellers =
           payer && !members.some((member) => member.id === payer.id) ? [...members, payer] : members;
-        return { payment, item, travellers, lastPayer };
+        return { payment, item, travellers, lastPayer, reportCurrency: trip?.reportCurrency ?? null };
       },
       [paymentId],
     ),
-    PAYMENT_TABLES,
+    [...PAYMENT_TABLES, 'trips'],
     [paymentId],
   );
 
@@ -71,7 +73,7 @@ export default function PaymentDetail() {
     );
   }
 
-  const { payment, item, travellers, lastPayer } = data;
+  const { payment, item, travellers, lastPayer, reportCurrency } = data;
   const amount = formatMoney(payment.amount, payment.currency);
   const confirmDelete = () =>
     Alert.alert(
@@ -101,11 +103,13 @@ export default function PaymentDetail() {
         currency={payment.currency}
         travellers={travellers}
         lastPayerId={lastPayer}
+        reportCurrency={reportCurrency}
         defaultValues={{
           amount: payment.amount,
           payerId: payment.payerId,
           paidOn: payment.paidOn,
           note: payment.note ?? undefined,
+          charged: payment.charged,
         }}
         intro={
           item?.priceAmount != null && item.priceCurrency ? (

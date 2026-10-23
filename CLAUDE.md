@@ -192,6 +192,10 @@ Migration 011 (0.16.2) adds `settlement_reviews`: a shared cost leaving a curren
 is refused until the person continues (`SettlementReviewNeeded`), then recorded as an open review that
 holds that currency's suggestions until *Settlements still stand* — every money write goes through
 `moneyWrites.afterMoneyWrite` (backup format 12).
+Migration 012 (Phase 4, 0.17.0) adds `trips.report_currency`, `trip_rates` (typed-in rates, exact
+decimal text, each set against a stored base) and `charged_amount` / `charged_currency` on expenses
+and booking payments; a converted total is worked out on demand, never stored, and balances stay per
+currency (backup format 13; D45).
 Backup format 7 (0.13.0: same tables as 6; price lines in
 `details` may carry who they are for, group prices and extras). No per-kind tables.
 Kind-specific extras live in a Zod-validated `details` JSON column.
@@ -287,8 +291,8 @@ means "never building."** Ideas move between statuses; none is removed to make d
 
 | Status | Meaning | Items |
 |---|---|---|
-| **Implemented** | In the app | Importing AI-written activities from JSON (2C) and *Plan with AI* (2D) — the app reads and writes files, it calls no AI service |
-| **Approved/planned** | On the roadmap; **only the current phase is authorised** | 3C–3E, currency conversion (4), a full-day map (5), trips without dates (6), Google Maps place import (7), an `.ics` export (8); the feedback deployment before the friends beta (*B1*) |
+| **Implemented** | In the app | Importing AI-written activities from JSON (2C) and *Plan with AI* (2D) — the app reads and writes files, it calls no AI service; 3C–3E; currency conversion with typed-in rates (4, on `phase-3d1`) |
+| **Approved/planned** | On the roadmap; **only the current phase is authorised** | A full-day map (5), trips without dates (6), Google Maps place import (7), an `.ics` export (8); the feedback deployment before the friends beta (*B1*) |
 | **Deferred** | Possibly wanted later; not current scope | iOS · shopping-list estimated prices · full itinerary templates · monetisation |
 | **Discovery** | Needs research and a separate owner decision | AI integrations in the app (an AI API, in-app itinerary generation) · Gmail integration · automatic booking parsing / email and document extraction · cloud backend, accounts, sync and collaboration · weather and travel monitoring · a passport vault · peer-to-peer sharing |
 | **Explicitly excluded** | Not part of the product unless the owner reverses it | Flight/hotel search · booking APIs (the app is not a search engine or booking service, §1) · Google Wallet API |

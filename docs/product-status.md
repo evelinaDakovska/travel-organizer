@@ -88,6 +88,21 @@
 
 ---
 
+### Built in 0.17.0 (roadmap Phase 4, currency conversion) — on the branch `phase-3d1`, verified on emulators, not on a phone
+
+Not on any phone; it brings migration 012 (and 007–011 with it).
+
+- **One total in your currency:** choose a reporting currency for a trip and type a rate for each
+  other currency. *Expected trip cost* then leads with one converted total, marked ≈ when it is an
+  estimate, with the rates and dates used. The amounts as recorded follow it, unchanged.
+- **What it really cost:** an expense or a booking payment can carry what the card was actually
+  charged in the reporting currency. That amount is used as it is, instead of the rate.
+- **Nothing guessed:** a currency with no rate is named as *not included*. Balances and Settle up stay
+  per currency.
+- **PDF:** one converted line under the booking costs.
+- **Yen and the like** show without *.00*.
+- **Backup format 13**: 0.16.x refuses 0.17.0's files; 0.17.0 reads all older ones.
+
 ### Built in 0.16.3 (a header fix; Phase 3 closed) — on the branch `phase-3d1`, verified on emulators, not on a phone
 
 - **Tab headers at a large font:** on a narrow phone at a large font, a tab's title no longer breaks

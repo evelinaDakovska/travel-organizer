@@ -15,6 +15,7 @@ import { Field, Input } from '../../ui/components/Field';
 import { FormScroll } from '../../ui/components/FormScroll';
 import { AmountInput } from '../../ui/components/MoneyInputs';
 import { spacing, type, useColors } from '../../ui/tokens';
+import { ChargedField } from './ChargedField';
 import { PayerField } from './PayerField';
 
 type Props = {
@@ -24,6 +25,8 @@ type Props = {
   /** The trip's members: who can be the payer. */
   travellers: readonly Traveller[];
   lastPayerId: string | null;
+  /** The trip's reporting currency (Phase 4); null: not converted. */
+  reportCurrency: string | null;
   submitLabel: string;
   onSubmit: (input: BookingPaymentInput) => Promise<void>;
   /** A line above the fields: what this pays towards. */
@@ -37,6 +40,7 @@ export function PaymentForm({
   currency,
   travellers,
   lastPayerId,
+  reportCurrency,
   submitLabel,
   onSubmit,
   intro,
@@ -90,6 +94,24 @@ export function PaymentForm({
           </Field>
         </View>
       </View>
+
+      {/* Asked only for a booking in another currency than the trip's reporting one (Phase 4); a
+          charged amount already saved is always shown, so it can be cleared. */}
+      {defaultValues.charged || (reportCurrency !== null && reportCurrency !== currency) ? (
+        <Controller
+          control={control}
+          name="charged"
+          render={({ field }) => (
+            <ChargedField
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              reportCurrency={reportCurrency ?? field.value?.currency ?? ''}
+              error={errors.charged?.message ?? errors.charged?.amount?.message}
+            />
+          )}
+        />
+      ) : null}
 
       {/* A solo trip has nobody else to have paid: no payer to record (plan §7). */}
       {travellers.length > 1 ? (

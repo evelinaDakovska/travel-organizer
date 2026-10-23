@@ -169,6 +169,12 @@ export default function ExpenseDetail() {
         <View style={styles.facts}>
           {expense.label ? <Fact label="Category" value={categoryLabel(expense.category)} /> : null}
           <Fact label="Date" value={formatMoment(expense.spentOn, 'date')} />
+          {expense.charged ? (
+            <Fact
+              label={`Charged in ${expense.charged.currency}`}
+              value={formatMoney(expense.charged.amount, expense.charged.currency)}
+            />
+          ) : null}
           {expense.payerId ? <Fact label="Paid by" value={links?.payer ?? '…'} /> : null}
           {expense.tripItemId ? (
             <Pressable

@@ -43,6 +43,7 @@ type CurrencyInputProps = {
   onChange: (currency: string | undefined) => void;
   onBlur: () => void;
   invalid: boolean;
+  placeholder?: string;
 };
 
 /**
@@ -50,7 +51,7 @@ type CurrencyInputProps = {
  * react-hook-form shows a field's default while its value is undefined, so clearing 'EUR' to type
  * 'CHF' put 'EUR' straight back and the keyboard then typed onto it.
  */
-export function CurrencyInput({ value, onChange, onBlur, invalid }: CurrencyInputProps) {
+export function CurrencyInput({ value, onChange, onBlur, invalid, placeholder = 'EUR' }: CurrencyInputProps) {
   const [text, setText] = useState(value ?? '');
 
   return (
@@ -64,7 +65,7 @@ export function CurrencyInput({ value, onChange, onBlur, invalid }: CurrencyInpu
       onBlur={onBlur}
       autoCapitalize="characters"
       maxLength={3}
-      placeholder="EUR"
+      placeholder={placeholder}
       invalid={invalid}
     />
   );

@@ -24,6 +24,7 @@ import { AmountInput, CurrencyInput } from '../../ui/components/MoneyInputs';
 import { SelectField } from '../../ui/components/SelectField';
 import { spacing } from '../../ui/tokens';
 import { askAboutDuplicate } from '../payments/askAboutDuplicate';
+import { ChargedField } from '../payments/ChargedField';
 import { PayerField } from '../payments/PayerField';
 
 /** Who could have paid and what an expense could pay for (3D-1). */
@@ -32,6 +33,8 @@ export type ExpenseMoneyContext = {
   /** Every item of the trip; the form offers the ones an expense in its currency can pay for. */
   bookings: readonly TripItem[];
   lastPayerId: string | null;
+  /** The trip's reporting currency (Phase 4); null: not converted. Absent in older callers. */
+  reportCurrency?: string | null;
 };
 
 type Props = {
@@ -70,7 +73,11 @@ export function ExpenseForm({
     defaultValues,
     mode: 'onBlur',
   });
-  const [currency, tripItemId] = useWatch({ control, name: ['currency', 'tripItemId'] });
+  const [currency, tripItemId, charged] = useWatch({ control, name: ['currency', 'tripItemId', 'charged'] });
+  const report = money.reportCurrency ?? null;
+  // Asked only when it can matter: a trip converted to another currency than this expense's. A
+  // charged amount already saved is always shown, so it can be seen and cleared.
+  const askCharged = !!charged || (report !== null && (currency ?? '').toUpperCase() !== report);
   const byId = new Map(money.bookings.map((booking) => [booking.id, booking]));
   const linkable = linkableBookings(money.bookings, (currency ?? '').toUpperCase()).map((b) => b.id);
   // The one linked now stays visible even if the currency no longer fits: saving says why.
@@ -162,6 +169,22 @@ export function ExpenseForm({
           </Field>
         )}
       />
+
+      {askCharged ? (
+        <Controller
+          control={control}
+          name="charged"
+          render={({ field }) => (
+            <ChargedField
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              reportCurrency={report ?? field.value?.currency ?? ''}
+              error={errors.charged?.message ?? errors.charged?.amount?.message}
+            />
+          )}
+        />
+      ) : null}
 
       {money.travellers.length > 1 ? (
         <Controller

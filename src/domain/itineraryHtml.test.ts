@@ -180,6 +180,28 @@ describe('itineraryHtml (C4)', () => {
     expect(html).not.toMatch(/recorded|Deposit/);
   });
 
+  it('adds one converted line for a trip with a reporting currency, naming what has no rate (Phase 4)', () => {
+    const hotel = item({ id: 'h', title: 'Hotel', priceAmount: 25000, priceCurrency: 'EUR' });
+    const safari = item({ id: 's', title: 'Safari', priceAmount: 10000, priceCurrency: 'USD' });
+    const ferry = item({ id: 'f2', title: 'Ferry', priceAmount: 6000, priceCurrency: 'NOK' });
+    const conversion = {
+      rates: [{ currency: 'USD', baseCurrency: 'EUR', rate: '0.92', rateDate: '2026-10-23' }],
+      expenses: [],
+      payments: [],
+    };
+    const converted = itineraryHtml(
+      input({ trip: { ...trip, reportCurrency: 'EUR' }, items: [hotel, safari, ferry], conversion }),
+      { ...DEFAULT_PDF_OPTIONS, costs: true },
+    );
+    expect(converted).toContain(
+      '<p><strong>≈ EUR 342.00</strong> in EUR (estimated at 1 USD = 0.92 EUR); not included: NOK 60.00, with no rate.</p>',
+    );
+    // Not converted: no line, and the table is as before.
+    const plain = itineraryHtml(input({ items: [hotel, safari], conversion }), { ...DEFAULT_PDF_OPTIONS, costs: true });
+    expect(plain).not.toContain('in EUR');
+    expect(plain).toContain('<tr><td>USD 100.00</td>');
+  });
+
   it('says when it was made', () => {
     expect(itineraryHtml(input(), DEFAULT_PDF_OPTIONS)).toContain('Made 13 Oct 2026, 09:42');
   });

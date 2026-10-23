@@ -9,6 +9,7 @@
  */
 
 import { refundNotSaid, tripExpenses } from './bookingCosts';
+import { convertTripTotal, rateText, type ExchangeRate } from './conversion';
 import { dayStops, daysForStop, tripDates } from './dayRail';
 import { formatDateRange, formatDayHeading, formatMoney, formatShortMoment } from './format';
 import { entryRoleLabel, entryZoneLabel, openTasks } from './itinerary';
@@ -20,6 +21,7 @@ import { buildTimeline, type TimelineEntry } from './timeline';
 import { namesLine, type Traveller } from './traveller';
 import type { Trip } from './trip';
 import { routeLabel, transportDetails, type TripItem } from './tripItem';
+import { conversionCosts } from './tripConversion';
 import { routePlace, zoneName } from './zoneHints';
 
 export type PdfOptions = {
@@ -51,6 +53,15 @@ export type ItineraryInput = {
   documents: ReadonlyMap<string, readonly Resource[]>;
   lists: readonly { list: List; items: readonly ListItem[] }[];
   generatedAt: Date;
+  /**
+   * The trip's rates and the records paying towards its bookings (Phase 4), for one converted line
+   * under the bookings table when the trip has a reporting currency. Absent: none.
+   */
+  conversion?: {
+    rates: readonly ExchangeRate[];
+    expenses: Parameters<typeof conversionCosts>[1];
+    payments: Parameters<typeof conversionCosts>[2];
+  };
 };
 
 const ESCAPES: Record<string, string> = {
@@ -216,7 +227,27 @@ function listsHtml(input: ItineraryInput): string {
     .join('\n');
 }
 
-/** Bookings per currency, never converted: expected, paid, still to pay. */
+/**
+ * The bookings in the reporting currency, as the Expenses tab works it out: ≈ when any part is
+ * an estimate, and what has no rate named. Empty when the trip is not converted.
+ */
+function convertedHtml(input: ItineraryInput): string {
+  const base = input.trip.reportCurrency;
+  if (!base || !input.conversion) return '';
+  const { bookings } = conversionCosts(input.items, input.conversion.expenses, input.conversion.payments);
+  if (bookings.length === 0) return '';
+  const converted = convertTripTotal({ base, rates: input.conversion.rates, bookings, spending: [] });
+  const missing = converted.notIncluded
+    .map(({ amount, currency }) => escapeHtml(formatMoney(amount, currency)))
+    .join(', ');
+  return `<p><strong>${converted.estimated ? '≈ ' : ''}${escapeHtml(formatMoney(converted.bookings, base))}</strong> in ${escapeHtml(base)}${
+    converted.estimated
+      ? ` (estimated at ${converted.ratesUsed.map((rate) => escapeHtml(rateText(rate))).join(', ')})`
+      : ''
+  }${missing ? `; not included: ${missing}, with no rate` : ''}.</p>`;
+}
+
+/** Bookings per currency, as recorded: expected, paid, still to pay; and converted, if set. */
 function costsHtml(input: ItineraryInput): string {
   const totals = tripExpenses(input.items);
   const unknown = refundNotSaid(input.items).byCurrency;
@@ -243,7 +274,7 @@ function costsHtml(input: ItineraryInput): string {
         .map(({ amount, currency }) => escapeHtml(formatMoney(amount, currency)))
         .join(', ')} cancelled with the refund not specified.</p>`
     : '';
-  return `<section class="appendix"><h2>Booking costs</h2><table>${rows}</table>${
+  return `<section class="appendix"><h2>Booking costs</h2><table>${rows}</table>${convertedHtml(input)}${
     perPerson ? `<ul>${perPerson}</ul>` : ''
   }${note}</section>`;
 }

@@ -264,7 +264,9 @@ Reconciled totals in every test fixture, no duplicated cost, no false debtor, se
 - **Review:** the owner's independent review of 0.16.2 passed (2026-10-23).
 - **Still open:** a **signed release** in-place upgrade to 0.16.1/0.16.2 (0.13.0 → 0.16.2, migrations 007–011 in one start-up, §19). No release APK exists for either version. The rehearsal belongs to the first step of bringing 0.16.x to the phone, after the owner's trip, and needs its own approval.
 
-## 10. Phase 4 — Multi-currency Integrity and Conversion [PLANNED]
+## 10. Phase 4 — Multi-currency Integrity and Conversion [BUILT — v0.17.0 on `phase-3d1`; AWAITING INDEPENDENT REVIEW]
+
+As built: `docs/phase4-plan.md` (decisions P4-1…P4-8 taken in the owner's one-run instruction of 23 October 2026, listed for review), D45, technical reference §24. The scope below is kept as written.
 
 ### Goal
 
@@ -281,6 +283,26 @@ Support trips containing multiple original currencies without misleading combine
 - Keep historical transaction records and financial balance meaning stable through migration/export/import.
 
 **Gate:** Depends on a stable Phase 3 financial ledger. Requires separate plan, migration review if needed, synthetic tests and owner approval.
+
+**Scope check (23 October 2026):**
+- **Originals preserved:** nothing is overwritten. Migration 012 only adds; 11 → 12 on the emulator
+  left 21/21 tables identical.
+- **Reporting currency:** `trips.report_currency`.
+- **Original, estimate, locked and unknown are distinct:**
+  - an original amount shows *as recorded*;
+  - an estimate is marked *≈* with its rate and date;
+  - a *charged* amount is locked;
+  - a currency with no rate is *not included*, named.
+- **Rate provenance:** typed in, with a date. No online request.
+- **Partial payments at different rates:** per-record charged amounts.
+- **Zero-decimal currencies:** shown without *.00*; a converted total rounds to whole units.
+- **Rounding:** exact BigInt arithmetic, half away from zero.
+- **PDF:** one converted bookings line.
+- **Per-currency subtotals:** always shown; € + £ is summed only through a stated rate.
+- **Balances:** they stay per currency, so their meaning is unchanged.
+- **Export and import:** backup 13 and archive 13 round-trip.
+- **Not done:** three-decimal currencies keep the hundredths limit, refunds are still out, and there
+  is no signed release upgrade yet (no APK, by the rules).
 
 ## 11. Phase 5 — Day Route Map [PLANNED]
 

@@ -41,15 +41,23 @@ export async function listRates(db: SQLiteDatabase, tripId: string): Promise<Exc
   return rows.map(parseRateRow);
 }
 
-/** The trip's costs and rates, ready for `convertTripTotal`. */
-export async function conversionInput(db: SQLiteDatabase, tripId: string) {
-  const [items, expenses, paymentRows, rates] = await Promise.all([
-    listTripItems(db, tripId),
+/** The trip's rates and the records that pay towards its bookings, as stored. */
+export async function conversionRecords(db: SQLiteDatabase, tripId: string) {
+  const [expenses, paymentRows, rates] = await Promise.all([
     listExpenses(db, tripId),
     db.getAllAsync<BookingPaymentRow>(SELECT_TRIP_BOOKING_PAYMENTS, { $tripId: tripId }),
     listRates(db, tripId),
   ]);
-  return { ...conversionCosts(items, expenses, paymentRows.map(parseBookingPaymentRow)), rates };
+  return { expenses, payments: paymentRows.map(parseBookingPaymentRow), rates };
+}
+
+/** The trip's costs and rates, ready for `convertTripTotal`. */
+export async function conversionInput(db: SQLiteDatabase, tripId: string) {
+  const [items, { expenses, payments, rates }] = await Promise.all([
+    listTripItems(db, tripId),
+    conversionRecords(db, tripId),
+  ]);
+  return { ...conversionCosts(items, expenses, payments), rates };
 }
 
 export type CurrencySettings = {

@@ -10,6 +10,8 @@ import { BookingsView } from '../../../../src/features/expenses/BookingsView';
 import { SpendingView } from '../../../../src/features/expenses/SpendingView';
 import { SettleUpView } from '../../../../src/features/settle/SettleUpView';
 import { TripTotal } from '../../../../src/features/expenses/TripTotal';
+import { convertTripTotal } from '../../../../src/domain/conversion';
+import { CONVERSION_TABLES, conversionInput } from '../../../../src/repositories/rates';
 import { SearchButton } from '../../../../src/features/trips/SearchButton';
 import { useTripId } from '../../../../src/features/trips/TripContext';
 import { TripTabHeader } from '../../../../src/features/trips/TripTabHeader';
@@ -41,8 +43,8 @@ const VIEW_LABELS: Record<ExpenseView, string> = {
 
 /**
  * What the trip costs (B8): one expected total, then bookings or spending, one view at a time —
- * and, on a trip of two or more, who owes whom (3E). Nothing is converted: every amount stays in
- * its own currency, and settling up never changes the total.
+ * and, on a trip of two or more, who owes whom (3E). Every amount stays in its own currency; with
+ * a reporting currency the total also reads converted (Phase 4). Settling up never changes it.
  */
 export default function ExpensesScreen() {
   const c = useColors();
@@ -84,6 +86,12 @@ export default function ExpensesScreen() {
     BALANCE_TABLES,
     [tripId],
   );
+  // The total in the trip's reporting currency (Phase 4), worked out on every change, never stored.
+  const { data: conversion } = useLiveQuery(
+    useCallback((database) => conversionInput(database, tripId), [tripId]),
+    CONVERSION_TABLES,
+    [tripId],
+  );
   const itemsQuery = useLiveQuery(
     useCallback((database) => listTripItems(database, tripId), [tripId]),
     TRIP_ITEM_TABLES,
@@ -105,6 +113,11 @@ export default function ExpensesScreen() {
   const bookings = useMemo(() => tripExpenses(items ?? []), [items]);
   const totals = useMemo(() => tripTotals(bookings, spending), [bookings, spending]);
   const notCounted = useMemo(() => refundNotSaid(items ?? []).byCurrency, [items]);
+  const reportCurrency = trip?.reportCurrency ?? null;
+  const converted = useMemo(
+    () => (reportCurrency && conversion ? convertTripTotal({ base: reportCurrency, ...conversion }) : null),
+    [reportCurrency, conversion],
+  );
   const addExpense = () => router.push({ pathname: '/expense/new', params: { tripId } });
 
   const members = balanceData?.members ?? [];
@@ -141,7 +154,12 @@ export default function ExpensesScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           <StaleNotice queries={[expensesQuery, receiptsQuery, itemsQuery]} />
           {totals.length > 0 || notCounted.length > 0 ? (
-            <TripTotal totals={totals} notCounted={notCounted} />
+            <TripTotal
+              totals={totals}
+              notCounted={notCounted}
+              converted={converted}
+              onRates={() => router.push({ pathname: '/trip/[tripId]/rates', params: { tripId } })}
+            />
           ) : null}
 
           <Segments
