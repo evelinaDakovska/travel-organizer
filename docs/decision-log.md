@@ -1105,3 +1105,42 @@ recorded in, and counts only while that currency reports.
 - Chaining it through a rate would put an estimate on top of a fact.
 - Relabelling it would rewrite history.
 - The screens now say when one is not counted.
+
+## D47 — Phase 5: an offline drawing of the day, and the real map in Google Maps (0.18.0)
+
+Built in the owner's one-run instruction (2026-10-23). Decisions P5-1…P5-6 are listed in
+`docs/phase5-plan.md` §9 for review.
+
+**No map SDK and no tiles (P5-1).** Every tiled map needs a provider, and every view would send the
+area being looked at to that provider:
+- Google Maps SDK: a key and billing;
+- MapLibre with a tile host: a key, then cost;
+- OpenStreetMap tiles: a usage policy that discourages app use.
+
+None of that fits a local-first app with no backend, for an owner who reads it offline abroad.
+- **The drawing:** the stops that have coordinates, drawn in the app, numbered in order and joined
+  by dashed straight lines, saying it is not a road map.
+- **Real routes, durations and transit** come from Google Maps through the hand-off, which needs no
+  key.
+- A tiled layer stays possible under the same stops. It is the owner's decision on cost and privacy.
+
+**Coordinates must be enterable (P5-3).** Only AI-imported plans had coordinates, so a field that
+takes what Google Maps copies on a long press was the smallest thing that makes the drawing useful.
+It needs no migration.
+
+**The day's stops are derived, never stored.**
+- The wake-up and night bases, journeys as a departure and an arrival on their own days, and equal
+  places merged.
+- Date-only plans and plans with no place are listed, never guessed into the order.
+
+**Five stops per link (P5-2).** Google documents three waypoints in mobile browsers and nine in its
+app. Parts of five never lose a stop silently, wherever the link opens.
+
+**One day at a time (P5-4); ideas included and marked (P5-5); no transit for multi-stop links
+(P5-6).** The emulator confirmed that Google Maps offers no transit for a multi-stop route.
+
+**Rejected:**
+- a tiled map now;
+- online geocoding (a service);
+- an all-days drawing;
+- distances computed in the app (straight lines are not travel).

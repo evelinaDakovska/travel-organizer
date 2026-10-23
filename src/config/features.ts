@@ -14,6 +14,7 @@ export type TripMoreAction = {
   path:
     | 'edit'
     | 'itinerary-pdf'
+    | 'day-map'
     | 'export-trip'
     | 'import-activities'
     | 'export-activities'
@@ -38,6 +39,12 @@ export function getTripMoreActions(
       subtitle: 'The itinerary, day by day, to send or print',
       icon: 'pdf',
       path: 'itinerary-pdf',
+    },
+    {
+      title: 'Day map',
+      subtitle: "Each day's places in order, and the day in Google Maps",
+      icon: 'dayMap',
+      path: 'day-map',
     },
     {
       title: 'Export trip',

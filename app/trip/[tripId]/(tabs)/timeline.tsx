@@ -212,6 +212,17 @@ export default function TimelineScreen() {
                     <Text style={[type.caption, { color: c.textMuted }]}>Day {number}</Text>
                   ) : null}
                   {day.day === today ? <Tag label="Today" tone="accent" /> : null}
+                  {/* The day as places (Phase 5): a drawing and the day in Google Maps. */}
+                  <View style={styles.dayMap}>
+                    <HeaderAction
+                      icon="dayMap"
+                      label="Map"
+                      accessibilityLabel={`Map of ${formatDayHeading(day.day)}`}
+                      onPress={() =>
+                        router.push({ pathname: '/trip/[tripId]/day-map', params: { tripId, day: day.day } })
+                      }
+                    />
+                  </View>
                 </View>
                 <Rows>
                   {day.entries.flatMap((entry) => {
@@ -277,5 +288,6 @@ const styles = StyleSheet.create({
   section: { gap: spacing.xs },
   headerActions: { flexDirection: 'row', alignItems: 'center' },
   dayHead: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
+  dayMap: { marginLeft: 'auto' },
   empty: { borderRadius: radius.lg, padding: spacing.lg, gap: spacing.md },
 });

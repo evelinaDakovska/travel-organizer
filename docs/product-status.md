@@ -88,6 +88,18 @@
 
 ---
 
+### Built in 0.18.0 (roadmap Phase 5, the day map) — on the branch `phase-3d1`, verified on emulators, not on a phone
+
+- **Day map:** from *Map* beside each Timeline day, or Overview › More.
+  - Each day's places in order: where you wake up, every plan with a time, where you sleep.
+  - A flight's departure and arrival each appear on their own day.
+  - Plans without a time or a place are listed apart.
+- **A drawing that works offline** of the places that have coordinates: numbered pins joined in
+  order by dashed lines. It says plainly that it is not a road map.
+- ***Open the day in Google Maps*** for real routes and times: Any, Driving or Walking, in parts of
+  up to five stops.
+- **Coordinates on a plan:** paste what Google Maps shows when you press and hold a place.
+
 ### Built in 0.17.1 (Phase 4 review corrections) — on the branch `phase-3d1`, verified on emulators, not on a phone
 
 - **Rates are kept per currency pair.** A USD rate set for EUR is still there after setting one for

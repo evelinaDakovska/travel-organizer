@@ -168,17 +168,43 @@ columns. The app version is **0.18.0**, versionCode 29.
 
 ## 10. As built
 
-**In progress (stopped at a usage limit, 2026-10-23):**
-- **Done and committed:**
-  - `parseCoordinates` / `coordinatesText` and the item form's *Coordinates* field, with the
-    both-or-neither rule and coordinates on the item page;
-  - `domain/dayRoute.ts` (stops, bases, merging, the lists, `schematicLayout`, `dayRouteLinks`), with
-    tests;
-  - the `DaySchematic` component and the `dayMap` icon.
-- **Left:**
-  - the day screen `app/trip/[tripId]/day-map.tsx` (switcher, schematic, stops, the lists, the Google
-    Maps parts with Any / Driving / Walking);
-  - the *Map* action on the Timeline day headings and Overview;
-  - the emulator E2E;
-  - the docs: technical reference §25, D47, status, product status, roadmap, handoff;
-  - the version bump to 0.18.0.
+**0.18.0, versionCode 29.** No migration, schema change or format change. Built as planned; the
+details are in technical reference §25, and the reasons in D47.
+
+**Deviations.**
+- **A part too long for Google Maps** (over 2 048 characters) is not offered. Its button explains
+  why, and nothing is shortened. Planned: drop text first.
+- **The north marker** in the drawing collided with pins near the edge. It was replaced by *North is
+  up* in the caption.
+- **The day screen walks the days with plans** (*2 of 5 days with plans*). That list includes dated
+  plans before or after the trip.
+- **The Timeline's *Map*** opens on that day. **Overview › More › *Day map*** opens on today, or the
+  first day with plans.
+
+**Verification.**
+- **Node:**
+  - 1706 tests, typecheck clean;
+  - new: `parseCoordinates` and `coordinatesText`, the both-or-neither rule, and `dayRoute`:
+    - a full day;
+    - an arrival day;
+    - the check-out day;
+    - date-only bases on the same day;
+    - an overnight train;
+    - a day in one hotel;
+    - a stay with no place;
+    - 0, 0 and half pairs;
+  - `routeDays`;
+  - `schematicLayout`: fit, north up, proportions, a revisited place, one point, none, the 180th
+    meridian;
+  - `dayRouteLinks`: order, mode, parts of five sharing a stop, two stops, one stop, too long.
+- **Emulator:** `%USERPROFILE%\Pictures\TravelOrganizer-0.18.0-P5-e2e\E2E-LOG.md`:
+  - the *Map* action and the empty state;
+  - Helsinki's arrival and departure merged into one stop;
+  - coordinates typed and shown;
+  - the drawing with a revisited hotel (*1 · 3*);
+  - the Google Maps app receiving the stops in order;
+  - 360 dp, font 2.0, dark mode;
+  - Overview › More.
+- **Not done:**
+  - no release APK, on no phone;
+  - the deep link to the day map was not exercised in the dev client.

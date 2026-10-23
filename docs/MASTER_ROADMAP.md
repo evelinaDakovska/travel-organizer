@@ -304,7 +304,9 @@ Support trips containing multiple original currencies without misleading combine
 - **Not done:** three-decimal currencies keep the hundredths limit, refunds are still out, and there
   is no signed release upgrade yet (no APK, by the rules).
 
-## 11. Phase 5 — Day Route Map [PLANNED]
+## 11. Phase 5 — Day Route Map [BUILT — v0.18.0 on `phase-3d1`; AWAITING INDEPENDENT REVIEW]
+
+As built: `docs/phase5-plan.md` (decisions P5-1…P5-6 for review), D47, technical reference §25. The scope below is kept as written.
 
 ### Goal
 
@@ -322,6 +324,24 @@ Provide an optional map of a day's relevant stops and travel connections, comple
 - Carried over from the 2026-10-19 roadmap: markers in Timeline order; the base/accommodation handled; directions, or the day's route in Google Maps where supported; items without coordinates handled gracefully.
 
 **Gate:** Map/provider architecture, privacy/cost decision and synthetic route E2E before implementation.
+
+**Scope check (23 October 2026):**
+- **Provider:** decided P5-1, an offline drawing. No tiles, key, cost or network; a tiled layer is
+  left to the owner.
+- **Places and bases:** geocoded places and the start and end bases of the day are shown. All days
+  is designed as one day at a time (P5-4).
+- **Edge cases handled:**
+  - arrival and departure endpoints, overnight travel and accommodation;
+  - undated and place-less plans, listed apart;
+  - duplicate coordinates, as one pin with both numbers;
+  - places without coordinates, named *not on the drawing*;
+  - time zones, through the local day.
+- **Straight lines** are labelled *not the way*. No durations or distances are invented, and routing
+  happens in Google Maps by the person's tap.
+- **Directions:** Google Maps opens with the stops in Timeline order. The existing A → B connectors
+  are unchanged.
+- **Read-only:** viewing changes nothing.
+- **Not done:** a tiled map, and offline street maps.
 
 ## 12. Phase 6 — Trips Without Fixed Dates [PLANNED]
 

@@ -1946,3 +1946,64 @@ currency, base_currency)` and the same columns and CHECKs as `trip_rates`, and c
 
 The expense page adds *not counted while the trip reports in GBP*, and `ChargedField` explains every
 case, including a trip that is not converted.
+
+## 25. The day map (Phase 5, 0.18.0)
+
+Plan: `docs/phase5-plan.md`; why: D47. No schema or format change.
+
+**Coordinates.**
+- `parseCoordinates(text)` (`domain/directions.ts`) reads `lat, lng`, `lat lng` or `lat; lng`,
+  optionally in parentheses. Empty text is `undefined`; anything that is not a pair in range is
+  `null`.
+- `coordinatesText` writes `lat, lng`.
+- `tripItemInputSchema` refuses half a pair (path `latitude`).
+- The item form's *Coordinates* field (`ui/components/CoordinatesInput.tsx`) keeps its text and
+  writes both columns, or NaN for invalid text so the schema explains.
+- The item page shows *Coordinates*.
+
+**The stops (`domain/dayRoute.ts`, pure).** `dayRoute(items, day)` reads the timeline entries of
+`day` (local), without tasks:
+- **Timed entries in order.** A transport entry gives a `departure` (its `from`) unless it is the
+  `end` entry, and an `arrival` (its `to`, at the end time) unless it is the `start` entry. A stay
+  gives `check-in` or `check-out`; anything else gives `visit` at its place.
+- **Date-only entries:**
+  - stays are skipped here and become bases;
+  - others go to `someTime`.
+- **No place:** entries with none go to `noPlace`.
+- **Start base:** last night's stay (`findStayForDay(day − 1)`), unless its check-out is a timed
+  entry today. Its role is `check-out` when it ends today, otherwise `wake`.
+- **End base:** tonight's stay (`findStayForDay(day)`), unless its check-in is a timed entry today.
+  Its role is `check-in` when it starts today, otherwise `sleep`.
+- **Merging:** consecutive `areEndpointsEqual` places merge into one `RouteStop` with several
+  `plans`.
+- **Coordinates:** kept only as a valid pair.
+- `routeDays(items, days)` gives the days with anything to show.
+
+**The drawing.**
+- `schematicLayout(stops, w, h, pad)`:
+  - local equirectangular, with longitude × cos(mean latitude), north up, fitted and centred;
+  - a single place sits in the middle;
+  - a span over 180° is unwrapped;
+  - points merge by equal coordinates and carry every stop number;
+  - `path` joins them in order.
+- `features/map/DaySchematic.tsx` draws it with `react-native-svg`: dashed straight lines, numbered
+  pins, *1 · 3* for a revisited place, the caption *North is up. Straight lines show the order, not
+  the way*, and an accessibility summary.
+
+**The hand-off.**
+- `dayRouteLinks(stops, mode)` gives Google Maps `dir/?api=1` links: origin, at most three
+  waypoints (`|`-separated) and a destination per part (`STOPS_PER_LINK` = 5), with parts sharing
+  their joining stop.
+- `travelmode` is `driving`, `walking` or left out. Transit is never offered.
+- One stop gives a `search/?api=1&query=` link.
+- A part over 2 048 characters gets `url: null`.
+
+**The screen.** `app/trip/[tripId]/day-map.tsx` (`day` parameter optional):
+- the day switcher over `routeDays`;
+- the drawing, or *Nothing to draw yet*, plus *Not on the drawing* for stops without coordinates;
+- the stops in order, each opening its first plan;
+- *Some time this day* and *No place given*;
+- Google Maps: the mode chips and the part buttons (`Linking.openURL`).
+
+Entries: the Timeline's day headings (*Map*, the `dayMap` icon) and Overview › More › *Day map*
+(`getTripMoreActions`, path `day-map`).
