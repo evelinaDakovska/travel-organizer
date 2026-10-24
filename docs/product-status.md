@@ -169,8 +169,9 @@ Not on any phone; it brings migration 012 (and 007–011 with it).
   inside a word (*Expense / s*), and the trip and dates above and below it are no longer cut short
   (*Lapland, F…*, *20–24 Nov …*). When something would not fit, the header's buttons move to a row
   of their own above the titles. Nothing changes at normal sizes. No schema or format change.
-- **Review:** everything from 0.7.4 to 0.16.2 has passed the owner's review (2026-10-23). It still
-  waits for verification on the phone, after the owner's trip.
+- **Review:** everything from 0.7.4 to 0.16.2 has passed the owner's review (2026-10-23), and
+  0.16.3 to 0.21.0 (Phases 4–8 with their corrections) on 2026-10-24. It all still waits for
+  verification on a phone: the husband's phone first, the owner's only after the trip.
 
 ### Built in 0.16.2 (settlement review holds, 3E correction) — on the branch `phase-3d1`, verified on emulators, not on a phone
 

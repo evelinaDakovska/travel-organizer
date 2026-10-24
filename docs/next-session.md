@@ -1,4 +1,4 @@
-# Next session — handoff (written 2026-10-24, after Phase 8 was built — every roadmap phase now built)
+# Next session — handoff (written 2026-10-24: every roadmap phase built and approved)
 
 Read `CLAUDE.md` first, then this file. It says where the work stands, what is waiting for the owner,
 and how to pick up the next task. The detailed history is in `docs/session-handoff.md` §11 and
@@ -8,45 +8,48 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
 
 | | |
 |---|---|
-| **Branch with the work** | `phase-3d1`, the 0.16.3 commit "Close Phase 3" (pushed to the personal GitHub remote) |
+| **Branch with the work** | `phase-3d1`, pushed to the personal GitHub remote (`origin`). Not merged. |
 | **`main`** | `46d256a` — 0.13.0, schema 6, backup format 7. **What the owner's phone runs.** |
-| **`phase-3d1` app** | **0.21.0**, versionCode 33 (Phase 8, the calendar export) |
+| **`phase-3d1` app** | **0.21.0**, versionCode 33 |
 | **Database schema** | 14 (migrations 007–014 exist only on `phase-3d1`; 014 rebuilds `trips`) |
 | **Backup / trip archive format** | 15 / row format 15 |
 | **Tests** | 1778 Node tests in 91 suites, `npx tsc --noEmit` clean |
-| **Phase 3 (3B → 3E)** | **Closed (2026-10-23).** Everything through 0.16.2 passed the owner's review, and the exit checks are in `MASTER_ROADMAP.md` §6.4, §7.5, §8.3 and §9.3. One item is open: the signed release rehearsal 0.13.0 → 0.16.x. |
+| **Roadmap Phases 1–8** | **All built and approved by the owner.** Phases 1–3 by 2026-10-23; Phases 4–8, with their review corrections (0.17.1, 0.18.1), on **2026-10-24**. No roadmap phase is left to build. |
+| **Verified on** | Emulators only, with synthetic data. **Nothing from 0.14.0 onwards has been on a phone.** |
 | **Phone** | Untouched. Holds a real trip on 0.13.0. |
-| **Phase 4** | **Built as 0.17.0** (`docs/phase4-plan.md`, D45), verified on emulators, **awaiting independent review**. Its product decisions P4-1…P4-8 were taken without stopping, at the owner's request; they are listed in the plan's §11 for review. |
-| **Phase 5** | **Built as 0.18.0** (`docs/phase5-plan.md`, D47): an offline drawing of each day's stops and a Google Maps hand-off, plus a coordinates field. No migration. Awaiting independent review; decisions P5-1…P5-6 in the plan's §9. |
-| **Phase 6** | **Built as 0.19.0** (`docs/phase6-plan.md`, D48): trips without dates, stored as NULL. Migration 014 rebuilds `trips` with foreign keys off; format 15. Emulator verified, including 13 → 14 on the device. Awaiting independent review; decisions P6-1…P6-13 in the plan's §2. |
-| **Phase 7** | **Built as 0.20.0** (`docs/phase7-plan.md`, D49): a shared Google Maps link becomes a place with name, address and coordinates when the link has them. A one-tap short-link lookup is the app's only request to Google. No migration. Emulator verified. Awaiting review; decisions P7-1…P7-8. |
-| **Phase 8** | **Built as 0.21.0** (`docs/phase8-plan.md`, D50): *Add to calendar*, an `.ics` file with exact time zones, stable UIDs, private by default, checked by Mozilla `ical.js` in tests. No migration. Emulator verified except importing into a calendar app (no account on the emulator). Awaiting review; decisions P8-1…P8-8. |
-| **Release APK** | None built for 0.16.1–0.21.0. The newest release APK is 0.16.0, at `%USERPROFILE%\.travel-organizer\`, and it predates the corrections. |
+| **Release APK** | None built for 0.16.1–0.21.0. The newest release APK is 0.16.0, at `%USERPROFILE%\.travel-organizer\`; it is out of date. |
 
-### What 0.16.x added after 0.16.0 (all reviewed)
+### What each approved phase added (detail in its plan, the decision log and `status.md`)
 
-- **0.16.1**
-  - **P2:** settlement and expense input is validated again in the repository (`validInput`).
-  - **P1:** in a currency with settlements, an unsplit cost must be split or *kept outside* on
-    purpose. This adds migration 010 (`unsplit_confirmations`) and plan §14.2.
-  - **Follow-up:** a financial edit ends a confirmation for good, even when undone (plan §14.4).
-- **0.16.2 — settlement review holds**, migration 011 (`settlement_reviews`), plan §15, D44.
-  - A shared cost leaving a currency with settlements is refused until the person continues.
-  - After that, the currency's suggestions are held until *Settlements still stand*.
-  - Every money write goes through `src/repositories/moneyWrites.ts` (`moneyBefore` /
-    `afterMoneyWrite`). **A new write path that changes a cost's money must call it.**
+| Phase | Version | What | Data change |
+|---|---|---|---|
+| 4 | 0.17.0, 0.17.1 | Currency conversion: a reporting currency, typed-in rates per currency pair, *charged* amounts; balances stay per currency (`phase4-plan.md`, D45, D46) | Migrations 012, 013; format 13 → 14 |
+| 5 | 0.18.0, 0.18.1 | The day map: an offline drawing of each day's stops, a Google Maps hand-off, a *Coordinates* field (`phase5-plan.md`, D47) | None |
+| 6 | 0.19.0 | Trips without dates, stored as NULL (`phase6-plan.md`, D48) | Migration 014 rebuilds `trips` with foreign keys off; format 15 |
+| 7 | 0.20.0 | A shared Google Maps link becomes a saved place; one `HEAD` request on a tap reads a short link's redirect (`phase7-plan.md`, D49) | None |
+| 8 | 0.21.0 | *Add to calendar*: an `.ics` file with exact `VTIMEZONE`s, stable UIDs, private by default (`phase8-plan.md`, D50) | None |
+
+### Not yet verified anywhere — left for the phone tests
+
+- **Phase 8:** importing the `.ics` file into a real calendar app (Google Calendar, Apple Calendar,
+  Outlook). Google Calendar on the emulator needs an account, and none may be signed in.
+- **Phase 7:** a cold start of the app by a share. The dev client cannot be cold-started by a share
+  (CLAUDE.md finding 8); it needs a release build.
+- **The upgrade path:** 0.13.0 → 0.21.0 as a signed release, running migrations 007–014 in one
+  start-up. Each migration was checked on the emulator on its own, never all at once.
 
 ## 2. The rules that still bind (owner, verbatim where quoted)
 
+Approving the phases did **not** lift any of these.
+
 - **Physical testing comes last, and is split (owner, 2026-10-23).** Phones only after the work is
-  done, independently reviewed and tested on emulators. Then:
+  done, independently reviewed and tested on emulators, which is now the case. Then:
   - **the owner's primary phone** (real trip, real data) gets **only risk-free changes until the trip
     has passed** ("we always defend the real data"). The risky changes go onto it **after the trip,
     not before**;
   - **the husband's phone** (the secondary phone, no real data) tests **all changes**.
 
   Each install still needs the owner's go-ahead (master roadmap §3.1).
-
 - "I have real data … those changes should be separated from main." **Do not merge `phase-3d1`
   into `main`** until the owner says so; the plan is after the owner's trip.
 - **The primary Samsung phone:**
@@ -54,11 +57,12 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
   - Never install on it, connect to it, uninstall from it, or clear its data.
   - Never `adb pull` personal files.
 - "Do not access, import, modify or migrate my real trip data or personal backups."
-- **Synthetic data, emulators only.**
+- **Synthetic data, emulators only**, unless the owner approves a session on the husband's phone.
 - **Signing, ids and the backend:** never change the signing key or the application id; never
   deploy backend infrastructure.
 - **Release APK:** do not build one without separate approval.
-- **Phases:** do not start a new phase until the owner asks for it. Finishing one is not permission to
+- **No Google account** may be signed in on an emulator.
+- **New work:** nothing starts until the owner asks for it. Finishing one task is not permission to
   start the next.
 - **Migrations:** never edit 001–014; add a new one, and only after explaining it and getting
   approval.
@@ -68,101 +72,95 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
 
 ## 3. Next tasks — none is started; each waits for the owner to ask
 
-In the likely order. Ask which one, rather than choosing.
+Ask which one, rather than choosing.
 
-0. **The owner's review of Phase 8 (0.21.0, since `7870acb`; `docs/phase8-plan.md` §2, §4)**, of Phase 7 (0.20.0, since `e2c826b`; `docs/phase7-plan.md` §3, §5) and of Phase 6 (0.19.0, since `5bceacb`; `docs/phase6-plan.md`, decisions §2,
-   as built §6)**, and of the Phase 5 review corrections (0.18.1, since `1226b05`; plan §11). These come
-   after the reviews of the Phase 4 corrections (0.17.1) and of Phase 5 (0.18.0), with the decisions in
-   `docs/phase5-plan.md` §9.
-1. **Bring 0.19.x to the phones, after the trip.** Every step needs the owner's go-ahead.
-   0.19.x carries migrations 007–014 (014 rebuilds `trips`), so it is **not** a risk-free change. It goes to **the husband's
-   phone first**. The primary phone gets it **only after the trip has passed**.
-   1. Build a **signed release** 0.16.x (needs approval). *Note:* this session's safety classifier
-      blocked switching `buildTypes.release` to the debug key (the §4 recipe). Ask the owner before
-      relying on that recipe again; a plain `assembleDebug` dev build works for UI checks.
-   2. Rehearse on an emulator: in-place release upgrade **0.13.0 → 0.19.x** over synthetic data
-      (migrations 007–014 in one start-up), with database snapshots compared before and after. This
-      is the master roadmap §19 checklist item still open for 0.16.1–0.16.3.
-   3. Install on the husband's phone (synthetic data) and test everything there.
-   4. For the primary phone, **after the trip**: the owner exports a backup first, then merge
-      `phase-3d1` into `main` and install only when the owner explicitly allows it.
-2. ~~Close Phase 3~~ — **done 2026-10-23** (0.16.3).
-3. ~~Phase 4~~ — **built 2026-10-23** (0.17.0), awaiting review (item 0). Phase 5 starts only when
-   the owner asks.
-4. **B1 — the feedback worker** deployment and security check, before any friends APK (master
-   roadmap §16.2). Off behind `FEATURE_FEEDBACK_ENABLED`.
-5. **Small known items**, not scheduled:
-   - ~~*Expense / s* at 360 dp and font 2.0~~ — fixed in 0.16.3: when a title would break inside a
-     word, `ScreenHeader` moves the actions to their own row above it (`breaksInsideWord`).
-   - ~~The trip line and dates cut short beside the header actions (*Lapland, F…*)~~ — fixed in
-     0.16.3 the same way: beside the actions they are laid out unlimited, and a trip line over two
-     lines or dates over one stack the header.
+1. **Bring 0.21.x to the phones.** Every step needs the owner's go-ahead. 0.21.x carries migrations
+   007–014 (014 rebuilds `trips`), so as a whole it is **not** a risk-free change.
+   1. Build a **signed release** 0.21.x (needs approval). *Note:* the safety classifier blocked
+      switching `buildTypes.release` to the debug key (the §4 recipe). Ask the owner before relying
+      on that recipe again; a plain `assembleDebug` dev build works for UI checks.
+   2. Rehearse on an emulator: an in-place release upgrade **0.13.0 → 0.21.x** over synthetic data
+      (migrations 007–014 in one start-up), with database snapshots compared before and after. This is
+      the open master roadmap §19 checklist item.
+   3. Install on **the husband's phone** (synthetic data) and test everything there, including the
+      items in §1 *Not yet verified anywhere*.
+   4. **The primary phone, after the trip:** the owner exports a backup first. Then merge
+      `phase-3d1` into `main`, and install only when the owner explicitly allows it.
+
+   **Before the trip, the primary phone may get only risk-free changes.** Nothing on `phase-3d1` is
+   ready to go there as-is. A risk-free update would be a separate build from `main` (0.13.x, schema
+   6) carrying only changes that touch no stored data. If the owner wants one, plan it first: list
+   the candidate changes and why each is risk-free.
+2. **B1 — the feedback worker** deployment and security check, before any friends APK (master
+   roadmap §16.2). Off behind `FEATURE_FEEDBACK_ENABLED`. Deploying needs the owner's approval.
+3. **Small known items**, not scheduled:
    - Phone-QA leftovers in `docs/status.md` *Final phone QA*.
-   - Accepted limits of 3E: plan §14.3 item 5 as superseded by §15, and §15.7 items 3 and 5.
+   - Accepted limits of 3E: `phase3e-plan.md` §14.3 item 5 as superseded by §15, and §15.7 items 3
+     and 5.
+   - Phase 8 limits: no reminders (`VALARM`), and to-dos are not exported (`phase8-plan.md` §4).
+4. **Beyond the roadmap:** the *Deferred* and *Discovery* items in CLAUDE.md §7 and
+   `MASTER_ROADMAP.md` §17. None is authorised; each needs the owner's decision first.
 
 ## 4. How the work was verified — recipes, since the helper scripts were temporary
 
-The emulator helpers (`dev.sh`, `pull.sh`, `ui.js`, `dbdiff.js`, `make-trips.ts`, `make-holds.ts`)
-were in a session scratchpad and are probably gone. The essentials:
+The emulator helpers were in a session scratchpad and are probably gone. The essentials:
 
 - **AVD:** `TO_2B_Test`, at `%LOCALAPPDATA%\Android\Sdk\emulator\emulator.exe -avd TO_2B_Test
-  -no-snapshot-save`. Since 2026-10-23 it holds the **debug variant** of 0.16.3 (`assembleDebug`, needs Metro: `npx expo
-  start --dev-client --offline` plus `adb reverse tcp:8081 tcp:8081`), over the same synthetic trips (*3E Family*, *3E Hotel
-  deposit*, *3E Review holds*, …). Check `adb devices` first: only `emulator-5554` may be listed.
+  -no-snapshot-save`. It holds the **debug variant** of 0.21.0, which needs Metro: `npx expo start
+  --dev-client --offline` plus `adb reverse tcp:8081 tcp:8081`. Relaunch the dev client with
+  `exp+travel-organizer://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081`. Check
+  `adb devices` first: only `emulator-5554` may be listed. A stale Metro may hold port 8081; stop it
+  with PowerShell `Stop-Process`.
+- **Synthetic trips on it:** *E2E Lapland* (with *Arktikum*, *Кладбище финка* and *Breakfast at the
+  cafe*), *P6 Japan someday* (undated), *3E Family*, *3E Hotel deposit*, *3E Review holds*, and others.
 - **Debug-signed test build:** in `android/app/build.gradle` (gitignored), in `buildTypes.release`:
   1. Replace the `signingConfig …` line with `signingConfig signingConfigs.debug // E2E-INJECT`.
   2. Add `debuggable true // E2E-INJECT`.
   3. Run `cd android && ./gradlew assembleRelease`.
   4. Verify the signer with `apksigner verify --print-certs`: it must be *Android Debug*
      (`fac61745…`).
-  5. Restore the file afterwards: 0 `E2E-INJECT` lines, versionCode 25 / 0.16.2.
+  5. Restore the file afterwards: 0 `E2E-INJECT` lines.
 
   Adding only `debuggable true` gives a debuggable APK signed with the **release** key. Never do
-  that.
+  that. See the classifier note in §3 item 1.1.
 - **Database before and after:** `adb -s emulator-5554 exec-out run-as com.evelinadakovska.travelorganizer
   cat files/SQLite/travel-organizer.db > x.db` (and the `-wal` file). Compare table by table with
   better-sqlite3 (`SELECT * … ORDER BY rowid` per table), and check `PRAGMA integrity_check` and
   `foreign_key_check`.
+- **Rehearsing a migration after Metro already applied it:** rebuild the older schema from the pulled
+  database (drop what the migration added, set `user_version`), put it back with `run-as cp`, and
+  start the app.
 - **Synthetic trips:** build them with the app's own `buildTripArchive` + `packTripArchive`
-  (`src/domain/tripArchive.ts`). Run under Node with `@babel/preset-typescript`, `adb push` to
-  `/sdcard/Download`, then use *Backup & restore › Import a trip*.
+  (`src/domain/tripArchive.ts`). Run under Node with `@babel/preset-typescript` and
+  `NODE_PATH=C:/dev/travel-organizer/node_modules`, `adb push` to `/sdcard/Download`, then use
+  *Backup & restore › Import a trip*.
 - **UI driving:** `uiautomator dump` plus `input tap`. Alert buttons read in capitals (*DELETE*,
-  *CONTINUE*). At font 2.0, Home is long: search for a trip downward, with short swipes.
+  *CONTINUE*). At font 2.0, Home is long: search for a trip downward, with short swipes. The dev
+  menu's *Tools button* switch hides the floating gear that covers *Add*.
 - **Display checks:** `wm density 569` (360 dp on the 1280 px AVD), `settings put system font_scale
   2.0`, `cmd uimode night yes`. Reset all three afterwards.
 - **Typed routes:** a new route file needs `.expo/types/router.d.ts` regenerated. Start
   `npx expo start --offline` briefly, then stop it.
-- **Bash heredocs containing backticks fail** in this environment. Write scripts with the Write tool.
-- Phase 8: `%USERPROFILE%\Pictures\TravelOrganizer-0.21.0-P8-e2e\E2E-LOG.md`. The exported file is in the
-  app's cache (`run-as … cat cache/<trip>-calendar.ics`). Google Calendar on the emulator asks for an
-  account: do not sign in; import on the husband's phone instead.
-- Phase 7: `%USERPROFILE%\Pictures\TravelOrganizer-0.20.0-P7-e2e\E2E-LOG.md`. Share from Google Maps on the
-  emulator: open a place with `am start -a VIEW -d "'geo:0,0?q=…'" -p com.google.android.apps.maps`,
-  then tap *Share*, then *Travel Organizer*, with the dev client already running. Saved places
-  *Arktikum* and *Кладбище финка* are on E2E Lapland.
-- Phase 6: `%USERPROFILE%\Pictures\TravelOrganizer-0.19.0-P6-e2e\E2E-LOG.md`. The emulator now holds
-  the synthetic undated trip *P6 Japan someday*. Its database was copied before and after the first
-  0.19.0 launch, and `dbdiff.js` showed 23/23 tables identical. Run scratch scripts with Windows-style
-  paths (`C:/Users/...`) when `MSYS_NO_PATHCONV=1` is set, or node cannot find them.
-- Phase 5 corrections: `%USERPROFILE%\Pictures\TravelOrganizer-0.18.1-P5-review-e2e\E2E-LOG.md`. The emulator now
-  holds a synthetic *Breakfast at the cafe* on E2E Lapland, Tue 24 Nov 09:00.
-- Phase 5: `%USERPROFILE%\Pictures\TravelOrganizer-0.18.0-P5-e2e\E2E-LOG.md`. Deep links do not route in the
-  dev client; use the Timeline's *Map* or Overview › More.
-- Phase 4: `%USERPROFILE%\Pictures\TravelOrganizer-0.17.0-P4-e2e\E2E-LOG.md`. To rehearse a migration
-  on the device after Metro has already applied it, rebuild the older schema from the pulled database
-  (drop what the migration added, set `user_version`), put it back with `run-as cp`, and start the app.
-  The dev menu's *Tools button* switch hides the floating gear that covers *Add*.
-- 0.16.3 header check: `%USERPROFILE%\Pictures\TravelOrganizer-0.16.3-header-e2e\E2E-LOG.md`.
-- Evidence from the last rounds: `%USERPROFILE%\Pictures\TravelOrganizer-0.16.1-review-e2e\` and
-  `…-0.16.2-holds-e2e\` (`E2E-LOG.md` and screenshots).
+- **Shell quirks:** Bash heredocs containing backticks fail; write scripts with the Write tool. With
+  `MSYS_NO_PATHCONV=1` set, give node Windows-style paths (`C:/Users/...`).
+- **Sharing from Google Maps (Phase 7):** open a place with `am start -a VIEW -d "'geo:0,0?q=…'" -p
+  com.google.android.apps.maps`, tap *Share*, then *Travel Organizer*, with the dev client already
+  running.
+- **The calendar file (Phase 8):** it is in the app's cache (`run-as … cat cache/<trip>-calendar.ics`).
+- **Deep links** do not route in the dev client; use the Timeline's *Map* or Overview › More.
+- **Evidence, one folder per round** under `%USERPROFILE%\Pictures\`, each with an `E2E-LOG.md`:
+  `TravelOrganizer-0.21.0-P8-e2e`, `…-0.20.0-P7-e2e`, `…-0.19.0-P6-e2e`, `…-0.18.1-P5-review-e2e`,
+  `…-0.18.0-P5-e2e`, `…-0.17.0-P4-e2e`, `…-0.16.3-header-e2e`, `…-0.16.2-holds-e2e`,
+  `…-0.16.1-review-e2e`.
 
 ## 5. Where to read more
 
 | For | Read |
 |---|---|
-| 3E design, corrections and as-built | `docs/phase3e-plan.md` §13–§15 |
-| Why | `docs/decision-log.md` D42–D44 |
-| Schema, queries, formats | `docs/technical-reference.md` §23, §23.1, §23.2 |
 | Task-by-task state | `docs/status.md` (wins if anything disagrees) |
-| The long-term plan and exit gates | `docs/MASTER_ROADMAP.md` (§9 3E, §10 Phase 4, §19 checklist) |
+| What a tester can use, and where it was verified | `docs/product-status.md` |
+| Each phase's decisions and as-built | `docs/phase4-plan.md` … `docs/phase8-plan.md` |
+| Why | `docs/decision-log.md` D45–D50 |
+| Schema, queries, formats | `docs/technical-reference.md` §23–§28 |
+| The long-term plan, exit gates, the release checklist | `docs/MASTER_ROADMAP.md` (§10–§14 Phases 4–8, §16 beta, §19 checklist) |
 | How the owner works, the machine | `docs/session-handoff.md` §6–§9 |

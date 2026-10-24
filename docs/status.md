@@ -651,14 +651,14 @@ only when the owner asks.
   - a partial total is labelled as one;
   - charged amounts are kept as recorded and said to be not counted.
 
-  Emulator: 12 → 13 on the device. Awaiting independent review ([`phase4-plan.md`](phase4-plan.md)
+  Emulator: 12 → 13 on the device. Approved by the owner (2026-10-24) ([`phase4-plan.md`](phase4-plan.md)
   §13, D45, D46) | ✅ |
 | **P5** | The day map — each day's stops in order: where you wake and sleep, journeys as a departure and an arrival, equal places merged; date-only and place-less plans listed apart. An offline drawing of the stops with coordinates (numbered, straight dashed lines, *not the way*), and the day handed to Google Maps in parts of up to five stops (Any / Driving / Walking). A *Coordinates* field on plans. No migration, no format change. **0.18.0 on `phase-3d1`**, Node tests, emulator E2E incl. the Google Maps app receiving the stops; on no phone. **Review corrections, 0.18.1:**
   - a journey's coordinates are put on neither end;
   - no line crosses a stop without coordinates;
   - the day opens where you woke up even around a timed check-out.
 
-  Awaiting independent review ([`phase5-plan.md`](phase5-plan.md) §11, D47) | ✅ |
+  Approved by the owner (2026-10-24) ([`phase5-plan.md`](phase5-plan.md) §11, D47) | ✅ |
 | **P6** | Trips without fixed dates. A trip is dated or undated, never half; undated is stored as NULL.
   - Migration 014 rebuilds `trips` with foreign keys off; backup/archive format 15.
   - Home gets a *Dates not set* group, and the Overview says *Dates not set*.
@@ -667,7 +667,7 @@ only when the owner asks.
   - Setting or removing dates moves nothing.
 
   **0.19.0 on `phase-3d1`**: 1743 Node tests. Emulator E2E with migration 014 on the device: 23/23
-  tables identical. On no phone. Awaiting independent review ([`phase6-plan.md`](phase6-plan.md), D48) | ✅ |
+  tables identical. On no phone. Approved by the owner (2026-10-24) ([`phase6-plan.md`](phase6-plan.md), D48) | ✅ |
 | **P7** | Google Maps place import. A shared Maps link becomes a saved place, with what the URL states: the name, the address, and the place's own coordinates when present (never the viewport).
   - A short link is opened by one `HEAD` request on a tap, reading only where it redirects.
   - The fields are editable before saving.
@@ -676,7 +676,7 @@ only when the owner asks.
   - A Maps link pasted into *Coordinates* becomes the pair.
 
   No migration. **0.20.0 on `phase-3d1`**: 1761 Node tests. Emulator E2E sharing from Google Maps;
-  on no phone. Awaiting independent review ([`phase7-plan.md`](phase7-plan.md), D49) | ✅ |
+  on no phone. Approved by the owner (2026-10-24) ([`phase7-plan.md`](phase7-plan.md), D49) | ✅ |
 | **P8** | Calendar export (.ics), Overview › More › *Add to calendar*: the chosen plans as a one-time file for the share sheet.
   - Stays and car rentals become their two ends; date-only plans become all-day events; no invented
     ends.
@@ -685,7 +685,7 @@ only when the owner asks.
 
   No migration. **0.21.0 on `phase-3d1`**: 1778 Node tests, each file checked by Mozilla `ical.js`.
   Emulator E2E (the file from the device checked). Not imported into a calendar app, since the
-  emulator has no Google account. On no phone. Awaiting independent review
+  emulator has no Google account. On no phone. Approved by the owner (2026-10-24)
   ([`phase8-plan.md`](phase8-plan.md), D50) | ✅ |
 | **B1** | **Pre-beta: feedback deployment and security verification** (owner, 2026-10-20; `MASTER_ROADMAP.md` §16.2). Before the first friends APK, not in 3C: secure HTTPS endpoint, server-side secrets only, input validation and rate limiting, abuse protection and cost limits, no trip data sent automatically, draft cleared only after confirmed server acceptance, a real end-to-end delivery test with the owner's approval. The form stays off until then. Nothing deployed and no test email sent — waits for approval | ⬜ |
 
