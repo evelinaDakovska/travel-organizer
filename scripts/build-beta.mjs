@@ -58,7 +58,9 @@ export function inspectApk(apk) {
 
 function main() {
   run('npx', ['expo', 'prebuild', '--platform', 'android', '--clean', '--no-install'], { cwd: root });
-  run(windows ? 'gradlew.bat' : './gradlew', ['assembleRelease'], { cwd: join(root, 'android') });
+  // A full path: Windows may be set not to run programs from the current directory.
+  const android = join(root, 'android');
+  run(join(android, windows ? 'gradlew.bat' : 'gradlew'), ['assembleRelease'], { cwd: android });
 
   const apk = join(root, 'android', 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk');
   if (!existsSync(apk)) throw new Error(`No APK at ${apk}`);
