@@ -269,6 +269,20 @@ describe('the build and install guards', () => {
     expect(guard.betaInstallArgs('/x', { replace: true })).toContain(BETA);
   });
 
+  it('replaces an installed Beta only when --replace was given, and otherwise refuses any replacement', () => {
+    expect(guard.installPlan({ betaInstalled: true, replaceAuthorised: false }, '/x')).toEqual({
+      ok: false,
+      reason: expect.stringMatching(/already installed/),
+    });
+    expect(guard.installPlan({ betaInstalled: true, replaceAuthorised: true }, '/x').args).toContain('-r');
+    // Not installed: -R even with --replace, so Android refuses to replace whatever it finds.
+    for (const replaceAuthorised of [false, true]) {
+      const plan = guard.installPlan({ betaInstalled: false, replaceAuthorised }, '/x');
+      expect(plan.args).toContain('-R');
+      expect(plan.args).not.toContain('-r');
+    }
+  });
+
   it('no script installs, uninstalls or clears by any package but Beta', () => {
     const scripts = ['build-beta.mjs', 'install-beta.mjs', 'beta-guard.js'].map((name) =>
       readFileSync(join(root, 'scripts', name), 'utf8'),

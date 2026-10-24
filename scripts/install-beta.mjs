@@ -68,9 +68,9 @@ function main() {
   const stableBefore = packageState(guard.STABLE_PACKAGE);
   console.log('Stable before:', stableBefore);
   const betaBefore = packageState(guard.BETA_PACKAGE);
-  if (betaBefore && !replace) fail('Beta is already installed. Pass --replace to update Beta itself.');
-
-  const install = guard.betaInstallArgs(DEVICE_PATH, { replace: Boolean(betaBefore) });
+  const plan = guard.installPlan({ betaInstalled: Boolean(betaBefore), replaceAuthorised: replace }, DEVICE_PATH);
+  if (!plan.ok) fail(plan.reason);
+  const install = plan.args;
   if (dryRun) {
     console.log(`\nDry run. Would run:\n  adb -s ${serial} push "${apk}" ${DEVICE_PATH}`);
     console.log(`  adb -s ${serial} ${install.join(' ')}\n  adb -s ${serial} shell rm ${DEVICE_PATH}`);

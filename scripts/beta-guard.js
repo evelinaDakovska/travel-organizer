@@ -85,6 +85,17 @@ function betaInstallArgs(devicePath, { replace = false } = {}) {
   return ['shell', 'pm', 'install', replace ? '-r' : '-R', '--user', '0', '--pkg', BETA_PACKAGE, devicePath];
 }
 
+/**
+ * Whether to install, and how: an installed Beta is replaced only when the person passed --replace;
+ * otherwise `-R`, so Android itself refuses to replace anything (`pm install` replaces by default).
+ */
+function installPlan({ betaInstalled, replaceAuthorised }, devicePath) {
+  if (betaInstalled && !replaceAuthorised) {
+    return { ok: false, reason: 'Beta is already installed. Pass --replace to update Beta itself.' };
+  }
+  return { ok: true, args: betaInstallArgs(devicePath, { replace: betaInstalled }) };
+}
+
 module.exports = {
   STABLE_PACKAGE,
   BETA_PACKAGE,
@@ -96,4 +107,5 @@ module.exports = {
   parsePackageState,
   stableChanges,
   betaInstallArgs,
+  installPlan,
 };
