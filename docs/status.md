@@ -22,12 +22,9 @@ Verified against the repo on 2026-10-20, on Windows: **1153 tests passing across
 >   Before it, **0.7.3** (versionCode 13) was the first **friends-only beta**
 >   (`release/TravelOrganizer-0.7.3-beta.apk`, gitignored), tested by friends on a second, smaller
 >   Android phone; their feedback became Phase 1.
-> - **On the owner's phone: not recorded.** A pre-update phone backup was taken on 2026-10-14
->   (`backups/`, gitignored), 0.7.1 was bumped "for in-place device update" that day, and the
->   0.7.2 Overview, traveller-picker and Places changes are reported as checked on the S26 Ultra —
->   so the phone holds **0.7.1 or later**. Confirm with the owner (with permission:
->   `adb shell dumpsys package com.evelinadakovska.travelorganizer | grep versionName`) before
->   rehearsing any update.
+> - **On the owner's phone: 0.7.2, versionCode 12** — read on the device on 2026-10-24 (see
+>   [*Stable on the owner's phone*](#stable-on-the-owners-phone-verified-2026-10-24)). Schema
+>   inferred 5; its eventual upgrade runs migrations 006–014.
 > - **Next: the roadmap** ([`roadmap.md`](roadmap.md), section *P* below). Phase 1 (0.7.4), 2B-0
 >   (0.8.0), 2B (0.9.0), 2C (0.10.0), 2D (0.11.0) and 3B (0.12.0) are done and wait for the owner's
 >   review. **3C is built as 0.13.0** (adult/child pricing, backup format 7, no migration —
@@ -1105,6 +1102,25 @@ A task is not done until it is **committed and ticked here**. The conversation d
 compaction; this file does.
 
 ---
+
+## Stable on the owner's phone (verified 2026-10-24)
+
+Read-only, with the owner's permission (Checkpoint A of the Beta work, `docs/beta-variant.md`). Only
+package metadata was read and only the app's `base.apk` was copied; no app data, database, file or
+backup was read, and nothing on the phone was changed.
+
+| | |
+|---|---|
+| Device | Samsung **SM-S948B** (Galaxy S26 Ultra), serial `R5GL22FE9QY`, Android 17 (API 37), build `CP2A.260605.016.S948BXXS4BZIG`, patch 2026-10-05 |
+| Android users | 0 (personal), 10 (Work profile), 150 (Secure Folder). Stable is installed for **user 0 only** |
+| Stable | `com.evelinadakovska.travelorganizer`, **0.7.2, versionCode 12** (commit `5f7f013`), enabled. First installed 2026-09-18 21:29:43, last updated 2026-10-16 20:45:20, sideloaded (no installer) |
+| Signing | Installed `base.apk` verified with `apksigner`: certificate SHA-256 **`638dc686bdb7e5e6ce645935c020b5c4e36f14a3937cc0e617831268b45235e7`**, `CN=Travel Organizer, O=Personal, C=BG` — the release key. APK SHA-256 `8c539f7af702d692b213d4b4b92682a11f0dc2ed46ebbd67387c520a3cf1d6b5` |
+| Schema | **Inferred 5** (0.7.2 ships migrations 001–005); the database was not read |
+| Backup | The owner's pre-test backup was made by 0.7.2: **format 5** (expected; not opened). 0.7.2 has no single-trip export |
+| Beta package | `com.evelinadakovska.travelorganizer.beta` not installed |
+
+**Consequences:** earlier docs said the phone ran 0.13.0 (schema 6). The real upgrade is
+**0.7.2 → latest, migrations 006–014**, and its rehearsal starts from the 0.7.2 APK.
 
 ## Final phone QA
 

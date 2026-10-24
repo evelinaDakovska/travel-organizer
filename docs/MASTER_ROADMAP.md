@@ -51,6 +51,7 @@ Ideas are never removed just to make documents consistent; they move between sta
      - **the secondary phone** (the owner's husband's, no real data) tests **all changes**, including migrations and anything not risk-free.
 
      Each install still needs the owner's explicit go-ahead.
+   - **Beta exception (owner, 24 October 2026), strict scope:** on the primary phone, read-only inspection and — each time with the owner's explicit go-ahead — installing and testing the separate app **`com.evelinadakovska.travelorganizer.beta`** (*Travel Organizer Beta*) with synthetic data, for the personal profile (user 0) only. It does not permit updating, reinstalling, migrating, clearing, uninstalling or otherwise modifying the stable app `com.evelinadakovska.travelorganizer`, or touching the Work profile or Secure Folder. Procedure and guards: `docs/beta-variant.md`. The phone's stable app was verified on 24 October 2026 as **0.7.2 (versionCode 12)**, release-signed, schema inferred 5 (`status.md`).
 2. Use **synthetic fixtures on Android emulators** for development and destructive tests. Avoid opening or altering unidentified archive files, even on emulators.
 3. Preserve existing trip IDs, participants, travellers, prices, payment semantics, receipts, attachments and document references unless the owner explicitly changes them.
 4. Prefer additive SQLite migrations, versioned backups and transactional writes. Rehearse upgrade/restore on synthetic databases representing older schema and backup formats. A backup is not proven safe until a restore is tested.

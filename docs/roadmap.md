@@ -32,6 +32,11 @@ during the owner's trip needs no migration. The phone's eventual install runs 00
 everything built through 0.16.2 has passed the owner's review. Phase 3 is closed. One step is still
 open: the signed release rehearsal of 0.13.0 → 0.16.x, done before the phone install after the trip.
 
+**Correction (2026-10-24):** the phone was read on the device and runs **0.7.2** (versionCode 12,
+schema inferred 5), not 0.13.0. Its eventual install runs migrations **006–014**, and the rehearsal
+starts from 0.7.2 (`status.md` *Stable on the owner's phone*). New features are tested on that phone
+in the separate **Travel Organizer Beta** app (`docs/beta-variant.md`), never by updating Stable.
+
 **Data safety holds for every phase.** The rules: master §3, CLAUDE.md §9 and `phase3-plan.md` §15
 *11*. In short:
 - Never uninstall the app from the owner's primary phone or clear its data.

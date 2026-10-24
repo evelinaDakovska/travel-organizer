@@ -25,6 +25,7 @@ what is still open, and the conventions to follow.
 | `docs/phase3-plan.md` | Roadmap Phase 3 (travellers, pricing, shared expenses): the 3A audit, the owner's decisions (§15), 3B as built (0.12.0), the starting point for 3D-1 |
 | `docs/ai-activities-format.md` | **The public activities JSON format** (v1) for AI assistants and tools — schema in `docs/schema/` |
 | `docs/decision-log.md` | *Why* things were decided. Rationale only — no authoritative detail |
+| `docs/beta-variant.md` | **Travel Organizer Beta**: the separate app beside Stable — identity, isolation, build and install procedure |
 | `docs/windows-handoff.md` | **Continuing on Windows** — read this instead of `dev-setup.md` there |
 | `docs/dev-setup.md` | Machine setup for the macOS machine it was started on |
 | `docs/original-spec.md` | The original brief. Historical; superseded where this file disagrees |
@@ -282,6 +283,15 @@ Full list with per-dependency rationale in `docs/technical-reference.md` §8.
   review and emulator testing: the primary phone (real trip) gets **only risk-free changes until
   the trip has passed**, and the risky ones after it, never before; the secondary phone (the
   owner's husband's, no real data) tests **all changes** (owner, 2026-10-23).
+- **The primary phone runs Stable 0.7.2 (versionCode 12)**, not 0.13.0 — read on the device on
+  2026-10-24; schema inferred 5. Its eventual upgrade runs migrations **006–014**.
+- **Beta exception (owner, 2026-10-24):** the separate app **`com.evelinadakovska.travelorganizer.beta`**
+  (*Travel Organizer Beta*, `docs/beta-variant.md`) may be inspected read-only on the primary phone and,
+  each time with the owner's explicit go-ahead, installed and tested there with synthetic data, for
+  **user 0 only**. Stable (`com.evelinadakovska.travelorganizer`) is never updated, reinstalled,
+  migrated, cleared or uninstalled under it; the Work profile (user 10) and Secure Folder (user 150)
+  are never touched. Build Beta only with `scripts/build-beta.mjs`, install only with
+  `scripts/install-beta.mjs`.
 - Offline access to stored documents is a **core requirement**, not a nice-to-have.
 - **Network requests**: the app talks to no backend. Since Phase 7 (0.20.0) one tap, *Look up
   address and coordinates* on a shared Google Maps short link, sends a single `HEAD` request to

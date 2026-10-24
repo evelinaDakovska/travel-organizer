@@ -9,14 +9,15 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
 | | |
 |---|---|
 | **Branch with the work** | `phase-3d1`, pushed to the personal GitHub remote (`origin`). Not merged. |
-| **`main`** | `46d256a` — 0.13.0, schema 6, backup format 7. **What the owner's phone runs.** |
+| **`main`** | `46d256a` — 0.13.0, schema 6, backup format 7. **Not** what the owner's phone runs (see *Phone*). |
 | **`phase-3d1` app** | **0.21.0**, versionCode 33 |
 | **Database schema** | 14 (migrations 007–014 exist only on `phase-3d1`; 014 rebuilds `trips`) |
 | **Backup / trip archive format** | 15 / row format 15 |
 | **Tests** | 1778 Node tests in 91 suites, `npx tsc --noEmit` clean |
 | **Roadmap Phases 1–8** | **All built and approved by the owner.** Phases 1–3 by 2026-10-23; Phases 4–8, with their review corrections (0.17.1, 0.18.1), on **2026-10-24**. No roadmap phase is left to build. |
 | **Verified on** | Emulators only, with synthetic data. **Nothing from 0.14.0 onwards has been on a phone.** |
-| **Phone** | Untouched. Holds a real trip on 0.13.0. |
+| **Phone** | **Stable is 0.7.2, versionCode 12** (`5f7f013`), read on the device on 2026-10-24 — not 0.13.0 as earlier docs said. Schema **inferred 5** (0.7.2 ships 001–005; the database was not read). Backup format 5; no single-trip export (that came in 0.9.0). Untouched. Holds a real trip. Detail: `status.md` *Stable on the owner's phone*. |
+| **Beta** | `com.evelinadakovska.travelorganizer.beta`, *Travel Organizer Beta*, a separate app beside Stable (`docs/beta-variant.md`). Implemented, **not built, not installed**. |
 | **Release APK** | None built for 0.16.1–0.21.0. The newest release APK is 0.16.0, at `%USERPROFILE%\.travel-organizer\`; it is out of date. |
 
 ### What each approved phase added (detail in its plan, the decision log and `status.md`)
@@ -35,8 +36,10 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
   Outlook). Google Calendar on the emulator needs an account, and none may be signed in.
 - **Phase 7:** a cold start of the app by a share. The dev client cannot be cold-started by a share
   (CLAUDE.md finding 8); it needs a release build.
-- **The upgrade path:** 0.13.0 → 0.21.0 as a signed release, running migrations 007–014 in one
-  start-up. Each migration was checked on the emulator on its own, never all at once.
+- **The upgrade path:** **0.7.2 → 0.21.x** as a signed release, running migrations **006–014** in one
+  start-up (the phone is on 0.7.2, schema 5 inferred). Each migration was checked on the emulator on
+  its own, never all at once. The rehearsal starts from the authentic 0.7.2 APK, whose certificate was
+  verified on 2026-10-24 (`status.md` *Stable on the owner's phone*).
 
 ## 2. The rules that still bind (owner, verbatim where quoted)
 
@@ -50,9 +53,15 @@ Approving the phases did **not** lift any of these.
   - **the husband's phone** (the secondary phone, no real data) tests **all changes**.
 
   Each install still needs the owner's go-ahead (master roadmap §3.1).
+- **Beta exception (owner, 2026-10-24), strict scope:** on the primary phone, read-only inspection
+  and — each time with the owner's explicit go-ahead — installing and testing the separate
+  **`com.evelinadakovska.travelorganizer.beta`** app with synthetic data, for **user 0 only**. It
+  does **not** permit updating, reinstalling, migrating, clearing, uninstalling or otherwise touching
+  Stable (`com.evelinadakovska.travelorganizer`), nor touching the Work profile (user 10) or Secure
+  Folder (user 150). Procedure: `docs/beta-variant.md`.
 - "I have real data … those changes should be separated from main." **Do not merge `phase-3d1`
   into `main`** until the owner says so; the plan is after the owner's trip.
-- **The primary Samsung phone:**
+- **The primary Samsung phone** (except the Beta exception above):
   - "Do not touch my primary Samsung phone."
   - Never install on it, connect to it, uninstall from it, or clear its data.
   - Never `adb pull` personal files.
@@ -79,17 +88,20 @@ Ask which one, rather than choosing.
    1. Build a **signed release** 0.21.x (needs approval). *Note:* the safety classifier blocked
       switching `buildTypes.release` to the debug key (the §4 recipe). Ask the owner before relying
       on that recipe again; a plain `assembleDebug` dev build works for UI checks.
-   2. Rehearse on an emulator: an in-place release upgrade **0.13.0 → 0.21.x** over synthetic data
-      (migrations 007–014 in one start-up), with database snapshots compared before and after. This is
-      the open master roadmap §19 checklist item.
+   2. Rehearse on an emulator: an in-place release upgrade **0.7.2 → 0.21.x** over synthetic data
+      (migrations **006–014** in one start-up), with database snapshots compared before and after. This
+      is the open master roadmap §19 checklist item. Start from the authentic 0.7.2 APK (certificate
+      `638dc686…`, verified on the device 2026-10-24).
    3. Install on **the husband's phone** (synthetic data) and test everything there, including the
       items in §1 *Not yet verified anywhere*.
    4. **The primary phone, after the trip:** the owner exports a backup first. Then merge
       `phase-3d1` into `main`, and install only when the owner explicitly allows it.
 
    **Before the trip, the primary phone may get only risk-free changes.** Nothing on `phase-3d1` is
-   ready to go there as-is. A risk-free update would be a separate build from `main` (0.13.x, schema
-   6) carrying only changes that touch no stored data. If the owner wants one, plan it first: list
+   ready to go there as-is. A risk-free update of Stable would be a separate build carrying only
+   changes that touch no stored data — and note the phone is on 0.7.2, so even `main` (0.13.0) would
+   run migration 006. The separate Beta app (Beta exception, §2) is how the new features are tested
+   on that phone instead. If the owner wants one, plan it first: list
    the candidate changes and why each is risk-free.
 2. **B1 — the feedback worker** deployment and security check, before any friends APK (master
    roadmap §16.2). Off behind `FEATURE_FEEDBACK_ENABLED`. Deploying needs the owner's approval.
