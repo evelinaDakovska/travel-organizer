@@ -1,7 +1,7 @@
 /**
  * The phone side of the activities format (2C): picking a file and reading it as text, and writing
- * an export or the schema to the cache for the share sheet. Every rule lives in
- * `domain/activityFormat`; this file only moves text.
+ * an export or the schema to the cache for the share sheet — and the calendar file (Phase 8). Every
+ * rule lives in `domain/activityFormat` and `domain/ics`; this file only moves text.
  */
 
 import * as DocumentPicker from 'expo-document-picker';

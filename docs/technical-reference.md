@@ -2090,3 +2090,39 @@ Coordinates (`CoordinatesInput`) and the duplicate notice. A lookup fills only e
 
 **`CoordinatesInput`** turns text starting with `http(s):` or `geo:` that `parseMapsLink` reads
 coordinates from into the pair.
+
+---
+
+## 28. The calendar export (Phase 8, 0.21.0)
+
+Plan and decisions: `docs/phase8-plan.md` (P8-1…P8-8); rationale D50.
+
+**Events (`calendarEvents`).** Plans that are dated, not cancelled and not to-dos (`isCalendarItem`):
+
+| Plan | Events |
+|---|---|
+| stay or car rental over more than one day | `start` and `end` entries from `timelineEntries`, each a point event titled `<entryRoleLabel> · <title>` |
+| anything else | one event from `start` to `end` |
+| timed, no end | `DTSTART` only (no `DTEND`, no `DURATION`) |
+| date-only | `VALUE=DATE`; `DTEND` = last day + 1 |
+| timed start, date-only end | `DTSTART` only (value types must match) |
+
+- **UID:** `<item id>[-start|-end]@travel-organizer.app`. `SEQUENCE` is the minutes since 2020-01-01
+  at `updatedAt`. `LAST-MODIFIED` is `updatedAt`, and `DTSTAMP` the export time.
+- **Text:**
+  - `LOCATION` is the journey route (always), else the place name and address (*Places*).
+  - `GEO` (*Places*).
+  - `DESCRIPTION` holds the reference, *Who:*, notes and links, each only when its option is on.
+
+**Zones.**
+- Timed values are written `TZID=<IANA>:YYYYMMDDTHHMMSS`, the stored wall clock unconverted.
+- Each zone used gets a `VTIMEZONE` covering the events' years plus one either side.
+- Each `VTIMEZONE` has an opening observance, then one observance per offset change found by
+  `offsetTransitions`. The change's `DTSTART` is local time in the old offset (§3.6.5); `DAYLIGHT`
+  when the offset rises.
+
+**Text rules.** CRLF; `escapeText` (`\\ \; \, \n`); `foldLine` at 75 octets without splitting a
+code point. `VERSION:2.0`, `PRODID`, `CALSCALE:GREGORIAN`, `METHOD:PUBLISH`, `X-WR-CALNAME`.
+
+**Tests.** `ics.test.ts` parses every built file with `ical.js` (dev dependency only), registering the
+file's own `VTIMEZONE`s, and compares instants with `toInstant`.

@@ -1,4 +1,4 @@
-# Next session — handoff (written 2026-10-23, after Phase 7 was built)
+# Next session — handoff (written 2026-10-24, after Phase 8 was built — every roadmap phase now built)
 
 Read `CLAUDE.md` first, then this file. It says where the work stands, what is waiting for the owner,
 and how to pick up the next task. The detailed history is in `docs/session-handoff.md` §11 and
@@ -10,17 +10,18 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
 |---|---|
 | **Branch with the work** | `phase-3d1`, the 0.16.3 commit "Close Phase 3" (pushed to the personal GitHub remote) |
 | **`main`** | `46d256a` — 0.13.0, schema 6, backup format 7. **What the owner's phone runs.** |
-| **`phase-3d1` app** | **0.20.0**, versionCode 32 (Phase 7, Google Maps share links) |
+| **`phase-3d1` app** | **0.21.0**, versionCode 33 (Phase 8, the calendar export) |
 | **Database schema** | 14 (migrations 007–014 exist only on `phase-3d1`; 014 rebuilds `trips`) |
 | **Backup / trip archive format** | 15 / row format 15 |
-| **Tests** | 1761 Node tests in 90 suites, `npx tsc --noEmit` clean |
+| **Tests** | 1778 Node tests in 91 suites, `npx tsc --noEmit` clean |
 | **Phase 3 (3B → 3E)** | **Closed (2026-10-23).** Everything through 0.16.2 passed the owner's review, and the exit checks are in `MASTER_ROADMAP.md` §6.4, §7.5, §8.3 and §9.3. One item is open: the signed release rehearsal 0.13.0 → 0.16.x. |
 | **Phone** | Untouched. Holds a real trip on 0.13.0. |
 | **Phase 4** | **Built as 0.17.0** (`docs/phase4-plan.md`, D45), verified on emulators, **awaiting independent review**. Its product decisions P4-1…P4-8 were taken without stopping, at the owner's request; they are listed in the plan's §11 for review. |
 | **Phase 5** | **Built as 0.18.0** (`docs/phase5-plan.md`, D47): an offline drawing of each day's stops and a Google Maps hand-off, plus a coordinates field. No migration. Awaiting independent review; decisions P5-1…P5-6 in the plan's §9. |
 | **Phase 6** | **Built as 0.19.0** (`docs/phase6-plan.md`, D48): trips without dates, stored as NULL. Migration 014 rebuilds `trips` with foreign keys off; format 15. Emulator verified, including 13 → 14 on the device. Awaiting independent review; decisions P6-1…P6-13 in the plan's §2. |
 | **Phase 7** | **Built as 0.20.0** (`docs/phase7-plan.md`, D49): a shared Google Maps link becomes a place with name, address and coordinates when the link has them. A one-tap short-link lookup is the app's only request to Google. No migration. Emulator verified. Awaiting review; decisions P7-1…P7-8. |
-| **Release APK** | None built for 0.16.1–0.20.0. The newest release APK is 0.16.0, at `%USERPROFILE%\.travel-organizer\`, and it predates the corrections. |
+| **Phase 8** | **Built as 0.21.0** (`docs/phase8-plan.md`, D50): *Add to calendar*, an `.ics` file with exact time zones, stable UIDs, private by default, checked by Mozilla `ical.js` in tests. No migration. Emulator verified except importing into a calendar app (no account on the emulator). Awaiting review; decisions P8-1…P8-8. |
+| **Release APK** | None built for 0.16.1–0.21.0. The newest release APK is 0.16.0, at `%USERPROFILE%\.travel-organizer\`, and it predates the corrections. |
 
 ### What 0.16.x added after 0.16.0 (all reviewed)
 
@@ -69,7 +70,7 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
 
 In the likely order. Ask which one, rather than choosing.
 
-0. **The owner's review of Phase 7 (0.20.0, since `e2c826b`; `docs/phase7-plan.md` §3, §5)** and of Phase 6 (0.19.0, since `5bceacb`; `docs/phase6-plan.md`, decisions §2,
+0. **The owner's review of Phase 8 (0.21.0, since `7870acb`; `docs/phase8-plan.md` §2, §4)**, of Phase 7 (0.20.0, since `e2c826b`; `docs/phase7-plan.md` §3, §5) and of Phase 6 (0.19.0, since `5bceacb`; `docs/phase6-plan.md`, decisions §2,
    as built §6)**, and of the Phase 5 review corrections (0.18.1, since `1226b05`; plan §11). These come
    after the reviews of the Phase 4 corrections (0.17.1) and of Phase 5 (0.18.0), with the decisions in
    `docs/phase5-plan.md` §9.
@@ -132,6 +133,9 @@ were in a session scratchpad and are probably gone. The essentials:
 - **Typed routes:** a new route file needs `.expo/types/router.d.ts` regenerated. Start
   `npx expo start --offline` briefly, then stop it.
 - **Bash heredocs containing backticks fail** in this environment. Write scripts with the Write tool.
+- Phase 8: `%USERPROFILE%\Pictures\TravelOrganizer-0.21.0-P8-e2e\E2E-LOG.md`. The exported file is in the
+  app's cache (`run-as … cat cache/<trip>-calendar.ics`). Google Calendar on the emulator asks for an
+  account: do not sign in; import on the husband's phone instead.
 - Phase 7: `%USERPROFILE%\Pictures\TravelOrganizer-0.20.0-P7-e2e\E2E-LOG.md`. Share from Google Maps on the
   emulator: open a place with `am start -a VIEW -d "'geo:0,0?q=…'" -p com.google.android.apps.maps`,
   then tap *Share*, then *Travel Organizer*, with the dev client already running. Saved places

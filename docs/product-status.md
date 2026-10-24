@@ -88,6 +88,20 @@
 
 ---
 
+### Built in 0.21.0 (roadmap Phase 8, calendar export) — on the branch `phase-3d1`, verified on emulators, not on a phone
+
+- **Add to calendar** (Overview › More) shares the plans you choose as a calendar file. You can pick a
+  whole trip, whole days or single plans.
+- **It is a copy:** later changes in the app do not reach the calendar, so export again to update.
+  Apple Calendar and Outlook update the same events; Google Calendar may add them twice.
+- **What the file holds:**
+  - times stay in their own time zones; a flight's two ends keep both;
+  - hotels appear as check-in and check-out;
+  - plans with only a date are all-day events.
+- **Private by default:** places are in. Notes, booking references, names and links are only added if
+  ticked.
+- **Not yet tried in a real calendar app**: that needs a phone with an account.
+
 ### Built in 0.20.0 (roadmap Phase 7, Google Maps share links) — on the branch `phase-3d1`, verified on emulators, not on a phone
 
 - **Share a place from Google Maps** → *New place*. The app shows the name and, with one tap on *Look up

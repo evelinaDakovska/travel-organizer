@@ -309,6 +309,15 @@ It follows the items, not the trip's dates, so a flight the day before the trip 
 **More** (top right) holds **Edit trip**, **Share as PDF**, **Use a template** and **Save as
 template**.
 
+**Add to calendar** (in **More**) makes a calendar file of the plans you tick: whole days or single
+plans.
+- Choose what goes in. Places are in; notes, booking references, names and links only if you tick
+  them.
+- Then **Share**, and open the file with your calendar app, or save it.
+- It is a copy: change a plan later and export again. Apple Calendar and Outlook update the events;
+  Google Calendar may add them again.
+- Hotels appear as check-in and check-out, and plans with only a date as all-day events.
+
 ### Directions
 
 **How to get there** on an item's page, **Directions** on Overview's big panel, and the quiet

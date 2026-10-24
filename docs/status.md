@@ -677,7 +677,16 @@ only when the owner asks.
 
   No migration. **0.20.0 on `phase-3d1`**: 1761 Node tests. Emulator E2E sharing from Google Maps;
   on no phone. Awaiting independent review ([`phase7-plan.md`](phase7-plan.md), D49) | ✅ |
-| **P8** | Google Calendar export (.ics) | ⬜ |
+| **P8** | Calendar export (.ics), Overview › More › *Add to calendar*: the chosen plans as a one-time file for the share sheet.
+  - Stays and car rentals become their two ends; date-only plans become all-day events; no invented
+    ends.
+  - Each zone is written with an exact `VTIMEZONE`, and UIDs are stable.
+  - Places are in by default; notes, references, people and links are off.
+
+  No migration. **0.21.0 on `phase-3d1`**: 1778 Node tests, each file checked by Mozilla `ical.js`.
+  Emulator E2E (the file from the device checked). Not imported into a calendar app, since the
+  emulator has no Google account. On no phone. Awaiting independent review
+  ([`phase8-plan.md`](phase8-plan.md), D50) | ✅ |
 | **B1** | **Pre-beta: feedback deployment and security verification** (owner, 2026-10-20; `MASTER_ROADMAP.md` §16.2). Before the first friends APK, not in 3C: secure HTTPS endpoint, server-side secrets only, input validation and rate limiting, abuse protection and cost limits, no trip data sent automatically, draft cleared only after confirmed server acceptance, a real end-to-end delivery test with the owner's approval. The form stays off until then. Nothing deployed and no test email sent — waits for approval | ⬜ |
 
 **P1, what was built (0.7.4, versionCode 14).** No schema, data or native change.

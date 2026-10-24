@@ -389,7 +389,11 @@ Save a shared place from Google Maps into the correct trip with minimal manual e
 
 **Gate:** Verify actual Android intents and supported URL behavior on emulator; physical acceptance later.
 
-## 14. Phase 8 — ICS Calendar Export [PLANNED]
+## 14. Phase 8 — ICS Calendar Export [BUILT — v0.21.0 on `phase-3d1`; AWAITING INDEPENDENT REVIEW]
+
+As built: `docs/phase8-plan.md` (decisions P8-1…P8-8 for review), D50, technical reference §28. No
+migration. Checked with Mozilla `ical.js` in tests. Not yet imported into a real calendar app (needs a
+phone). The scope below is kept as written.
 
 ### Goal
 

@@ -1198,3 +1198,26 @@ on the person's tap, and only its redirect address is read. The link is always k
 - **A strict allowlist** for both ends of the request, because the link comes from another app and
   is untrusted.
 - **Duplicates warn, never block**, as in 2C.
+
+## D50 — Phase 8: a calendar file, exact zones, private by default (0.21.0)
+
+**Decision.** *Add to calendar* writes a standard `.ics` file of the chosen plans for the share sheet:
+a one-time copy, never a sync. Times keep their own zones, with `VTIMEZONE`s computed from the tz
+database. Nothing beyond titles, times, journey routes and places goes in unless the person ticks it.
+
+**Why.**
+- **A file, not an integration** (roadmap §14). There is no Google sign-in or Calendar API, and it
+  works with any calendar app.
+- **Nothing invented.** Without an end, there is no `DTEND`. A date-only plan is an all-day event.
+  Calendars would otherwise show a guessed hour as fact.
+- **Stays split** into check-in and check-out. A five-night block would cover the calendar and hide
+  everything else, and the Timeline already shows stays this way.
+- **Exact zones** instead of UTC. A flight at 06:10 Sofia time must read 06:10 Sofia, also in a
+  calendar set to another zone, and RFC 5545 requires the `VTIMEZONE`. The changes are written out
+  explicitly rather than as rules, so they are exactly what the tz database says.
+- **Checked by an independent parser** (`ical.js`, Thunderbird's), not only by our own tests of our
+  own output.
+- **Private by default**, as *Plan with AI* and *Export activities* are. A calendar is often shared
+  or synced to work accounts.
+- **Stable UIDs** let calendar apps that support it update instead of duplicating. Google's file
+  import does not, and the screen says so.

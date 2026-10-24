@@ -96,3 +96,47 @@ nothing to add.
 4. **Docs and version 0.21.0.**
 5. **Emulator:** export E2E Lapland, check the file's text, open it with a calendar app if the
    emulator has one, and share it.
+
+## 4. As built (0.21.0, 2026-10-23/24)
+
+Commits `58a3ade` (plan) and `ba86f82` (code), then a docs commit. No migration and no format change.
+New dev dependency: `ical.js` 2.2.1 (MPL-2.0), used in tests only.
+
+**What was built.**
+- `src/domain/ics.ts`:
+  - `isCalendarItem` and `calendarEvents`. Stays and car rentals go through `timelineEntries`, so their
+    labels are the Timeline's (*Check in / Check out*, *Pick up / Drop off*).
+  - `escapeText` and `foldLine` (75 octets, UTF-8 safe).
+  - `offsetTransitions`: 3-hour steps, then a binary search to the minute over `tzOffset`.
+  - `vtimezone` writes one observance per change, with no `RRULE`.
+  - `buildIcs` and `icsFileName`.
+- `SEQUENCE` is the minutes from 2020-01-01 to `updatedAt`.
+- `app/trip/[tripId]/export-calendar.tsx`: the options, then the plans by day with *whole day* ticks.
+  Plans in the itinerary are ticked by default.
+- Overview › More › *Add to calendar* (`export-calendar`, icon `addToCalendar`).
+- `listTripParticipantNames` (`SELECT_TRIP_PARTICIPANT_NAMES`), read only for *Who is going*.
+- `shareCalendarFile`, which writes `text/calendar`.
+
+**Differences from §2.** A car rental's second event is *Drop off*, the word the Timeline already
+uses, not *Return*.
+
+**Verification.**
+- Node: 1778 tests in 91 suites, typecheck clean. `ics.test.ts` has 17 tests.
+- `ical.js` parses every generated file and, with its own timezone engine reading our `VTIMEZONE`,
+  must give the instants `toInstant` gives:
+  - across Sofia's spring and autumn changes;
+  - for Lord Howe's half-hour DST, Adelaide and Kathmandu;
+  - for an overnight Helsinki → New York flight.
+
+  The test asserts the resolved zone id, so floating time cannot pass.
+- Emulator: `%USERPROFILE%\Pictures\TravelOrganizer-0.21.0-P8-e2e\E2E-LOG.md`.
+  - The screen, whole-day selection and the share sheet were checked.
+  - The file was taken from the device and read by `ical.js`.
+  - An undated trip's date-only plan became an all-day event.
+
+**Limitations.**
+- **Not imported into a real calendar app.** Google Calendar on the emulator asks for a Google
+  account, and none was signed in. Importing on a phone, into Google Calendar, Apple Calendar and
+  Outlook, is left for the phone tests.
+- Google Calendar's file import does not update by UID; the screen says so.
+- No reminders (`VALARM`), and to-dos are not exported.

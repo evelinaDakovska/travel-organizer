@@ -21,7 +21,7 @@ for it. Finishing one is not permission to begin the next. The order was agreed 
 | **5** | Day route map | **done — 0.18.0 on `phase-3d1`** (no migration); an offline drawing plus the Google Maps hand-off; emulators; awaiting independent review | [`phase5-plan.md`](phase5-plan.md), master §11 |
 | **6** | Trips without fixed dates | **done — 0.19.0 on `phase-3d1`** (migration 014 rebuilds `trips`, dates nullable; format 15); emulators; awaiting independent review | [`phase6-plan.md`](phase6-plan.md), master §12 |
 | **7** | Import from Google Maps share links | **done — 0.20.0 on `phase-3d1`** (no migration); name, address and coordinates from the link, a one-tap short-link lookup; emulators; awaiting independent review | [`phase7-plan.md`](phase7-plan.md), master §13 |
-| **8** | `.ics` calendar export | not started | master §14 |
+| **8** | `.ics` calendar export | **done — 0.21.0 on `phase-3d1`** (no migration); exact `VTIMEZONE`s, stable UIDs, private by default, checked by `ical.js`; emulators; awaiting independent review | [`phase8-plan.md`](phase8-plan.md), master §14 |
 | — | Pre-beta feedback deployment and security check (*B1*, before the first friends APK) | planned, waits for approval | master §16.2 |
 | — | Beta, Play readiness; deferred and discovery backlog | not committed | master §16, §17 |
 
