@@ -10,14 +10,14 @@ and how to pick up the next task. The detailed history is in `docs/session-hando
 |---|---|
 | **Branch with the work** | `phase-3d1`, pushed to the personal GitHub remote (`origin`). Not merged. |
 | **`main`** | `46d256a` — 0.13.0, schema 6, backup format 7. **Not** what the owner's phone runs (see *Phone*). |
-| **`phase-3d1` app** | **0.21.0**, versionCode 33 |
+| **`phase-3d1` app** | **0.21.1**, versionCode 34 (QA fixes D-01, D-03; `status.md` *QA-1*) |
 | **Database schema** | 14 (migrations 007–014 exist only on `phase-3d1`; 014 rebuilds `trips`) |
 | **Backup / trip archive format** | 15 / row format 15 |
-| **Tests** | 1778 Node tests in 91 suites, `npx tsc --noEmit` clean |
+| **Tests** | 1811 Node tests in 92 suites, `npx tsc --noEmit` clean |
 | **Roadmap Phases 1–8** | **All built and approved by the owner.** Phases 1–3 by 2026-10-23; Phases 4–8, with their review corrections (0.17.1, 0.18.1), on **2026-10-24**. No roadmap phase is left to build. |
 | **Verified on** | Emulators only, with synthetic data. **Nothing from 0.14.0 onwards has been on a phone.** |
 | **Phone** | **Stable is 0.7.2, versionCode 12** (`5f7f013`), read on the device on 2026-10-24 — not 0.13.0 as earlier docs said. Schema **inferred 5** (0.7.2 ships 001–005; the database was not read). Backup format 5; no single-trip export (that came in 0.9.0). Untouched. Holds a real trip. Detail: `status.md` *Stable on the owner's phone*. |
-| **Beta** | `com.evelinadakovska.travelorganizer.beta`, *Travel Organizer Beta*, a separate app beside Stable (`docs/beta-variant.md`). Implemented, **not built, not installed**. |
+| **Beta** | `com.evelinadakovska.travelorganizer.beta`, *Travel Organizer Beta*, a separate app beside Stable (`docs/beta-variant.md`). **Beta 0.21.1 is installed on the owner's phone** (user 0 only, synthetic data; APK `%USERPROFILE%\.travel-organizer\travel-organizer-beta-0.21.1.apk`, SHA-256 `9e14fd40…d440b`). It is QA'd there: 0.21.0 on 2026-10-24/25 (matrix in `%USERPROFILE%\Pictures\TravelOrganizer-0.21.0-beta-phone-qa\`), and the 0.21.1 fixes on 2026-10-25. |
 | **Release APK** | None built for 0.16.1–0.21.0. The newest release APK is 0.16.0, at `%USERPROFILE%\.travel-organizer\`; it is out of date. |
 
 ### What each approved phase added (detail in its plan, the decision log and `status.md`)

@@ -684,6 +684,20 @@ only when the owner asks.
   Emulator E2E (the file from the device checked). Not imported into a calendar app, since the
   emulator has no Google account. On no phone. Approved by the owner (2026-10-24)
   ([`phase8-plan.md`](phase8-plan.md), D50) | ✅ |
+| **QA-1** | Fixes from the Beta phone QA of 0.21.0 ([`qa-fixes-plan.md`](qa-fixes-plan.md); approved by the owner, 2026-10-25).
+  - **D-01 (P1):** *Edit trip* waits for the trip's travellers (`hasLoaded`) before it shows the form,
+    so saving no longer takes everyone off the trip.
+  - **D-03 (P2):** launch opens the trip in progress only while Home is still on top
+    (`tripToOpenAtLaunch`), so a share or a tapped reminder that started the app stays in front.
+
+  No migration. **0.21.1 (versionCode 34) on `phase-3d1`**: 1811 Node tests. On the emulator, D-01 passed
+  12 of 12. **Beta 0.21.1 on the owner's phone (2026-10-25):**
+  - D-01: 12 of 12 openings showed all 4 travellers ticked, and a save kept them.
+  - D-03: a cold-start share passed 3 of 3, and a cold start from a tapped reminder opened the to-do with Home
+    under it.
+  - A plain launch still opens the trip in progress.
+
+  Stable 0.7.2 is unchanged and has both defects until it is upgraded (Option A: guidance only before the trip) | ✅ |
 | **B1** | **Pre-beta: feedback deployment and security verification** (owner, 2026-10-20; `MASTER_ROADMAP.md` §16.2). Before the first friends APK, not in 3C: secure HTTPS endpoint, server-side secrets only, input validation and rate limiting, abuse protection and cost limits, no trip data sent automatically, draft cleared only after confirmed server acceptance, a real end-to-end delivery test with the owner's approval. The form stays off until then. Nothing deployed and no test email sent — waits for approval | ⬜ |
 
 **P1, what was built (0.7.4, versionCode 14).** No schema, data or native change.
