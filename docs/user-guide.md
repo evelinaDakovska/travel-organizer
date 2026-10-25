@@ -4,7 +4,10 @@ Everything about one trip that is already decided, booked or saved, on your phon
 without internet. Not a planner: it holds what you have, so that on the road you can see what
 happens next and open the right ticket in seconds.
 
-Written for version **0.6.0**. The examples follow a winter trip to Lapland: flights from Sofia
+Written for version **0.6.0** and kept up to date since; sections for later versions say which
+version they need. The phone that holds the real trip runs **0.7.2** until after the trip — see
+[*Two apps: Travel Organizer and Travel Organizer Beta*](#two-apps-travel-organizer-and-travel-organizer-beta)
+for what to watch for in it. The examples follow a winter trip to Lapland: flights from Sofia
 with a change in Munich, a night train, a hire car, a hotel and a few tours.
 
 **Contents**
@@ -345,10 +348,11 @@ confirmation codes and cancelled items. Results are split into *Items* and *Note
 
 ### Offline
 
-Everything is on the phone. In airplane mode the Timeline, the Overview, search, notes, lists,
-expenses and
-**every attached file** work as usual. Files open in your phone's viewer (PDFs in the PDF viewer,
-photos in Photos). Links need internet, since they open web pages.
+Everything is on the phone. In airplane mode the app starts as usual, and the Timeline, the
+Overview, search, notes, lists, expenses and **every attached file** work. Files open in your
+phone's viewer (PDFs in the PDF viewer, photos in Photos). Links need internet, since they open web
+pages; so do directions in Google Maps and *Look up address and coordinates* on a shared Maps link,
+which says it cannot connect and changes nothing. (Checked on the phone in airplane mode, 2026-10-25.)
 
 ### Item details
 
@@ -491,6 +495,13 @@ restored. Tickets and photos are a few MB each, so this leaves a wide margin.
 
 **When:** before every trip, after adding the last tickets. Also after any big round of changes.
 
+**Save to this phone** (0.21.2). Beside *Export everything*, it saves the same zip into a folder you
+pick, on the phone, an SD card or a USB stick, without a cloud app. Android does not let an app save
+into the top of *Download* or of the phone's storage: open *Download* and pick (or create) a folder
+inside it, such as *Download › Travel backups*. A copy kept only on this phone is lost with the phone,
+so keep one elsewhere too. Old exports the app made for sharing are cleared from its cache a day
+later; the copies you saved stay.
+
 ### Restore one
 
 **Backup** → choose **When a trip is already on this phone**:
@@ -514,6 +525,21 @@ from Drive. Allow notifications when asked, so reminders come back.
 
 **Updating the app keeps your data.** It is installed over the old version. Uninstalling deletes
 everything, so make a backup first if it ever comes to that.
+
+**Before a big update** (such as 0.7.2 → 0.21.x, after the trip):
+
+1. **Export everything** and check the zip arrived in Drive (or *Save to this phone*, then copy it
+   off the phone). Keep that zip until the new version has been used for a while.
+2. Install the update over the old app. Never uninstall first.
+3. Open it once on wifi, at home: the first start updates the data. Check that the trips, a few
+   tickets and the expenses are there.
+
+An update is **one way**: the updated data cannot be opened by the older version again. If something
+is wrong, the way back is that backup, not reinstalling the old version.
+
+If the app ever shows **The app could not open your data** (0.21.2), your data is unchanged. Tap
+*Try again*; if it keeps happening, do not clear the app's storage or uninstall it — send the message
+on the screen.
 
 ---
 
@@ -595,7 +621,7 @@ At home, on wifi, a day or two before:
 4. **Airplane mode test**: switch it on, open the trip, open every ticket, switch it off.
 5. **Reminders** on where you want them; notifications allowed.
 6. **Packing list** copied into the trip, and ticked as you pack.
-7. **Backup**: Export everything → Drive.
+7. **Backup**: Export everything → Drive (or *Save to this phone*, then copy it off the phone).
 8. Glance at **Expenses → Bookings**: anything still *To pay*?
 9. If someone at home wants the plan: Overview → **More** → **Share as PDF**.
 
@@ -614,6 +640,25 @@ Photograph receipts as you pay.
   earlier). They still show on the Timeline (under *Before* or *After*) and on the Overview.
 - **Deleted files are cleaned up** when the app next starts, not at the moment of deleting.
 - **A price is stored exactly**: *412.37* stays 412.37, never rounded.
+- **Two people with the same name** (0.21.2): adding one asks first, and wherever both appear each
+  shows which trips it is on, so you can tell them apart.
+
+### Two apps: Travel Organizer and Travel Organizer Beta
+
+The phone can hold two separate apps: **Travel Organizer** (the one with your real trip) and
+**Travel Organizer Beta** (its own icon and label, for trying new versions). They do not share
+anything: trips, files, backups and reminders in one are never seen by the other, and sharing a file
+offers both, so pick the right one. Beta holds only test trips.
+
+**In Travel Organizer 0.7.2, until it is updated after the trip**, two things the Beta QA found are
+still there:
+
+- **Edit trip can take the travellers off a trip.** The travellers sometimes show unticked when *Edit
+  trip* opens, and saving then removes them (and who goes to each plan). Before tapping *Save*, check
+  that everyone travelling is ticked; if not, go back without saving and open *Edit trip* again.
+- **A share into the closed app can end up under the trip.** If the app was closed and a trip is in
+  progress, the trip opens on top of what you shared. Press **Back** once to find the share screen.
+  The same applies to a reminder tapped while the app was closed.
 
 ---
 

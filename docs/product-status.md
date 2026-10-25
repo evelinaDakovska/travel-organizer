@@ -1,7 +1,7 @@
 # Product Status & Feature Matrix
 
 > **The feature-level view** — what a user can do, and where each feature was verified.
-> Last updated: 2026-10-23.
+> Last updated: 2026-10-25.
 > Task-level status, how each piece was built and verified, and which version is where live in
 > [`status.md`](status.md); where the two disagree, `status.md` wins. What comes next is
 > [`roadmap.md`](roadmap.md).
@@ -22,6 +22,30 @@
 ---
 
 ## 2. Feature Status Breakdown
+
+### Verified on Beta on the owner's phone (0.21.0–0.21.1, 2026-10-24/25) — and 0.21.2 in progress
+
+*Travel Organizer Beta* ([`beta-variant.md`](beta-variant.md)) is a separate app beside Stable, with
+its own data. It ran 0.21.0 and then 0.21.1 on the owner's Samsung (user 0 only, synthetic trips
+only); Stable 0.7.2 and its real trip were not touched. Full record: [`status.md`](status.md) *QA-1*
+and *QA-2*, and the QA report [`phone-qa-report-2026-10.md`](phone-qa-report-2026-10.md).
+
+- **Checked on the phone** (144 checks in 13 groups): trips with and without dates, every kind of
+  item, journeys across zones and overnight, the Overview and Timeline, the day map, Places, notes and
+  lists, expenses, booking payments, splits, settling up and currency conversion (every figure matched
+  by hand), attachments and their viewer, sharing into the app, reminders, the PDF, the calendar file,
+  backups and a destructive restore, offline use, the largest font and zoom, and TalkBack.
+- **Fixed in 0.21.1 and re-checked there:** *Edit trip* no longer takes the travellers off a trip
+  (D-01); a share or tapped reminder that starts the app stays in front (D-03).
+- **Fixed in 0.21.2, on the emulator, not yet on the phone:** same-name travellers asked about and told
+  apart (D-02, O-07, O-09); the PDF retried once (D-05); wording and labels (O-01, O-04, O-05, O-06);
+  a charged amount flagged when the cost changes (O-02); a failed expense save says why (O-03); old
+  exports cleared from the cache (O-08); the largest font (O-10–O-12); **Backup › Save to this phone**
+  (O-13); a screen instead of a crash loop when the data cannot open (F-02).
+- **Not yet tried on any phone:** importing the calendar file into a real calendar, a restore into a
+  freshly reinstalled app, and the 0.7.2 → 0.21.x upgrade with real-shaped data — for the husband's
+  phone.
+
 
 ### Implemented (Verified on Phone in Actual Use)
 *The owner has actively used these capabilities on a physical Android device; general behavior is verified sound, though not every conceivable edge case has been encountered.*
@@ -170,8 +194,9 @@ Not on any phone; it brings migration 012 (and 007–011 with it).
   (*Lapland, F…*, *20–24 Nov …*). When something would not fit, the header's buttons move to a row
   of their own above the titles. Nothing changes at normal sizes. No schema or format change.
 - **Review:** everything from 0.7.4 to 0.16.2 has passed the owner's review (2026-10-23), and
-  0.16.3 to 0.21.0 (Phases 4–8 with their corrections) on 2026-10-24. It all still waits for
-  verification on a phone: the husband's phone first, the owner's only after the trip.
+  0.16.3 to 0.21.0 (Phases 4–8 with their corrections) on 2026-10-24. Since 2026-10-24 it has run as
+  *Beta* on the owner's phone with synthetic data (see the top of this section); Stable, holding the
+  real trip, stays on 0.7.2 until after the trip.
 
 ### Built in 0.16.2 (settlement review holds, 3E correction) — on the branch `phase-3d1`, verified on emulators, not on a phone
 

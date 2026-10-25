@@ -42,6 +42,8 @@ export default function RootLayout() {
   return (
     // Outermost, as the library asks: it must hear a share that cold-starts the app.
     <ShareIntentProvider>
+      {/* Outside the database provider, so it also applies to the start-up error screen. */}
+      <StatusBar style="auto" />
       {/* Not `useSuspense`: expo-sqlite keeps a failed suspense open for the life of the JS
           runtime, so nothing short of a restart could try again. Without it the provider
           renders nothing until the database is ready, then throws its error to the boundary. */}
@@ -62,7 +64,6 @@ export default function RootLayout() {
             <Opened onOpened={setOpened} />
             <MediaSweep />
             <Reminders />
-            <StatusBar style="auto" />
             <Stack
               screenOptions={{
                 headerShown: false,

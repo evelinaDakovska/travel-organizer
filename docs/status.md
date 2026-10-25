@@ -706,6 +706,34 @@ only when the owner asks.
     Deferred to the husband's phone: a restore into a reinstalled Beta, and a real calendar import.
 
   Stable 0.7.2 is unchanged and has both defects until it is upgraded (Option A: guidance only before the trip) | ✅ |
+| **QA-2** | Every remaining finding from the Beta phone QA and the release-readiness audit ([`qa-fixes-plan.md`](qa-fixes-plan.md) Part 2; owner, 2026-10-25: *"fix all the findings"*).
+  - **App:** D-02 same-name traveller asked about first; O-07/O-09 same-name profiles told apart by their
+    trips; D-05 PDF retried once, empty print files removed; O-01 the trip's own zone not named at a
+    journey's arrival (Overview, PDF); O-02 a charged amount flagged when the cost's amount changes;
+    O-03 a failed expense save says why in a message; O-04 *Use in a trip* dates; O-05 day map *Pick up* /
+    *Drop off* for a rental car; O-06 no "EUR … in EUR." in the PDF; O-08 exports cleared from the cache
+    after a day; O-10–O-12 the largest font (time on one line, tab labels shrink, header actions capped,
+    subtitle and *Add new traveller* wrap, Overview's zone line stacks); O-13 **Backup › Save to this
+    phone** (SAF folder picker).
+  - **Audit:** F-01 schema 5 and 6 with a row in every table through the real `migrate()` on a file (rows,
+    `integrity_check`, `foreign_key_check`, schema equal to a new install); F-02 a start-up error screen
+    (*data unchanged*, the error, *Try again*) instead of a crash at every launch — the provider no longer
+    uses `useSuspense`, whose failed open cannot be retried; F-03 a stable release build without the
+    keystore properties fails (checked on Gradle with an isolated home); F-14 migrations run on the main
+    connection, with foreign keys and the busy timeout; F-17 `RECORD_AUDIO` and `SYSTEM_ALERT_WINDOW`
+    blocked (`CAMERA` kept for *+ Photo*); F-11/F-18 user guide and product status brought up to date.
+  - **Not code:** F-04 keystore copy and F-05 the husband's phone (owner); F-06 restore into a fresh
+    install, F-10/F-12/F-13 and the calendar import (husband's phone); F-07 runbook in the user guide;
+    F-08 `allowBackup` (owner, post-trip); F-09 streaming backups (later, if backups grow); F-15 release
+    tags; F-16 and F-19 need no change.
+
+  No migration, no change to stored data or the backup format. **0.21.2 (versionCode 35) on
+  `phase-3d1`**: 1825 Node tests, 93 suites, `tsc` clean. Emulator (`TO_2B_Test`, debug client): O-10,
+  O-11, O-12 at font 2.0 on a 360 dp width; O-01 on Overview; O-02; O-03; O-07/O-09; O-13 saved a 126 MB
+  backup into *Download › Travel backups*, byte-identical to the export (the picker refuses the top of
+  storage and of *Download*, as Android does since 11); F-02 forced to fail once: the screen shows, *Try
+  again* opens the app. O-05, D-02, D-05, O-04, O-06 and O-08 by unit tests only so far. **Not yet on the
+  phone:** Beta 0.21.2 waits for the owner's go-ahead | ⬜ |
 | **B1** | **Pre-beta: feedback deployment and security verification** (owner, 2026-10-20; `MASTER_ROADMAP.md` §16.2). Before the first friends APK, not in 3C: secure HTTPS endpoint, server-side secrets only, input validation and rate limiting, abuse protection and cost limits, no trip data sent automatically, draft cleared only after confirmed server acceptance, a real end-to-end delivery test with the owner's approval. The form stays off until then. Nothing deployed and no test email sent — waits for approval | ⬜ |
 
 **P1, what was built (0.7.4, versionCode 14).** No schema, data or native change.
