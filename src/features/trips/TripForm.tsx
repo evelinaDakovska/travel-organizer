@@ -4,11 +4,18 @@ import { useState, type ReactNode } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet } from 'react-native';
 
+import { namesakeHint } from '../../domain/traveller';
 import { deviceToday, tripInputSchema, type TripInput } from '../../domain/trip';
 import { TravellerPicker } from '../travellers/TravellerPicker';
 import { useMe } from '../travellers/useMe';
 import { useLiveQuery } from '../../hooks/useLiveQuery';
-import { createTraveller, listTravellers, TRAVELLER_TABLES } from '../../repositories/travellers';
+import {
+  createTraveller,
+  listTravellers,
+  TRAVELLER_TABLES,
+  travellerTripNames,
+} from '../../repositories/travellers';
+import { TRIP_TABLES } from '../../repositories/trips';
 import { Button } from '../../ui/components/Button';
 import { ChoiceField } from '../../ui/components/ChoiceField';
 import { DateRangeField } from '../../ui/components/DateRangeField';
@@ -38,6 +45,11 @@ export function TripForm({
   const db = useSQLiteContext();
   const { data: profiles = [] } = useLiveQuery(listTravellers, TRAVELLER_TABLES);
   const { meId } = useMe();
+  // Two profiles of one name are told apart by their trips (QA O-09).
+  const { data: tripsOf = {} } = useLiveQuery(travellerTripNames, [
+    ...TRIP_TABLES,
+    ...TRAVELLER_TABLES,
+  ]);
   const [selectedTravellerIds, setSelectedTravellerIds] = useState<string[]>(
     defaultTravellerIds ?? [],
   );
@@ -176,6 +188,7 @@ export function TripForm({
           }}
           legacyNames={defaultValues.travellers ?? []}
           meId={meId}
+          hintFor={(profile) => namesakeHint(profile, profiles, tripsOf[profile.id] ?? [])}
         />
       </Field>
 

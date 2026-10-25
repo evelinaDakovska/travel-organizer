@@ -8,6 +8,7 @@ import * as IntentLauncher from 'expo-intent-launcher';
 
 import { readInChunks } from '../domain/archive';
 import {
+  isStaleExport,
   isStoredPath,
   MEDIA_DIR,
   orphanedStoredPaths,
@@ -156,6 +157,33 @@ export function listStoredFiles(): string[] {
     .filter((entry): entry is File => entry instanceof File)
     .map((file) => toStoredPath(Paths.document.uri, file.uri))
     .filter((path): path is string => path !== null);
+}
+
+/** The cache folders exports and viewer copies are written to, beside the cache itself. */
+const EXPORT_DIRS = ['itinerary', 'open', 'Print'];
+
+/**
+ * Deletes exports more than a day old from the cache (QA O-08): every backup made there holds every
+ * ticket, and Android reclaims the cache only when storage runs low. Never touches `media/`.
+ */
+export function sweepOldExports(now: number = Date.now()): number {
+  const folders = [Paths.cache, ...EXPORT_DIRS.map((name) => new Directory(Paths.cache, name))];
+  let deleted = 0;
+  for (const folder of folders) {
+    try {
+      if (!folder.exists) continue;
+      for (const entry of folder.list()) {
+        if (!(entry instanceof File)) continue;
+        if (!isStaleExport(entry.name, entry.info().modificationTime, now)) continue;
+        entry.delete();
+        deleted += 1;
+      }
+    } catch (error) {
+      // Tidying the cache is not worth blocking start-up; the next launch retries.
+      console.warn('Cache sweep skipped a folder', error);
+    }
+  }
+  return deleted;
 }
 
 /**

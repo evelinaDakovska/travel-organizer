@@ -65,6 +65,17 @@ export function namesLine(travellers: readonly Pick<Traveller, 'name'>[]): strin
 const sameName = (a: string, b: string) =>
   a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase();
 
+/**
+ * A saved profile already called this, ignoring case and spacing — asked about before a second one
+ * is added (QA D-02). Two people may share a name, so it is a question, never a refusal.
+ */
+export function namesakeOf<T extends Pick<Traveller, 'name'>>(
+  name: string,
+  profiles: readonly T[],
+): T | undefined {
+  return profiles.find((profile) => sameName(profile.name, name));
+}
+
 export type LegacyName = {
   name: string;
   /** A profile with exactly this name, offered — never applied — as the same person. */

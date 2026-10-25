@@ -13,7 +13,7 @@ import {
   recipientsLine,
   type ListItem,
 } from '../../src/domain/lists';
-import { DATES_NOT_SET } from '../../src/domain/format';
+import { DATES_NOT_SET, formatDateRange } from '../../src/domain/format';
 import { isDated } from '../../src/domain/trip';
 import { ListItemRow } from '../../src/features/lists/ListItemRow';
 import { queryView } from '../../src/hooks/queryView';
@@ -320,7 +320,7 @@ export default function ListScreen() {
                 <ListRow
                   key={t.id}
                   title={t.name}
-                  subtitle={isDated(t) ? `${t.startDate} → ${t.endDate}` : DATES_NOT_SET}
+                  subtitle={isDated(t) ? formatDateRange(t.startDate, t.endDate) : DATES_NOT_SET}
                   onPress={() => {
                     setPickingTrip(false);
                     setSelectedTrip({ id: t.id, name: t.name });

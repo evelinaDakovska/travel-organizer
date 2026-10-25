@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   CLASSIFICATION_LABELS,
+  namesakeOf,
   travellerLabel,
   travellerNameSchema,
   type Traveller,
@@ -14,6 +15,7 @@ import { Field, Input } from '../../ui/components/Field';
 import { Icon } from '../../ui/components/Icon';
 import { Sheet } from '../../ui/components/Sheet';
 import { Tag } from '../../ui/components/Tag';
+import { confirmNamesake } from './confirmNamesake';
 import { radius, spacing, touchTarget, type, useColors } from '../../ui/tokens';
 
 export type TravellerPickerProps = {
@@ -30,6 +32,8 @@ export type TravellerPickerProps = {
    */
   existingToAdd?: readonly Traveller[];
   onAddExisting?: (id: string) => Promise<void>;
+  /** A line under a profile's name, telling two of the same name apart (QA O-09). */
+  hintFor?: (profile: Traveller) => string | undefined;
 };
 
 const CLASSIFICATION_OPTIONS: readonly { value: TravellerClassification; label: string }[] = [
@@ -47,6 +51,7 @@ export function TravellerPicker({
   meId = null,
   existingToAdd = [],
   onAddExisting,
+  hintFor,
 }: TravellerPickerProps) {
   const c = useColors();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -86,6 +91,10 @@ export function TravellerPicker({
       setNameError(result.error.issues[0]?.message ?? 'Name is required');
       return;
     }
+
+    // The sheet sits above the list, so the saved namesake may be out of sight (QA D-02).
+    const namesake = namesakeOf(trimmed, [...profiles, ...existingToAdd]);
+    if (namesake && !(await confirmNamesake(namesake.name))) return;
 
     setSaving(true);
     try {
@@ -135,13 +144,14 @@ export function TravellerPicker({
             const isSelected = selectedSet.has(profile.id);
             const classLabel = CLASSIFICATION_LABELS[profile.classification];
             const label = travellerLabel(profile, meId);
+            const hint = hintFor?.(profile);
             return (
               <Pressable
                 key={profile.id}
                 onPress={() => toggle(profile.id)}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: isSelected }}
-                accessibilityLabel={`${label}, ${classLabel}`}
+                accessibilityLabel={[label, classLabel, hint].filter(Boolean).join(', ')}
                 style={({ pressed }) => [
                   styles.profileRow,
                   { borderColor: isSelected ? c.accent : c.border },
@@ -164,6 +174,9 @@ export function TravellerPicker({
                   <Text style={[type.heading, { color: c.text }]} numberOfLines={2}>
                     {label}
                   </Text>
+                  {hint ? (
+                    <Text style={[type.caption, { color: c.textMuted }]}>{hint}</Text>
+                  ) : null}
                 </View>
                 <Tag label={classLabel} tone="neutral" />
               </Pressable>

@@ -1,6 +1,7 @@
 import {
   legacyNames,
   namesakeHint,
+  namesakeOf,
   namesLine,
   parseTravellerRow,
   travellerLabel,
@@ -184,5 +185,16 @@ describe('namesakeHint', () => {
     expect(namesakeHint(maria, [maria, mariaChild], ['Lapland', 'Rome', 'Milan', 'Oslo'])).toBe(
       'Adult · On Lapland, Rome +2',
     );
+  });
+});
+
+describe('namesakeOf', () => {
+  const anna = profile('a', 'Anna Test');
+  it('finds a saved profile of the same name, ignoring case and spacing', () => {
+    expect(namesakeOf('  anna test ', [profile('b', 'Boris'), anna])).toBe(anna);
+  });
+  it('is undefined for a new name', () => {
+    expect(namesakeOf('Anna', [anna])).toBeUndefined();
+    expect(namesakeOf('Anna Test', [])).toBeUndefined();
   });
 });

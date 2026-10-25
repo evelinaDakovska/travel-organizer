@@ -2,11 +2,24 @@ import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 
-import { CLASSIFICATION_LABELS, travellerLabel, travellerNameSchema } from '../src/domain/traveller';
+import {
+  CLASSIFICATION_LABELS,
+  namesakeHint,
+  namesakeOf,
+  travellerLabel,
+  travellerNameSchema,
+} from '../src/domain/traveller';
+import { confirmNamesake } from '../src/features/travellers/confirmNamesake';
 import { useMe } from '../src/features/travellers/useMe';
 import { queryView } from '../src/hooks/queryView';
 import { useLiveQuery } from '../src/hooks/useLiveQuery';
-import { createTraveller, listTravellers, TRAVELLER_TABLES } from '../src/repositories/travellers';
+import {
+  createTraveller,
+  listTravellers,
+  TRAVELLER_TABLES,
+  travellerTripNames,
+} from '../src/repositories/travellers';
+import { TRIP_TABLES } from '../src/repositories/trips';
 import { AddByName } from '../src/ui/components/AddByName';
 import { ListRow, Rows } from '../src/ui/components/ListRow';
 import { LoadFailed, StaleNotice } from '../src/ui/components/QueryStates';
@@ -25,10 +38,18 @@ export default function TravellersScreen() {
   const query = useLiveQuery(listTravellers, TRAVELLER_TABLES);
   const view = queryView(query);
   const { me, meId, loading } = useMe();
+  // Two profiles of one name are told apart by their trips (QA O-09).
+  const { data: tripsOf = {} } = useLiveQuery(travellerTripNames, [
+    ...TRIP_TABLES,
+    ...TRAVELLER_TABLES,
+  ]);
+  const profiles = query.data ?? [];
 
   const add = async (text: string) => {
     const name = travellerNameSchema.safeParse(text);
     if (!name.success) return name.error.issues[0]?.message;
+    const namesake = namesakeOf(name.data, profiles);
+    if (namesake && !(await confirmNamesake(namesake.name))) return;
     await createTraveller(db, name.data);
   };
 
@@ -63,10 +84,11 @@ export default function TravellersScreen() {
           </Text>
         ) : (
           <Rows>
-            {(query.data ?? []).map((traveller) => (
+            {profiles.map((traveller) => (
               <ListRow
                 key={traveller.id}
                 title={travellerLabel(traveller, meId)}
+                subtitle={namesakeHint(traveller, profiles, tripsOf[traveller.id] ?? [])}
                 onPress={() =>
                   router.push({
                     pathname: '/traveller/[travellerId]',

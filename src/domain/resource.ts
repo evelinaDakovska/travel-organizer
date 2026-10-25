@@ -129,6 +129,19 @@ export function orphanedStoredPaths(
   return onDisk.filter((path) => !kept.has(path));
 }
 
+/** How long a shared export may stay in the cache: long enough for the app it went to to read it. */
+export const EXPORT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * An export left in the cache — a backup, a trip file, a PDF, a calendar or activities file, a
+ * viewer copy — once it is more than a day old (QA O-08). Shared at once, so never needed again;
+ * Android reclaims the cache only when storage runs low, and a backup holds every ticket.
+ */
+export function isStaleExport(name: string, modifiedAt: number | undefined, now: number): boolean {
+  if (modifiedAt === undefined || !/\.(zip|json|ics|pdf)$/i.test(name)) return false;
+  return now - modifiedAt > EXPORT_MAX_AGE_MS;
+}
+
 /** The opposite of an orphan: referenced but not present. Sorted, so callers can compare. */
 export function missingFiles(onDisk: Iterable<string>, referenced: Iterable<string>): string[] {
   const present = new Set(onDisk);

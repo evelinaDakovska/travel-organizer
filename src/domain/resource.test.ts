@@ -6,6 +6,7 @@ import {
   extensionFor,
   guessLinkSubtype,
   isSafeExternalUrl,
+  isStaleExport,
   isStoredPath,
   linkFormSchema,
   linkResourceInput,
@@ -521,5 +522,26 @@ describe('tripDocuments (B11)', () => {
   it('never loses a document whose item is not in the list', () => {
     const documents = tripDocuments([], [at('lost', { scope: 'item', id: 'gone' })], items);
     expect(documents.forTrip.map((resource) => resource.id)).toEqual(['lost']);
+  });
+});
+
+describe('isStaleExport', () => {
+  const now = Date.parse('2026-10-25T12:00:00Z');
+  const hours = (h: number) => now - h * 60 * 60 * 1000;
+
+  it('is an export older than a day', () => {
+    expect(isStaleExport('travel-organizer-backup-2026-10-24-0900.zip', hours(25), now)).toBe(true);
+    expect(isStaleExport('Lapland-itinerary.PDF', hours(48), now)).toBe(true);
+    expect(isStaleExport('trip.ics', hours(30), now)).toBe(true);
+    expect(isStaleExport('activities.json', hours(30), now)).toBe(true);
+  });
+
+  it('keeps a recent export, whatever it is', () => {
+    expect(isStaleExport('backup.zip', hours(23), now)).toBe(false);
+  });
+
+  it('leaves files that are not exports, or of unknown age', () => {
+    expect(isStaleExport('photo.jpg', hours(100), now)).toBe(false);
+    expect(isStaleExport('backup.zip', undefined, now)).toBe(false);
   });
 });

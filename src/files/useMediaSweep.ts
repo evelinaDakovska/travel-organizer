@@ -2,11 +2,12 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useRef } from 'react';
 
 import { listAllStoredPaths } from '../repositories/resources';
-import { sweepOrphanedFiles } from './storage';
+import { sweepOldExports, sweepOrphanedFiles } from './storage';
 
 /**
- * Reclaims media no row points at, once per launch. A failed read must never reach the
- * sweep — an empty reference list means "delete everything" — so the catch sits outside it.
+ * Reclaims media no row points at, and exports left in the cache, once per launch. A failed read
+ * must never reach the media sweep — an empty reference list means "delete everything" — so the
+ * catch sits outside it.
  */
 export function useMediaSweep(): void {
   const db = useSQLiteContext();
@@ -15,6 +16,8 @@ export function useMediaSweep(): void {
   useEffect(() => {
     if (swept.current) return;
     swept.current = true;
+
+    sweepOldExports();
 
     listAllStoredPaths(db)
       .then(sweepOrphanedFiles)
