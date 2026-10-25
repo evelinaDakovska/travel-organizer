@@ -1,11 +1,11 @@
 /**
- * The phone side of backup: reading tables and files into a zip, handing it to the share sheet,
- * and writing a picked zip back. The format and the decisions live in `domain/export` and
+ * The phone side of backup: reading tables and files into a zip, handing it to the share sheet or
+ * saving it into a picked folder, and writing a picked zip back. The format and the decisions live in `domain/export` and
  * `domain/archive`; this file only moves bytes.
  */
 
 import * as DocumentPicker from 'expo-document-picker';
-import { File, Paths } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
@@ -57,6 +57,26 @@ export async function exportBackup(db: SQLiteDatabase): Promise<ExportedBackup> 
 
 export async function shareBackup(uri: string): Promise<void> {
   await Sharing.shareAsync(uri, { mimeType: 'application/zip', dialogTitle: 'Save your backup' });
+}
+
+/**
+ * Saves a copy of the zip into a folder the person picks, through the system's folder screen
+ * (Storage Access Framework): a backup kept on the phone, an SD card or a USB stick, without a cloud
+ * app (QA O-13). Android does not offer the top of Download or of the phone's storage there; a folder
+ * inside them is picked or made. The folder's name, or null when the picker is dismissed.
+ */
+export async function saveBackupToFolder(uri: string): Promise<string | null> {
+  let folder: Directory;
+  try {
+    folder = await Directory.pickDirectoryAsync();
+  } catch (error) {
+    if ((error as { code?: string } | null)?.code === 'ERR_PICKER_CANCELLED') return null;
+    throw error;
+  }
+  const zip = new File(uri);
+  // A name already in the folder gets " (1)" from the provider; nothing there is overwritten.
+  folder.createFile(zip.name, 'application/zip').write(readFileBytes(zip));
+  return folder.name;
 }
 
 /**

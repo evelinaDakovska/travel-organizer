@@ -10,6 +10,7 @@ import {
   exportBackup,
   pickBackup,
   planBackupImport,
+  saveBackupToFolder,
   shareBackup,
 } from '../src/files/backupFiles';
 import { askForRemindersIfAnyDue } from '../src/notifications/reminders';
@@ -33,16 +34,24 @@ export default function Backup() {
   const router = useRouter();
   const db = useSQLiteContext();
   const [mode, setMode] = useState<ImportMode>('merge');
-  const [busy, setBusy] = useState<'export' | 'import' | null>(null);
+  const [busy, setBusy] = useState<'export' | 'save' | 'import' | null>(null);
   const [result, setResult] = useState<string | null>(null);
 
-  const runExport = async () => {
-    setBusy('export');
+  /** To the share sheet (Drive, mail…), or into a folder on this phone or a card (QA O-13). */
+  const runExport = async (to: 'share' | 'folder') => {
+    setBusy(to === 'share' ? 'export' : 'save');
     setResult(null);
     try {
       const exported = await exportBackup(db);
-      setResult(summariseExport(exported.document, exported.packedFiles));
-      await shareBackup(exported.uri);
+      const summary = summariseExport(exported.document, exported.packedFiles);
+      if (to === 'share') {
+        setResult(summary);
+        await shareBackup(exported.uri);
+      } else {
+        const folder = await saveBackupToFolder(exported.uri);
+        if (folder !== null) setResult(`${summary}
+Saved in ${folder}.`);
+      }
     } catch (error) {
       console.warn('Export failed', error);
       Alert.alert('Could not export', 'The backup could not be written. Nothing on this phone was changed.');
@@ -114,8 +123,19 @@ export default function Backup() {
             label="Export everything"
             busy={busy === 'export'}
             disabled={busy !== null}
-            onPress={() => void runExport()}
+            onPress={() => void runExport('share')}
           />
+          <Button
+            label="Save to this phone"
+            variant="secondary"
+            busy={busy === 'save'}
+            disabled={busy !== null}
+            onPress={() => void runExport('folder')}
+          />
+          <Text style={[type.caption, { color: c.textMuted }]}>
+            Saves the zip into a folder you pick — on this phone, an SD card or a USB stick. A copy
+            only on this phone is lost with the phone: keep one elsewhere too.
+          </Text>
         </View>
 
         <View style={styles.section}>
