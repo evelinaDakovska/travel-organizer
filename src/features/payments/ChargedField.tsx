@@ -10,6 +10,8 @@ type Props = {
   /** The trip's reporting currency: what a new charged amount is in. Null: the trip is not converted. */
   reportCurrency: string | null;
   error?: string;
+  /** Shown in place of the hint: the record's amount changed since this was entered (QA O-02). */
+  recheck?: string | null;
 };
 
 /**
@@ -18,18 +20,19 @@ type Props = {
  * another currency (an earlier reporting currency) keeps that currency and amount: it is edited in
  * it, never relabelled or converted, and counts again whenever that currency reports (review P3).
  */
-export function ChargedField({ value, onChange, onBlur, reportCurrency, error }: Props) {
+export function ChargedField({ value, onChange, onBlur, reportCurrency, error, recheck }: Props) {
   const currency = value?.currency ?? reportCurrency ?? '';
   return (
     <Field
       label={`Charged in ${currency}`}
       error={error}
       hint={
-        currency === reportCurrency
+        recheck ||
+        (currency === reportCurrency
           ? `Optional. What it actually cost in ${currency}, if you know it: the total uses it instead of the rate.`
           : reportCurrency === null
             ? `Kept as recorded in ${currency}. The trip is not converted now; it counts whenever ${currency} is the reporting currency.`
-            : `Kept as recorded in ${currency}, never converted: it counts only while the trip reports in ${currency}, not ${reportCurrency}. To use the trip's ${reportCurrency}, clear it and enter what it cost in ${reportCurrency}.`
+            : `Kept as recorded in ${currency}, never converted: it counts only while the trip reports in ${currency}, not ${reportCurrency}. To use the trip's ${reportCurrency}, clear it and enter what it cost in ${reportCurrency}.`)
       }>
       <AmountInput
         value={value?.amount}

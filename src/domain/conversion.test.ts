@@ -1,5 +1,6 @@
 import { currencyDecimals } from './currencies';
 import {
+  chargedRecheck,
   chargedRefusal,
   convertAmount,
   convertTripTotal,
@@ -86,6 +87,24 @@ describe('chargedRefusal', () => {
     expect(chargedRefusal('USD', null)).toBeNull();
     expect(chargedRefusal('USD', { amount: 9200, currency: 'EUR' })).toBeNull();
     expect(chargedRefusal('USD', { amount: 9200, currency: 'USD' })).toMatch(/another currency/);
+  });
+});
+
+describe('chargedRecheck (QA O-02)', () => {
+  const saved = { amount: 45000, currency: 'SEK', charged: { amount: 4010, currency: 'EUR' } };
+
+  it('asks to check the charged amount once the amount or currency moves', () => {
+    expect(chargedRecheck(saved, { ...saved, amount: 50000 })).toBe(
+      'The charged amount was entered for SEK 450.00 — check it still matches.',
+    );
+    expect(chargedRecheck(saved, { ...saved, currency: 'NOK' })).toMatch(/SEK 450\.00/);
+  });
+
+  it('says nothing while they match, for a new record, or once the charged amount is cleared', () => {
+    expect(chargedRecheck(saved, { ...saved, currency: 'sek' })).toBeNull();
+    expect(chargedRecheck(undefined, saved)).toBeNull();
+    expect(chargedRecheck({ ...saved, charged: null }, { ...saved, amount: 50000 })).toBeNull();
+    expect(chargedRecheck(saved, { ...saved, amount: 50000, charged: null })).toBeNull();
   });
 });
 

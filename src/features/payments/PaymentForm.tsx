@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { ReactNode } from 'react';
-import { Controller, useForm, type DefaultValues } from 'react-hook-form';
+import { Controller, useForm, useWatch, type DefaultValues } from 'react-hook-form';
 import { StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -8,6 +8,7 @@ import {
   type BookingPaymentFormValues,
   type BookingPaymentInput,
 } from '../../domain/bookingPayments';
+import { chargedRecheck } from '../../domain/conversion';
 import type { Traveller } from '../../domain/traveller';
 import { Button } from '../../ui/components/Button';
 import { DateField } from '../../ui/components/DateField';
@@ -56,6 +57,7 @@ export function PaymentForm({
     defaultValues,
     mode: 'onBlur',
   });
+  const [amount, charged] = useWatch({ control, name: ['amount', 'charged'] });
 
   return (
     <FormScroll
@@ -108,6 +110,7 @@ export function PaymentForm({
               onBlur={field.onBlur}
               reportCurrency={reportCurrency}
               error={errors.charged?.message ?? errors.charged?.amount?.message}
+              recheck={chargedRecheck({ ...defaultValues, currency }, { amount, currency, charged })}
             />
           )}
         />

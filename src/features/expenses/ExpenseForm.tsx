@@ -1,10 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { ReactNode } from 'react';
-import { Controller, useForm, useWatch, type DefaultValues } from 'react-hook-form';
-import { StyleSheet, View } from 'react-native';
+import { Controller, useForm, useWatch, type DefaultValues, type FieldErrors } from 'react-hook-form';
+import { Alert, StyleSheet, View } from 'react-native';
 
 import { paidOf } from '../../domain/bookingCosts';
 import { linkableBookings, possibleDuplicates } from '../../domain/bookingPayments';
+import { chargedRecheck } from '../../domain/conversion';
 import { formatMoney } from '../../domain/format';
 import {
   categoryLabel,
@@ -73,7 +74,10 @@ export function ExpenseForm({
     defaultValues,
     mode: 'onBlur',
   });
-  const [currency, tripItemId, charged] = useWatch({ control, name: ['currency', 'tripItemId', 'charged'] });
+  const [amount, currency, tripItemId, charged] = useWatch({
+    control,
+    name: ['amount', 'currency', 'tripItemId', 'charged'],
+  });
   const report = money.reportCurrency ?? null;
   // Asked only when it can matter: a trip converted to another currency than this expense's. A
   // charged amount already saved is always shown, so it can be seen and cleared.
@@ -94,7 +98,7 @@ export function ExpenseForm({
       }
     }
     await onSubmit(values);
-  });
+  }, showFirstProblem);
 
   return (
     <FormScroll
@@ -181,6 +185,7 @@ export function ExpenseForm({
               onBlur={field.onBlur}
               reportCurrency={report}
               error={errors.charged?.message ?? errors.charged?.amount?.message}
+              recheck={chargedRecheck(defaultValues, { amount, currency, charged })}
             />
           )}
         />
@@ -263,6 +268,24 @@ export function ExpenseForm({
       {secondaryActions}
     </FormScroll>
   );
+}
+
+/** The fields in the order they are shown, so the message names the first problem on screen. */
+const FIELD_ORDER = ['amount', 'currency', 'tripItemId', 'charged', 'payerId', 'category', 'label', 'spentOn', 'notes'] as const;
+
+/**
+ * A failed save says why in a message: the field's own error may be scrolled out of sight, behind
+ * the keypad, and a tap on Save would seem to do nothing (QA O-03).
+ */
+function showFirstProblem(errors: FieldErrors<ExpenseFormValues>) {
+  for (const name of FIELD_ORDER) {
+    const error = errors[name];
+    const message = error?.message ?? (name === 'charged' ? errors.charged?.amount?.message : undefined);
+    if (message) {
+      Alert.alert('Not saved yet', message);
+      return;
+    }
+  }
 }
 
 const styles = StyleSheet.create({

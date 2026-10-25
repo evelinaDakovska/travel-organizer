@@ -14,6 +14,7 @@
 import { z } from 'zod';
 
 import { CURRENCY_CODE, currencyDecimals } from './currencies';
+import { formatMoney } from './format';
 
 const RATE_TEXT = /^(\d{1,12})(?:[.,](\d{1,10}))?$/;
 
@@ -98,6 +99,22 @@ export function chargedFromRow(row: { charged_amount?: number | null; charged_cu
 export function chargedRefusal(currency: string, charged: Charged | null | undefined): string | null {
   if (!charged) return null;
   return charged.currency === currency ? `The charged amount must be in another currency than ${currency}.` : null;
+}
+
+/**
+ * Said beside a charged amount once the record's own amount or currency is edited away from what it
+ * was saved with: the charged amount was entered for that, and is kept as it is (QA O-02). Null
+ * while they match, for a new record, or with no charged amount.
+ */
+export function chargedRecheck(
+  saved: { amount?: number; currency?: string; charged?: Partial<Charged> | null } | undefined,
+  now: { amount?: number; currency?: string; charged?: Partial<Charged> | null },
+): string | null {
+  if (!saved?.charged || !now.charged || saved.amount === undefined || !saved.currency) return null;
+  const unchanged = now.amount === saved.amount && (now.currency ?? '').toUpperCase() === saved.currency;
+  return unchanged
+    ? null
+    : `The charged amount was entered for ${formatMoney(saved.amount, saved.currency)} — check it still matches.`;
 }
 
 /** A booking counted in the trip's cost, with the records that pay towards it. */
