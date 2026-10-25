@@ -32,7 +32,15 @@ These are untested on a device, but the unit tests and `tsc` pass (1816 tests, 9
   - it covers the cache root plus `itinerary/`, `open/` and `Print/`, and never `media/`.
 - **O-04** *Use in a trip* shows `formatDateRange`, not ISO dates (`app/list/[listId].tsx`).
 
-### 0.2 Still to do, in this order (the plan has the intended fix for each)
+### 0.2 Items 1–16 done (2026-10-25, `ef0f110`…`a520450`, pushed) — see `status.md` *QA-2*
+
+All code fixes, the tests (1825, 93 suites), `tsc`, the docs and the emulator check are done. **Next is
+item 17: ask the owner** to build and install Beta 0.21.2 on the phone, then §0.3, the summary. On the
+phone, re-check also what only unit tests covered: O-05 (the QA trip's car on the day map), D-02, D-05,
+O-04, O-06 (the PDF), O-08, the F-17 permissions (`aapt dump permissions` on the new APK), and *Save to
+this phone* into a folder inside *Download*.
+
+The original list, kept for reference:
 
 1. **Version bump:** `app.json` → **0.21.2**, versionCode **35**. Not done yet.
 2. **O-05** On the day map, a rental car's start reads *Departure*.
