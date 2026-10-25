@@ -88,3 +88,55 @@ Both defects are in the app holding the real trip. Options:
 
 D-02, D-04, D-05 and the observations O-01…O-08 (all P3) — listed in the QA matrix; to be planned
 separately if wanted.
+
+---
+
+# Part 2 — every remaining finding (owner, 2026-10-25: "fix all the findings")
+
+Scope: everything found since the phone was first connected on 2026-10-24, so the rest of the Beta
+phone QA (D-02, D-05, O-01…O-13) and the code findings of the release-readiness audit (F-01…F-19).
+Items that cannot be fixed in code (the owner's keystore copy, decisions, tests needing another phone)
+are listed with what is needed instead. Delivered as **0.21.2** (versionCode 35) on `phase-3d1`.
+No migration and no change to stored data. Stable stays untouched (Option A).
+
+## Fixes in the app
+
+| ID | Fix |
+|---|---|
+| D-02 | Adding a traveller whose name is already saved asks first ("There is already Anna Test. Add another person with the same name?"): a warning, never a block |
+| O-07 / O-09 | Where profiles share a name, each gets a hint telling them apart: the trips it is on, or "Not on a trip yet" (Edit trip / New trip *Travelling with*, Travellers screen) |
+| D-05 | The itinerary PDF is retried once when the printer fails, and a failed (empty) print file is deleted |
+| O-01 | The end zone of a journey is not named when it is the trip's own zone, matching the start |
+| O-02 | Editing a cost's amount while a *charged* amount is recorded says so beside it: "The charged amount was entered for EUR 450.00 — check it still matches" |
+| O-03 | Saving a cost with a missing field shows the problem in a message instead of an error off-screen |
+| O-04 | *Use in a trip* shows trip dates as everywhere else ("18–23 Dec 2026"), not ISO |
+| O-05 | The day map calls a rental car's start *Pick up* (and its end *Drop off*), as the Timeline does |
+| O-06 | The PDF's booking-cost line no longer reads "EUR 1850.00 in EUR." |
+| O-08 | Exports (backups, trip files, PDFs, calendar and activity files, viewer copies) are removed from the cache at start-up once older than a day |
+| O-10 | Timeline times never break inside the number at large font sizes |
+| O-11 / O-12 | At large font sizes: the tab labels and header actions stop growing past a readable cap, the Overview subtitle and the *Add new traveller* button wrap instead of truncating, and Overview's zone line stacks above *Full itinerary* |
+| O-13 | Backup gets **Save to this phone** beside *Export everything*: the system's *save to folder* screen (Downloads, any folder), so a backup can be kept on the phone or a USB/SD card without a cloud app |
+
+## Fixes from the audit
+
+| ID | Fix |
+|---|---|
+| F-01 | A runner-level test: a populated schema-5 and schema-6 database (every table with rows) through the real `migrate()` to 14 on a file database; every row kept, `integrity_check` and `foreign_key_check` clean, and the schema equal to a fresh database's |
+| F-02 | A database that cannot open or update no longer crashes on every launch: a screen says the data is unchanged, shows the error to report, and offers *Try again* |
+| F-03 | A stable release build without the release keystore properties fails, instead of silently signing with the public debug key (an explicit `TRAVEL_ORGANIZER_ALLOW_DEBUG_SIGNING` property allows it for a throwaway build) |
+| F-14 | The migration connection gets `foreign_keys` and a `busy_timeout`, like the main one |
+| F-17 | Permissions the app never uses (`RECORD_AUDIO`, `SYSTEM_ALERT_WINDOW`) are blocked from the release manifest, after checking which the built APK declares |
+| F-11 / F-18 | The user guide and stale docs are brought up to date with what is now known |
+
+## Not fixable in code — what is needed instead
+
+| ID | What |
+|---|---|
+| F-04 | The owner confirms an off-machine copy of the release keystore and its passwords |
+| F-05 | The owner decides whether the husband's phone may hold a copy of the real trip; until then synthetic only |
+| F-06 | Done on Beta on the owner's phone (2026-10-25, restore matched every count and file); a restore into a fresh install is for the husband's phone |
+| F-07 | The upgrade is one-way by design; the runbook (backup first, keep it) goes into the user guide |
+| F-08 | Stable has `allowBackup="true"`. Turning it off changes what Android restores after a reinstall: a decision for the owner, for the post-trip upgrade |
+| F-09 | Backups are built in memory. Fine at today's sizes (a 100 MB+ file was read in chunks); a streaming rewrite is a larger change, to plan if backups grow |
+| F-10, F-12, F-13 | Need other files or devices: a real 0.13.0 backup, real calendar apps, release lookups were checked on the phone (G8) — the calendar import on the husband's phone |
+| F-15, F-16, F-19 | Release tags from now on; SQLite skew needs no change; a copied trip getting new calendar UIDs is by design (it is a different trip) |
