@@ -117,9 +117,10 @@ function entryHtml(
   if (item.address && item.address !== where) lines.push(escapeHtml(item.address));
   // A journey says where and when it arrives, on the departure itself.
   if (item.kind === 'transport' && entry.role === 'full' && item.end && timeOfDay(item.end)) {
-    const arrives = zoneName(item.end.tz, routePlace(item, 'end'));
+    // The trip's own zone is not named, as at the start (QA O-01).
+    const arrives = item.endTzOverride ? ` · ${escapeHtml(zoneName(item.end.tz, routePlace(item, 'end')))} time` : '';
     const verb = entryRoleLabel({ role: 'end', item }) ?? 'Arrives';
-    lines.push(`${verb} ${escapeHtml(timeOfDay(item.end)!)} · ${escapeHtml(arrives)} time`);
+    lines.push(`${verb} ${escapeHtml(timeOfDay(item.end)!)}${arrives}`);
   }
   if (options.references && item.confirmationCode) {
     lines.push(`Reference: <strong>${escapeHtml(item.confirmationCode)}</strong>`);
@@ -230,22 +231,23 @@ function listsHtml(input: ItineraryInput): string {
 
 /**
  * The bookings in the reporting currency, as the Expenses tab works it out: ≈ when any part is
- * an estimate, and what has no rate named. Empty when the trip is not converted.
+ * an estimate, and what has no rate named. Empty when the trip is not converted, or when every
+ * booking is already in that currency — the table says it then (QA O-06).
  */
 function convertedHtml(input: ItineraryInput): string {
   const base = input.trip.reportCurrency;
   if (!base || !input.conversion) return '';
   const { bookings } = conversionCosts(input.items, input.conversion.expenses, input.conversion.payments);
-  if (bookings.length === 0) return '';
+  if (bookings.every((booking) => booking.currency === base)) return '';
   const converted = convertTripTotal({ base, rates: input.conversion.rates, bookings, spending: [] });
   const missing = converted.notIncluded
     .map(({ amount, currency }) => escapeHtml(formatMoney(amount, currency)))
     .join(', ');
   // Nothing counted: no figure, which would read as zero (review P2).
   if (!converted.included) return `<p>No total in ${escapeHtml(base)}: no rate for ${missing}.</p>`;
-  return `<p>${converted.complete ? '' : 'Partial total: '}<strong>${converted.estimated ? '≈ ' : ''}${escapeHtml(
+  return `<p>${converted.complete ? 'Converted total' : 'Partial converted total'}: <strong>${converted.estimated ? '≈ ' : ''}${escapeHtml(
     formatMoney(converted.bookings, base),
-  )}</strong> in ${escapeHtml(base)}${
+  )}</strong>${
     converted.estimated
       ? ` (estimated at ${converted.ratesUsed.map((rate) => escapeHtml(rateText(rate))).join(', ')})`
       : ''

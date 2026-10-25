@@ -194,17 +194,19 @@ describe('itineraryHtml (C4)', () => {
       { ...DEFAULT_PDF_OPTIONS, costs: true },
     );
     expect(converted).toContain(
-      '<p>Partial total: <strong>≈ EUR 342.00</strong> in EUR (estimated at 1 USD = 0.92 EUR); not included: NOK 60.00, with no rate.</p>',
+      '<p>Partial converted total: <strong>≈ EUR 342.00</strong> (estimated at 1 USD = 0.92 EUR); not included: NOK 60.00, with no rate.</p>',
     );
     const pdf = (items: TripItem[], rates = conversion.rates) =>
       itineraryHtml(input({ trip: { ...trip, reportCurrency: 'EUR' }, items, conversion: { ...conversion, rates } }), {
         ...DEFAULT_PDF_OPTIONS,
         costs: true,
       });
-    // Complete and exact; complete and estimated; partial and exact; nothing counted.
-    expect(pdf([hotel])).toContain('<p><strong>EUR 250.00</strong> in EUR.</p>');
-    expect(pdf([hotel, safari])).toContain('<p><strong>≈ EUR 342.00</strong> in EUR (estimated at 1 USD = 0.92 EUR).</p>');
-    expect(pdf([hotel, ferry])).toContain('<p>Partial total: <strong>EUR 250.00</strong> in EUR; not included: NOK 60.00, with no rate.</p>');
+    // All in the reporting currency already: the table says it, no "EUR 250.00 in EUR." (QA O-06).
+    expect(pdf([hotel])).not.toContain('Converted total');
+    expect(pdf([hotel])).not.toContain('in EUR.');
+    // Complete and estimated; partial and exact; nothing counted.
+    expect(pdf([hotel, safari])).toContain('<p>Converted total: <strong>≈ EUR 342.00</strong> (estimated at 1 USD = 0.92 EUR).</p>');
+    expect(pdf([hotel, ferry])).toContain('<p>Partial converted total: <strong>EUR 250.00</strong>; not included: NOK 60.00, with no rate.</p>');
     expect(pdf([ferry])).toContain('<p>No total in EUR: no rate for NOK 60.00.</p>');
     expect(pdf([ferry])).not.toContain('EUR 0.00');
     // Not converted: no line, and the table is as before.

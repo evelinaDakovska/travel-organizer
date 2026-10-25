@@ -143,14 +143,14 @@ describe('staysAndRentals', () => {
 
 describe('leadNote', () => {
   const lead = (
-    over: Partial<Item> & { details?: Record<string, unknown> },
+    over: Partial<Item> & { details?: Record<string, unknown>; endTzOverride?: string },
     role: 'full' | 'start' | 'end' = 'full',
   ) => {
     const found = {
       ...item('lead', over),
       subkind: null,
       details: over.details ?? null,
-      endTzOverride: null,
+      endTzOverride: over.endTzOverride ?? null,
     };
     return { key: found.id, item: found, role, moment: found.start!, instant: '', time: null };
   };
@@ -161,6 +161,7 @@ describe('leadNote', () => {
       start: at('2026-11-20T09:20'),
       end: at('2026-11-20T12:15'),
       details: { from: 'Sofia', to: 'Helsinki' },
+      endTzOverride: 'Europe/Helsinki',
     });
     expect(leadNote(flight, 'firstDeparture')).toBe('Arrives 12:15 · Helsinki time');
   });
@@ -175,7 +176,17 @@ describe('leadNote', () => {
       },
       'start',
     );
-    expect(leadNote(sleeper, 'next')).toBe('Arrives Sat 21 Nov · 07:40 · Rovaniemi time');
+    expect(leadNote(sleeper, 'next')).toBe('Arrives Sat 21 Nov · 07:40');
+  });
+
+  it('does not name the trip’s own zone by the arrival’s city (QA O-01)', () => {
+    const train = lead({
+      kind: 'transport',
+      start: at('2026-12-20T19:00'),
+      end: at('2026-12-21T07:30'),
+      details: { from: 'Helsinki', to: 'Rovaniemi' },
+    });
+    expect(leadNote(train, 'next')).not.toContain('Rovaniemi time');
   });
 
   it('says until for anything else, and nothing without an end or for an end', () => {

@@ -23,7 +23,16 @@ import { addCalendarDays, dayKey } from './time';
 import { buildTimeline, type TimelineEntry } from './timeline';
 import type { TripItem } from './tripItem';
 
-export type StopRole = 'wake' | 'sleep' | 'departure' | 'arrival' | 'check-in' | 'check-out' | 'visit';
+export type StopRole =
+  | 'wake'
+  | 'sleep'
+  | 'departure'
+  | 'arrival'
+  | 'pick-up'
+  | 'drop-off'
+  | 'check-in'
+  | 'check-out'
+  | 'visit';
 
 export type StopPlan = {
   itemId: string;
@@ -72,16 +81,18 @@ function entryCandidates(entry: TimelineEntry<TripItem>): Candidate[] | null {
   const plan = (r: StopRole, time: string | null): StopPlan => ({ itemId: item.id, title: item.title, time, role: r, idea });
 
   if (item.kind === 'transport') {
+    // A rental car is picked up and dropped off, as the Timeline says (entryRoleLabel).
+    const car = item.subkind === 'car';
     const out: Candidate[] = [];
     if (role !== 'end') {
       const from = resolveItemEndpoint(item, 'destination', 'start');
-      if (from) out.push({ place: from, plan: plan('departure', entry.time) });
+      if (from) out.push({ place: from, plan: plan(car ? 'pick-up' : 'departure', entry.time) });
     }
     if (role !== 'start') {
       const to = resolveItemEndpoint(item, 'origin', 'end');
       // The arrival time of a journey within the day is its end, not its start.
       const time = role === 'end' ? entry.time : item.end && item.end.precision === 'time' ? item.end.local.slice(11, 16) : null;
-      if (to) out.push({ place: to, plan: plan('arrival', time) });
+      if (to) out.push({ place: to, plan: plan(car ? 'drop-off' : 'arrival', time) });
     }
     return out.length > 0 ? out : null;
   }
@@ -320,6 +331,10 @@ export function stopRoleText(role: StopRole): string | null {
       return 'Departure';
     case 'arrival':
       return 'Arrival';
+    case 'pick-up':
+      return 'Pick up';
+    case 'drop-off':
+      return 'Drop off';
     case 'check-in':
       return 'Check in';
     case 'check-out':

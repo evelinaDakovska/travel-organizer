@@ -1,4 +1,4 @@
-import { dayRoute, dayRouteLinks, routeDays, schematicLayout, STOPS_PER_LINK, type RouteStop } from './dayRoute';
+import { dayRoute, dayRouteLinks, routeDays, schematicLayout, stopRoleText, STOPS_PER_LINK, type RouteStop } from './dayRoute';
 import type { TripItem } from './tripItem';
 
 const HEL = 'Europe/Helsinki';
@@ -138,6 +138,23 @@ describe('dayRoute', () => {
     });
     expect(shape(dayRoute([train], '2026-11-19').stops)).toEqual([['Helsinki', ['departure:Santa Claus Express@19:00']]]);
     expect(shape(dayRoute([train], '2026-11-20').stops)).toEqual([['Rovaniemi', ['arrival:Santa Claus Express@08:00']]]);
+  });
+
+  it('a rental car is picked up and dropped off, as the Timeline says (QA O-05)', () => {
+    const car = item({
+      kind: 'transport',
+      subkind: 'car',
+      title: 'Rental car',
+      details: { from: 'Rovaniemi Airport', to: 'Levi' },
+      start: at('2026-11-21T09:00'),
+      end: at('2026-11-21T12:00'),
+    });
+    const route = dayRoute([car], '2026-11-21');
+    expect(shape(route.stops)).toEqual([
+      ['Rovaniemi Airport', ['pick-up:Rental car@09:00']],
+      ['Levi', ['drop-off:Rental car@12:00']],
+    ]);
+    expect(route.stops.map((stop) => stopRoleText(stop.plans[0]!.role))).toEqual(['Pick up', 'Drop off']);
   });
 
   describe('journeys are placed by their ends only (review P1)', () => {

@@ -139,9 +139,9 @@ type NoteItem = Pick<TripItem, 'kind' | 'subkind' | 'details' | 'endTzOverride'>
 
 /**
  * The line under the lead (B5). On now: 'Until 11:15', as on the timeline. Otherwise where it ends:
- * a journey always says its arrival and that end's clock — 'Arrives 12:15 · Helsinki time', or
- * 'Arrives Sat 21 Nov · 07:40 · Rovaniemi time' overnight — since the arrival is the next thing a
- * traveller needs. Null when there is no end, or the lead is itself an end.
+ * a journey always says its arrival — 'Arrives 12:15', or 'Arrives Sat 21 Nov · 07:40' overnight —
+ * since the arrival is the next thing a traveller needs, with that end's clock when it is not the
+ * trip's: 'Arrives 12:15 · Helsinki time'. Null when there is no end, or the lead is itself an end.
  */
 export function leadNote<T extends NoteItem>(
   entry: TimelineEntry<T>,
@@ -158,10 +158,8 @@ export function leadNote<T extends NoteItem>(
   const when = sameDay && time ? time : formatShortMoment(end.local, end.precision);
   const role = entryRoleLabel({ role: 'end', item }) ?? 'Ends';
   const label = role === 'Ends' ? 'Until' : role;
-  const zone =
-    item.kind === 'transport' || item.endTzOverride
-      ? `${zoneName(end.tz, routePlace(item, 'end'))} time`
-      : null;
+  // The trip's own zone is not named, as at the start and under a Happening card (QA O-01).
+  const zone = item.endTzOverride ? `${zoneName(end.tz, routePlace(item, 'end'))} time` : null;
   return [`${label} ${when}`, time ? zone : null].filter(Boolean).join(' · ');
 }
 
