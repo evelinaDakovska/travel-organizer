@@ -9,16 +9,23 @@ import { Stack, useRouter } from 'expo-router';
 import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
 import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
-import { Suspense, useEffect } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, StyleSheet, View } from 'react-native';
 
 import { DATABASE_NAME, migrate } from '../src/db/client';
+import { StartupErrorBoundary } from '../src/features/startup/StartupErrorBoundary';
 import { useMediaSweep } from '../src/files/useMediaSweep';
 import { useReminders } from '../src/notifications/useReminders';
 import { useColors } from '../src/ui/tokens';
 
+/** Stable, so the provider (memoised on its props) never reopens the database on a re-render. */
+const DATABASE_OPTIONS = { enableChangeListener: true };
+
 export default function RootLayout() {
   const c = useColors();
+  // Each *Try again* remounts the database provider, which opens and migrates afresh (F-02).
+  const [attempt, setAttempt] = useState(0);
+  const [opened, setOpened] = useState(false);
   // The fonts ship inside the bundle, so this settles in milliseconds with no network. If one
   // fails, render anyway: the system font is a better failure than a blank screen abroad.
   const [fontsLoaded, fontError] = useFonts({
@@ -35,33 +42,45 @@ export default function RootLayout() {
   return (
     // Outermost, as the library asks: it must hear a share that cold-starts the app.
     <ShareIntentProvider>
-      <Suspense
-        fallback={
-          <View style={[styles.fill, styles.centre, { backgroundColor: c.background }]}>
-            <ActivityIndicator color={c.accent} />
-          </View>
-        }>
-        <SQLiteProvider
-          databaseName={DATABASE_NAME}
-          onInit={migrate}
-          // Defaults to false; without it addDatabaseChangeListener never fires and
-          // useLiveQuery silently never refreshes.
-          options={{ enableChangeListener: true }}
-          useSuspense>
-          <MediaSweep />
-          <Reminders />
-          <StatusBar style="auto" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: c.background },
-            }}
-          />
-          <ShareLanding />
-        </SQLiteProvider>
-      </Suspense>
+      {/* Not `useSuspense`: expo-sqlite keeps a failed suspense open for the life of the JS
+          runtime, so nothing short of a restart could try again. Without it the provider
+          renders nothing until the database is ready, then throws its error to the boundary. */}
+      <View style={[styles.fill, { backgroundColor: c.background }]}>
+        <StartupErrorBoundary
+          opened={opened}
+          onRetry={() => {
+            setOpened(false);
+            setAttempt((n) => n + 1);
+          }}>
+          <SQLiteProvider
+            key={attempt}
+            databaseName={DATABASE_NAME}
+            onInit={migrate}
+            // Defaults to false; without it addDatabaseChangeListener never fires and
+            // useLiveQuery silently never refreshes.
+            options={DATABASE_OPTIONS}>
+            <Opened onOpened={setOpened} />
+            <MediaSweep />
+            <Reminders />
+            <StatusBar style="auto" />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: c.background },
+              }}
+            />
+            <ShareLanding />
+          </SQLiteProvider>
+        </StartupErrorBoundary>
+      </View>
     </ShareIntentProvider>
   );
+}
+
+/** Rendered only once the provider has opened and migrated the database. */
+function Opened({ onOpened }: { onOpened: (opened: true) => void }) {
+  useEffect(() => onOpened(true), [onOpened]);
+  return null;
 }
 
 /** Has to sit inside the provider, which is where the database context exists. */
@@ -99,5 +118,4 @@ function ShareLanding() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  centre: { alignItems: 'center', justifyContent: 'center' },
 });

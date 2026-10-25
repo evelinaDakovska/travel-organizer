@@ -32,8 +32,12 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
       await rebuildTables(db, migration);
       continue;
     }
-    await db.withExclusiveTransactionAsync(async (tx) => {
-      await tx.execAsync(migrationBatch(migration));
+    // On this connection, not `withExclusiveTransactionAsync`'s second one: that one starts its
+    // transaction before any code of ours runs, and `foreign_keys` cannot be turned on inside a
+    // transaction, so a migration there ran with neither foreign keys nor the busy timeout (F-14).
+    // Nothing else uses the database while `onInit` runs.
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(migrationBatch(migration));
     });
   }
 }

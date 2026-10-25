@@ -40,6 +40,26 @@ describe('migrate', () => {
     db.close();
   });
 
+  it('migrates on its own connection, with foreign keys on and the busy timeout (F-14)', async () => {
+    const db = new Database(file);
+    let seen: [unknown, unknown][] = [];
+    const exec = db.exec.bind(db);
+    db.exec = ((sql: string) => {
+      // Inside each migration's transaction: what that connection enforces while it runs.
+      if (/PRAGMA user_version = \d+/.test(sql)) {
+        seen = [...seen, [db.pragma('foreign_keys', { simple: true }), db.pragma('busy_timeout', { simple: true })]];
+      }
+      return exec(sql);
+    }) as typeof db.exec;
+    // No second connection is offered: opening one would throw.
+    await migrate(asyncDatabase(db));
+    expect(db.pragma('user_version', { simple: true })).toBe(LATEST_VERSION);
+    // 014 rebuilds with foreign keys off by design; every other migration runs with them on.
+    expect(seen.filter(([keys]) => keys === 0)).toHaveLength(1);
+    expect(seen.every(([, timeout]) => timeout === 5000)).toBe(true);
+    db.close();
+  });
+
   it('does not set the journal mode again on a database already in WAL', async () => {
     const first = recording();
     await migrate(first.async);
