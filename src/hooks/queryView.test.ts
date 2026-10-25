@@ -1,4 +1,4 @@
-import { isStale, queryView, type QueryState } from './queryView';
+import { hasLoaded, isStale, queryView, type QueryState } from './queryView';
 
 const state = <T,>(overrides: Partial<QueryState<T>>): QueryState<T> => ({
   data: undefined,
@@ -52,5 +52,18 @@ describe('queryView', () => {
     const empty = state({ data: [], error: failure });
     expect(queryView(empty)).toBe('failed');
     expect(isStale(empty)).toBe(false);
+  });
+});
+
+describe('hasLoaded', () => {
+  it('a list with something in it, or nothing in it, has loaded', () => {
+    expect(hasLoaded(queryView(state({ data: [1] })))).toBe(true);
+    expect(hasLoaded(queryView(state({ data: [] })))).toBe(true);
+  });
+
+  it('a list still loading, or that failed to load, has not — a form must not start from it (QA D-01)', () => {
+    expect(hasLoaded(queryView(state({ loading: true })))).toBe(false);
+    expect(hasLoaded(queryView(state({ error: failure })))).toBe(false);
+    expect(hasLoaded(queryView(state({ data: [], error: failure })))).toBe(false);
   });
 });

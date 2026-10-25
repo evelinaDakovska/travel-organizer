@@ -1,10 +1,10 @@
-import { useRouter } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { FEATURE_FEEDBACK_ENABLED } from '../src/config/features';
 import { DATES_NOT_SET, formatDateRange, formatDuration } from '../src/domain/format';
-import { singleActiveTrip } from '../src/domain/itinerary';
+import { tripToOpenAtLaunch } from '../src/domain/itinerary';
 import { groupTrips, isDated, outboundRoute, tripDurationDays, type Trip } from '../src/domain/trip';
 import { DestinationCover } from '../src/features/trips/DestinationCover';
 import { queryView } from '../src/hooks/queryView';
@@ -32,6 +32,7 @@ let openedActiveTrip = false;
 export default function Home() {
   const c = useColors();
   const router = useRouter();
+  const navigation = useNavigation();
   const now = useNow();
   const tripsQuery = useLiveQuery(listTrips, TRIP_TABLES);
   const trips = tripsQuery.data;
@@ -55,9 +56,10 @@ export default function Home() {
   useEffect(() => {
     if (openedActiveTrip || !trips) return;
     openedActiveTrip = true;
-    const active = singleActiveTrip(trips);
+    // A share or a tapped reminder that opened the app is already on top by now: leave it there.
+    const active = tripToOpenAtLaunch(trips, { homeFocused: navigation.isFocused() });
     if (active) router.push(`/trip/${active.id}`);
-  }, [trips, router]);
+  }, [trips, router, navigation]);
 
   const open = (trip: Trip) => router.push(`/trip/${trip.id}`);
   const tripRow = (trip: Trip) => (

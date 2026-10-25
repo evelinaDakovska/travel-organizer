@@ -219,3 +219,15 @@ export function singleActiveTrip<T extends Trip>(trips: readonly T[], now: Date 
   const active = trips.filter((trip) => isTripActive(trip, now));
   return active.length === 1 ? active[0] : null;
 }
+
+/**
+ * The trip launch should open, if any. Only while Home is still the screen on top: something opened
+ * first — a share, a tapped reminder, a link — stays in front instead of disappearing under the trip
+ * (QA D-03).
+ */
+export function tripToOpenAtLaunch<T extends Trip>(
+  trips: readonly T[],
+  { homeFocused, now = new Date() }: { homeFocused: boolean; now?: Date },
+): T | null {
+  return homeFocused ? singleActiveTrip(trips, now) : null;
+}

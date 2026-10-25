@@ -27,6 +27,15 @@ export function queryView<T>({ data, error }: QueryState<T>): QueryView {
   return 'ready';
 }
 
+/**
+ * Whether a list has been read: something in it, or nothing in it. A form that starts from the list
+ * must wait for this — started early, it starts from an empty list and saving that loses the real
+ * one (QA D-01: Edit trip dropped the trip's travellers).
+ */
+export function hasLoaded(view: QueryView): boolean {
+  return view === 'ready' || view === 'empty';
+}
+
 /** A refresh failed after an earlier read found something: the screen shows that earlier data. */
 export function isStale<T>(state: QueryState<T>): boolean {
   return state.error !== undefined && queryView(state) === 'ready';

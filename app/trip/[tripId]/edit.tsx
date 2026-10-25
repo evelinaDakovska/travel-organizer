@@ -5,7 +5,7 @@ import { Alert } from 'react-native';
 
 import { countOf, listPhrase } from '../../../src/domain/format';
 import { TripForm } from '../../../src/features/trips/TripForm';
-import { queryView } from '../../../src/hooks/queryView';
+import { hasLoaded, queryView } from '../../../src/hooks/queryView';
 import { useLiveQuery } from '../../../src/hooks/useLiveQuery';
 import {
   countTripContents,
@@ -82,6 +82,20 @@ export default function EditTrip() {
         missingText="This trip no longer exists."
         what="this trip"
         onRetry={tripQuery.refetch}
+      />
+    );
+  }
+  // The form copies who is ticked once, when it opens: opened before the members arrive, it would tick
+  // nobody, and saving would take everyone off the trip (QA D-01).
+  const membersView = queryView(membersQuery);
+  if (!hasLoaded(membersView)) {
+    return (
+      <QueryScreen
+        title="Edit trip"
+        view={membersView}
+        missingText="This trip no longer exists."
+        what="who is on this trip"
+        onRetry={membersQuery.refetch}
       />
     );
   }

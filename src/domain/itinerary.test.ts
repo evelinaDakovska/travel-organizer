@@ -8,6 +8,7 @@ import {
   entryZoneLabel,
   openTasks,
   singleActiveTrip,
+  tripToOpenAtLaunch,
   undatedConfirmed,
   upNext,
 } from './itinerary';
@@ -168,6 +169,26 @@ describe('singleActiveTrip', () => {
     const overlapping = [trip('a', '2026-09-19', '2026-09-22'), trip('b', '2026-09-20', '2026-09-21')];
     expect(singleActiveTrip(overlapping, midTrip)).toBeNull();
     expect(singleActiveTrip([trip('later', '2026-11-20', '2026-11-24')], midTrip)).toBeNull();
+  });
+});
+
+describe('tripToOpenAtLaunch', () => {
+  const trip = (id: string, startDate: string, endDate: string) =>
+    ({ id, name: id, startDate, endDate }) as unknown as Trip;
+  const now = new Date(2026, 8, 20, 12);
+  const trips = [trip('milan', '2026-09-19', '2026-09-22'), trip('lapland', '2026-11-20', '2026-11-24')];
+
+  it('opens the trip in progress while Home is on top', () => {
+    expect(tripToOpenAtLaunch(trips, { homeFocused: true, now })?.id).toBe('milan');
+  });
+
+  it('opens nothing once something else is on top — a share or a tapped reminder stays in front (QA D-03)', () => {
+    expect(tripToOpenAtLaunch(trips, { homeFocused: false, now })).toBeNull();
+  });
+
+  it('still refuses to guess between trips', () => {
+    const overlapping = [trip('a', '2026-09-19', '2026-09-22'), trip('b', '2026-09-20', '2026-09-21')];
+    expect(tripToOpenAtLaunch(overlapping, { homeFocused: true, now })).toBeNull();
   });
 });
 
