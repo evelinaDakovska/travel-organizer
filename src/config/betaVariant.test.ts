@@ -85,6 +85,18 @@ describe('stable identity stays as it is', () => {
     expect(release).not.toContain('BETA');
   });
 
+  it('a stable release build without the keystore fails instead of using the debug key (F-03)', () => {
+    const gradle = applySigning(templateGradle);
+    const guard = gradle.slice(gradle.indexOf('gradle.taskGraph.whenReady'));
+    expect(guard).toContain("'packageRelease', 'packageReleaseBundle', 'signReleaseBundle'");
+    expect(guard).toContain("!project.hasProperty('TRAVEL_ORGANIZER_STORE_FILE')");
+    expect(guard).toContain("!project.hasProperty('TRAVEL_ORGANIZER_ALLOW_DEBUG_SIGNING')");
+    expect(guard).toContain('throw new GradleException');
+    // Applied once, however often prebuild runs it.
+    expect(applySigning(gradle)).toBe(gradle);
+    expect(gradle.split('gradle.taskGraph.whenReady')).toHaveLength(2);
+  });
+
   it('an unknown variant is refused rather than falling back to stable', () => {
     expect(() => resolve('Beta')).toThrow(/APP_VARIANT/);
     expect(() => resolve('')).toThrow(/APP_VARIANT/);
