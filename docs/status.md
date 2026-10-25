@@ -696,6 +696,14 @@ only when the owner asks.
   - D-03: a cold-start share passed 3 of 3, and a cold start from a tapped reminder opened the to-do with Home
     under it.
   - A plain launch still opens the trip in progress.
+  - With the owner at the phone:
+    - Beta is a separate share target (D-04 closed).
+    - Offline, a cold launch works, the ticket PDF opens and the lookup explains it can't connect.
+    - The largest font and zoom are usable (O-10: the Timeline time wraps inside the number; O-11/O-12: truncation).
+    - TalkBack reads sensibly.
+    - A destructive restore into Beta matched every count and file.
+
+    Deferred to the husband's phone: a restore into a reinstalled Beta, and a real calendar import.
 
   Stable 0.7.2 is unchanged and has both defects until it is upgraded (Option A: guidance only before the trip) | ✅ |
 | **B1** | **Pre-beta: feedback deployment and security verification** (owner, 2026-10-20; `MASTER_ROADMAP.md` §16.2). Before the first friends APK, not in 3C: secure HTTPS endpoint, server-side secrets only, input validation and rate limiting, abuse protection and cost limits, no trip data sent automatically, draft cleared only after confirmed server acceptance, a real end-to-end delivery test with the owner's approval. The form stays off until then. Nothing deployed and no test email sent — waits for approval | ⬜ |
