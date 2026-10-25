@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { getTripMoreActions } from '../../../../src/config/features';
 import { paymentStatuses, type PaymentStatus } from '../../../../src/domain/bookingCosts';
@@ -95,6 +95,10 @@ const LEAD_EYEBROW: Record<LeadReason, string> = {
  */
 export default function OverviewScreen() {
   const c = useColors();
+  // At a large font the zone line beside *Full itinerary* wraps word by word: it goes above (QA O-12).
+  const metaStacked = useWindowDimensions().fontScale > 1.3;
+  const metaRow = [styles.metaRow, metaStacked && styles.metaStacked];
+  const metaText = [type.caption, !metaStacked && styles.grow, { color: c.textMuted }];
   const db = useSQLiteContext();
   const router = useRouter();
   const now = useNow();
@@ -259,8 +263,8 @@ export default function OverviewScreen() {
 
         {isPast ? (
           <>
-            <View style={styles.metaRow}>
-              <Text style={[type.caption, styles.grow, { color: c.textMuted }]}>{meta}</Text>
+            <View style={metaRow}>
+              <Text style={metaText}>{meta}</Text>
             </View>
 
             <LeadPanel
@@ -318,8 +322,8 @@ export default function OverviewScreen() {
               />
             </View>
 
-            <View style={styles.metaRow}>
-              <Text style={[type.caption, styles.grow, { color: c.textMuted }]}>{meta}</Text>
+            <View style={metaRow}>
+              <Text style={metaText}>{meta}</Text>
               <HeaderAction
                 label="Full itinerary"
                 onPress={() => router.push(`/trip/${trip.id}/timeline`)}
@@ -479,8 +483,8 @@ export default function OverviewScreen() {
           </>
         ) : (
           <>
-            <View style={styles.metaRow}>
-              <Text style={[type.caption, styles.grow, { color: c.textMuted }]}>{meta}</Text>
+            <View style={metaRow}>
+              <Text style={metaText}>{meta}</Text>
               <HeaderAction
                 label="Full itinerary"
                 onPress={() => router.push(`/trip/${trip.id}/timeline`)}
@@ -865,6 +869,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxxl * 2,
   },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  metaStacked: { flexDirection: 'column', alignItems: 'flex-start', gap: 0 },
   grow: { flex: 1 },
   section: { gap: spacing.xs },
   sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

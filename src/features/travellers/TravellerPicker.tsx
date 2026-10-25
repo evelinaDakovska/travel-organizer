@@ -187,6 +187,7 @@ export function TravellerPicker({
             <Button
               label="+ Add new traveller"
               variant="secondary"
+              wrap
               onPress={() => {
                 setName('');
                 setNameError(null);

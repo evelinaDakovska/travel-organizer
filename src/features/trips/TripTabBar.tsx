@@ -93,7 +93,11 @@ export function TripTabBar({ state, navigation, insets }: BottomTabBarProps) {
             <Text
               style={[type.caption, focused && styles.labelActive, { color }]}
               numberOfLines={1}
-              maxFontSizeMultiplier={LABEL_MAX_SCALE}>
+              maxFontSizeMultiplier={LABEL_MAX_SCALE}
+              // With the screen zoomed in as well, even the capped label can be too wide: it
+              // shrinks a little rather than end in '…' ("Overvi…", QA O-11).
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}>
               {label}
             </Text>
             {tab.shortLabel ? (

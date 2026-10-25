@@ -53,7 +53,14 @@ export function TimelineRow({ entry, resources, onPress, showDate = false, note,
         {showDate ? (
           <Text style={[type.caption, { color: c.textMuted }]}>{formatShortDate(dayKey(moment))}</Text>
         ) : null}
-        <Text style={[entry.time ? type.figure : type.caption, { color: c.text }]}>{time}</Text>
+        {/* A time on one line, smaller if it must: "10:0" / "0" at the largest font could be
+            misread (QA O-10). "All day" may wrap. */}
+        <Text
+          style={[entry.time ? type.figure : type.caption, { color: c.text }]}
+          numberOfLines={entry.time ? 1 : undefined}
+          adjustsFontSizeToFit={!!entry.time}>
+          {time}
+        </Text>
       </View>
 
       <View style={[styles.body, { borderLeftColor: c.border }]}>

@@ -65,11 +65,12 @@ export function ScreenHeader({ context, title, subtitle, action, leading = 'back
         onTextLayout={(e) => fits(!breaksInsideWord(e.nativeEvent.lines.map((line) => line.text)))}>
         {title}
       </Text>
+      {/* Two lines at most: at a large font 'Lapland · Day 3 of 6' wraps rather than end in '…' (QA O-11). */}
       {subtitle ? (
         <Text
           style={[type.caption, { color: c.textMuted }]}
-          numberOfLines={measuring ? undefined : 1}
-          onTextLayout={(e) => fits(e.nativeEvent.lines.length <= 1)}>
+          numberOfLines={measuring ? undefined : 2}
+          onTextLayout={(e) => fits(e.nativeEvent.lines.length <= 2)}>
           {subtitle}
         </Text>
       ) : null}

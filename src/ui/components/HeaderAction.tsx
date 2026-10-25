@@ -13,6 +13,12 @@ type Props = {
 };
 
 /**
+ * A label grows with the font scale only so far: at the largest, "+ Add" outgrew the screen's
+ * title and pushed it into a column of its own (QA O-11). The title carries the full size.
+ */
+const LABEL_MAX_SCALE = 1.4;
+
+/**
  * A header button (B2): Add, Edit, Today, Search. Labelled where there is room, so nothing is an
  * unexplained glyph, and never smaller than a 48 dp target.
  */
@@ -32,7 +38,7 @@ export function HeaderAction({ label, icon, onPress, accessibilityLabel, disable
       ]}>
       {icon ? <Icon name={icon} size={20} color={c.accentText} strokeWidth={2.4} /> : null}
       {label ? (
-        <Text style={[type.label, { color: c.accentText }]} numberOfLines={1}>
+        <Text style={[type.label, { color: c.accentText }]} numberOfLines={1} maxFontSizeMultiplier={LABEL_MAX_SCALE}>
           {label}
         </Text>
       ) : null}
